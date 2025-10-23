@@ -134,9 +134,6 @@ export default function ApprovalsPage() {
             >
               {tab.icon && <i className={`approval-tab-icon ${tab.icon}`} />}
               <span>{tab.title}</span>
-              {tab.count && tab.count > 0 && (
-                <span className="approval-tab-count">{tab.count}</span>
-              )}
             </button>
           ))}
         </div>

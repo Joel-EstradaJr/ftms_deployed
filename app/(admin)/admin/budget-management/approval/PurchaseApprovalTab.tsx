@@ -709,7 +709,7 @@ export default function PurchaseApprovalTab({
             </thead>
             <tbody>
               {paginatedData.map(request => (
-                <tr key={request.id}>
+                <tr key={request.id} onClick={() => openApproveModal(request)} title="Approve">
                   <td>{request.title}</td>
                   <td>{formatDepartment(request.department)}</td>
                   <td>{request.requester_name}</td>
@@ -728,13 +728,6 @@ export default function PurchaseApprovalTab({
                   </td>
                   <td className="actionButtons">
                     <div className="actionButtonsContainer">
-                      <button
-                        className="viewBtn"
-                        onClick={() => handleView(request)}
-                        title="View Details"
-                      >
-                        <i className="ri-eye-line" />
-                      </button>
                       <button
                         className="auditBtn"
                         onClick={() => handleAuditTrail(request)}

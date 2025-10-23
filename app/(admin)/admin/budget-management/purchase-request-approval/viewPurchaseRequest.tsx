@@ -135,8 +135,11 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
                 <span className="autofill-note">Auto-filled with current date</span>
               </div>
             </div>
+          </div>
+        </div>
 
             {/* Purchase Details Section */}
+          <div className="modalContent">
             <div className="sectionHeader">Purchase Details</div>
             
             <div className="formRow">
@@ -188,7 +191,9 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
               readOnly={true}
               title="Purchase Items"
             />
+          </div>
 
+          <div className="modalContent">
             {/* Supporting Documents Section */}
             <div className="sectionHeader">Supporting Documents</div>
             
@@ -217,7 +222,9 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
                 </div>
               )}
             </div>
-
+          </div>
+          
+          <div className="modalContent">
             {/* Request Status Section */}
             <div className="sectionHeader">Request Status</div>
             
@@ -236,7 +243,9 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
                 <div className="viewOnlyField">{formData.created_by}</div>
               </div>
             </div>
+          </div>
 
+          <div className="modalContent">
             {/* Additional Information */}
             <div className="sectionHeader">Additional Information</div>
             
@@ -255,7 +264,9 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
                 </div>
               </div>
             </div>
+          </div>
 
+          <div className="modalContent">
             {/* Vendor Information */}
             <div className="sectionHeader">Vendor Information</div>
             
@@ -279,7 +290,8 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        
+        
 
         <div className="modalButtons">
           <button type="button" className="secondaryButton" onClick={onClose}>

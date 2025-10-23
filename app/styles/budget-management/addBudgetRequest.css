@@ -34,101 +34,15 @@
   width: 90% !important;
   max-width: 1200px !important;
   max-height: 90vh !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;
   box-shadow: var(--box-shadow) !important;
   position: relative !important;
   font-family: var(--font-sans) !important;
   color: var(--primary-text-color) !important;
 }
 
-.addBudgetRequestModal form {
-  width: 100% !important;
-  overflow-y: auto !important;
-  max-height: calc(90vh - 100px) !important;
-  scrollbar-width: thin !important;
-}
-.addBudgetRequestModal form::-webkit-scrollbar {
-  width: 6px !important;
-}
-.addBudgetRequestModal form::-webkit-scrollbar-thumb {
-  background: var(--border-color) !important;
-  border-radius: 6px !important;
-}
-
-/* ---------- Header ---------- */
-.modalHeader {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  width: 100% !important;
-  margin-bottom: var(--modal-header-margin-bottom) !important;
-  padding-bottom: 10px !important;
-  border-bottom: 1px solid var(--border-color) !important;
-}
-
-.modalHeader h1 {
-  font-size: var(--title-font-size) !important;
-  font-weight: var(--title-font-weight) !important;
-  color: var(--primary-text-color) !important;
-  margin: 0 !important;
-}
-
-/* Date / Time stamp */
-.timeDate {
-  display: flex !important;
-  gap: 1rem !important;
-  font-size: var(--modal-timedate-font-size) !important;
-  font-style: italic !important;
-  color: var(--secondary-text-color) !important;
-  margin-top: 10px !important;
-}
-
-.currTime,
-.currDate {
-  margin: 0 !important;
-  align-self: flex-end !important;
-}
-
-/* ---------- Content ---------- */
-.modalContent {
-  width: var(--modal-content-width) !important;
-  max-width: 100% !important;
-  height: auto !important;
-  background-color: var(--modal-content-background-color) !important;
-  padding: var(--modal-content-padding) !important;
-  border-radius: var(--modal-content-border-radius) !important;
-  box-shadow: none !important;
-  overflow-y: visible !important;
-}
 
 /* ---------- Field Grid ---------- */
-.formRow {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 1rem !important;
-  margin-bottom: 1rem !important;
-}
-
-.formInputs {
-  display: flex;
-  flex-direction: column !important;
-  flex: 1 1 auto !important;
-  gap: var(--modal-content-row-gap) !important;
-}
-
-.formField {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1;
-  margin: none;
-  width: 100%;
-  max-width: 100%;
-  background-color: none;
-}
 
 .formFieldHalf {
   width: 48% !important;
@@ -140,26 +54,6 @@
   font-weight: var(--input-label-font-weight) !important;
   margin-bottom: 0.25rem !important;
 }
-
-.formField input,
-.formField select,
-.formField textarea {
-  width: 100% !important;
-  padding: 0.5rem 0.75rem !important;
-  border: none !important;
-  outline: none !important;
-  border-radius: 4px !important;
-  font-family: var(--font-sans) !important;
-  background-color: var(--modal-input-select-background-color);
-  box-shadow: var(--box-shadow) !important;
-  resize: vertical !important;
-}
-
-.formField textarea {
-  min-height: 80px !important;
-  max-height: 150px !important;
-}
-
 /* ---------- Section Headers ---------- */
 .sectionHeader {
   font-size: 1.1rem !important;

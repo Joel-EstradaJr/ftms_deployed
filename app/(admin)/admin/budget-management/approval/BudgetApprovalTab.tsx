@@ -442,7 +442,7 @@ export default function BudgetApprovalTab({
             </thead>
             <tbody>
               {paginatedData.map(request => (
-                <tr key={request.request_id}>
+                <tr key={request.request_id} onClick={() => handleView(request)} title="View Details">
                   <td>{formatDate(request.request_date)}</td>
                   <td>{request.title}</td>
                   <td>{request.category}</td>
@@ -455,13 +455,6 @@ export default function BudgetApprovalTab({
                   <td>{request.requested_by}</td>
                   <td className="actionButtons">
                     <div className="actionButtonsContainer">
-                      <button
-                        className="viewBtn"
-                        onClick={() => handleView(request)}
-                        title="View Details"
-                      >
-                        <i className="ri-eye-line" />
-                      </button>
                       <button
                         className="auditBtn"
                         onClick={() => handleAuditTrail(request)}

@@ -3,11 +3,12 @@
 /* Tab Navigation */
 .approval-tabs {
   display: flex !important;
-  border-bottom: 2px solid var(--border-color) !important;
+  border-bottom: 0px solid var(--border-color) !important;
   margin-bottom: 20px !important;
   background: var(--foreground-color) !important;
   border-radius: 8px 8px 0 0 !important;
   overflow: hidden !important;
+  padding: 1rem !important;
 }
 
 .approval-tab {
@@ -18,7 +19,7 @@
   font-size: 16px !important;
   font-weight: 500 !important;
   cursor: pointer !important;
-  border-bottom: 3px solid transparent !important;
+  border-bottom: 5px solid transparent !important;
   transition: all 0.3s ease !important;
   position: relative !important;
   display: flex !important;
@@ -32,6 +33,7 @@
 .approval-tab.active {
   color: var(--primary-color) !important;
   border-bottom-color: var(--primary-color) !important;
+  border-bottom: 3px solid var(--primary-color) !important;
   background: transparent !important;
   font-weight: 600 !important;
   box-shadow: none !important;
