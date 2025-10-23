@@ -29,6 +29,8 @@ import PurchaseApprovalModal from "./PurchaseApprovalModal";
 
 // Import styles
 import "../../../../styles/purchase-approval/purchase-approval.css";
+import "../../../../styles/components/table.css";
+
 
 import { SharedApprovalFilters } from "../../../../types/approvals";
 
@@ -649,7 +651,7 @@ export default function PurchaseApprovalTab({
 
   // Utility functions
   const formatDepartment = (dept: Department) => {
-    return dept.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    return dept.replace('_', ' ').toUpperCase();
   };
 
   const formatPriority = (priority: RequestPriority) => {
@@ -691,7 +693,7 @@ export default function PurchaseApprovalTab({
 
   return (
     <>
-      <div className="table-wrapper">
+      <div className="approval-table-wrapper">
         <div className="tableContainer">
           <table className="data-table">
             <thead>

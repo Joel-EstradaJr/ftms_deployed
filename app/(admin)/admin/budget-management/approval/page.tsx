@@ -139,7 +139,7 @@ export default function ApprovalsPage() {
         </div>
 
         {/* Shared Controls */}
-        <div className="shared-controls">
+        <div className="settings">
           <div className="search-filter-container">
             {/* Search Bar */}
             <div className="searchBar">

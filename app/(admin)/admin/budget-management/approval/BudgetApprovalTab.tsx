@@ -15,6 +15,8 @@ import BudgetApprovalModal from "./BudgetApprovalModal";
 
 // Import styles
 import "../../../../styles/budget-management/budgetApproval.css";
+import "../../../../styles/components/table.css";
+
 
 import { SharedApprovalFilters } from "../../../../types/approvals";
 
