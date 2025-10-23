@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import '../../../../styles/budget-management/departmentDetailsModal.css';
+import '../../../../styles/components/modal.css';
+import '../../../../styles/components/table.css';
 import '../../../../styles/components/chips.css';
-import { formatDate } from '../../../../utility/dateFormatter';
+import { formatDate } from '../../../../utils/formatting';
 import PaginationComponent from '../../../../Components/pagination';
 
 // Enhanced interfaces for allocation history
@@ -327,74 +328,90 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container department-details-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modalOverlay" onClick={onClose}>
+      <div className="modalStandard" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
-        <div className="modal-header">
-          <div className="modal-title">
-            <h2>{department.department_name} Department</h2>
-            <p>Budget Allocation History & Management</p>
-          </div>
-          <button className="modal-close-btn" onClick={onClose}>
+        <div className="modalHeader">
+          <h1>{department.department_name} Department</h1>
+          <button 
+            className="closeButton" 
+            onClick={onClose}
+            style={{ position: 'absolute', top: '10px', right: '10px' }}
+          >
             <i className="ri-close-line" />
           </button>
         </div>
 
-        {/* Department Summary */}
-        <div className="department-summary">
-          <div className="summary-metrics">
-            <div className="metric-item">
-              <i className="ri-money-dollar-circle-line" />
-              <div className="metric-content">
-                <span className="metric-label">Allocated</span>
-                <span className="metric-value">₱{department.allocated_budget.toLocaleString()}</span>
+        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
+          {/* Department Summary */}
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <i className="ri-money-dollar-circle-line" style={{ fontSize: '1.5rem', color: 'var(--primary-color)' }} />
+                <div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', marginBottom: '0.25rem' }}>Allocated</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>₱{department.allocated_budget.toLocaleString()}</div>
+                </div>
               </div>
-            </div>
-            <div className="metric-item">
-              <i className="ri-shopping-cart-line" />
-              <div className="metric-content">
-                <span className="metric-label">Used</span>
-                <span className="metric-value used">₱{department.used_budget.toLocaleString()}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <i className="ri-shopping-cart-line" style={{ fontSize: '1.5rem', color: 'var(--warning-color)' }} />
+                <div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', marginBottom: '0.25rem' }}>Used</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>₱{department.used_budget.toLocaleString()}</div>
+                </div>
               </div>
-            </div>
-            <div className="metric-item">
-              <i className="ri-wallet-line" />
-              <div className="metric-content">
-                <span className="metric-label">Remaining</span>
-                <span className={`metric-value ${department.remaining_budget < 0 ? 'negative' : 'positive'}`}>
-                  ₱{department.remaining_budget.toLocaleString()}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <i className="ri-wallet-line" style={{ fontSize: '1.5rem', color: department.remaining_budget < 0 ? 'var(--error-color)' : 'var(--success-color)' }} />
+                <div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', marginBottom: '0.25rem' }}>Remaining</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: department.remaining_budget < 0 ? 'var(--error-color)' : 'var(--primary-text-color)' }}>₱{department.remaining_budget.toLocaleString()}</div>
+                </div>
               </div>
-            </div>
-            <div className="metric-item">
-              <i className="ri-percent-line" />
-              <div className="metric-content">
-                <span className="metric-label">Utilization</span>
-                <span className="metric-value">
-                  {Math.round((department.used_budget / department.allocated_budget) * 100)}%
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <i className="ri-percent-line" style={{ fontSize: '1.5rem', color: 'var(--primary-color)' }} />
+                <div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', marginBottom: '0.25rem' }}>Utilization</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
+                    {Math.round((department.used_budget / department.allocated_budget) * 100)}%
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Global Actions */}
-        <div className="global-actions">
-          <div className="search-filters">
-            <div className="search-box">
-              <i className="ri-search-line" />
-              <input
-                type="text"
-                placeholder="Search allocations..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-              />
-            </div>
+          {/* Global Actions */}
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ position: 'relative', flex: '1', minWidth: '200px' }}>
+                <i className="ri-search-line" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--secondary-text-color)' }} />
+                <input
+                  type="text"
+                  placeholder="Search allocations..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--foreground-color)',
+                    color: 'var(--primary-text-color)',
+                    outline: 'none'
+                  }}
+                />
+              </div>
 
-            <div className="filter-group">
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
+                style={{
+                  padding: '0.75rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--foreground-color)',
+                  color: 'var(--primary-text-color)',
+                  outline: 'none'
+                }}
               >
                 <option value="">All Types</option>
                 <option value="Allocation">Allocation</option>
@@ -405,6 +422,14 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
               <select
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
+                style={{
+                  padding: '0.75rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--foreground-color)',
+                  color: 'var(--primary-text-color)',
+                  outline: 'none'
+                }}
               >
                 <option value="">All Statuses</option>
                 <option value="Allocated">Allocated</option>
@@ -418,6 +443,14 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
                 placeholder="Date From"
                 value={filters.dateFrom}
                 onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                style={{
+                  padding: '0.75rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--foreground-color)',
+                  color: 'var(--primary-text-color)',
+                  outline: 'none'
+                }}
               />
 
               <input
@@ -425,134 +458,209 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
                 placeholder="Date To"
                 value={filters.dateTo}
                 onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                style={{
+                  padding: '0.75rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--foreground-color)',
+                  color: 'var(--primary-text-color)',
+                  outline: 'none'
+                }}
+              />
+
+              <button 
+                onClick={clearAllFilters}
+                style={{
+                  padding: '0.75rem 1rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--foreground-color)',
+                  color: 'var(--secondary-text-color)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <i className="ri-filter-off-line" /> Clear Filters
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <div style={{ position: 'relative' }}>
+                <button style={{
+                  padding: '0.75rem 1rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--primary-color)',
+                  color: 'var(--button-font-color)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <i className="ri-download-line" /> Export
+                </button>
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: '0',
+                  backgroundColor: 'var(--foreground-color)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  boxShadow: 'var(--box-shadow)',
+                  zIndex: '1000',
+                  minWidth: '120px',
+                  display: 'none' // This would need to be controlled with state
+                }}>
+                  <button onClick={handleExportCSV} style={{ width: '100%', padding: '0.5rem 1rem', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>
+                    <i className="ri-file-text-line" /> CSV
+                  </button>
+                  <button onClick={handleExportExcel} style={{ width: '100%', padding: '0.5rem 1rem', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>
+                    <i className="ri-file-excel-line" /> Excel
+                  </button>
+                  <button onClick={handleExportPDF} style={{ width: '100%', padding: '0.5rem 1rem', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>
+                    <i className="ri-file-pdf-line" /> PDF
+                  </button>
+                </div>
+              </div>
+
+              <button style={{
+                padding: '0.75rem 1rem',
+                border: 'none',
+                borderRadius: '8px',
+                backgroundColor: 'var(--success-color)',
+                color: 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <i className="ri-add-line" /> Add Allocation
+              </button>
+            </div>
+          </div>
+
+          {/* Allocation History Table */}
+          <div className="table-wrapper">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--secondary-text-color)' }}>
+                <i className="ri-loader-4-line" style={{ fontSize: '2rem', animation: 'spin 1s linear infinite' }} />
+                <p style={{ marginTop: '1rem' }}>Loading allocation history...</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: '0', color: 'var(--primary-text-color)' }}>Allocation History</h3>
+                  <span style={{ color: 'var(--secondary-text-color)' }}>
+                    Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredHistory.length)} of {filteredHistory.length} records
+                  </span>
+                </div>
+
+                <div className="tableContainer">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th onClick={() => handleSortChange('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Date
+                          <i className={`ri-arrow-${sort.field === 'date' && sort.direction === 'asc' ? 'up' : 'down'}-line`} style={{ marginLeft: '0.5rem' }} />
+                        </th>
+                        <th onClick={() => handleSortChange('type')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Type
+                          <i className={`ri-arrow-${sort.field === 'type' && sort.direction === 'asc' ? 'up' : 'down'}-line`} style={{ marginLeft: '0.5rem' }} />
+                        </th>
+                        <th onClick={() => handleSortChange('amount')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Amount
+                          <i className={`ri-arrow-${sort.field === 'amount' && sort.direction === 'asc' ? 'up' : 'down'}-line`} style={{ marginLeft: '0.5rem' }} />
+                        </th>
+                        <th onClick={() => handleSortChange('allocated_by')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Allocated By
+                          <i className={`ri-arrow-${sort.field === 'allocated_by' && sort.direction === 'asc' ? 'up' : 'down'}-line`} style={{ marginLeft: '0.5rem' }} />
+                        </th>
+                        <th>Notes</th>
+                        <th onClick={() => handleSortChange('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          Status
+                          <i className={`ri-arrow-${sort.field === 'status' && sort.direction === 'asc' ? 'up' : 'down'}-line`} style={{ marginLeft: '0.5rem' }} />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedHistory.map((item) => (
+                        <tr key={item.allocation_id}>
+                          <td>
+                            <div>
+                              <div style={{ fontWeight: '600', color: 'var(--primary-text-color)' }}>{formatDate(item.date)}</div>
+                              <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)' }}>{item.allocation_id}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{ 
+                              padding: '0.25rem 0.75rem', 
+                              borderRadius: '20px', 
+                              fontSize: '0.875rem', 
+                              fontWeight: '600',
+                              backgroundColor: item.type === 'Allocation' ? 'var(--success-color)' : item.type === 'Deduction' ? 'var(--error-color)' : 'var(--warning-color)',
+                              color: 'white'
+                            }}>
+                              {item.type}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{ 
+                              color: item.amount >= 0 ? 'var(--success-color)' : 'var(--error-color)',
+                              fontWeight: '600'
+                            }}>
+                              {item.amount >= 0 ? '+' : ''}₱{Math.abs(item.amount).toLocaleString()}
+                            </span>
+                          </td>
+                          <td>{item.allocated_by}</td>
+                          <td>
+                            <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.notes}>
+                              {item.notes.length > 50 ? `${item.notes.substring(0, 50)}...` : item.notes}
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{ 
+                              padding: '0.25rem 0.75rem', 
+                              borderRadius: '20px', 
+                              fontSize: '0.875rem', 
+                              fontWeight: '600',
+                              backgroundColor: item.status === 'Allocated' ? 'var(--success-color)' : item.status === 'Closed' ? 'var(--secondary-text-color)' : item.status === 'Pending' ? 'var(--warning-color)' : 'var(--error-color)',
+                              color: 'white'
+                            }}>
+                              {item.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {filteredHistory.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--secondary-text-color)' }}>
+                    <i className="ri-file-list-line" style={{ fontSize: '3rem', marginBottom: '1rem' }} />
+                    <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-text-color)' }}>No allocation history found</h3>
+                    <p style={{ margin: '0' }}>Try adjusting your search and filter criteria</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {!loading && filteredHistory.length > 0 && (
+            <div style={{ marginTop: '2rem' }}>
+              <PaginationComponent
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setItemsPerPage}
               />
             </div>
-
-            <button className="clear-filters-btn" onClick={clearAllFilters}>
-              <i className="ri-filter-off-line" /> Clear Filters
-            </button>
-          </div>
-
-          <div className="action-buttons">
-            <div className="export-dropdown">
-              <button className="dropdown-toggle">
-                <i className="ri-download-line" /> Export
-              </button>
-              <div className="dropdown-menu">
-                <button onClick={handleExportCSV}>
-                  <i className="ri-file-text-line" /> CSV
-                </button>
-                <button onClick={handleExportExcel}>
-                  <i className="ri-file-excel-line" /> Excel
-                </button>
-                <button onClick={handleExportPDF}>
-                  <i className="ri-file-pdf-line" /> PDF
-                </button>
-              </div>
-            </div>
-
-            <button className="add-allocation-btn">
-              <i className="ri-add-line" /> Add Allocation
-            </button>
-          </div>
-        </div>
-
-        {/* Allocation History Table */}
-        <div className="table-wrapper">
-          {loading ? (
-            <div className="loading-state">
-              <i className="ri-loader-4-line loading-spinner" />
-              <p>Loading allocation history...</p>
-            </div>
-          ) : (
-            <>
-              <div className="table-header">
-                <h3>Allocation History</h3>
-                <span className="results-count">
-                  Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredHistory.length)} of {filteredHistory.length} records
-                </span>
-              </div>
-
-              <div className="tableContainer">
-                <table className="allocation-history-table">
-                  <thead>
-                    <tr>
-                      <th onClick={() => handleSortChange('date')} className="sortable">
-                        Date
-                        <i className={`ri-arrow-${sort.field === 'date' && sort.direction === 'asc' ? 'up' : 'down'}-line`} />
-                      </th>
-                      <th onClick={() => handleSortChange('type')} className="sortable">
-                        Type
-                        <i className={`ri-arrow-${sort.field === 'type' && sort.direction === 'asc' ? 'up' : 'down'}-line`} />
-                      </th>
-                      <th onClick={() => handleSortChange('amount')} className="sortable">
-                        Amount
-                        <i className={`ri-arrow-${sort.field === 'amount' && sort.direction === 'asc' ? 'up' : 'down'}-line`} />
-                      </th>
-                      <th onClick={() => handleSortChange('allocated_by')} className="sortable">
-                        Allocated By
-                        <i className={`ri-arrow-${sort.field === 'allocated_by' && sort.direction === 'asc' ? 'up' : 'down'}-line`} />
-                      </th>
-                      <th>Notes</th>
-                      <th onClick={() => handleSortChange('status')} className="sortable">
-                        Status
-                        <i className={`ri-arrow-${sort.field === 'status' && sort.direction === 'asc' ? 'up' : 'down'}-line`} />
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedHistory.map((item) => (
-                      <tr key={item.allocation_id}>
-                        <td>
-                          <div className="date-info">
-                            <span className="date">{formatDate(item.date)}</span>
-                            <span className="allocation-id">{item.allocation_id}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`type-badge ${getTypeBadgeClass(item.type)}`}>
-                            {item.type}
-                          </span>
-                        </td>
-                        <td>{formatAmount(item.amount)}</td>
-                        <td>{item.allocated_by}</td>
-                        <td>
-                          <div className="notes-cell" title={item.notes}>
-                            {item.notes.length > 50 ? `${item.notes.substring(0, 50)}...` : item.notes}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`chip ${getStatusBadgeClass(item.status)}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {filteredHistory.length === 0 && (
-                <div className="no-results">
-                  <i className="ri-file-list-line" />
-                  <h3>No allocation history found</h3>
-                  <p>Try adjusting your search and filter criteria</p>
-                </div>
-              )}
-            </>
           )}
         </div>
-
-        {/* Pagination */}
-        {!loading && filteredHistory.length > 0 && (
-          <PaginationComponent
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setItemsPerPage}
-          />
-        )}
       </div>
     </div>
   );

@@ -2,25 +2,6 @@
    rejectionModal.css – Purchase Request Rejection Modal Styling
    ============================================================ */
 
-/* ---------- Overlay ---------- */
-.modalOverlay {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background: rgba(0, 0, 0, 0.4) !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  z-index: 1050 !important;
-  overflow: auto !important;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-}
-.modalOverlay::-webkit-scrollbar {
-  display: none !important;
-}
-
 /* ---------- Modal Box ---------- */
 .addExpenseModal {
   display: flex !important;

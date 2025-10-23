@@ -627,26 +627,28 @@ const BudgetRequestPage = () => {
         
         <div className="settings">
           {/* Search bar */}
-          <div className="revenue_searchBar">
-            <i className="ri-search-line" />
-            <input
-              className="searchInput"
-              type="text"
-              placeholder="Search requests..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+          <div className="search-filter-container">
+            <div className="revenue_searchBar">
+              <i className="ri-search-line" />
+              <input
+                className="searchInput"
+                type="text"
+                placeholder="Search requests..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <FilterDropdown
+              sections={filterSections}
+              onApply={handleFilterApply}
+              initialValues={{
+                dateRange: { from: dateFrom, to: dateTo },
+                status: statusFilter ? statusFilter.split(',') : [],
+                category: categoryFilter ? categoryFilter.split(',') : []
+              }}
             />
           </div>
-
-          <FilterDropdown
-            sections={filterSections}
-            onApply={handleFilterApply}
-            initialValues={{
-              dateRange: { from: dateFrom, to: dateTo },
-              status: statusFilter ? statusFilter.split(',') : [],
-              category: categoryFilter ? categoryFilter.split(',') : []
-            }}
-          />
 
           <div className="filters">
             {/* Export dropdown */}

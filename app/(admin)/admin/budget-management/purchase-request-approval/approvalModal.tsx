@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import ModalHeader from "../../../Components/ModalHeader";
-import { showSuccess, showError } from "../../../utils/Alerts";
+import ModalHeader from "../../../../Components/ModalHeader";
+import { showSuccess, showError } from "../../../../utils/Alerts";
 //@ts-ignore
-import "../../../styles/purchase-approval/approvalModal.css";
+import "../../../../styles/purchase-approval/approvalModal.css";
+//@ts-ignore
+import "../../../../styles/components/modal.css";
 
 interface ApprovalModalProps {
   request: {

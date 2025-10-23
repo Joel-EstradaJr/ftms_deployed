@@ -2,25 +2,6 @@
    approvalModal.css – Purchase Request Approval Modal Styling
    ============================================================ */
 
-/* ---------- Overlay ---------- */
-.modalOverlay {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background: rgba(0, 0, 0, 0.4) !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  z-index: 1050 !important;
-  overflow: auto !important;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-}
-.modalOverlay::-webkit-scrollbar {
-  display: none !important;
-}
-
 /* ---------- Modal Box ---------- */
 .addExpenseModal {
   display: flex !important;
@@ -33,6 +14,7 @@
   width: 80% !important;
   max-width: 800px !important;
   max-height: 80vh !important;
+  height: auto !important;
   overflow: hidden !important;
   box-shadow: var(--box-shadow) !important;
   position: relative !important;
@@ -45,6 +27,8 @@
   overflow-y: auto !important;
   max-height: calc(80vh - 100px) !important;
   scrollbar-width: thin !important;
+  flex: 1 !important;
+  min-height: 0 !important;
 }
 .addExpenseModal form::-webkit-scrollbar {
   width: 6px !important;

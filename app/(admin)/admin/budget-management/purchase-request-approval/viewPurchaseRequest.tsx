@@ -2,10 +2,12 @@
 
 import React from 'react';
 //@ts-ignore
-import "../../../styles/budget-management/addBudgetRequest.css";
-import { formatDate } from '../../../utility/dateFormatter';
-import ModalHeader from '../../../Components/ModalHeader';
-import ItemsTable, { Item } from '../../../Components/itemTable';
+import "../../../../styles/budget-management/addBudgetRequest.css";
+//@ts-ignore
+import "../../../../styles/components/modal.css";
+import { formatDate } from '../../../../utils/formatting';
+import ModalHeader from '../../../../Components/ModalHeader';
+import ItemsTable, { Item } from '../../../../Components/itemTable';
 
 // Types
 interface ViewPurchaseRequestProps {
@@ -97,7 +99,7 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
 
   return (
     <div className="modalOverlay">
-      <div className="addBudgetRequestModal" style={{ display: 'flex', flexDirection: 'column', height: 'auto', maxHeight: '90vh' }}>
+      <div className="addBudgetRequestModal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
         <ModalHeader 
           title="View Purchase Request" 
           onClose={onClose} 
@@ -106,10 +108,6 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
 
         <div className="modalContent">
           <div className="formInputs">
-            
-            {/* Basic Information Section */}
-            <div className="sectionHeader">Request Information</div>
-            
             <div className="formRow">
               <div className="formField formFieldHalf">
                 <label htmlFor="department">Department</label>

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from 'react';
-import { PurchaseRequestApproval } from "../../../types/purchaseRequestApproval";
-import { showSuccess, showError } from "../../../utils/Alerts";
-import ModalHeader from '../../../Components/ModalHeader';
+import { PurchaseRequestApproval } from "../../../../types/purchaseRequestApproval";
+import { showSuccess, showError } from "../../../../utils/Alerts";
+import ModalHeader from '../../../../Components/ModalHeader';
 //@ts-ignore
-import "../../../styles/purchase-approval/processRefund.css";
+import "../../../../styles/purchase-approval/processRefund.css";
+//@ts-ignore
+import "../../../../styles/components/modal.css";
 
 interface ProcessRefundModalProps {
   request: PurchaseRequestApproval;

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import styles from '../../../../styles/budget-management/deductBudgetAllocation.module.css';
+import '../../../../styles/components/modal.css';
+import '../../../../styles/components/table.css';
 import ModalHeader from '../../../../Components/ModalHeader';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
 
@@ -176,8 +177,8 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
   const utilizationStatus = getUtilizationStatus();
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.deductBudgetModal}>
+    <div className="modalOverlay">
+      <div className="modalStandard">
         {showHeader && (
           <ModalHeader
             title={`Deduct Budget - ${department.department_name}`}
@@ -186,55 +187,75 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
           />
         )}
 
-        <div className={styles.modalContent}>
-          <div className={styles.deductionInputs}>
+        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
             {/* Department Information Section */}
-            <div className={styles.sectionHeader}>Department Information</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary-text-color)', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', position: 'relative' }}>
+              Department Information
+              <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
+            </div>
             
-            <div className={styles.displayRow}>
-              <div className={`${styles.displayField} ${styles.displayFieldHalf}`}>
-                <label>Department Name</label>
-                <div className={`${styles.displayValue} ${styles.highlightValue}`}>{department.department_name}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Department Name</label>
+                <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--primary-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.department_name}</div>
               </div>
               
-              <div className={`${styles.displayField} ${styles.displayFieldHalf}`}>
-                <label>Department Status</label>
-                <div className={styles.displayValue}>
-                  <span className={`chip ${department.status.toLowerCase()}`}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Department Status</label>
+                <div style={{ padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ 
+                    padding: '0.25rem 0.75rem', 
+                    borderRadius: '20px', 
+                    fontSize: '0.875rem', 
+                    fontWeight: '600',
+                    backgroundColor: department.status === 'Active' ? 'var(--success-color)' : department.status === 'Inactive' ? 'var(--warning-color)' : 'var(--error-color)',
+                    color: 'white'
+                  }}>
                     {department.status}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className={styles.displayRow}>
-              <div className={`${styles.displayField} ${styles.displayFieldHalf}`}>
-                <label>Budget Utilization</label>
-                <div className={styles.displayValue}>
-                  <span className={`chip ${utilizationStatus.class}`}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Utilization</label>
+                <div style={{ padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ 
+                    padding: '0.25rem 0.75rem', 
+                    borderRadius: '20px', 
+                    fontSize: '0.875rem', 
+                    fontWeight: '600',
+                    backgroundColor: utilizationStatus.class === 'success' ? 'var(--success-color)' : utilizationStatus.class === 'warning' ? 'var(--warning-color)' : 'var(--error-color)',
+                    color: 'white'
+                  }}>
                     {getBudgetUtilization()}% - {utilizationStatus.text}
                   </span>
                 </div>
               </div>
               
-              <div className={`${styles.displayField} ${styles.displayFieldHalf}`}>
-                <label>Budget Requests</label>
-                <div className={styles.displayValue}>{department.budget_requests_count} pending requests</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Requests</label>
+                <div style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--secondary-text-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.budget_requests_count} pending requests</div>
               </div>
             </div>
 
             {/* Current Budget Status Section */}
-            <div className={styles.sectionHeader}>Current Budget Status</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary-text-color)', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', position: 'relative' }}>
+              Current Budget Status
+              <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
+            </div>
             
-            <div className={styles.currentBudgetGrid}>
-              <div className={`${styles.budgetStatusCard} ${styles.allocated}`}>
-                <div className={styles.budgetStatusIcon}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '2rem', color: 'var(--primary-color)' }}>
                   <i className="ri-money-dollar-circle-line" />
                 </div>
-                <div className={styles.budgetStatusContent}>
-                  <label>Current Allocated</label>
-                  <div className={styles.budgetStatusValue}>
+                <div>
+                  <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Allocated</label>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
                     ₱{department.allocated_budget.toLocaleString(undefined, { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
@@ -243,13 +264,13 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                 </div>
               </div>
 
-              <div className={`${styles.budgetStatusCard} ${styles.used}`}>
-                <div className={styles.budgetStatusIcon}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '2rem', color: 'var(--warning-color)' }}>
                   <i className="ri-shopping-cart-line" />
                 </div>
-                <div className={styles.budgetStatusContent}>
-                  <label>Current Used</label>
-                  <div className={styles.budgetStatusValue}>
+                <div>
+                  <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Used</label>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
                     ₱{department.used_budget.toLocaleString(undefined, { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
@@ -258,13 +279,13 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                 </div>
               </div>
 
-              <div className={`${styles.budgetStatusCard} ${styles.remaining}`}>
-                <div className={styles.budgetStatusIcon}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '2rem', color: department.remaining_budget < 0 ? 'var(--error-color)' : 'var(--success-color)' }}>
                   <i className="ri-wallet-line" />
                 </div>
-                <div className={styles.budgetStatusContent}>
-                  <label>Current Remaining</label>
-                  <div className={`${styles.budgetStatusValue} ${department.remaining_budget < 0 ? styles.negative : styles.positive}`}>
+                <div>
+                  <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Remaining</label>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '700', color: department.remaining_budget < 0 ? 'var(--error-color)' : 'var(--primary-text-color)' }}>
                     ₱{department.remaining_budget.toLocaleString(undefined, { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
@@ -275,16 +296,19 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
             </div>
 
             {/* Deduction Details Section */}
-            <div className={styles.sectionHeader}>Deduction Details</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary-text-color)', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', position: 'relative' }}>
+              Deduction Details
+              <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
+            </div>
             
-            <div className={styles.displayRow}>
-              <div className={`${styles.displayField} ${styles.displayFieldHalf}`}>
-                <label>Budget Period <span className={styles.requiredTags}>*</span></label>
-                <div className={`${styles.displayValue} ${styles.highlightValue}`}>{formatBudgetPeriod()}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Period <span style={{ color: 'var(--error-color)', fontWeight: 'bold' }}>*</span></label>
+                <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--primary-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{formatBudgetPeriod()}</div>
               </div>
               
-              <div className={`${styles.inputField} ${styles.displayFieldHalf}`}>
-                <label>Deduction Amount <span className={styles.requiredTags}>*</span></label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Deduction Amount <span style={{ color: 'var(--error-color)', fontWeight: 'bold' }}>*</span></label>
                 <input
                   type="number"
                   value={deductionAmount}
@@ -293,51 +317,72 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                   min="0"
                   max={department.allocated_budget}
                   step="0.01"
-                  className={`${styles.deductionInput} ${errors.deductionAmount ? styles.inputError : ''}`}
+                  style={{
+                    padding: '0.75rem',
+                    border: errors.deductionAmount ? '2px solid var(--error-color)' : '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    backgroundColor: 'var(--foreground-color)',
+                    color: 'var(--primary-text-color)',
+                    outline: 'none'
+                  }}
                 />
                 {errors.deductionAmount && (
-                  <div className={styles.errorMessage}>{errors.deductionAmount}</div>
+                  <div style={{ color: 'var(--error-color)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{errors.deductionAmount}</div>
                 )}
               </div>
             </div>
 
-            <div className={styles.inputField}>
-                <label>Deduction Notes</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
+                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Deduction Notes</label>
                 <textarea
                     value={deductionNotes}
                     onChange={(e) => setDeductionNotes(e.target.value)}
                     placeholder="Enter deduction notes or justification (optional)"
                     rows={4}
                     maxLength={500}
-                    className={`${styles.deductionTextarea} ${errors.deductionNotes ? styles.inputError : ''}`}
+                    style={{
+                      padding: '0.75rem',
+                      border: errors.deductionNotes ? '2px solid var(--error-color)' : '1px solid var(--border-color)',
+                      borderRadius: '8px',
+                      fontSize: '1rem',
+                      backgroundColor: 'var(--foreground-color)',
+                      color: 'var(--primary-text-color)',
+                      outline: 'none',
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
                 />
-                <div className={styles.characterCount}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', textAlign: 'right' }}>
                     {deductionNotes.length}/500 characters
                 </div>
                 {errors.deductionNotes && (
-                    <div className={styles.errorMessage}>{errors.deductionNotes}</div>
+                    <div style={{ color: 'var(--error-color)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{errors.deductionNotes}</div>
                 )}
             </div>
 
             {/* Deduction Preview Section */}
             {deductionAmount && !errors.deductionAmount && (
-              <div className={styles.deductionPreviewSection}>
-                <div className={styles.sectionHeader}>After Deduction Preview</div>
+              <div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary-text-color)', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', position: 'relative' }}>
+                  After Deduction Preview
+                  <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
+                </div>
                 
-                <div className={styles.previewBudgetGrid}>
-                  <div className={`${styles.budgetPreviewCard} ${styles.allocated}`}>
-                    <div className={styles.budgetPreviewIcon}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '2rem', color: 'var(--error-color)' }}>
                       <i className="ri-arrow-down-circle-line" />
                     </div>
-                    <div className={styles.budgetPreviewContent}>
-                      <label>New Allocated Budget</label>
-                      <div className={`${styles.budgetPreviewValue} ${styles.negative}`}>
+                    <div>
+                      <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>New Allocated Budget</label>
+                      <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--error-color)' }}>
                         ₱{preview.newAllocated.toLocaleString(undefined, { 
                           minimumFractionDigits: 2, 
                           maximumFractionDigits: 2 
                         })}
                       </div>
-                      <div className={styles.budgetPreviewChangeNegative}>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--error-color)', fontWeight: '500' }}>
                         -₱{parseFloat(deductionAmount).toLocaleString(undefined, { 
                           minimumFractionDigits: 2, 
                           maximumFractionDigits: 2 
@@ -346,19 +391,19 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                     </div>
                   </div>
 
-                  <div className={`${styles.budgetPreviewCard} ${styles.remaining}`}>
-                    <div className={styles.budgetPreviewIcon}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '2rem', color: preview.newRemaining < 0 ? 'var(--error-color)' : 'var(--success-color)' }}>
                       <i className="ri-wallet-3-line" />
                     </div>
-                    <div className={styles.budgetPreviewContent}>
-                      <label>New Remaining Budget</label>
-                      <div className={`${styles.budgetPreviewValue} ${preview.newRemaining < 0 ? styles.negative : styles.positive}`}>
+                    <div>
+                      <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>New Remaining Budget</label>
+                      <div style={{ fontSize: '1.25rem', fontWeight: '700', color: preview.newRemaining < 0 ? 'var(--error-color)' : 'var(--success-color)' }}>
                         ₱{preview.newRemaining.toLocaleString(undefined, { 
                           minimumFractionDigits: 2, 
                           maximumFractionDigits: 2 
                         })}
                       </div>
-                      <div className={styles.budgetPreviewChangeNegative}>
+                      <div style={{ fontSize: '0.875rem', color: preview.newRemaining < 0 ? 'var(--error-color)' : 'var(--success-color)', fontWeight: '500' }}>
                         -₱{parseFloat(deductionAmount).toLocaleString(undefined, { 
                           minimumFractionDigits: 2, 
                           maximumFractionDigits: 2 
@@ -367,16 +412,16 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                     </div>
                   </div>
 
-                  <div className={`${styles.budgetPreviewCard} ${styles.utilization}`}>
-                    <div className={styles.budgetPreviewIcon}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '2rem', color: 'var(--primary-color)' }}>
                       <i className="ri-pie-chart-line" />
                     </div>
-                    <div className={styles.budgetPreviewContent}>
-                      <label>New Utilization Rate</label>
-                      <div className={styles.budgetPreviewValue}>
+                    <div>
+                      <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>New Utilization Rate</label>
+                      <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
                         {preview.newUtilization}%
                       </div>
-                      <div className={styles.budgetPreviewChange}>
+                      <div style={{ fontSize: '0.875rem', color: preview.newUtilization > getBudgetUtilization() ? 'var(--error-color)' : 'var(--success-color)', fontWeight: '500' }}>
                         {preview.newUtilization > getBudgetUtilization() ? 'Increased' : 'Decreased'}
                       </div>
                     </div>
@@ -387,7 +432,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
 
             {/* Error Message */}
             {errors.submit && (
-              <div className={styles.submitErrorMessage}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: 'var(--error-background)', border: '1px solid var(--error-color)', borderRadius: '8px', color: 'var(--error-color)' }}>
                 <i className="ri-error-warning-line" />
                 {errors.submit}
               </div>
@@ -396,21 +441,56 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
         </div>
 
         {/* Modal Buttons */}
-        <div className={styles.modalButtons}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--table-row-color)' }}>
           <button 
             type="button"
-            className={styles.cancelButton}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              backgroundColor: 'var(--foreground-color)',
+              color: 'var(--secondary-text-color)',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s ease'
+            }}
             onClick={onClose}
             disabled={isSubmitting}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--table-row-hover-color)'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--foreground-color)'}
           >
             <i className="ri-close-line" /> Cancel
           </button>
           
           <button 
             type="button"
-            className={styles.submitButton}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              borderRadius: '8px',
+              backgroundColor: 'var(--error-color)',
+              color: 'white',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s ease',
+              opacity: (!deductionAmount || parseFloat(deductionAmount) <= 0 || isSubmitting) ? 0.6 : 1
+            }}
             onClick={handleSubmit}
             disabled={!deductionAmount || parseFloat(deductionAmount) <= 0 || isSubmitting}
+            onMouseOver={(e) => {
+              if (!(!deductionAmount || parseFloat(deductionAmount) <= 0 || isSubmitting)) {
+                e.currentTarget.style.backgroundColor = '#dc2626';
+              }
+            }}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--error-color)'}
           >
             {isSubmitting ? (
               <>

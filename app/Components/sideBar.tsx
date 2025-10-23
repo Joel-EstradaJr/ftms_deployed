@@ -37,13 +37,12 @@ const Sidebar: React.FC = () => {
     "/expense-management/purchase": "purchase-expense",
     "/reimbursement": "reimbursement",
     "/financial-management/payroll": "payroll",
-    "/purchase-request-approval": "purchaseApproval",
     "/loan-management/loanRequest": "loan-request",
     "/loan-management/loanPayment": "loan-payment",
     "/report": "report",
     "/audit": "audit",
     "/budget-management/budgetAllocation": "budgetAllocation",
-    "/budget-management/budgetApproval": "budgetApproval",
+    "/budget-management/approval": "approval",
     "/budget-management/budgetRequest": "budget-request",
     "/jev/chart-of-accounts": "chart-of-accounts",
     "/jev/journal-entries": "journal-entries",
@@ -66,7 +65,7 @@ const Sidebar: React.FC = () => {
       
       if (["expense", "reimbursement", "operational-expense", "administrative-expense", "purchase-expense"].includes(staticMatch)) {
         setOpenSubMenu("expense-management");
-      } else if (["budget-request", "budgetAllocation", "budgetApproval"].includes(staticMatch)) {
+      } else if (["budget-request", "budgetAllocation", "approval"].includes(staticMatch)) {
         setOpenSubMenu("budget-management");
       } else if (["purchase-request", "purchaseApproval"].includes(staticMatch)) {
         setOpenSubMenu("purchase-management");
@@ -261,7 +260,7 @@ const Sidebar: React.FC = () => {
           {/* Budget Management Submenu */}
           <div
             className={`nav-item module ${
-              ["budget-request", "budgetAllocation", "budgetApproval"].includes(activeItem!) ? "active" : ""
+              ["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
             }`}
             onClick={() => toggleSubMenu("budget-management")}
           >
@@ -296,14 +295,14 @@ const Sidebar: React.FC = () => {
                 </Link>
               )}
               
-              {/* Budget Approval - Admin only */}
+              {/* Approvals - Admin only */}
               {userRole === 'admin' && (
                 <Link
-                  href={getUrl("/budget-management/budgetApproval")}
-                  className={`sub-item ${activeItem === "budgetApproval" ? "active" : ""}`}
-                  onClick={() => setActiveItem("budgetApproval")}
+                  href={getUrl("/budget-management/approval")}
+                  className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
+                  onClick={() => setActiveItem("approval")}
                 >
-                  Budget Approval
+                  Approvals
                 </Link>
               )}
             </div>
@@ -312,7 +311,7 @@ const Sidebar: React.FC = () => {
           {/* Purchase Management Submenu - Both roles */}
           <div
             className={`nav-item module ${
-              ["purchase-request", "purchaseApproval"].includes(activeItem!) ? "active" : ""
+              ["purchase-request"].includes(activeItem!) ? "active" : ""
             }`}
             onClick={() => toggleSubMenu("purchase-management")}
           >
@@ -333,13 +332,6 @@ const Sidebar: React.FC = () => {
                 onClick={() => setActiveItem("purchase-request")}
               >
                 Purchase Request
-              </Link>
-              <Link
-                href={getUrl("/purchase-request-approval")}
-                className={`sub-item ${activeItem === "purchaseApproval" ? "active" : ""}`}
-                onClick={() => setActiveItem("purchaseApproval")}
-              >
-                Purchase Approval
               </Link>
             </div>
           )}

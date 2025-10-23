@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import FilterDropdown, { FilterSection } from "../../../Components/filter";
-import Loading from "../../../Components/loading";
-import ErrorDisplay from "../../../Components/errordisplay";
-import PaginationComponent from "../../../Components/pagination";
-import { showConfirmation, showSuccess, showError } from "../../../utils/Alerts";
+import FilterDropdown, { FilterSection } from "../../../../Components/filter";
+import Loading from "../../../../Components/loading";
+import ErrorDisplay from "../../../../Components/errordisplay";
+import PaginationComponent from "../../../../Components/pagination";
+import { showConfirmation, showSuccess, showError } from "../../../../utils/Alerts";
 
 // Import types for purchase request approval
 import {
@@ -16,8 +16,8 @@ import {
   RollbackAction,
   RefundAction,
   ApprovalFilters
-} from "../../../types/purchaseRequestApproval";
-import type { PurchaseRequestApproval } from "../../../types/purchaseRequestApproval";
+} from "../../../../types/purchaseRequestApproval";
+import type { PurchaseRequestApproval } from "../../../../types/purchaseRequestApproval";
 
 // Import existing modal components
 //@ts-ignore
@@ -34,17 +34,17 @@ import ProcessRefundModal from "./processRefundModal";
 
 // Import styles - using table.css and expense.css structure
 //@ts-ignore
-import "../../../styles/components/filter.css";
+import "../../../../styles/components/filter.css";
 //@ts-ignore
-import "../../../styles/components/table.css";
+import "../../../../styles/components/table.css";
 //@ts-ignore
-import "../../../styles/components/chips.css";
+import "../../../../styles/components/chips.css";
 //@ts-ignore
-import "../../../styles/components/loading.css";
+import "../../../../styles/components/loading.css";
 //@ts-ignore
-import "../../../styles/expense/expense.css";
+import "../../../../styles/expense/expense.css";
 //@ts-ignore
-import "../../../styles/purchase-approval/purchase-approval.css";
+import "../../../../styles/purchase-approval/purchase-approval.css";
 
 export default function PurchaseRequestApproval() {
   // Sample data for purchase request approvals
@@ -318,10 +318,10 @@ export default function PurchaseRequestApproval() {
       type: 'checkbox',
       options: [
         { id: Department.OPERATIONS, label: 'Operations' },
-        { id: Department.MAINTENANCE, label: 'Maintenance' },
-        { id: Department.ADMINISTRATION, label: 'Administration' },
         { id: Department.FINANCE, label: 'Finance' },
-        { id: Department.HR, label: 'HR' }
+        { id: Department.ACCOUNTING, label: 'Accounting' },
+        { id: Department.HR, label: 'HR' },
+        { id: Department.INVENTORY, label: 'Inventory' }
       ]
     },
     {
@@ -447,7 +447,9 @@ export default function PurchaseRequestApproval() {
       [Department.MAINTENANCE]: 'Maintenance',
       [Department.ADMINISTRATION]: 'Administration',
       [Department.FINANCE]: 'Finance',
-      [Department.HR]: 'HR'
+      [Department.ACCOUNTING]: 'Accounting',
+      [Department.HR]: 'HR',
+      [Department.INVENTORY]: 'Inventory'
     };
     return departmentMap[department] || department;
   };
@@ -942,7 +944,7 @@ export default function PurchaseRequestApproval() {
                 {currentRecords.map(request => (
                   <tr key={request.id}>
                     <td>{request.title}</td>
-                    <td>{formatDepartment(request.department)}</td>
+                    <td className="table-status">{formatDepartment(request.department)}</td>
                     <td>{request.requester_name}</td>
                     <td>{request.supplier_name}</td>
                     <td>₱{request.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

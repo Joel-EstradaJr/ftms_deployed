@@ -2,9 +2,11 @@
 
 import React from 'react';
 //@ts-ignore
-import "../../../styles/budget-management/auditTrailBudgetRequest.css";
-import { formatDateTime, formatDate } from '../../../utility/dateFormatter';
-import ModalHeader from '../../../Components/ModalHeader';
+import "../../../../styles/budget-management/auditTrailBudgetRequest.css";
+//@ts-ignore
+import "../../../../styles/components/modal.css";
+import { formatDateTime, formatDate } from '../../../../utils/formatting';
+import ModalHeader from '../../../../Components/ModalHeader';
 
 // Types
 interface AuditLogEntry {

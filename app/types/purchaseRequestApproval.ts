@@ -21,7 +21,9 @@ export enum Department {
   MAINTENANCE = 'maintenance',
   ADMINISTRATION = 'administration',
   FINANCE = 'finance',
-  HR = 'hr'
+  ACCOUNTING = 'accounting',
+  HR = 'hr',
+  INVENTORY = 'inventory'
 }
 
 // Purchase Request Item interface
