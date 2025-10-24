@@ -81,12 +81,9 @@ export interface AdministrativeExpense {
   date: string;
   amount: number;
   description: string;
-  category?: string;
-  status: string;
   department?: string;
   vendor?: string;
   invoice_number?: string;
-  receipt_number?: string;
   items?: ExpenseItem[];
   created_by: string;
   approved_by?: string;
@@ -138,7 +135,6 @@ export interface AdministrativeExpenseFilters {
     to?: string;
   };
   expense_type?: string;
-  status?: string;
 }
 
 export interface PurchaseExpenseFilters {

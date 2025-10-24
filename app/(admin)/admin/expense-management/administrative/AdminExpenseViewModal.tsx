@@ -7,7 +7,8 @@ import ItemsTable from '../../../../Components/itemTable';
 import '../../../../styles/components/modal.css';
 import { AdministrativeExpense } from '../../../../types/expenses';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
-import { showConfirmation, showSuccess, showError } from '../../../../utils/Alerts';
+import { showConfirmation, showSuccess, showError, showWarning } from '../../../../utils/Alerts';
+import { validateField, isNotFutureDate, isValidAmount } from '../../../../utils/validation';
 
 interface AdminExpenseViewModalProps {
   expense?: AdministrativeExpense | null;
@@ -26,16 +27,12 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
     date: new Date().toISOString().split('T')[0],
     expense_type: 'OFFICE_SUPPLIES',
     amount: 0,
-    status: 'PENDING',
-    category: '',
-    receipt_number: '',
     description: '',
-    department: '',
+    department: 'Administration',
     vendor: '',
     invoice_number: '',
     items: []
   });
-  const [showItems, setShowItems] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -49,13 +46,12 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
         date: new Date().toISOString().split('T')[0],
         expense_type: 'OFFICE_SUPPLIES',
         amount: 0,
-        status: 'PENDING',
-        category: '',
-        receipt_number: '',
         description: '',
-        department: '',
+        department: 'Administration',
         vendor: '',
         invoice_number: '',
+        created_by: 'Current User',
+        created_at: new Date().toISOString(),
         items: []
       });
     }
@@ -65,24 +61,126 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleItemsChange = (items: any[]) => {
-    setFormData(prev => ({ ...prev, items }));
+  const handleInputBlur = (field: keyof AdministrativeExpense, value: any) => {
+    if (field === 'date') {
+      if (!isNotFutureDate(value)) {
+        showWarning('Date cannot be in the future. Please select today or a past date.');
+      }
+    } else if (field === 'description') {
+      const errors = validateField(value, {
+        required: true,
+        minLength: 3,
+        maxLength: 500,
+        label: 'Description'
+      });
+      if (errors.length > 0) {
+        showWarning(errors[0]);
+      }
+    } else if (field === 'vendor') {
+      const errors = validateField(value, {
+        minLength: 2,
+        maxLength: 100,
+        label: 'Vendor'
+      });
+      if (errors.length > 0) {
+        showWarning(errors[0]);
+      }
+    } else if (field === 'invoice_number') {
+      const errors = validateField(value, {
+        minLength: 3,
+        maxLength: 50,
+        label: 'Invoice Number'
+      });
+      if (errors.length > 0) {
+        showWarning(errors[0]);
+      }
+    }
   };
 
-  const validateForm = (): string | null => {
-    if (!formData.date) return 'Date is required';
-    if (!formData.amount || formData.amount <= 0) return 'Valid amount is required';
-    if (!formData.description?.trim()) return 'Description is required';
-    if (!formData.department?.trim()) return 'Department is required';
-    return null;
+  const handleItemsChange = (items: any[]) => {
+    const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
+    setFormData(prev => ({ ...prev, items, amount: totalAmount }));
+    
+    if (items.length === 0) {
+      showWarning('At least one expense item is required.');
+    } else if (totalAmount <= 0) {
+      showWarning('Total amount must be greater than zero. Please check item quantities and prices.');
+    }
+  };
+
+  const validateAllFields = (): string[] => {
+    const errors: string[] = [];
+
+    // Date validation
+    if (!formData.date) {
+      errors.push('Date is required');
+    } else if (!isNotFutureDate(formData.date)) {
+      errors.push('Date cannot be in the future. Please select today or a past date.');
+    }
+
+    // Description validation
+    if (!formData.description?.trim()) {
+      errors.push('Description is required');
+    } else {
+      const descErrors = validateField(formData.description, {
+        required: true,
+        minLength: 3,
+        maxLength: 500,
+        label: 'Description'
+      });
+      errors.push(...descErrors);
+    }
+
+    // Department validation
+    if (!formData.department?.trim()) {
+      errors.push('Department is required');
+    }
+
+    // Vendor validation (optional field)
+    if (formData.vendor) {
+      const vendorErrors = validateField(formData.vendor, {
+        minLength: 2,
+        maxLength: 100,
+        label: 'Vendor'
+      });
+      errors.push(...vendorErrors);
+    }
+
+    // Invoice Number validation (optional field)
+    if (formData.invoice_number) {
+      const invoiceErrors = validateField(formData.invoice_number, {
+        minLength: 3,
+        maxLength: 50,
+        label: 'Invoice Number'
+      });
+      errors.push(...invoiceErrors);
+    }
+
+    // Items validation
+    if (!formData.items || formData.items.length === 0) {
+      errors.push('At least one expense item is required');
+    } else {
+      const totalAmount = formData.items.reduce((sum, item) => sum + item.subtotal, 0);
+      if (totalAmount <= 0) {
+        errors.push('Total amount must be greater than zero. Please check item quantities and prices.');
+      }
+    }
+
+    // Amount validation
+    if (!formData.amount || formData.amount <= 0) {
+      errors.push('Amount must be greater than zero (add items to calculate amount)');
+    }
+
+    return errors;
   };
 
   const handleSubmit = async () => {
     if (mode === 'view') return;
     
-    const validationError = validateForm();
-    if (validationError) {
-      showError(validationError, 'Validation Error');
+    // Comprehensive validation before submission
+    const validationErrors = validateAllFields();
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('\n'), 'Validation Error');
       return;
     }
 
@@ -121,10 +219,11 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
   const isEditable = mode !== 'view';
   const isFormValid = () => {
     return formData.date && 
-           (formData.amount !== undefined && formData.amount > 0) && 
            formData.expense_type && 
-           formData.status &&
-           formData.description?.trim() !== '';
+           formData.description?.trim() !== '' &&
+           formData.department?.trim() !== '' &&
+           formData.items && formData.items.length > 0 &&
+           (formData.amount !== undefined && formData.amount > 0);
   };
 
   const displayData = isEditable ? formData : expense;
@@ -142,12 +241,14 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
             <h3 className="sectionTitle">Expense Details</h3>
             <div className="formRow">
               <div className="formField">
-                <label>Date:</label>
+                <label>Date:<span className="requiredTags">*</span></label>
                 <input 
                   type={isEditable ? "date" : "text"} 
                   value={isEditable ? formData.date : formatDate(displayData?.date || '')} 
                   onChange={(e) => handleInputChange('date', e.target.value)} 
-                  readOnly={!isEditable} 
+                  onBlur={(e) => handleInputBlur('date', e.target.value)}
+                  readOnly={!isEditable}
+                  max={new Date().toISOString().split('T')[0]}
                 />
               </div>
               <div className="formField">
@@ -156,10 +257,11 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
                   <select value={formData.expense_type} onChange={(e) => handleInputChange('expense_type', e.target.value)}>
                     <option value="OFFICE_SUPPLIES">Office Supplies</option>
                     <option value="UTILITIES">Utilities</option>
-                    <option value="MAINTENANCE">Maintenance</option>
-                    <option value="TRAVEL">Travel</option>
-                    <option value="TRAINING">Training</option>
-                    <option value="OTHER">Other</option>
+                    <option value="PROFESSIONAL_FEES">Professional Fees</option>
+                    <option value="INSURANCE">Insurance</option>
+                    <option value="LICENSING">Licensing</option>
+                    <option value="PERMITS">Permits</option>
+                    <option value="GENERAL_ADMIN">General Admin</option>
                   </select>
                 ) : (
                   <div style={{ padding: '0.5rem 0' }}>
@@ -171,63 +273,22 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
               </div>
               <div className="formField">
                 <label>Amount:</label>
-                {isEditable ? (
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    value={formData.amount} 
-                    onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)} 
-                    className="amount-text"
-                  />
-                ) : (
-                  <input type="text" value={formatMoney(displayData?.amount || 0)} readOnly className="amount-text" />
-                )}
-              </div>
-            </div>
-            <div className="formRow">
-              <div className="formField">
-                <label>Status:</label>
-                {isEditable ? (
-                  <select value={formData.status} onChange={(e) => handleInputChange('status', e.target.value)}>
-                    <option value="PENDING">Pending</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="REJECTED">Rejected</option>
-                    <option value="PAID">Paid</option>
-                  </select>
-                ) : (
-                  <div style={{ padding: '0.5rem 0' }}>
-                    <span className={`chip ${displayData?.status?.toLowerCase()}`}>
-                      {displayData?.status ? (displayData.status.charAt(0).toUpperCase() + displayData.status.slice(1).toLowerCase()) : ''}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="formField">
-                <label>Category:</label>
                 <input 
                   type="text" 
-                  value={displayData?.category || ''} 
-                  onChange={(e) => handleInputChange('category', e.target.value)} 
-                  readOnly={!isEditable} 
-                />
-              </div>
-              <div className="formField">
-                <label>Receipt Number:</label>
-                <input 
-                  type="text" 
-                  value={displayData?.receipt_number || ''} 
-                  onChange={(e) => handleInputChange('receipt_number', e.target.value)} 
-                  readOnly={!isEditable} 
+                  value={formatMoney(displayData?.amount || 0)} 
+                  readOnly 
+                  className="amount-text"
                 />
               </div>
             </div>
 
             <div className="formRow">
               <div className="formField full-width">
-                <label>Description:</label>
+                <label>Description:<span className="requiredTags">*</span></label>
                 <textarea 
                   value={displayData?.description || ''} 
                   onChange={(e) => handleInputChange('description', e.target.value)} 
+                  onBlur={(e) => handleInputBlur('description', e.target.value)}
                   readOnly={!isEditable} 
                   rows={3} 
                 />
@@ -239,12 +300,11 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
             <h3 className="sectionTitle">Vendor & Department Information</h3>
             <div className="formRow">
               <div className="formField">
-                <label>Department:</label>
+                <label>Department:<span className="requiredTags">*</span></label>
                 <input 
                   type="text" 
-                  value={displayData?.department || ''} 
-                  onChange={(e) => handleInputChange('department', e.target.value)} 
-                  readOnly={!isEditable} 
+                  value={displayData?.department || 'Administration'} 
+                  readOnly 
                 />
               </div>
               <div className="formField">
@@ -253,6 +313,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
                   type="text" 
                   value={displayData?.vendor || ''} 
                   onChange={(e) => handleInputChange('vendor', e.target.value)} 
+                  onBlur={(e) => handleInputBlur('vendor', e.target.value)}
                   readOnly={!isEditable} 
                 />
               </div>
@@ -262,6 +323,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
                   type="text" 
                   value={displayData?.invoice_number || ''} 
                   onChange={(e) => handleInputChange('invoice_number', e.target.value)} 
+                  onBlur={(e) => handleInputBlur('invoice_number', e.target.value)}
                   readOnly={!isEditable} 
                 />
               </div>
@@ -288,24 +350,18 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
                 </div>
               </div>
             )}
-            <div className="formRow">
-              <div className="formField">
-                <label>Last Updated:</label>
-                <input type="text" value={formatDate(displayData?.updated_at || '')} readOnly />
-              </div>
-            </div>
           </div>
 
           
             {/* Items Table */}
-            {displayData?.items && displayData.items.length > 0 && (
+            {(isEditable || (displayData?.items && displayData.items.length > 0)) && (
               <div className="modalContent">
                   <div style={{ marginTop: '1.5rem' }}>
                   <ItemsTable
                       items={isEditable ? (formData.items || []) : (displayData?.items || [])}
-                      onItemsChange={isEditable ? (items) => handleInputChange('items', items) : () => {}}
-                      showItems={showItems}
-                      onToggleItems={() => setShowItems(!showItems)}
+                      onItemsChange={isEditable ? handleItemsChange : () => {}}
+                      showItems={true}
+                      onToggleItems={() => {}} // Always show in edit mode
                       readOnly={!isEditable}
                       title="Expense Items"
                   />
@@ -313,26 +369,21 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
               </div>
             )}
 
-            <div className="modalActions">
-              {isEditable ? (
-                <div>
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={handleSubmit}
-                    disabled={!isFormValid()}
-                  >
-                    {mode === 'add' ? 'Create Expense' : 'Update Expense'}
-                  </button>
-                  <button className="btn btn-secondary" onClick={onClose}>
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button className="btn btn-secondary" onClick={onClose}>
-                  Close
+            {isEditable && (
+              <div className="modalButtons">
+                <button className="cancelButton" onClick={onClose}>
+                  Cancel
                 </button>
-              )}
-            </div>
+                <button 
+                  className="addButton" 
+                  onClick={handleSubmit}
+                  disabled={!isFormValid()}
+                >
+                  {mode === 'add' ? 'Create Expense' : 'Update Expense'}
+                </button>
+                
+              </div>
+            )}
 
         </div>
       </div>

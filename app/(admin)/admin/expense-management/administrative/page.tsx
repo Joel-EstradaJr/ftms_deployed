@@ -34,14 +34,11 @@ const AdministrativeExpensePage: React.FC = () => {
       id: 'ADM-001',
       date: '2024-01-15',
       expense_type: 'OFFICE_SUPPLIES',
-      category: 'Operations',
       description: 'Printer paper, pens, and office supplies for admin office',
       amount: 2500.00,
       department: 'Administration',
       vendor: 'Office Depot',
       invoice_number: 'INV-2024-001',
-      receipt_number: 'REC-ADM-001',
-      status: 'APPROVED',
       items: [
         {
           item_name: 'Printer Paper',
@@ -72,14 +69,11 @@ const AdministrativeExpensePage: React.FC = () => {
       id: 'ADM-002',
       date: '2024-01-20',
       expense_type: 'UTILITIES',
-      category: 'Operations',
       description: 'Monthly electricity bill for main office',
       amount: 15000.00,
       department: 'Administration',
       vendor: 'Electric Company',
       invoice_number: 'INV-ELEC-JAN-2024',
-      receipt_number: 'REC-ADM-002',
-      status: 'POSTED',
       items: [
         {
           item_name: 'Electricity Consumption',
@@ -129,10 +123,6 @@ const AdministrativeExpensePage: React.FC = () => {
         filtered = filtered.filter((exp) => exp.expense_type === filters.expense_type);
       }
 
-      if (filters.status) {
-        filtered = filtered.filter((exp) => exp.status === filters.status);
-      }
-
       if (filters.dateRange?.from) {
         filtered = filtered.filter((exp) => exp.date >= filters.dateRange!.from!);
       }
@@ -155,7 +145,6 @@ const AdministrativeExpensePage: React.FC = () => {
     const converted: AdministrativeExpenseFilters = {
       dateRange: appliedFilters.dateRange,
       expense_type: appliedFilters.expense_type,
-      status: appliedFilters.status,
     };
     setFilters(converted);
     setCurrentPage(1);
@@ -166,7 +155,9 @@ const AdministrativeExpensePage: React.FC = () => {
   };
 
   const handleCloseModal = () => {
+    // Clear selected expense and reset modal mode so the modal unmounts
     setSelectedExpense(null);
+    setModalMode('view');
   };
 
   // Filter sections for FilterDropdown
@@ -194,20 +185,6 @@ const AdministrativeExpensePage: React.FC = () => {
         { id: 'GENERAL_ADMIN', label: 'General Admin' }
       ],
       defaultValue: ''
-    },
-    {
-      id: 'status',
-      title: 'Status',
-      type: 'radio',
-      icon: 'ri-information-line',
-      options: [
-        { id: '', label: 'All Status' },
-        { id: 'PENDING', label: 'Pending' },
-        { id: 'APPROVED', label: 'Approved' },
-        { id: 'REJECTED', label: 'Rejected' },
-        { id: 'POSTED', label: 'Posted' }
-      ],
-      defaultValue: ''
     }
   ];
 
@@ -220,7 +197,6 @@ const AdministrativeExpensePage: React.FC = () => {
     'Invoice Number': exp.invoice_number || 'N/A',
     Description: exp.description,
     Amount: formatMoney(exp.amount),
-    Status: exp.status.charAt(0).toUpperCase() + exp.status.slice(1).toLowerCase(),
   }));
 
   if (loading) return <Loading />;
@@ -255,13 +231,11 @@ const AdministrativeExpensePage: React.FC = () => {
                 handleFilterApply({
                   dateRange,
                   expense_type: (filterValues.expense_type as string) || '',
-                  status: (filterValues.status as string) || ''
                 });
               }}
               initialValues={{
                 dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
                 expense_type: filters.expense_type || '',
-                status: filters.status || ''
               }}
               title="Administrative Expense Filters"
             />
@@ -293,7 +267,6 @@ const AdministrativeExpensePage: React.FC = () => {
                 <tr>
                   <th>Date</th>
                   <th>Expense Type</th>
-                  <th>Department</th>
                   <th>Vendor</th>
                   <th>Invoice Number</th>
                   <th>Description</th>
@@ -304,7 +277,7 @@ const AdministrativeExpensePage: React.FC = () => {
               <tbody>
                 {expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="no-data">
+                    <td colSpan={7} className="no-data">
                       No administrative expenses found
                     </td>
                   </tr>
@@ -327,7 +300,6 @@ const AdministrativeExpensePage: React.FC = () => {
                           {expense.expense_type.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td>{expense.department || 'N/A'}</td>
                       <td>{expense.vendor || 'N/A'}</td>
                       <td>{expense.invoice_number || 'N/A'}</td>
                       <td className="description-cell">{expense.description}</td>

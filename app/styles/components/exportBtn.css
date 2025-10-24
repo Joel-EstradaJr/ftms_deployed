@@ -29,7 +29,7 @@
 }
 
 .exportButton:hover {
-  background: var(--secondary-hover-color);
+  background: var(--secondary-hover-color) !important;
 }
 
 .export-dropdown {
