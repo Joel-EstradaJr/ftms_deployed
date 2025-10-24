@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import '../styles/components/exportBtn.css';
 
 interface ExportButtonProps {
   data: any[];
@@ -146,32 +147,10 @@ const ExportButton: React.FC<ExportButtonProps> = ({
   };
 
   return (
-    <div className="export-button-wrapper" style={{ position: 'relative', display: 'inline-block' }}>
+    <div className="export-button-wrapper">
       <button
         className="exportButton"
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          height: '2.5rem',
-          background: 'var(--secondary-color)',
-          color: 'white',
-          border: 'none',
-          padding: '0 1rem',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          transition: 'all 0.2s ease'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'var(--secondary-hover-color)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'var(--secondary-color)';
-        }}
       >
         <i className="ri-download-line"></i>
         Export
@@ -179,88 +158,32 @@ const ExportButton: React.FC<ExportButtonProps> = ({
       </button>
       
       {isOpen && (
-        <div
-          className="export-dropdown"
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            background: 'white',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: 1000,
-            minWidth: '180px',
-            overflow: 'hidden'
-          }}
-        >
-          <button 
+        <div className="export-dropdown">
+          <button
             onClick={handleExportCSV}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: 'none',
-              background: 'white',
-              textAlign: 'left',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontSize: '14px',
-              transition: 'background 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            className="export-dropdown-button"
           >
-            <i className="ri-file-text-line" style={{ fontSize: '18px', color: '#28a745' }}></i>
+            <i className="ri-file-text-line export-icon export-icon-csv"></i>
             Export as CSV
           </button>
-          
-          <div style={{ height: '1px', background: '#eee' }}></div>
-          
-          <button 
+
+          <div className="export-dropdown-separator"></div>
+
+          <button
             onClick={handleExportPDF}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: 'none',
-              background: 'white',
-              textAlign: 'left',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontSize: '14px',
-              transition: 'background 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            className="export-dropdown-button"
           >
-            <i className="ri-file-pdf-line" style={{ fontSize: '18px', color: '#dc3545' }}></i>
+            <i className="ri-file-pdf-line export-icon export-icon-pdf"></i>
             Export as PDF
           </button>
-          
-          <div style={{ height: '1px', background: '#eee' }}></div>
-          
-          <button 
+
+          <div className="export-dropdown-separator"></div>
+
+          <button
             onClick={handleExportExcel}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: 'none',
-              background: 'white',
-              textAlign: 'left',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontSize: '14px',
-              transition: 'background 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            className="export-dropdown-button"
           >
-            <i className="ri-file-excel-line" style={{ fontSize: '18px', color: '#107C41' }}></i>
+            <i className="ri-file-excel-line export-icon export-icon-excel"></i>
             Export as Excel
           </button>
         </div>
@@ -269,14 +192,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({
       {/* Click outside to close */}
       {isOpen && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999
-          }}
+          className="export-overlay"
           onClick={() => setIsOpen(false)}
         ></div>
       )}

@@ -97,17 +97,29 @@ const ExpensePage = () => {
     try {
       // Fetch categories
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const categoriesRes = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense/categories');
+      // const categoriesRes = await fetch('/api/expense/categories');
+      // Mock data for now
+      const categoriesRes = { ok: true };
+      const categoriesData = [
+        { id: 1, name: 'Office Supplies' },
+        { id: 2, name: 'Utilities' },
+        { id: 3, name: 'Maintenance' }
+      ];
       if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json();
         setCategories(categoriesData);
       }
 
       // Fetch payment methods
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const paymentMethodsRes = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense/payment-methods');
+      // const paymentMethodsRes = await fetch('/api/expense/payment-methods');
+      // Mock data for now
+      const paymentMethodsRes = { ok: true };
+      const paymentMethodsData = [
+        { id: 1, name: 'Cash' },
+        { id: 2, name: 'Check' },
+        { id: 3, name: 'Credit Card' }
+      ];
       if (paymentMethodsRes.ok) {
-        const paymentMethodsData = await paymentMethodsRes.json();
         setPaymentMethods(paymentMethodsData);
       }
     } catch (err) {
@@ -181,11 +193,14 @@ const ExpensePage = () => {
   const handleAddExpense = async (formData: any) => {
     try {
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      // const response = await fetch('/api/expense', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(formData),
+      // });
+
+      // Mock response for now
+      const response = { ok: true };
 
       if (!response.ok) {
         const error = await response.json();

@@ -1,4 +1,16 @@
 /* Administrative Expense Styles */
+.addExpenseBtn {
+  gap: var(--page-button-gap);
+  background-color: var(--primary-color) !important;
+  color: var(--button-font-color) !important;
+  font-size: var(--page-button-font-size)!important;
+  font-weight: var(--page-button-font-weight)!important;
+  width: var(--page-button-width)!important;
+  height: var(--page-button-height)!important;
+  border-radius: var(--page-button-border-radius)!important;
+  margin-left: 0.5rem;
+}
+
 
 .expense-row {
   transition: background-color 0.2s ease;

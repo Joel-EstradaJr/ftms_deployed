@@ -198,18 +198,18 @@ const Sidebar: React.FC = () => {
                 Operational Expenses
               </Link>
               <Link
-                href={getUrl("/expense-management/administrative")}
-                className={`sub-item ${activeItem === "administrative-expense" ? "active" : ""}`}
-                onClick={() => setActiveItem("administrative-expense")}
-              >
-                Administrative Expenses
-              </Link>
-              <Link
                 href={getUrl("/expense-management/purchase")}
                 className={`sub-item ${activeItem === "purchase-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("purchase-expense")}
               >
                 Purchase Expenses
+              </Link>
+              <Link
+                href={getUrl("/expense-management/administrative")}
+                className={`sub-item ${activeItem === "administrative-expense" ? "active" : ""}`}
+                onClick={() => setActiveItem("administrative-expense")}
+              >
+                Administrative Expenses
               </Link>
             </div>
           )}

@@ -19,6 +19,7 @@ const AdministrativeExpensePage: React.FC = () => {
   const [error, setError] = useState<string | number | null>(null);
 
   const [selectedExpense, setSelectedExpense] = useState<AdministrativeExpense | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('view');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filters, setFilters] = useState<AdministrativeExpenseFilters>({});
 
@@ -272,6 +273,16 @@ const AdministrativeExpensePage: React.FC = () => {
               filename="administrative-expenses"
               title="Administrative Expenses Report"
             />
+            <button 
+              className="addExpenseBtn"
+              onClick={() => {
+                setSelectedExpense(null);
+                setModalMode('add');
+              }}
+            >
+              <i className="ri-add-line"></i>
+              Add Expense
+            </button>
           </div>
         </div>
 
@@ -287,12 +298,13 @@ const AdministrativeExpensePage: React.FC = () => {
                   <th>Invoice Number</th>
                   <th>Description</th>
                   <th>Amount</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="no-data">
+                    <td colSpan={8} className="no-data">
                       No administrative expenses found
                     </td>
                   </tr>
@@ -300,9 +312,14 @@ const AdministrativeExpensePage: React.FC = () => {
                   expenses.map((expense, index) => (
                     <tr
                       key={expense.id}
-                      onClick={() => handleRowClick(expense)}
                       className="expense-row"
                       style={{ cursor: 'pointer' }}
+                      onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedExpense(expense);
+                                setModalMode('view');
+                              }}
+                      title="View Expense"
                     >
                       <td>{formatDate(expense.date)}</td>
                       <td>
@@ -315,6 +332,23 @@ const AdministrativeExpensePage: React.FC = () => {
                       <td>{expense.invoice_number || 'N/A'}</td>
                       <td className="description-cell">{expense.description}</td>
                       <td className="amount-cell">{formatMoney(expense.amount)}</td>
+                      <td>
+                        <div className="actionButtons">
+                          <div className="actionButtonsContainer">
+                            <button
+                              className="editBtn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedExpense(expense);
+                                setModalMode('edit');
+                              }}
+                              title="Edit Expense"
+                            >
+                              <i className="ri-edit-line"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -332,8 +366,25 @@ const AdministrativeExpensePage: React.FC = () => {
         />
       </div>
 
-      {selectedExpense && (
-        <AdminExpenseViewModal expense={selectedExpense} onClose={handleCloseModal} />
+      {(selectedExpense || modalMode === 'add') && (
+        <AdminExpenseViewModal 
+          mode={modalMode}
+          expense={selectedExpense}
+          onClose={handleCloseModal}
+          onSave={(updatedExpense) => {
+            if (modalMode === 'add') {
+              // Add new expense to the list
+              setExpenses(prev => [updatedExpense, ...prev]);
+            } else if (modalMode === 'edit') {
+              // Update existing expense
+              setExpenses(prev => prev.map(exp => 
+                exp.id === updatedExpense.id ? updatedExpense : exp
+              ));
+            }
+            setSelectedExpense(null);
+            setModalMode('view');
+          }}
+        />
       )}
     </div>
   );

@@ -324,15 +324,23 @@ const filteredData = data.filter((item: ExpenseData) => {
     }
     try {
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newExpense)
-      });
+      // const response = await fetch('/api/expense', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(newExpense)
+      // });
+
+      // Mock response for now
+      const response = { ok: true };
+      const result: ExpenseRecord = {
+        ...newExpense,
+        expense_id: `EXP${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        status: 'PENDING'
+      } as ExpenseRecord;
 
       if (!response.ok) throw new Error('Create failed');
-
-      const result: ExpenseRecord = await response.json();
       
       // Update expenses state with proper timestamps
       setData(prev => [{

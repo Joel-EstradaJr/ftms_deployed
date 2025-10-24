@@ -1,0 +1,94 @@
+/* Export Button Component Styles */
+.export-button-wrapper {
+  position: relative;
+  display: inline-block;
+  text-align: center !important;
+  align-content: center !important;
+  justify-content: center !important
+}
+
+.exportButton {
+    height: var(--page-button-height, 2.5rem);
+    width: var(--page-button-width, auto);
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 0 1rem;
+    border-radius: var(--page-button-border-radius, 6px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    text-align: center !important;
+    align-content: center !important;
+    justify-content: center !important;
+    gap: var(--page-button-gap, 0.5rem);
+    font-size: var(--page-button-font-size, 14px);
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.exportButton:hover {
+  background: var(--secondary-hover-color);
+}
+
+.export-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.export-dropdown-button {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.export-dropdown-button:hover {
+  background: #f5f5f5;
+}
+
+.export-dropdown-separator {
+  height: 1px;
+  background: #eee;
+}
+
+.export-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+.export-icon {
+  font-size: 18px;
+}
+
+.export-icon-csv {
+  color: #28a745;
+}
+
+.export-icon-pdf {
+  color: #dc3545;
+}
+
+.export-icon-excel {
+  color: #107C41;
+}

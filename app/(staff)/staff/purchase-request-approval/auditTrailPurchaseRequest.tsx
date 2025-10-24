@@ -3,7 +3,7 @@
 import React from 'react';
 //@ts-ignore
 import "../../../styles/budget-management/auditTrailBudgetRequest.css";
-import { formatDateTime, formatDate } from '../../../utility/dateFormatter';
+import { formatDateTime, formatDate } from '../../../utils/formatting';
 import ModalHeader from '../../../Components/ModalHeader';
 
 // Types
