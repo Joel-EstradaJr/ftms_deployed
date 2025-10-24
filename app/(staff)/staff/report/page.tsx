@@ -65,7 +65,8 @@ const ReportPage = () => {
 
   const fetchExpenses = useCallback(async () => {
     try {
-      const response = await fetch('/api/expenses');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expenses');
       if (!response.ok) throw new Error('Failed to fetch expenses');
       const expensesData = await response.json();
       setExpenseData(expensesData);

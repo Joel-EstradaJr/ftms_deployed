@@ -150,9 +150,10 @@ const OperationalExpensePage = () => {
       setLoading(true);
       setError(null);
 
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/admin/expenses/operational?...' + queryParams);
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/expenses/operational
+      // const response = await fetch('/api/admin/expenses/operational?' + queryParams);
       // const result = await response.json();
+      console.warn('API integration pending - using mock operational expense data');
 
       await new Promise(resolve => setTimeout(resolve, 500));
 

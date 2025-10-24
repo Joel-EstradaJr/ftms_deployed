@@ -338,7 +338,9 @@ const PayrollPage = () => {
         })
       );
       
-      await fetch('/api/payroll', {
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      
+      // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/payroll', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(recordsToRelease),
@@ -397,7 +399,8 @@ const PayrollPage = () => {
     setGenLoading(true);
     setGenError(null);
     try {
-      const res = await fetch("/api/payroll/generate", {
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch("/api/payroll/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ start: genStart, end: genEnd, periodType: genPeriodType, employees: selectedEmployees }),
@@ -850,7 +853,8 @@ const PayrollPage = () => {
                   className="releaseAllBtn"
                   onClick={async () => {
                     const { start_date, end_date, payroll_type } = exportingPeriod;
-                    const res = await fetch('/api/payroll/export', {
+                    // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+                    // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/payroll/export', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ start: start_date, end: end_date, payrollPeriod: payroll_type })

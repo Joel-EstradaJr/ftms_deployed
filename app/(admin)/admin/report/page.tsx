@@ -7,11 +7,22 @@ import ExpensesPieChart from '../../../Components/expensesPieChart';
 import RevenuePieChart from '../../../Components/revenuePieChart';
 import Pagination from '../../../Components/pagination';
 import ErrorDisplay from '../../../Components/errordisplay';
-import { getUnrecordedExpenseAssignments, getAllAssignmentsWithRecorded, type Assignment } from '@/lib/operations/assignments';
 import { formatDate } from '../../../utils/formatting';;
 import Loading from '../../../Components/loading';
-import { showError } from '../../../utils/Alerts';
 import Swal from 'sweetalert2';
+
+// Mock Assignment type for pure frontend
+type Assignment = {
+  assignment_id: string;
+  bus_type?: string;
+  bus_plate_number?: string;
+  bus_route?: string;
+  driver_name?: string;
+  driver_id?: string;
+  conductor_name?: string;
+  conductor_id?: string;
+  date_assigned?: string;
+};
 
 type ExpenseData = {
   expense_id: string;
@@ -67,10 +78,14 @@ const ReportPage = () => {
   const fetchExpenses = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch('/api/expenses');
-      if (!response.ok) throw new Error('Failed to fetch expenses');
-      const expensesData = await response.json();
-      setExpenseData(expensesData);
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/expenses
+      // const response = await fetch('http://localhost:4000/api/admin/expenses');
+      // if (!response.ok) throw new Error('Failed to fetch expenses');
+      // const expensesData = await response.json();
+      // setExpenseData(expensesData);
+      
+      console.warn('API integration pending - using mock expense data');
+      setExpenseData([]);
     } catch (error: any) {
       console.error('Error fetching expenses:', error);
       setError(error.message || 'Failed to load expenses');
@@ -80,13 +95,19 @@ const ReportPage = () => {
   const fetchAssignments = useCallback(async () => {
     try {
       setAssignmentsLoading(true);
-      const unrecordedAssignments = await getUnrecordedExpenseAssignments();
-      setAssignments(unrecordedAssignments);
-      const allAssignmentsData = await getAllAssignmentsWithRecorded();
-      setAllAssignments(allAssignmentsData);
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/assignments
+      // const unrecordedAssignments = await fetch('http://localhost:4000/api/admin/assignments/unrecorded');
+      // const allAssignmentsData = await fetch('http://localhost:4000/api/admin/assignments/all');
+      // setAssignments(unrecordedAssignments);
+      // setAllAssignments(allAssignmentsData);
+      
+      console.warn('API integration pending - using mock assignments data');
+      setAssignments([]);
+      setAllAssignments([]);
     } catch (error) {
       console.error('Error fetching assignments:', error);
-      showError('Failed to load assignments', 'Error');
+      // Mock error handling without showError dependency
+      console.error('Failed to load assignments');
     } finally {
       setAssignmentsLoading(false);
     }
@@ -319,7 +340,7 @@ const ReportPage = () => {
       confirmButtonColor: '#13CE66',
       cancelButtonColor: '#961C1E',
       confirmButtonText: 'Export CSV',
-      cancelButtonText: 'Cancel',
+      cancelButtonText: 'Cancel'
     });
 
     if (result.isConfirmed) {
@@ -380,7 +401,7 @@ const ReportPage = () => {
           title: 'Success!',
           text: 'Financial summary exported successfully',
           icon: 'success',
-          confirmButtonColor: '#13CE66',
+          confirmButtonColor: '#13CE66'
         });
       } catch (error) {
         console.error('Export error:', error);
@@ -388,7 +409,7 @@ const ReportPage = () => {
           title: 'Export Failed',
           text: 'Failed to export data: ' + (error instanceof Error ? error.message : 'Unknown error'),
           icon: 'error',
-          confirmButtonColor: '#961C1E',
+          confirmButtonColor: '#961C1E'
         });
       }
     }

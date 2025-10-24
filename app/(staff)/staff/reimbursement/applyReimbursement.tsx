@@ -44,7 +44,7 @@ const ApplyReimbursement: React.FC<ApplyReimbursementProps> = ({
 
   // Example: useEffect to fetch employees from API
   // React.useEffect(() => {
-  //   fetch('/api/employees')
+  //   // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...   // fetch('/api/employees')
   //     .then(res => res.json())
   //     .then(data => setEmployees(data));
   // }, []);

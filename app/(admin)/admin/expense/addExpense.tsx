@@ -71,7 +71,8 @@ const AddExpense: React.FC<AddExpenseProps> = ({
   const fetchDropdownData = async () => {
     try {
       // Fetch categories
-      const categoriesRes = await fetch('/api/expense/categories');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const categoriesRes = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense/categories');
       if (categoriesRes.ok) {
         const categoriesData = await categoriesRes.json();
         setCategories(categoriesData);
@@ -81,7 +82,8 @@ const AddExpense: React.FC<AddExpenseProps> = ({
       }
 
       // Fetch payment methods
-      const paymentMethodsRes = await fetch('/api/expense/payment-methods');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const paymentMethodsRes = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense/payment-methods');
       if (paymentMethodsRes.ok) {
         const paymentMethodsData = await paymentMethodsRes.json();
         setPaymentMethods(paymentMethodsData);

@@ -162,7 +162,8 @@ const ReimbursementPage = () => {
   ) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/reimbursement');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement');
       console.log('API response status:', res.status);
       const text = await res.text();
       console.log('API response text:', text);
@@ -243,7 +244,8 @@ const ReimbursementPage = () => {
     }
     
     try {
-      const res = await fetch('/api/reimbursement', {
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -345,7 +347,8 @@ const filteredReimbursements = reimbursements.filter(reimbursement => {
     
     if (result.isConfirmed) {
       try {
-        const res = await fetch('/api/reimbursement', {
+        // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+        // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -371,7 +374,8 @@ const filteredReimbursements = reimbursements.filter(reimbursement => {
     );
     if (result.isConfirmed) {
       try {
-        const res = await fetch('/api/reimbursement', {
+        // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+        // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -396,7 +400,8 @@ const filteredReimbursements = reimbursements.filter(reimbursement => {
       return;
     }
     try {
-      const res = await fetch('/api/reimbursement', {
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

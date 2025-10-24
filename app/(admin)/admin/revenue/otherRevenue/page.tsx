@@ -121,23 +121,10 @@ const AdminOtherRevenuePage = () => {
 
   // Fetch filter options (revenue sources and payment methods)
   const fetchFilterOptions = async () => {
-    try {
-      // Fetch revenue sources
-      const sourcesResponse = await fetch('/api/admin/revenue-sources');
-      if (sourcesResponse.ok) {
-        const sourcesData = await sourcesResponse.json();
-        setRevenueSources(sourcesData.data || []);
-      }
-
-      // Fetch payment methods
-      const methodsResponse = await fetch('/api/admin/payment-methods');
-      if (methodsResponse.ok) {
-        const methodsData = await methodsResponse.json();
-        setPaymentMethods(methodsData.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching filter options:', err);
-    }
+    // TEMPORARY: API calls disabled - using mock data
+    console.warn('API calls disabled - Using mock filter options');
+    setRevenueSources([]);
+    setPaymentMethods([]);
   };
 
   // Fetch analytics data
@@ -217,18 +204,14 @@ const AdminOtherRevenuePage = () => {
         }
       }
 
-      // Fetch from API
-      const response = await fetch(`/api/admin/revenue?${params.toString()}`);
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/revenue
+      // const response = await fetch(`/api/admin/revenue?${params.toString()}`);
+      console.warn('API integration pending - using mock other revenue data');
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch other revenue data: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      setData(result.data || []);
-      setTotalPages(result.pagination.totalPages || 1);
-      setTotalCount(result.pagination.totalCount || 0);
+      // Use mock data
+      setData([]);
+      setTotalPages(1);
+      setTotalCount(0);
 
     } catch (err) {
       console.error('Error fetching other revenue data:', err);

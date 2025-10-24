@@ -147,7 +147,8 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
 
   const fetchPaymentMethods = async () => {
     try {
-      const response = await fetch('/api/expense/payment-methods');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense/payment-methods');
       if (response.ok) {
         const data = await response.json();
         setPaymentMethods(data);

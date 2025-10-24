@@ -204,8 +204,10 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
     const fetchGlobals = async () => {
       try {
         const [pmRes, psRes] = await Promise.all([
-          fetch('/api/globals/payment-methods'),
-          fetch('/api/globals/payment-statuses'),
+          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+          // fetch('/api/globals/payment-methods'),
+          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+          // fetch('/api/globals/payment-statuses'),
         ]);
         if (!pmRes.ok) throw new Error('Failed loading payment methods');
         if (!psRes.ok) throw new Error('Failed loading payment statuses');

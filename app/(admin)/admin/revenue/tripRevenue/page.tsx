@@ -114,76 +114,88 @@ const AdminTripRevenuePage = () => {
 
   // Fetch filter options (revenue sources and payment methods)
   const fetchFilterOptions = async () => {
-    try {
-      // Fetch revenue sources
-      const sourcesResponse = await fetch('/api/admin/revenue-sources');
-      if (sourcesResponse.ok) {
-        const sourcesData = await sourcesResponse.json();
-        setRevenueSources(sourcesData.data || []);
-      }
-
-      // Fetch payment methods
-      const methodsResponse = await fetch('/api/admin/payment-methods');
-      if (methodsResponse.ok) {
-        const methodsData = await methodsResponse.json();
-        setPaymentMethods(methodsData.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching filter options:', err);
-    }
+    // TEMPORARY: API calls disabled - using mock data
+    console.warn('API calls disabled - Using mock filter options');
+    
+    // Mock revenue sources and payment methods
+    setRevenueSources([]);
+    setPaymentMethods([]);
+    
+    // TODO: Uncomment when ftms_backend API is ready:
+    // try {
+    //   const sourcesResponse = await fetch('http://localhost:4000/api/admin/revenue-sources', {
+    //     headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+    //   });
+    //   if (sourcesResponse.ok) {
+    //     const sourcesData = await sourcesResponse.json();
+    //     setRevenueSources(sourcesData.data || []);
+    //   }
+    //
+    //   const methodsResponse = await fetch('http://localhost:4000/api/admin/payment-methods', {
+    //     headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+    //   });
+    //   if (methodsResponse.ok) {
+    //     const methodsData = await methodsResponse.json();
+    //     setPaymentMethods(methodsData.data || []);
+    //   }
+    // } catch (err) {
+    //   console.error('Error fetching filter options:', err);
+    // }
   };
 
   // Fetch data from API
   const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: pageSize.toString(),
-        sortBy: sortBy,
-        order: sortOrder,
-        includeRecorded: 'true', // Include both recorded and unrecorded
-      });
-
-      // Add search parameter if exists
-      if (search) {
-        params.append('search', search);
-      }
-
-      // Add filter parameters
-      if (activeFilters.dateRange && typeof activeFilters.dateRange === 'object') {
-        const dateRange = activeFilters.dateRange as { from: string; to: string };
-        if (dateRange.from) {
-          params.append('dateFrom', dateRange.from);
-        }
-        if (dateRange.to) {
-          params.append('dateTo', dateRange.to);
-        }
-      }
-
-      // Fetch from API
-      const response = await fetch(`/api/admin/revenue/bus-trips?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch bus trip data: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      setData(result.busTrips || []);
-      setTotalPages(Math.ceil((result.count || 0) / pageSize));
-      setTotalCount(result.count || 0);
-
-    } catch (err) {
-      console.error('Error fetching bus trip data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
-      showError('Failed to load bus trip data', 'Error');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    setError(null);
+    
+    // TEMPORARY: API calls disabled - using mock empty data
+    console.warn('API calls disabled - Using mock bus trip data');
+    
+    // Mock empty data
+    setData([]);
+    setTotalPages(1);
+    setTotalCount(0);
+    setLoading(false);
+    
+    // TODO: Uncomment when ftms_backend API is ready:
+    // try {
+    //   const params = new URLSearchParams({
+    //     page: currentPage.toString(),
+    //     limit: pageSize.toString(),
+    //     sortBy: sortBy,
+    //     order: sortOrder,
+    //     includeRecorded: 'true',
+    //   });
+    //
+    //   if (search) {
+    //     params.append('search', search);
+    //   }
+    //
+    //   if (activeFilters.dateRange && typeof activeFilters.dateRange === 'object') {
+    //     const dateRange = activeFilters.dateRange as { from: string; to: string };
+    //     if (dateRange.from) params.append('dateFrom', dateRange.from);
+    //     if (dateRange.to) params.append('dateTo', dateRange.to);
+    //   }
+    //
+    //   const response = await fetch(`http://localhost:4000/api/admin/revenue/bus-trips?${params.toString()}`, {
+    //     headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+    //   });
+    //
+    //   if (!response.ok) {
+    //     throw new Error(`Failed to fetch bus trip data: ${response.statusText}`);
+    //   }
+    //
+    //   const result = await response.json();
+    //   setData(result.busTrips || []);
+    //   setTotalPages(Math.ceil((result.count || 0) / pageSize));
+    //   setTotalCount(result.count || 0);
+    // } catch (err) {
+    //   console.error('Error fetching bus trip data:', err);
+    //   setError(err instanceof Error ? err.message : 'Failed to fetch data');
+    //   showError('Failed to load bus trip data', 'Error');
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   // Debounce search input
@@ -264,41 +276,48 @@ const AdminTripRevenuePage = () => {
     // TODO: Guide for backend developer - The recorded_by and recorded_date fields are now automatically prefilled
     // and disabled in the frontend. Backend should validate these fields and ensure they are properly stored.
     // recorded_by should match the authenticated user, and recorded_date should be the current date.
-    try {
-      let response;
-      if (modalMode === 'record') {
-        // Create new revenue record
-        response = await fetch('/api/admin/revenue/trip-records', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...data,
-            trip_id: selectedTrip?.busTripId,
-          }),
-        });
-      } else if (modalMode === 'edit') {
-        // Update existing revenue record
-        response = await fetch(`/api/admin/revenue/trip-records/${data.trip_id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        });
-      }
-
-      if (!response!.ok) {
-        throw new Error(`Failed to ${modalMode} revenue record`);
-      }
-
-      showSuccess(`Revenue record ${modalMode === 'record' ? 'created' : 'updated'} successfully`, 'Success');
-      fetchData(); // Refresh the data
-    } catch (err) {
-      console.error(`Error ${modalMode}ing revenue record:`, err);
-      showError(`Failed to ${modalMode} revenue record`, 'Error');
-    }
+    
+    // TEMPORARY: API calls disabled - Replace with ftms_backend API when ready
+    console.warn('API calls disabled - Trip revenue submission skipped');
+    console.log('Would submit:', { ...data, trip_id: selectedTrip?.busTripId });
+    
+    // Mock success response
+    showSuccess(`Revenue record ${modalMode === 'record' ? 'created' : 'updated'} successfully (MOCK)`, 'Success');
+    
+    // TODO: Uncomment when ftms_backend API is ready:
+    // try {
+    //   let response;
+    //   if (modalMode === 'record') {
+    //     response = await fetch('http://localhost:4000/api/admin/revenue/trip-records', {
+    //       method: 'POST',
+    //       headers: {
+    //         'Content-Type': 'application/json',
+    //         'Authorization': `Bearer ${getAuthToken()}`
+    //       },
+    //       body: JSON.stringify({
+    //         ...data,
+    //         trip_id: selectedTrip?.busTripId,
+    //       }),
+    //     });
+    //   } else if (modalMode === 'edit') {
+    //     response = await fetch(`http://localhost:4000/api/admin/revenue/trip-records/${data.trip_id}`, {
+    //       method: 'PUT',
+    //       headers: {
+    //         'Content-Type': 'application/json',
+    //         'Authorization': `Bearer ${getAuthToken()}`
+    //       },
+    //       body: JSON.stringify(data),
+    //     });
+    //   }
+    //   if (!response!.ok) {
+    //     throw new Error(`Failed to ${modalMode} revenue record`);
+    //   }
+    //   showSuccess(`Revenue record ${modalMode === 'record' ? 'created' : 'updated'} successfully`, 'Success');
+    //   fetchData();
+    // } catch (err) {
+    //   console.error(`Error ${modalMode}ing revenue record:`, err);
+    //   showError(`Failed to ${modalMode} revenue record`, 'Error');
+    // }
   };
 
   const handleModalClose = () => {

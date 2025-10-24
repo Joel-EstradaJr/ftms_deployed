@@ -201,30 +201,31 @@ const PayrollPage = () => {
       }
       setError(null);
       
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll
       // Build query parameters
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        pageSize: pageSize.toString(),
-      });
+      // const params = new URLSearchParams({
+      //   page: currentPage.toString(),
+      //   pageSize: pageSize.toString(),
+      // });
+      // if (search.trim()) {
+      //   params.append('search', search.trim());
+      // }
+      // const response = await fetch(`/api/payroll?${params}`);
+      // if (!response.ok) {
+      //   throw new Error(`HTTP error! status: ${response.status}`);
+      // }
+      // const result = await response.json();
+      console.warn('API integration pending - using mock payroll data');
       
-      if (search.trim()) {
-        params.append('search', search.trim());
-      }
-      
-      const response = await fetch(`/api/payroll?${params}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      const records = result.data || [];
+      // Use mock empty data
+      const records: PayrollRecord[] = [];
       setData(records);
       
       // Group the records
       const grouped = groupPayrollRecords(records);
       setGroupedData(grouped);
       
-      setTotalPages(result.pagination?.totalPages || 1);
+      setTotalPages(1);
       
       if (isSearch) {
         setSearchLoading(false);
@@ -339,13 +340,21 @@ const PayrollPage = () => {
         })
       );
       
-      await fetch('/api/payroll', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(recordsToRelease),
-      });
+      // TEMPORARY: API calls disabled
+      console.warn('Release payroll API disabled - using mock');
+      
+      // TODO: Uncomment when ftms_backend API is ready:
+      // await fetch('http://localhost:4000/api/payroll', {
+      //   method: 'PATCH',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${getAuthToken()}`
+      //   },
+      //   body: JSON.stringify(recordsToRelease),
+      // });
+      
       await fetchPayrollData(false);
-      showSuccess('Payroll periods released!', 'Success');
+      showSuccess('Payroll periods released! (MOCK)', 'Success');
     } catch {
       setError('Failed to release payroll periods');
     }
@@ -398,16 +407,34 @@ const PayrollPage = () => {
     setGenLoading(true);
     setGenError(null);
     try {
-      const res = await fetch("/api/payroll/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: genStart, end: genEnd, periodType: genPeriodType, employees: selectedEmployees }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Unknown error");
-      setResultsData(data as PayrollGenSummary);
+      // TEMPORARY: API calls disabled
+      console.warn('Generate payroll API disabled - using mock');
+      
+      // Mock response
+      const data: PayrollGenSummary = {
+        generated: selectedEmployees.length,
+        skipped: 0,
+        errors: []
+      };
+      
+      setResultsData(data);
       setResultsModalOpen(true);
       fetchPayrollData(false);
+      
+      // TODO: Uncomment when ftms_backend API is ready:
+      // const res = await fetch("http://localhost:4000/api/payroll/generate", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     'Authorization': `Bearer ${getAuthToken()}`
+      //   },
+      //   body: JSON.stringify({ start: genStart, end: genEnd, periodType: genPeriodType, employees: selectedEmployees }),
+      // });
+      // const data = await res.json();
+      // if (!data.success) throw new Error(data.error || "Unknown error");
+      // setResultsData(data as PayrollGenSummary);
+      // setResultsModalOpen(true);
+      // fetchPayrollData(false);
     } catch (err: unknown) {
       setGenError(err instanceof Error ? err.message : "Failed to generate payroll");
     } finally {
@@ -854,26 +881,35 @@ const PayrollPage = () => {
                 <button
                   className="releaseAllBtn"
                   onClick={async () => {
-                    const { start_date, end_date, payroll_type } = exportingPeriod;
-                    const res = await fetch('/api/payroll/export', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ start: start_date, end: end_date, payrollPeriod: payroll_type })
-                    });
-                    if (res.ok) {
-                      const blob = await res.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `payroll_export_${start_date}_to_${end_date}.xlsx`;
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                      window.URL.revokeObjectURL(url);
-                    } else {
-                      alert('Failed to export payroll.');
-                    }
+                    // TEMPORARY: Export disabled
+                    console.warn('Payroll export API disabled');
+                    alert('Export functionality will be available once backend API is connected');
                     setExportingPeriod(null);
+                    
+                    // TODO: Uncomment when ftms_backend API is ready:
+                    // const { start_date, end_date, payroll_type } = exportingPeriod;
+                    // const res = await fetch('http://localhost:4000/api/payroll/export', {
+                    //   method: 'POST',
+                    //   headers: {
+                    //     'Content-Type': 'application/json',
+                    //     'Authorization': `Bearer ${getAuthToken()}`
+                    //   },
+                    //   body: JSON.stringify({ start: start_date, end: end_date, payrollPeriod: payroll_type })
+                    // });
+                    // if (res.ok) {
+                    //   const blob = await res.blob();
+                    //   const url = window.URL.createObjectURL(blob);
+                    //   const a = document.createElement('a');
+                    //   a.href = url;
+                    //   a.download = `payroll_export_${start_date}_to_${end_date}.xlsx`;
+                    //   document.body.appendChild(a);
+                    //   a.click();
+                    //   a.remove();
+                    //   window.URL.revokeObjectURL(url);
+                    // } else {
+                    //   alert('Failed to export payroll.');
+                    // }
+                    // setExportingPeriod(null);
                   }}
                 >
                   Export

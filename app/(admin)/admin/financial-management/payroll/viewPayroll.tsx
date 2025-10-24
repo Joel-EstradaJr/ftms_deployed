@@ -141,11 +141,13 @@ const ViewPayrollModal: React.FC<ViewPayrollModalProps> = ({ period, onClose }) 
       }));
 
       // Send to API to update signatures
-      await fetch('/api/payroll', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedRecords),
-      });
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // await fetch('/api/payroll', {
+      //   method: 'PATCH',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(updatedRecords),
+      // });
+      console.warn('API integration pending - signatures not saved to backend');
 
       setIsEditing(false);
       // You might want to refresh the data here

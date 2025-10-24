@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Admin Revenue List Page - Backend Integrated
  * 
  * Displays revenue records with full backend integration:
@@ -94,23 +94,31 @@ const AdminRevenuePage = () => {
 
   // Fetch filter options (revenue sources and payment methods)
   const fetchFilterOptions = async () => {
-    try {
-      // Fetch revenue sources
-      const sourcesResponse = await fetch('/api/admin/revenue-sources');
-      if (sourcesResponse.ok) {
-        const sourcesData = await sourcesResponse.json();
-        setRevenueSources(sourcesData.data || []);
-      }
-
-      // Fetch payment methods
-      const methodsResponse = await fetch('/api/admin/payment-methods');
-      if (methodsResponse.ok) {
-        const methodsData = await methodsResponse.json();
-        setPaymentMethods(methodsData.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching filter options:', err);
-    }
+    // TEMPORARY: API calls disabled - using mock data
+    console.warn('API calls disabled - Using mock filter options');
+    setRevenueSources([]);
+    setPaymentMethods([]);
+    
+    // TODO: Uncomment when ftms_backend API is ready:
+    // try {
+    //   const sourcesResponse = await fetch('http://localhost:4000/api/admin/revenue-sources', {
+    //     headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+    //   });
+    //   if (sourcesResponse.ok) {
+    //     const sourcesData = await sourcesResponse.json();
+    //     setRevenueSources(sourcesData.data || []);
+    //   }
+    //
+    //   const methodsResponse = await fetch('http://localhost:4000/api/admin/payment-methods', {
+    //     headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+    //   });
+    //   if (methodsResponse.ok) {
+    //     const methodsData = await methodsResponse.json();
+    //     setPaymentMethods(methodsData.data || []);
+    //   }
+    // } catch (err) {
+    //   console.error('Error fetching filter options:', err);
+    // }
   };
 
   // Fetch data from API
@@ -219,7 +227,7 @@ const AdminRevenuePage = () => {
   // Get sort indicator for column
   const getSortIndicator = (field: string) => {
     if (sortBy !== field) return null;
-    return sortOrder === "asc" ? " ↑" : " ↓";
+    return sortOrder === "asc" ? " ?" : " ?";
   };
 
   // Handle filter apply

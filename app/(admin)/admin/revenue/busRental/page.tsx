@@ -126,23 +126,10 @@ const AdminBusRentalPage = () => {
 
   // Fetch filter options (revenue sources and payment methods)
   const fetchFilterOptions = async () => {
-    try {
-      // Fetch revenue sources
-      const sourcesResponse = await fetch('/api/admin/revenue-sources');
-      if (sourcesResponse.ok) {
-        const sourcesData = await sourcesResponse.json();
-        setRevenueSources(sourcesData.data || []);
-      }
-
-      // Fetch payment methods
-      const methodsResponse = await fetch('/api/admin/payment-methods');
-      if (methodsResponse.ok) {
-        const methodsData = await methodsResponse.json();
-        setPaymentMethods(methodsData.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching filter options:', err);
-    }
+    // TEMPORARY: API calls disabled - using mock data
+    console.warn('API calls disabled - Using mock filter options');
+    setRevenueSources([]);
+    setPaymentMethods([]);
   };
 
   // Fetch analytics data
@@ -189,26 +176,22 @@ const AdminBusRentalPage = () => {
         }
       }
 
-      // Fetch analytics from API
-      const response = await fetch(`/api/admin/revenue/analytics?${params.toString()}`);
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/revenue/analytics
+      // const response = await fetch(`/api/admin/revenue/analytics?${params.toString()}`);
+      console.warn('API integration pending - using mock analytics data');
 
-      if (response.ok) {
-        const analyticsData = await response.json();
-        setAnalytics(analyticsData);
-      } else {
-        // Fallback to local calculation from current page data if API fails
-        const totalRevenue = data.reduce((sum, record) => sum + record.amount, 0);
-        const activeRentals = data.filter(record => record.status?.toUpperCase() === 'ACTIVE').length;
-        const averageRentalAmount = data.length > 0 ? totalRevenue / data.length : 0;
+      // Use local calculation from current page data
+      const totalRevenue = data.reduce((sum, record) => sum + record.amount, 0);
+      const activeRentals = data.filter(record => record.status?.toUpperCase() === 'ACTIVE').length;
+      const averageRentalAmount = data.length > 0 ? totalRevenue / data.length : 0;
 
-        setAnalytics({
-          totalRevenue,
-          activeRentals,
-          availableBuses: 25, // Placeholder - would need actual fleet data from API
-          monthlyRevenue: totalRevenue * 0.3, // Estimate based on current data
-          averageRentalAmount
-        });
-      }
+      setAnalytics({
+        totalRevenue,
+        activeRentals,
+        availableBuses: 25, // Placeholder - would need actual fleet data from API
+        monthlyRevenue: totalRevenue * 0.3, // Estimate based on current data
+        averageRentalAmount
+      });
     } catch (err) {
       console.error('Error fetching analytics:', err);
       // Fallback to local calculation
@@ -275,18 +258,14 @@ const AdminBusRentalPage = () => {
         }
       }
 
-      // Fetch from API
-      const response = await fetch(`/api/admin/revenue?${params.toString()}`);
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/revenue
+      // const response = await fetch(`/api/admin/revenue?${params.toString()}`);
+      console.warn('API integration pending - using mock rental data');
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch rental data: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      setData(result.data || []);
-      setTotalPages(result.pagination.totalPages || 1);
-      setTotalCount(result.pagination.totalCount || 0);
+      // Use mock data
+      setData([]);
+      setTotalPages(1);
+      setTotalCount(0);
 
     } catch (err) {
       console.error('Error fetching rental data:', err);

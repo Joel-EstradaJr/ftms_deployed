@@ -19,6 +19,7 @@ export const validateAccountCode = (code: string): ValidationResult => {
 
 /**
  * Validate account code uniqueness (needs API call)
+ * TODO: Replace with ftms_backend API call when backend is ready
  */
 export const validateAccountCodeUniqueness = async (
   code: string,
@@ -27,17 +28,21 @@ export const validateAccountCodeUniqueness = async (
   const errors: string[] = [];
 
   try {
-    const params = new URLSearchParams({ code });
-    if (existingId) {
-      params.append('exclude', existingId);
-    }
-
-    const response = await fetch(`/api/jev/chart-of-accounts/validate-code?${params}`);
-    const data = await response.json();
-
-    if (!data.available) {
-      errors.push('Account code already exists');
-    }
+    // TEMPORARY: Skipping uniqueness check until ftms_backend API is ready
+    // TODO: Implement this endpoint in ftms_backend:
+    // GET http://localhost:4000/api/jev/chart-of-accounts/validate-code?code=1234&exclude=uuid
+    console.warn('Account code uniqueness validation temporarily disabled - waiting for ftms_backend API');
+    
+    // TEMPORARY: Commented out until ftms_backend endpoint is created
+    // const params = new URLSearchParams({ code });
+    // if (existingId) {
+    //   params.append('exclude', existingId);
+    // }
+    // const response = await fetch(`/api/jev/chart-of-accounts/validate-code?${params}`);
+    // const data = await response.json();
+    // if (!data.available) {
+    //   errors.push('Account code already exists');
+    // }
   } catch (error) {
     errors.push('Failed to validate account code uniqueness');
   }

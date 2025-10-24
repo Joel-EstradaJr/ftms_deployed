@@ -96,7 +96,8 @@ const CacheHealthIndicator: React.FC<{ refreshKey: number }> = ({ refreshKey }) 
   const fetchHealth = async () => {
     try {
       setError(null);
-      const res = await fetch('/api/cache/health', { cache: 'no-store' });
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/cache/health', { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j: CacheHealthResponse = await res.json();
       setHealth(j);
@@ -299,7 +300,8 @@ const RevenuePage = () => {
       setAllAssignments(assignmentsData);
 
       // Then fetch revenues
-      const revenuesResponse = await fetch('/api/revenues');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const revenuesResponse = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/revenues');
       console.log('[FETCH] /api/revenues status:', revenuesResponse.status);
       if (!revenuesResponse.ok) throw new Error('Failed to fetch revenues');
 
@@ -397,7 +399,8 @@ const RevenuePage = () => {
   // Manual cache refresh (placeholder auth)
   const manualCacheRefresh = async () => {
     try {
-      const res = await fetch('/api/cache/refresh', {
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/cache/refresh', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -448,7 +451,9 @@ const RevenuePage = () => {
         }
       }
       
-      const response = await fetch('/api/revenues', {
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      
+      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/revenues', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -684,7 +689,8 @@ const RevenuePage = () => {
   const logExportAudit = async () => {
     try {
       // First get the export ID from the API
-      const idResponse = await fetch('/api/generate-export-id');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // const idResponse = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/generate-export-id');
       if (!idResponse.ok) {
         throw new Error('Failed to generate export ID');
       }
@@ -693,7 +699,9 @@ const RevenuePage = () => {
       // Generate details without export ID
       const details = generateExportDetails();
 
-      const response = await fetch('/api/auditlogs/export', {
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+
+      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/auditlogs/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

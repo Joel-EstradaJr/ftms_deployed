@@ -225,7 +225,8 @@ const AddExpense: React.FC<AddExpenseProps> = ({
       try {
         // For operations-based reimbursements, use the existing employee API
         // For receipt-based reimbursements, we'll fetch from HR API when needed
-        const response = await fetch('/api/employees');
+        // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+        // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/employees');
         if (!response.ok) throw new Error('Failed to fetch employees');
         const data = await response.json();
         setAllEmployees(data);
@@ -244,10 +245,14 @@ const AddExpense: React.FC<AddExpenseProps> = ({
     const fetchGlobals = async () => {
       try {
         const [catRes, srcRes, pmRes, psRes] = await Promise.all([
-          fetch('/api/globals/categories?module=expense'),
-          fetch('/api/globals/sources'),
-          fetch('/api/globals/payment-methods'),
-          fetch('/api/globals/payment-statuses'),
+          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+          // fetch('/api/globals/categories?module=expense'),
+          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+          // fetch('/api/globals/sources'),
+          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+          // fetch('/api/globals/payment-methods'),
+          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+          // fetch('/api/globals/payment-statuses'),
         ]);
         if (!catRes.ok) throw new Error('Failed loading categories');
         if (!srcRes.ok) throw new Error('Failed loading sources');
