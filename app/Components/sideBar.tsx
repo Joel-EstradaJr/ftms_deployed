@@ -47,6 +47,7 @@ const Sidebar: React.FC = () => {
     "/jev/chart-of-accounts": "chart-of-accounts",
     "/jev/journal-entries": "journal-entries",
     "/records-reports/JEV": "JEV",
+    "/asset-management": "asset-management",
   };
 
   // Function to normalize pathname for comparison (remove role prefix)
@@ -72,7 +73,8 @@ const Sidebar: React.FC = () => {
       } else if (["loan-request", "loan-payment"].includes(staticMatch)) {
         setOpenSubMenu("loan-management");
       } else if (["JEV"].includes(staticMatch)) {
-        setOpenSubMenu("records-reports");
+        } else if (["JEV", "asset-management"].includes(staticMatch)) {
+          setOpenSubMenu("records-reports");
       } else if (["tripRevenue", "busRental", "otherRevenue"].includes(staticMatch)) {
         setOpenSubMenu("revenue-management");
       }
@@ -372,6 +374,13 @@ const Sidebar: React.FC = () => {
                     onClick={() => setActiveItem("JEV")}
                   >
                     JEV
+                  </Link>
+                  <Link
+                    href={getUrl("/asset-management")}
+                    className={`sub-item ${activeItem === "asset-management" ? "active" : ""}`}
+                    onClick={() => setActiveItem("asset-management")}
+                  >
+                    Asset Management
                   </Link>
                 </div>
               )}
