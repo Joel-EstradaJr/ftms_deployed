@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import "app/styles/components/modal.css";
+import "../../../styles/components/modal.css";
 import ModalHeader from "../../../Components/ModalHeader";
 import type { Asset } from "../../../types/asset";
 import { showConfirmation, showSuccess, showError } from "../../../utils/Alerts";

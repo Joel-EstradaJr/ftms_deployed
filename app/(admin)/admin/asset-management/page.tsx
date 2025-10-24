@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import "app/styles/components/table.css";
-import "app/styles/components/modal.css";
-import "app/styles/asset-management/asset-management.css";
+import "../../../styles/components/table.css";
+import "../../../styles/components/modal.css";
+import "../../../styles/asset-management/asset-management.css";
 import AssetTable from "./AssetTable";
 import DepreciationModal from "./DepreciationModal";
 import ExportButton from "../../../Components/ExportButton";
