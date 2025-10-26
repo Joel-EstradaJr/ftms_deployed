@@ -3,6 +3,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 //@ts-ignore
 import '../styles/components/itemTable.css';
+import { formatMoney } from '../utils/formatting';  // For currency formatting
+import { validateField, ValidationRule } from '../utils/validation';  // For field validation
+import { showWarning } from '../utils/Alerts';  // For user feedback on invalid fields
 
 // Types
 export interface Item {
@@ -23,6 +26,7 @@ interface ItemsTableProps {
   readOnly?: boolean;
   title?: string;
   className?: string;
+  onValidityChange?: (isValid: boolean) => void;  // Prop to report validity
 }
 
 // Predefined options (you can move these to a config file)
@@ -85,7 +89,9 @@ const SuggestionDropdown: React.FC<{
   onChange: (value: string) => void;
   placeholder: string;
   required?: boolean;
-}> = ({ value, suggestions, onSelect, onChange, placeholder, required }) => {
+  onBlur?: () => void;
+  hasError?: boolean;
+}> = ({ value, suggestions, onSelect, onChange, placeholder, required, onBlur, hasError }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -130,9 +136,10 @@ const SuggestionDropdown: React.FC<{
         value={value}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
+        onBlur={onBlur}
         placeholder={placeholder}
         required={required}
-        className="suggestion-input"
+        className={`suggestion-input ${hasError ? 'invalid' : ''}`}
       />
       {isOpen && filteredSuggestions.length > 0 && (
         <div className="suggestions-list">
@@ -158,8 +165,73 @@ const ItemsTable: React.FC<ItemsTableProps> = ({
   onToggleItems,
   readOnly = false,
   title = "Budget Items (Optional)",
-  className = ""
+  className = "",
+  onValidityChange
 }) => {
+  
+  // State for tracking validation errors per item field
+  const [itemErrors, setItemErrors] = useState<{[key: string]: string}>({});
+  
+  // Validation function using utils
+  const validateItemField = (index: number, field: keyof Item, value: string | number) => {
+    const fieldName = `${field}_${index}`;
+    let rules: ValidationRule = {};
+    
+    // Define validation rules based on field
+    switch (field) {
+      case 'item_name':
+        rules = { required: true, minLength: 2, label: 'Item name' };
+        break;
+      case 'quantity':
+        rules = { required: true, min: 0.01, label: 'Quantity' };
+        break;
+      case 'unit_measure':
+        rules = { required: true, label: 'Unit measure' };
+        break;
+      case 'unit_cost':
+        rules = { required: true, min: 0, label: 'Unit cost' };
+        break;
+      case 'supplier':
+        rules = { required: true, minLength: 2, label: 'Supplier' };
+        break;
+      default:
+        break;
+    }
+    
+    const errors = validateField(value, rules);
+    const errorMessage = errors.length > 0 ? errors[0] : '';
+    
+    setItemErrors(prev => ({
+      ...prev,
+      [fieldName]: errorMessage
+    }));
+    
+    return errorMessage === '';
+  };
+  
+  // Check overall validity and report to parent
+  const checkOverallValidity = () => {
+    if (items.length === 0) {
+      onValidityChange?.(false);
+      return;
+    }
+    
+    const isValid = items.every(item => {
+      const nameErrors = validateField(item.item_name, { required: true, minLength: 2, label: 'Item name' });
+      const quantityErrors = validateField(item.quantity, { required: true, min: 0.01, label: 'Quantity' });
+      const unitErrors = validateField(item.unit_measure, { required: true, label: 'Unit measure' });
+      const costErrors = validateField(item.unit_cost, { required: true, min: 0, label: 'Unit cost' });
+      const supplierErrors = validateField(item.supplier, { required: true, minLength: 2, label: 'Supplier' });
+      return nameErrors.length === 0 && quantityErrors.length === 0 && unitErrors.length === 0 && costErrors.length === 0 && supplierErrors.length === 0;
+    });
+    
+    onValidityChange?.(isValid);
+  };
+  
+  // Effect to check validity when items change
+  useEffect(() => {
+    checkOverallValidity();
+  }, [items]);
   
   const addItem = () => {
     const newItem: Item = {
@@ -273,8 +345,10 @@ const ItemsTable: React.FC<ItemsTableProps> = ({
                       suggestions={ITEM_SUGGESTIONS}
                       onSelect={(value) => updateItem(index, 'item_name', value)}
                       onChange={(value) => updateItem(index, 'item_name', value)}
+                      onBlur={() => validateItemField(index, 'item_name', item.item_name)}
                       placeholder="Enter or select item name"
                       required
+                      hasError={!!itemErrors[`item_name_${index}`]}
                     />
                   )}
                 </div>
@@ -285,9 +359,11 @@ const ItemsTable: React.FC<ItemsTableProps> = ({
                     type="number"
                     value={item.quantity}
                     onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                    onBlur={() => validateItemField(index, 'quantity', item.quantity)}
                     min="1"
                     required
                     readOnly={readOnly}
+                    className={itemErrors[`quantity_${index}`] ? 'invalid' : ''}
                   />
                 </div>
 
@@ -297,7 +373,9 @@ const ItemsTable: React.FC<ItemsTableProps> = ({
                   <select
                     value={item.unit_measure}
                     onChange={(e) => updateItem(index, 'unit_measure', e.target.value)}
+                    onBlur={() => validateItemField(index, 'unit_measure', item.unit_measure)}
                     disabled={readOnly}
+                    className={itemErrors[`unit_measure_${index}`] ? 'invalid' : ''}
                   >
                     {getUnitOptions(item.type).map(unit => (
                       <option key={unit} value={unit}>{unit}</option>
@@ -311,10 +389,12 @@ const ItemsTable: React.FC<ItemsTableProps> = ({
                     type="number"
                     value={item.unit_cost}
                     onChange={(e) => updateItem(index, 'unit_cost', parseFloat(e.target.value) || 0)}
+                    onBlur={() => validateItemField(index, 'unit_cost', item.unit_cost)}
                     min="0"
                     step="0.01"
                     required
                     readOnly={readOnly}
+                    className={itemErrors[`unit_cost_${index}`] ? 'invalid' : ''}
                   />
                 </div>
 
@@ -334,8 +414,10 @@ const ItemsTable: React.FC<ItemsTableProps> = ({
                       suggestions={SUPPLIER_SUGGESTIONS}
                       onSelect={(value) => updateItem(index, 'supplier', value)}
                       onChange={(value) => updateItem(index, 'supplier', value)}
+                      onBlur={() => validateItemField(index, 'supplier', item.supplier)}
                       placeholder="Enter or select supplier"
                       required
+                      hasError={!!itemErrors[`supplier_${index}`]}
                     />
                   )}
                 </div>

@@ -34,6 +34,11 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
     items: []
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isValidFields, setIsValidFields] = useState({
+    form: false,
+    items: false
+  });
+  const [isButtonEnabled, setIsButtonEnabled] = useState(false);
 
   useEffect(() => {
     if (mode === 'edit' && expense) {
@@ -56,6 +61,31 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
       });
     }
   }, [mode, expense]);
+
+  // Effect to validate form fields
+  useEffect(() => {
+    const isFormValid = !!(formData.date && 
+           formData.expense_type && 
+           formData.description?.trim() &&
+           formData.department?.trim() &&
+           formData.items && formData.items.length > 0 &&
+           (formData.amount !== undefined && formData.amount > 0));
+    setIsValidFields(prev => ({ ...prev, form: isFormValid }));
+  }, [formData]);
+
+  // Observer Pattern: Monitors all field validity states and controls button enablement
+  // This ensures the submit button is only enabled when ALL required fields are valid
+  useEffect(() => {
+    const allFieldsValid = isValidFields.form && isValidFields.items;
+    setIsButtonEnabled(allFieldsValid);
+    
+    // Debug logging (remove in production)
+    console.log('Form Validity Observer:', {
+      formValid: isValidFields.form,
+      itemsValid: isValidFields.items,
+      buttonEnabled: allFieldsValid
+    });
+  }, [isValidFields.form, isValidFields.items]);
 
   const handleInputChange = (field: keyof AdministrativeExpense, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -100,12 +130,6 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
   const handleItemsChange = (items: any[]) => {
     const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
     setFormData(prev => ({ ...prev, items, amount: totalAmount }));
-    
-    if (items.length === 0) {
-      showWarning('At least one expense item is required.');
-    } else if (totalAmount <= 0) {
-      showWarning('Total amount must be greater than zero. Please check item quantities and prices.');
-    }
   };
 
   const validateAllFields = (): string[] => {
@@ -217,14 +241,6 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
   };
 
   const isEditable = mode !== 'view';
-  const isFormValid = () => {
-    return formData.date && 
-           formData.expense_type && 
-           formData.description?.trim() !== '' &&
-           formData.department?.trim() !== '' &&
-           formData.items && formData.items.length > 0 &&
-           (formData.amount !== undefined && formData.amount > 0);
-  };
 
   const displayData = isEditable ? formData : expense;
 
@@ -364,6 +380,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
                       onToggleItems={() => {}} // Always show in edit mode
                       readOnly={!isEditable}
                       title="Expense Items"
+                      onValidityChange={isEditable ? (isValid) => setIsValidFields(prev => ({ ...prev, items: isValid })) : undefined}
                   />
                   </div>
               </div>
@@ -377,7 +394,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
                 <button 
                   className="addButton" 
                   onClick={handleSubmit}
-                  disabled={!isFormValid()}
+                  disabled={!isButtonEnabled}
                 >
                   {mode === 'add' ? 'Create Expense' : 'Update Expense'}
                 </button>

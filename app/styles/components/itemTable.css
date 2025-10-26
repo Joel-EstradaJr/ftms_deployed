@@ -361,7 +361,7 @@
 }
 
 .type-toggle.active .toggle-slider {
-  transform: translateX(52px);
+  transform: translateX(240%);
 }
 
 .toggle-label {
@@ -398,7 +398,10 @@
 .type-toggle:not(.active) .toggle-label.service {
   color: #999;
 }
-
-
+/* Invalid field styling */
+.invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
 
 /* Remove all media queries - layout adapts naturally with flexbox wrapping */

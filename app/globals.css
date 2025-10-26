@@ -119,6 +119,7 @@ textarea.input-error {
 
   /* Button Color */
   --button-font-color: #FFFFFF;
+  --button-disabled-color: #7a7a7a;
 
   /* Chip Colors */
   --success-chip-bg-color: #D1F7D1;

@@ -299,6 +299,11 @@
   font-weight: 500 !important;
 }
 
+.modalButtons button:disabled {
+  background: var(--button-disabled-color) !important;
+  cursor: not-allowed !important;
+}
+
 .addButton,
 .saveButton,
 .submitButton {
