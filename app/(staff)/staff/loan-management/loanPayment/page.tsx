@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import PaginationComponent from "../../../../Components/pagination";
 import Loading from "../../../../Components/loading";
-import ErrorDisplay from "../../../../Components/ErrorDisplay";
+import ErrorDisplay from "../../../../Components/errordisplay";
 import FilterDropdown, { FilterSection } from "../../../../Components/filter";
 import { showSuccess, showError, showConfirmation } from "../../../../utils/Alerts";
 import { formatDate } from '../../../../utils/formatting';;
@@ -556,7 +556,7 @@ const LoanPaymentPage = () => {
     );
   };
 
-  if (error) {
+  /*if (error) {
     return (
       <div className="card">
         <h1 className="title">Loan Payment Management</h1>
@@ -571,7 +571,7 @@ const LoanPaymentPage = () => {
         />
       </div>
     );
-  }
+  }*/
 
   if (loading) {
     return (

@@ -5,7 +5,7 @@ import "../../../../styles/components/table.css";
 import "../../../../styles/components/chips.css";
 import "../../../../styles/budget-management/budgetRequest.css";
 import PaginationComponent from "../../../../Components/pagination";
-import ErrorDisplay from '../../../../Components/ErrorDisplay';
+import ErrorDisplay from '../../../../Components/errordisplay';
 import Swal from 'sweetalert2';
 import { formatDate, formatDateTime } from '../../../../utils/formatting';;
 import Loading from '../../../../Components/loading';
@@ -591,7 +591,7 @@ const BudgetRequestPage = () => {
     }
   };
 
-  if (error) {
+ /* if (error) {
     return (
       <div className="card">
         <h1 className="title">Budget Request Management</h1>
@@ -606,7 +606,7 @@ const BudgetRequestPage = () => {
         />
       </div>
     );
-  }
+  }*/
 
   if (loading) {
           return (
