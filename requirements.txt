@@ -1,3 +1,478 @@
-easyocr==1.7.1
-torch==2.1.0
-torchvision==0.16.0 
+// budget request creation schema
+// ============================================================================
+// BUDGET REQUEST MICROSERVICE - PRISMA SCHEMA (REVISED & COMPLETE)
+// Repository 4: Budget Request Creation & Management
+// Used by: Finance, HR, Inventory, Operations departments
+// Integrates with: Main Finance Backend (Repo 2) for Budget allocation data
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("BUDGET_REQUEST_DATABASE_URL") // Separate database for budget requests
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum BudgetRequestStatus {
+  DRAFT      // User is still editing (can edit/delete)
+  SUBMITTED  // Submitted for approval (pending review)
+  APPROVED   // Approved by Finance Admin
+  REJECTED   // Rejected by Finance Admin
+  CANCELLED  // Cancelled by creator or admin
+}
+
+enum PurchaseRequestStatus {
+  DRAFT
+  POSTED
+  REJECTED
+  APPROVED
+  CLOSED
+}
+
+enum RequestType {
+  REGULAR        // Priority 1: Standard, routine purchases
+  PROJECT_BASED  // Priority 2: Operations/Maintenance linked
+  BUDGET_SHORTAGE // Priority 3: When initial purchase exceeds budget
+  URGENT         // Priority 4: Time-sensitive to prevent delays
+  EMERGENCY      // Priority 5: Critical to restore operations
+}
+
+enum UserRole {
+  ADMIN
+  NON_ADMIN
+}
+
+// ============================================================================
+// BUDGET REQUEST MODEL (REVISED & ENHANCED)
+// ============================================================================
+
+model BudgetRequest {
+  id          Int    @id @default(autoincrement())
+  requestCode String @unique @default(cuid())
+
+  // Creator Information (Simplified & Required)
+  createdBy      String   // User ID - REQUIRED
+  createdByName  String?  // Cached user display name
+  createdByEmail String?  // For notifications
+  createdByRole  UserRole // "ADMIN" | "NON_ADMIN" - REQUIRED for permission checks
+  department     String   // "finance" | "hr" | "inventory" | "operations"
+
+  // Request Details
+  amountRequested Decimal @db.Decimal(12, 2)
+  purpose         String  // Brief description of budget need
+  justification   String  @db.Text // Detailed explanation (min 50 chars - validated in backend)
+  category        String? // "operational" | "capital" | "administrative" | "emergency"
+  priority        String? // "low" | "medium" | "high" | "urgent"
+  urgencyReason   String? @db.Text // Why urgent/emergency
+  start_date      DateTime? // Budget period start date
+  end_date        DateTime? // Budget period end date
+
+  // Budget Period Context (synced from Finance Budget allocation)
+  fiscalYear   Int?
+  fiscalPeriod String? // "Q1" | "Q2" | "2025-01" etc.
+
+  // Purchase Request Integration (ENHANCED FOR MULTI-ITEM/MULTI-SUPPLIER)
+  linkedPurchaseRequestId    Int?
+  linkedPurchaseRequestRefNo String?      // Reference from Inventory service
+  linkedPurchaseRequestType  RequestType? // Track PR priority
+  linkedPurchaseRequestUrl   String?      // Deep link to view PR in Inventory UI
+  isAutoLinked               Boolean      @default(false) // True if auto-created from PR approval flow
+
+  // Multi-Item PR Support
+  totalItemsRequested    Int?    // How many items in linked PR
+  totalSuppliersInvolved Int?    // How many suppliers in linked PR
+  itemBreakdown          String? @db.Text // JSON array: [{ itemName, quantity, estimatedCost, supplierName, supplierId }]
+  supplierBreakdown      String? @db.Text // JSON array: [{ supplierId, supplierName, totalAmount, itemCount }]
+
+  // Budget Availability Check (cached at request time)
+  departmentBudgetRemaining      Decimal? @db.Decimal(12, 2)
+  budgetShortfall                Decimal? @db.Decimal(12, 2) // amountRequested - departmentBudgetRemaining
+  budgetUtilizationBeforeRequest Decimal? @db.Decimal(5, 2) // % utilization before this request
+
+  // Approval Workflow (REVISED STATUS)
+  status         BudgetRequestStatus @default(DRAFT) // Uses new enum
+  reviewedBy     String?                             // Finance Admin user ID
+  reviewedByName String?
+  reviewNotes    String?             @db.Text
+  reviewedAt     DateTime?
+
+  // Budget Reservation (when approved)
+  reservedAmount    Decimal?  @db.Decimal(12, 2) // Actual reserved = requested + buffer
+  bufferAmount      Decimal?  @db.Decimal(12, 2) // Configurable % buffer (default 5%)
+  bufferPercentage  Decimal?  @db.Decimal(5, 2) // What % buffer was applied
+  reservationExpiry DateTime?                    // Auto-release if not utilized within period
+  isReserved        Boolean   @default(false)
+  reservedAt        DateTime?
+
+  // Utilization Tracking (updated when linked PR is processed)
+  actualAmountUtilized Decimal?  @db.Decimal(12, 2) // Actual PO amount (may differ from requested)
+  utilizationDate      DateTime?
+  isFullyUtilized      Boolean   @default(false)
+  remainingReserved    Decimal?  @db.Decimal(12, 2) // Reserved but not yet used
+
+  // Financial Impact Tracking
+  budgetBefore    Decimal? @db.Decimal(12, 2) // Department's remaining budget before request
+  budgetAfter     Decimal? @db.Decimal(12, 2) // Department's remaining budget after approval
+  utilizationRate Decimal? @db.Decimal(5, 2) // % of total department budget used
+
+  // Supporting Documents
+  attachmentUrls String? @db.Text // JSON array of document URLs
+
+  // Permission Helper Fields (NEW)
+  isVisibleToAllDepts Boolean @default(false) // True for Finance Admin created requests (visible across departments)
+  canBeDeletedBy      String? // "creator_only" | "any_admin" | null (cannot delete after submission)
+
+  // Status Tracking
+  isExpired          Boolean   @default(false) // True if reservation expired unused
+  isCancelled        Boolean   @default(false)
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  cancellationReason String?   @db.Text
+
+  // Escalation & SLA Tracking
+  escalationLevel Int       @default(0) // 0 = normal, 1+ = escalated
+  escalatedTo     String?               // User ID of escalation recipient
+  escalatedAt     DateTime?
+  slaDeadline     DateTime?             // Expected review deadline
+  isOverdue       Boolean   @default(false)
+
+  // External Sync (for caching Finance Budget data)
+  lastSyncedAt     DateTime?
+  lastSyncStatus   String? // "success" | "failed" | "pending"
+  syncErrorMessage String?
+
+  // Audit Trail Fields (will be logged to Audit Logs microservice via middleware)
+  createdAt  DateTime  @default(now())
+  updatedBy  String?
+  updatedAt  DateTime  @updatedAt
+  approvedBy String?
+  approvedAt DateTime?
+  rejectedBy String?
+  rejectedAt DateTime?
+  deletedBy  String?
+  deletedAt  DateTime?
+  isDeleted  Boolean   @default(false)
+
+  // Relations
+  approvalHistory BudgetRequestApprovalHistory[]
+  notifications   BudgetRequestNotification[]
+  itemAllocations BudgetRequestItemAllocation[]
+  exportLogs      BudgetRequestExportLog[]
+
+  @@index([department, status])
+  @@index([createdBy, createdByRole, status])
+  @@index([createdBy, createdAt])
+  @@index([status, createdAt])
+  @@index([isDeleted])
+  @@index([linkedPurchaseRequestId])
+  @@index([fiscalYear, fiscalPeriod])
+  @@index([isReserved, reservationExpiry])
+  @@index([isOverdue, slaDeadline])
+  @@index([priority, status])
+  @@index([department, status, isVisibleToAllDepts])
+}
+
+// ============================================================================
+// ITEM-LEVEL BUDGET ALLOCATION
+// ============================================================================
+
+model BudgetRequestItemAllocation {
+  id              Int @id @default(autoincrement())
+  budgetRequestId Int
+
+  // Item Details (from linked PR)
+  itemName     String
+  itemCode     String?
+  itemCategory String?
+  quantity     Int
+  unitMeasure  String? // "pcs", "hours", "kg", etc.
+  unitCost     Decimal @db.Decimal(12, 2)
+  totalCost    Decimal @db.Decimal(12, 2)
+
+  // Supplier Details
+  supplierId     String?
+  supplierName   String?
+  supplierRating Decimal? @db.Decimal(3, 2) // 0-5 scale
+
+  // Allocation Details
+  allocatedAmount      Decimal  @db.Decimal(12, 2) // May be less if partially approved
+  isFullyAllocated     Boolean  @default(true)
+  allocationPercentage Decimal? @db.Decimal(5, 2) // % of totalCost allocated
+  allocationNotes      String?  @db.Text
+
+  // Priority & Necessity
+  itemPriority       String? // "must_have" | "should_have" | "nice_to_have"
+  isEssential        Boolean @default(true)
+  alternativeOptions String? @db.Text // JSON array of alternative items/suppliers
+
+  // Status
+  status BudgetRequestStatus @default(DRAFT) // Uses revised enum
+
+  // Finance Review
+  reviewedBy  String?
+  reviewNotes String? @db.Text
+
+  // Utilization Tracking
+  actualAmountSpent Decimal? @db.Decimal(12, 2) // From PO when processed
+  costVariance      Decimal? @db.Decimal(12, 2) // allocatedAmount - actualAmountSpent
+  isUtilized        Boolean  @default(false)
+
+  // Audit Trail
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  approvedAt DateTime?
+  isDeleted  Boolean   @default(false)
+
+  // Relation
+  budgetRequest BudgetRequest @relation(fields: [budgetRequestId], references: [id], onDelete: Cascade)
+
+  @@index([budgetRequestId])
+  @@index([status])
+  @@index([supplierId])
+  @@index([isEssential, itemPriority])
+}
+
+// ============================================================================
+// APPROVAL HISTORY (Audit trail for status changes)
+// ============================================================================
+
+model BudgetRequestApprovalHistory {
+  id              Int @id @default(autoincrement())
+  budgetRequestId Int
+
+  // Status Change Details
+  fromStatus BudgetRequestStatus? // Uses revised enum
+  toStatus   BudgetRequestStatus  // Uses revised enum
+
+  changedBy     String // User ID
+  changedByName String?
+  changedByRole UserRole? // Track if action done by Admin or Non-Admin
+  changedAt     DateTime @default(now())
+
+  // Action Context
+  action         String // "CREATED" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED" | "UPDATED" | "ESCALATED" | "DELETED"
+  comments       String? @db.Text
+  attachmentUrls String? @db.Text // JSON array
+
+  // Financial Changes (if applicable)
+  amountBefore Decimal? @db.Decimal(12, 2)
+  amountAfter  Decimal? @db.Decimal(12, 2)
+
+  // System Metadata
+  ipAddress String?
+  userAgent String?
+
+  // Relation
+  budgetRequest BudgetRequest @relation(fields: [budgetRequestId], references: [id], onDelete: Cascade)
+
+  @@index([budgetRequestId, changedAt])
+  @@index([changedBy, changedAt])
+  @@index([action, changedAt])
+}
+
+// ============================================================================
+// NOTIFICATIONS (Track email/system notifications sent)
+// ============================================================================
+
+model BudgetRequestNotification {
+  id              Int @id @default(autoincrement())
+  budgetRequestId Int
+
+  // Notification Details
+  notificationType String // "REQUEST_SUBMITTED" | "REQUEST_APPROVED" | "REQUEST_REJECTED" | "REMINDER" | "EXPIRY_WARNING" | "ESCALATION" | "OVERDUE"
+  recipientUserId  String
+  recipientEmail   String?
+  recipientName    String?
+  subject          String
+  message          String  @db.Text
+
+  // Delivery Status
+  sentAt           DateTime?
+  deliveryStatus   String    @default("pending") // "pending" | "sent" | "failed" | "bounced"
+  deliveryError    String?
+  deliveryProvider String?                       // "smtp" | "sendgrid" | "ses"
+
+  // Engagement Tracking
+  readAt      DateTime?
+  clickedAt   DateTime?
+  actionTaken String? // "approved" | "rejected" | "viewed" | "ignored"
+
+  // Retry Logic
+  retryCount  Int       @default(0)
+  maxRetries  Int       @default(3)
+  nextRetryAt DateTime?
+
+  // Relation
+  budgetRequest BudgetRequest @relation(fields: [budgetRequestId], references: [id], onDelete: Cascade)
+
+  @@index([budgetRequestId, sentAt])
+  @@index([recipientUserId, deliveryStatus])
+  @@index([deliveryStatus, sentAt])
+  @@index([notificationType, sentAt])
+}
+
+// ============================================================================
+// EXPORT AUDIT LOG (NEW - Track export actions for compliance)
+// ============================================================================
+
+model BudgetRequestExportLog {
+  id              Int      @id @default(autoincrement())
+  budgetRequestId Int?     // Optional: link to specific request if single-record export
+
+  // Exporter Information
+  exportedBy     String   // User ID
+  exportedByName String?
+  exportedByRole UserRole // Track if Admin or Non-Admin
+  exportedByDept String   // Department of exporter
+
+  // Export Details
+  exportFormat   String // "CSV" | "PDF" | "Excel" | "JSON"
+  exportScope    String // "own_department" | "all_departments" | "single_record"
+  recordCount    Int    // How many records exported
+  filterCriteria String? @db.Text // JSON of applied filters (date range, status, etc.)
+
+  // File Details
+  fileName     String?
+  fileSizeKB   Int?
+  downloadUrl  String? // Temporary URL if applicable
+  expiresAt    DateTime? // URL expiration
+
+  // Audit
+  exportedAt DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  // Relation
+  budgetRequest BudgetRequest? @relation(fields: [budgetRequestId], references: [id], onDelete: SetNull)
+
+  @@index([exportedBy, exportedAt])
+  @@index([exportedByDept, exportedAt])
+  @@index([exportFormat, exportedAt])
+  @@index([budgetRequestId])
+}
+
+// ============================================================================
+// CACHED BUDGET DATA (Synced from Finance Backend - Repo 2)
+// ============================================================================
+
+model CachedDepartmentBudget {
+  id Int @id @default(autoincrement())
+
+  // Budget Identification (from Finance.Budget model in Repo 2)
+  budgetId     Int    @unique // Finance Backend Budget.id
+  department   String
+  fiscalYear   Int
+  fiscalPeriod String
+
+  // Budget Amounts (synced from Finance)
+  allocatedAmount Decimal @db.Decimal(12, 2)
+  usedAmount      Decimal @db.Decimal(12, 2)
+  reservedAmount  Decimal @db.Decimal(12, 2)
+  remainingAmount Decimal @db.Decimal(12, 2)
+
+  // Calculated Metrics
+  utilizationRate    Decimal?  @db.Decimal(5, 2) // (usedAmount + reservedAmount) / allocatedAmount * 100
+  availableRate      Decimal?  @db.Decimal(5, 2) // remainingAmount / allocatedAmount * 100
+  burnRate           Decimal?  @db.Decimal(12, 2) // Average daily spend
+  projectedDepletion DateTime?                    // Estimated date when budget runs out
+
+  // Period
+  periodStart   DateTime
+  periodEnd     DateTime
+  daysRemaining Int? // Days until periodEnd
+
+  // Sync Metadata
+  lastSyncedAt  DateTime  @default(now())
+  sourceSystem  String    @default("Finance")
+  isStale       Boolean   @default(false)
+  nextSyncAt    DateTime?              // Scheduled next sync time
+  syncFrequency Int       @default(15) // Minutes between syncs
+
+  // Health Indicators
+  isOverBudget       Boolean @default(false)
+  isNearingLimit     Boolean @default(false) // True if >80% utilized
+  hasPendingRequests Int     @default(0)     // Count of pending budget requests
+
+  @@unique([department, fiscalYear, fiscalPeriod])
+  @@index([department, fiscalYear, fiscalPeriod])
+  @@index([lastSyncedAt])
+  @@index([isStale])
+  @@index([isOverBudget, isNearingLimit])
+}
+
+// ============================================================================
+// API ACCESS LOGS (Track which services are using the Budget Request API)
+// ============================================================================
+
+model ApiAccessLog {
+  id Int @id @default(autoincrement())
+
+  // Request Details
+  endpoint      String // "/api/budget-requests" | "/api/budget-requests/:id"
+  method        String // "GET" | "POST" | "PUT" | "DELETE"
+  sourceService String // "finance" | "hr" | "inventory" | "operations"
+  userId        String? // User ID from source service
+
+  // Request Context
+  requestPath    String? // Full path with query params
+  requestBody    String? @db.Text // JSON (sanitized, no sensitive data)
+  requestHeaders String? @db.Text // JSON (selected headers)
+
+  // Response Details
+  statusCode        Int
+  responseTimeMs    Int?
+  responseSizeBytes Int?
+  errorMessage      String? @db.Text
+
+  // Timestamps
+  requestedAt DateTime @default(now())
+
+  // Request Context
+  ipAddress String?
+  userAgent String?
+
+  // Rate Limiting
+  isRateLimited Boolean @default(false)
+  rateLimitKey  String? // For grouping rate limit checks
+
+  @@index([sourceService, requestedAt])
+  @@index([endpoint, method])
+  @@index([statusCode, requestedAt])
+  @@index([userId, requestedAt])
+}
+
+// ============================================================================
+// SYSTEM CONFIGURATION (Microservice settings)
+// ============================================================================
+
+model SystemConfig {
+  id          Int     @id @default(autoincrement())
+  configKey   String  @unique
+  configValue String  @db.Text // JSON string for complex values
+  description String?
+  category    String? // "approval_workflow" | "notification" | "integration" | "budget_rules"
+  dataType    String  @default("string") // "string" | "number" | "boolean" | "json"
+
+  // Validation
+  validationRules String? @db.Text // JSON schema for value validation
+  defaultValue    String?
+
+  // Lifecycle
+  isActive        Boolean @default(true)
+  isSystemManaged Boolean @default(false) // True if should not be manually edited
+  requiresRestart Boolean @default(false) // True if change requires service restart
+
+  // Audit
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([category, isActive])
+  @@index([isSystemManaged])
+}
