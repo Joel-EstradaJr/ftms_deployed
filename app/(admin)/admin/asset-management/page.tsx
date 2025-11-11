@@ -126,15 +126,42 @@ export default function AssetManagementPage() {
         {loading && <Loading />}
         {error && <ErrorDisplay errorCode={error} onRetry={() => { /* TODO: reload from backend */ }} />}
 
-        {!loading && !error && (
-          <AssetTable
-            assets={filteredAssets}
-            onRowClick={(a) => {
-              setSelectedAsset(a);
-              setShowDepModal(true);
-            }}
-          />
-        )}
+        <div className="table-wrapper">
+          <div className="tableContainer">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Date Acquired</th>
+                  <th>Asset</th>
+                  <th>Original Value</th>
+                  <th>Depreciation (Annual %)</th>
+                  <th>Depreciated Value</th>
+                  <th>Current Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAssets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                      {loading ? 'Loading...' : 'No assets found'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAssets.map(a => (
+                    <tr key={a.id} style={{cursor: 'pointer'}} onClick={() => { setSelectedAsset(a); setShowDepModal(true); }}>
+                      <td>{new Date(a.date_acquired).toLocaleDateString()}</td>
+                      <td>{a.name}</td>
+                      <td style={{ textAlign: 'center' }}>₱{a.original_value.toLocaleString()}</td>
+                      <td style={{ textAlign: 'center' }}>{a.depreciation_rate_annual ? `${a.depreciation_rate_annual}%` : '-'}</td>
+                      <td style={{ textAlign: 'center' }}>₱{(a.total_depreciated ?? 0).toLocaleString()}</td>
+                      <td style={{ textAlign: 'center' }}>₱{(a.current_value ?? a.original_value).toLocaleString()}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {showDepModal && selectedAsset && (

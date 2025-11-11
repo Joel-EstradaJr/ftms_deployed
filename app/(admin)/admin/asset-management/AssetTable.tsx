@@ -2,6 +2,8 @@
 
 import React from "react";
 import type { Asset } from "../../../types/asset";
+import "../../../styles/components/table.css";
+
 
 export default function AssetTable({ assets, onRowClick }:{
   assets: Asset[];
