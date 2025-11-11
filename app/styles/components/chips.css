@@ -38,7 +38,7 @@
 }
 
 /* ============================================================
-   ERROR - Red (Rejected, Cancelled, Overdue, Out of Stock)
+   ERROR - Red (Rejected, Cancelled, Overdue, Out of Stock, Trip Deficit)
    ============================================================ */
 .chip.Pending,
 .chip.Rejected,
@@ -46,7 +46,9 @@
 .chip.cancelled,
 .chip.out-of-stock,
 .chip.not-returned,
-.chip.decommissioned {
+.chip.decommissioned,
+.chip.loan,
+.chip.trip_deficit {
     background-color: var(--error-chip-bg-color);
     color: var(--error-chip-text-color);
 }

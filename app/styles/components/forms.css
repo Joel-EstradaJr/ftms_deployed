@@ -223,6 +223,13 @@
     color: var(--error-color);
 }
 
+.add-form .hint-message,
+.edit-form .hint-message {
+    margin: 5px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+}
+
 .add-form .add-error-message.quantity,
 .error-text.quantity {
     margin-top: -5px;

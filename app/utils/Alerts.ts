@@ -1,4 +1,5 @@
 import Swal from 'sweetalert2';
+import { formatMoney } from './formatting';
 
 //--------------------ADD REVENUE RECORD-------------------//
 export const showEmptyFieldWarning = () => {
@@ -613,6 +614,132 @@ export const showEditPaymentSuccess = () => {
     timerProgressBar: true,
     customClass: {
       popup: 'swal-custom-popup'
+    }
+  });
+};
+
+// ========================================================================================
+// REMITTANCE CONFIRMATION
+// ========================================================================================
+
+/**
+ * Shows confirmation dialog with remittance preview before submission
+ */
+export const showRemittanceConfirmation = (data: {
+  dateRecorded: string;
+  busPlateNumber: string;
+  tripRevenue: number;
+  assignmentType: string;
+  assignmentValue: number;
+  paymentMethod: string;
+  remittedAmount: number;
+  hasLoan: boolean;
+  loanAmount?: number;
+}) => {
+  const formattedDate = new Date(data.dateRecorded).toLocaleDateString("en-US", { 
+    month: "long", 
+    day: "numeric", 
+    year: "numeric" 
+  });
+
+  const assignmentLabel = data.assignmentType === 'Boundary' ? 'Quota Amount' : 'Company Share';
+  const assignmentDisplay = data.assignmentType === 'Boundary' 
+    ? formatMoney(data.assignmentValue)
+    : `${data.assignmentValue}%`;
+
+  return Swal.fire({
+    title: 'Confirm Remittance',
+    html: `
+      <div style="text-align: left; padding: 15px;">
+        <h4 style="margin-bottom: 15px; color: #961C1E; border-bottom: 2px solid #961C1E; padding-bottom: 8px;">
+          Remittance Summary
+        </h4>
+        
+        <div style="margin-bottom: 12px;">
+          <strong style="color: #666; display: inline-block; width: 160px;">Date Recorded:</strong>
+          <span style="color: #333;">${formattedDate}</span>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong style="color: #666; display: inline-block; width: 160px;">Bus Plate Number:</strong>
+          <span style="color: #333;">${data.busPlateNumber}</span>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong style="color: #666; display: inline-block; width: 160px;">Trip Revenue:</strong>
+          <span style="color: #333;">${formatMoney(data.tripRevenue)}</span>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong style="color: #666; display: inline-block; width: 160px;">${assignmentLabel}:</strong>
+          <span style="color: #333;">${assignmentDisplay}</span>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong style="color: #666; display: inline-block; width: 160px;">Payment Method:</strong>
+          <span style="color: #333;">${data.paymentMethod}</span>
+        </div>
+        
+        <div style="margin-bottom: 12px; padding-top: 10px; border-top: 1px dashed #ddd;">
+          <strong style="color: #961C1E; display: inline-block; width: 160px; font-size: 16px;">Remitted Amount:</strong>
+          <span style="color: #961C1E; font-size: 16px; font-weight: bold;">${formatMoney(data.remittedAmount)}</span>
+        </div>
+        
+        ${data.hasLoan ? `
+          <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+            <p style="margin: 0 0 8px 0; color: #856404; font-weight: 600;">
+              ⚠️ Loan will be created
+            </p>
+            <p style="margin: 0; color: #856404;">
+              <strong>Loan Amount:</strong> ${formatMoney(data.loanAmount || 0)}
+            </p>
+          </div>
+        ` : ''}
+        
+        <p style="margin-top: 20px; color: #666; font-size: 14px; text-align: center;">
+          Are you sure you want to record this remittance?
+        </p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Confirm & Submit',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#961C1E',
+    cancelButtonColor: '#6c757d',
+    background: 'white',
+    backdrop: false,
+    reverseButtons: true,
+    customClass: {
+      popup: 'swal-custom-popup',
+      confirmButton: 'swal-confirm-button',
+      cancelButton: 'swal-cancel-button'
+    },
+    didOpen: () => {
+      const style = document.createElement('style');
+      style.textContent = `
+        .swal-confirm-button {
+          background: linear-gradient(135deg, #961C1E 0%, #7a1618 100%) !important;
+          border: none !important;
+          box-shadow: 0 4px 12px rgba(150, 28, 30, 0.3) !important;
+          padding: 10px 24px !important;
+          font-weight: 600 !important;
+        }
+        .swal-confirm-button:hover {
+          background: linear-gradient(135deg, #7a1618 0%, #5f1113 100%) !important;
+          transform: translateY(-1px) !important;
+        }
+        .swal-cancel-button {
+          background: #6c757d !important;
+          border: none !important;
+          padding: 10px 24px !important;
+          font-weight: 600 !important;
+        }
+        .swal-cancel-button:hover {
+          background: #545b62 !important;
+        }
+      `;
+      document.head.appendChild(style);
     }
   });
 };

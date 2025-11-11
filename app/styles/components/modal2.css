@@ -75,7 +75,7 @@
 }
 
 .close-modal-btn:hover {
-    background-color: var(--table-row-hover-color);
+    background-color: var(--table-row-hover-color)!important;
     transition: all 0.3s ease-in-out;
     transform: scale(1.2);
 }
@@ -114,6 +114,7 @@
     justify-content: flex-end;
     gap: 20px;
     margin-top: 32px;
+    background-color: var(--table-row-color);
 }
 
 /* ----- BUTTONS ----- */
@@ -142,6 +143,12 @@
 .modal-actions .submit-btn:hover {
     background-color: var(--primary-hover-color);
 }
+
+.modal-actions .submit-btn:disabled {
+    background-color: var(--button-disabled-color);
+    cursor: not-allowed;
+}
+
 
 /* add another stock button */
 .modal-actions .add-another-btn {

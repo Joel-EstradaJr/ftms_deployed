@@ -1,6 +1,36 @@
+/**
+ * View Trip Revenue Modal Component
+ * 
+ * ============================================================================
+ * BACKEND INTEGRATION NOTES
+ * ============================================================================
+ * 
+ * This component displays detailed trip revenue and remittance information.
+ * It calculates and displays loan details if the trip has been converted to a loan.
+ * 
+ * DATA REQUIREMENTS FROM BACKEND:
+ * The tripData prop should include all fields from BusTripRecord interface:
+ * - Assignment details (assignment_id, assignment_type, assignment_value, etc.)
+ * - Bus details (bus_plate_number, body_number, etc.)
+ * - Employee details (employee_id, position, etc.)
+ * - Driver/Conductor names (driverName, conductorName) - can be pre-computed
+ * - Remittance details (dateRecorded, amount, status, remarks)
+ * 
+ * LOAN CALCULATION:
+ * If status is 'loaned' or deadline exceeded, the component automatically:
+ * - Calculates the loan principal amount (shortfall from expected remittance)
+ * - Applies 10% interest (can be made configurable)
+ * - Distributes the total loan between conductor and driver
+ * 
+ * NOTE: Loan calculation logic should match recordTripRevenue.tsx for consistency
+ * Consider moving calculation logic to a shared utility function or backend
+ * 
+ * ============================================================================
+ */
+
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 
@@ -35,7 +65,7 @@ interface ViewTripRevenueModalProps {
     // Status tracking (from Model Revenue table)
     dateRecorded: string | null;
     amount: number | null;
-    status: string; // 'remitted' or 'pending'
+    status: string; // 'remitted', 'pending', or 'loaned'
     remarks: string | null;
     
     // Computed/display fields
@@ -45,7 +75,124 @@ interface ViewTripRevenueModalProps {
   onClose: () => void;
 }
 
+// Configuration interface
+interface ConfigData {
+  minimumWage: number;
+  durationToLate: 72;
+  durationToLoan: 168;
+  defaultConductorShare: number;
+  defaultDriverShare: number;
+}
+
 export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripRevenueModalProps) {
+  // Mock configuration (should match page.tsx config)
+  const config: ConfigData = {
+    minimumWage: 600,
+    durationToLate: 72,
+    durationToLoan: 168,
+    defaultConductorShare: 50,
+    defaultDriverShare: 50,
+  };
+
+  // Calculate remittance details
+  const [calculatedData, setCalculatedData] = useState({
+    expectedRemittance: 0,
+    maximumRemittance: 0,
+    remittanceStatus: '',
+    showLoanSection: false,
+    loanAmount: 0,
+    loanInterest: 0,
+    totalLoanAmount: 0,
+    conductorShare: 0,
+    driverShare: 0,
+  });
+
+  useEffect(() => {
+    // Calculate expected remittance based on assignment type
+    // Using the same logic as recordTripRevenue.tsx
+    let expectedRemittance = 0;
+    let maximumRemittance = 0;
+
+    const driver_conductor_minimum = 2 * config.minimumWage; // 1200
+
+    if (tripData.assignment_type === 'Boundary') {
+      const requiredRevenue = tripData.assignment_value + driver_conductor_minimum + tripData.trip_fuel_expense;
+      
+      if (tripData.trip_revenue >= requiredRevenue) {
+        // Condition met: auto-calculate expected remittance
+        expectedRemittance = tripData.assignment_value + tripData.trip_fuel_expense;
+      } else {
+        // Condition not met: maximum remittance is what's left after minimum wage
+        expectedRemittance = 0; // No expected remittance when condition not met
+      }
+      maximumRemittance = Math.max(0, tripData.trip_revenue - driver_conductor_minimum);
+    } else if (tripData.assignment_type === 'Percentage') {
+      const companyShare = (tripData.trip_revenue * tripData.assignment_value) / 100;
+      const netAfterCompanyAndFuel = tripData.trip_revenue - companyShare - tripData.trip_fuel_expense;
+      
+      if (netAfterCompanyAndFuel >= driver_conductor_minimum) {
+        // Condition met: auto-calculate expected remittance
+        expectedRemittance = companyShare + tripData.trip_fuel_expense;
+      } else {
+        // Condition not met: maximum remittance is what's left after minimum wage
+        expectedRemittance = 0; // No expected remittance when condition not met
+      }
+      maximumRemittance = Math.max(0, tripData.trip_revenue - driver_conductor_minimum);
+    }
+
+    // Calculate remittance status
+    const now = new Date();
+    const assignedDate = new Date(tripData.date_assigned);
+    const hoursDiff = (now.getTime() - assignedDate.getTime()) / (1000 * 60 * 60);
+
+    let remittanceStatus = 'PENDING';
+    if (tripData.status === 'remitted') {
+      remittanceStatus = 'REMITTED';
+    } else if (tripData.status === 'loaned') {
+      remittanceStatus = 'LOANED';
+    } else if (hoursDiff > config.durationToLoan) {
+      remittanceStatus = 'CONVERTED TO LOAN';
+    } else if (hoursDiff > config.durationToLate) {
+      remittanceStatus = 'LATE';
+    } else {
+      remittanceStatus = 'ON TIME';
+    }
+
+    // Calculate loan details if applicable
+    const amount = tripData.amount || 0;
+    const showLoanSection = tripData.status === 'loaned' || remittanceStatus === 'CONVERTED TO LOAN';
+    
+    let loanAmount = 0;
+    let loanInterest = 0;
+    let totalLoanAmount = 0;
+    let conductorShare = 0;
+    let driverShare = 0;
+
+    if (showLoanSection) {
+      // If amount is 0 or null (deadline exceeded), use full expected remittance
+      // Otherwise, calculate the shortfall
+      loanAmount = Math.abs(expectedRemittance - amount);
+      loanInterest = loanAmount * 0.10; // 10% interest
+      totalLoanAmount = loanAmount + loanInterest;
+      
+      // Calculate shares (default 50/50 split)
+      conductorShare = totalLoanAmount * (config.defaultConductorShare / 100);
+      driverShare = totalLoanAmount * (config.defaultDriverShare / 100);
+    }
+
+    setCalculatedData({
+      expectedRemittance,
+      maximumRemittance,
+      remittanceStatus,
+      showLoanSection,
+      loanAmount,
+      loanInterest,
+      totalLoanAmount,
+      conductorShare,
+      driverShare,
+    });
+  }, [tripData, config]);
+
   // Format employee name with suffix
   const formatEmployeeName = (firstName: string, middleName: string, lastName: string, suffix: string) => {
     const name = `${firstName} ${middleName} ${lastName}`;
@@ -54,6 +201,7 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
 
   // Format status for display
   const formatStatus = (status: string) => {
+    if (status === 'loaned') return 'Loaned';
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
@@ -158,18 +306,19 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
             </div>
           </div>
 
-          {/* Employee Name */}
+
+          {/* Driver and Conductor Names */}
           <div className="form-row">
+            {/* Driver Name */}
             <div className="form-group">
-              <label>Employee Name</label>
-              <p>
-                {formatEmployeeName(
-                  tripData.employee_firstName,
-                  tripData.employee_middleName,
-                  tripData.employee_lastName,
-                  tripData.employee_suffix
-                )}
-              </p>
+              <label>Driver Name</label>
+              <p>{tripData.driverName || 'N/A'}</p>
+            </div>
+
+            {/* Conductor Name */}
+            <div className="form-group">
+              <label>Conductor Name</label>
+              <p>{tripData.conductorName || 'N/A'}</p>
             </div>
           </div>
         </form>
@@ -191,6 +340,20 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
             <div className="form-group">
               <label>Assignment Type</label>
               <p>{tripData.assignment_type}</p>
+            </div>
+
+            {/* Remittance Status */}
+            <div className="form-group">
+              <label>Remittance Status</label>
+              <p className={`chip ${
+                calculatedData.remittanceStatus === 'REMITTED' || calculatedData.remittanceStatus === 'ON TIME' 
+                  ? 'completed' 
+                  : calculatedData.remittanceStatus === 'LATE' 
+                  ? 'pending' 
+                  : 'loan'
+              }`}>
+                {calculatedData.remittanceStatus}
+              </p>
             </div>
           </div>
 
@@ -230,36 +393,102 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
               <p>{formatMoney(tripData.trip_fuel_expense)}</p>
             </div>
           </div>
+
+          {/* Expected remittance */}
+          <div className="form-row">
+            <div className="form-group">
+              <label>Expected Remittance</label>
+              <p>
+                {calculatedData.expectedRemittance > 0 
+                  ? formatMoney(calculatedData.expectedRemittance)
+                  : 'N/A (Revenue does not meet minimum wage requirement)'
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* Date recorded and amount remitted */}
+          <div className="form-row">
+            {/* Date Recorded */}
+            <div className="form-group">
+              <label>Date Recorded</label>
+              <p>{tripData.dateRecorded ? formatDate(tripData.dateRecorded) : 'Not yet recorded'}</p>
+            </div>
+
+            {/* Amount Remitted */}
+            <div className="form-group">
+              <label>Amount Remitted</label>
+              <p>{tripData.amount !== null ? formatMoney(tripData.amount) : formatMoney(0)}</p>
+            </div>
+          </div>
+
+          {/* Remarks */}
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label>Remarks</label>
+              <p>{tripData.remarks || 'No remarks'}</p>
+            </div>
+          </div>
         </form>
       </div>
 
-      {/* IV. Audit Trail */}
-      {tripData.status === 'remitted' && (
+      {/* IV. Loan Details */}
+      {calculatedData.showLoanSection && (
         <>
-          <p className="details-title">IV. Audit Trail</p>
+          <p className="details-title">IV. Loan Details</p>
           <div className="modal-content view">
             <form className="view-form">
-              {/* Date recorded and amount */}
+              {/* Loan type (always Trip Deficit) */}
               <div className="form-row">
-                {/* Date Recorded */}
                 <div className="form-group">
-                  <label>Date Recorded</label>
-                  <p>{tripData.dateRecorded ? formatDate(tripData.dateRecorded) : 'N/A'}</p>
-                </div>
-
-                {/* Amount Remitted */}
-                <div className="form-group">
-                  <label>Amount Remitted</label>
-                  <p>{tripData.amount ? formatMoney(tripData.amount) : 'N/A'}</p>
+                  <label>Loan Type</label>
+                  <p>Trip Deficit</p>
                 </div>
               </div>
 
-              {/* Remarks */}
-              {tripData.remarks && (
+              {/* Loan amount and interest */}
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Loan Amount (Principal)</label>
+                  <p>{formatMoney(calculatedData.loanAmount)}</p>
+                </div>
+
+                <div className="form-group">
+                  <label>Loan Interest (10%)</label>
+                  <p>{formatMoney(calculatedData.loanInterest)}</p>
+                </div>
+
+                <div className="form-group">
+                  <label>Total Loan Amount</label>
+                  <p className="total-amount">{formatMoney(calculatedData.totalLoanAmount)}</p>
+                </div>
+              </div>
+
+              {/* Conductor and driver shares */}
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Conductor Share ({config.defaultConductorShare}%)</label>
+                  <p>{formatMoney(calculatedData.conductorShare)}</p>
+                </div>
+
+                <div className="form-group">
+                  <label>Driver Share ({config.defaultDriverShare}%)</label>
+                  <p>{formatMoney(calculatedData.driverShare)}</p>
+                </div>
+              </div>
+
+              {/* Loan due date (if recorded) */}
+              {tripData.dateRecorded && (
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Remarks</label>
-                    <p>{tripData.remarks}</p>
+                    <label>Loan Due Date</label>
+                    <p>
+                      {(() => {
+                        const dueDate = new Date(tripData.dateRecorded);
+                        dueDate.setDate(dueDate.getDate() + 30); // 30 days from date recorded
+                        return formatDate(dueDate.toISOString().split('T')[0]);
+                      })()}
+                    </p>
                   </div>
                 </div>
               )}

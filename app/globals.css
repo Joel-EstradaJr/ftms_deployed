@@ -115,6 +115,7 @@ textarea.input-error {
   --border-color: #B3B3B3;
   --table-header-color: #D8D8D8;
   --table-row-border-bottom: 1px solid #B3B3B3;
+  --table-row-color: #FFFFFF;
   --table-row-hover-color: #ECECEC;
 
   /* Button Color */

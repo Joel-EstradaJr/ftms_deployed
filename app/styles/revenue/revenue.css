@@ -9,6 +9,30 @@ button {
   font-family: var(--font-sans) !important;
 }
 
+.config-btn {
+    width: 90px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    border-radius: 8px;
+    background-color: var(--table-row-hover-color);
+    border: 1px solid var(--border-color);
+    color: var(--secondary-text-color);
+    font-size: 14px;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.config-btn i {
+  font-size: 18px;
+}
+
+.config-btn:hover {
+  background-color: var(--info-hover-color);
+}
+
 /* ---------- Settings Block ---------- */
 .settings {
   display: flex !important;

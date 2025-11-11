@@ -1,0 +1,191 @@
+/* Record Trip Revenue Modal Styles */
+
+/* Small text helpers */
+.formatted-date-preview {
+  color: var(--secondary-text-color);
+  font-size: 12px;
+  display: block;
+  margin-top: 4px;
+}
+
+.expected-remittance-hint {
+  color: var(--secondary-text-color);
+  font-size: var(--input-label-font-size); 
+}
+
+.revenue-insufficient-warning {
+  color: var(--error-color);
+  font-size: var(--input-label-font-size); 
+  display: block;
+}
+
+.duration-hint {
+  color: var(--secondary-text-color);
+  font-size: var(--input-label-font-size); 
+}
+
+/* Remittance Status Field Styling */
+.remittance-status-field {
+  background-color: var(--modal-content-background-color);
+}
+
+.status-converted-to-loan {
+  color: var(--error-color);
+}
+
+.status-on-time {
+  color: var(--success-color);
+}
+
+.status-late {
+  color: var(--warning-color);
+}
+
+.status-pending {
+  color: var(--secondary-text-color);
+}
+
+.status-warning-converted {
+  color: var(--error-color);
+  font-size: var(--input-label-font-size); 
+  display: block;
+  margin-top: 4px;
+}
+
+.status-warning-late {
+  color: var(--warning-color);
+  font-size: var(--input-label-font-size); 
+  display: block;
+  margin-top: 4px;
+}
+
+/* Loan Breakdown Collapsible */
+.loan-breakdown-container {
+  width: 100%;
+}
+
+.loan-breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px;
+  background-color: var(--modal-content-background-color);
+  border-radius: var(--modal-content-border-radius);
+  margin-bottom: 10px;
+  transition: all 0.2s;
+}
+
+.loan-breakdown-header:hover {
+  background-color: var(--table-row-hover-color);
+}
+
+.loan-breakdown-title {
+  margin: 0;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--input-label-font-size);
+  color: var(--primary-text-color);
+}
+
+.loan-breakdown-content {
+  padding: 15px;
+  background-color: var(--table-row-color)!important;
+  border-radius: var(--modal-content-border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.breakdown-section-title {
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  font-size: var(--input-label-font-size)
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  color: var(--primary-text-color);
+}
+
+.breakdown-row-bold {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-top: 1px solid var(--border-color);
+  margin-top: 5px;
+  font-weight: 600;
+  color: var(--primary-text-color);
+}
+
+.breakdown-row-negative {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  color: var(--error-color);
+}
+
+.breakdown-row-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 2px solid var(--primary-text-color);
+  margin-top: 5px;
+  font-size: var(--input-label-font-size); 
+  font-weight: 700;
+  color: var(--error-color);
+}
+
+.breakdown-distribution-section {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Interest section */
+.breakdown-interest-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.breakdown-row-grand-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 2px solid var(--primary-text-color);
+  margin-top: 5px;
+  font-size: var(--input-label-font-size); 
+  font-weight: 700;
+  color: var(--success-color);
+}
+
+/* Disabled field styling */
+.disabled-field {
+  background-color: var(--modal-content-background-color);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Auto-calculated field hint */
+.auto-calculated-hint {
+  color: var(--secondary-text-color);
+  font-size: var(--input-label-font-size); 
+}
+
+/* Interest rate hint */
+.interest-rate-hint {
+  color: var(--secondary-text-color);
+  font-size: var(--input-label-font-size); 
+}
+
+/* Character counter */
+.character-counter {
+  color: var(--secondary-text-color);
+  font-size: var(--input-label-font-size); 
+}
+
+.principalAmount, .loanAmount, .loanType {
+    color: var(--primary-text-color);
+}
