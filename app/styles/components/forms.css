@@ -52,6 +52,13 @@
     padding: 6px 12px;
 }
 
+.form-group input[type="checkbox"] {
+    min-width: 0px;
+    padding: 0px;
+    width: auto;
+    cursor: pointer !important;
+}
+
 .form-group textarea {
     padding: 6px 12px;
     min-width: 600px;

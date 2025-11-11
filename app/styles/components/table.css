@@ -156,7 +156,8 @@ td.actionButtons {
 .actionButtonsContainer .approveBtn,
 .actionButtonsContainer .rejectBtn,
 .actionButtonsContainer .exportBtn,
-.actionButtonsContainer .auditBtn {
+.actionButtonsContainer .auditBtn,
+.actionButtonsContainer .refundBtn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -239,4 +240,12 @@ td.actionButtons {
 }
 .auditBtn:hover {
   background-color: var(--info-hover-color) !important;
+}
+
+/* Refund button (Warning/Orange) */
+.refundBtn {
+  background-color: var(--warning-color) !important;
+}
+.refundBtn:hover {
+  background-color: var(--warning-hover-color) !important;
 }
