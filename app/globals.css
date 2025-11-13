@@ -88,6 +88,36 @@ textarea.input-error {
   box-shadow: none !important;
 }
 
+.modalButtons, .filters {
+  display: flex !important;
+  gap: var(--page-button-gap) !important;
+  justify-content: flex-end !important;
+}
+
+.modalButtons button,
+.filters button {
+  width: var(--modal-button-width) !important;
+  height: var(--modal-button-height) !important;
+  font-size: var(--modal-button-font-size) !important;
+  border-radius: var(--modal-button-border-radius) !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  color: var(--button-font-color) !important;
+  box-shadow: var(--box-shadow) !important;
+  transition: transform 0.15s ease, background 0.15s ease !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.addButton {
+  background: var(--primary-color) !important;
+}
+.addButton:hover {
+  background: var(--primary-hover-color) !important;
+}
+
 :root {
 
   /* ================ COLORS ================*/
