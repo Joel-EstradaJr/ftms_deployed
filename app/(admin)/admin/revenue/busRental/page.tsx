@@ -53,13 +53,10 @@ interface BusRentalRecord {
   amount: number; // total rental amount
   rentalDownpayment: number;
   rentalBalance: number; // auto-calculated
-  isDownpaymentRefundable: boolean; // checkbox
   downpaymentReceivedAt: string | null; // date picker
   balanceReceivedAt: string | null; // date picker
   isCancelled: boolean; // checkbox
   cancelledAt?: string | null; // date picker, shows when cancelled
-  refundedAt?: string | null; // date when refund was processed
-  refundNotes?: string; // notes about the refund
   dateRecorded: string; // date picker
   sourceRefNo: string; // rental contract number
   remarks?: string; // textarea
@@ -294,7 +291,6 @@ const AdminBusRentalPage = () => {
           amount: 50000.00,
           rentalDownpayment: 20000.00,
           rentalBalance: 30000.00,
-          isDownpaymentRefundable: true,
           downpaymentReceivedAt: '2024-11-01',
           balanceReceivedAt: null,
           isCancelled: false,
@@ -324,7 +320,6 @@ const AdminBusRentalPage = () => {
           amount: 25000.00,
           rentalDownpayment: 25000.00,
           rentalBalance: 0.00,
-          isDownpaymentRefundable: false,
           downpaymentReceivedAt: '2024-10-15',
           balanceReceivedAt: '2024-10-15',
           isCancelled: false,
@@ -354,7 +349,6 @@ const AdminBusRentalPage = () => {
           amount: 75000.00,
           rentalDownpayment: 30000.00,
           rentalBalance: 45000.00,
-          isDownpaymentRefundable: true,
           downpaymentReceivedAt: '2024-10-20',
           balanceReceivedAt: null,
           isCancelled: true,
@@ -384,7 +378,6 @@ const AdminBusRentalPage = () => {
           amount: 35000.00,
           rentalDownpayment: 15000.00,
           rentalBalance: 20000.00,
-          isDownpaymentRefundable: false,
           downpaymentReceivedAt: '2024-11-05',
           balanceReceivedAt: null,
           isCancelled: false,
@@ -413,7 +406,6 @@ const AdminBusRentalPage = () => {
           amount: 100000.00,
           rentalDownpayment: 50000.00,
           rentalBalance: 50000.00,
-          isDownpaymentRefundable: true,
           downpaymentReceivedAt: '2024-11-08',
           balanceReceivedAt: null,
           isCancelled: false,
@@ -443,7 +435,6 @@ const AdminBusRentalPage = () => {
           amount: 18000.00,
           rentalDownpayment: 18000.00,
           rentalBalance: 0.00,
-          isDownpaymentRefundable: false,
           downpaymentReceivedAt: '2024-09-30',
           balanceReceivedAt: '2024-09-30',
           isCancelled: false,
@@ -473,7 +464,6 @@ const AdminBusRentalPage = () => {
           amount: 45000.00,
           rentalDownpayment: 20000.00,
           rentalBalance: 25000.00,
-          isDownpaymentRefundable: false,
           downpaymentReceivedAt: '2024-11-10',
           balanceReceivedAt: null,
           isCancelled: false,
@@ -502,7 +492,6 @@ const AdminBusRentalPage = () => {
           amount: 60000.00,
           rentalDownpayment: 25000.00,
           rentalBalance: 35000.00,
-          isDownpaymentRefundable: true,
           downpaymentReceivedAt: '2024-10-28',
           balanceReceivedAt: null,
           isCancelled: true,
@@ -531,7 +520,6 @@ const AdminBusRentalPage = () => {
           amount: 28000.00,
           rentalDownpayment: 28000.00,
           rentalBalance: 0.00,
-          isDownpaymentRefundable: false,
           downpaymentReceivedAt: '2024-11-03',
           balanceReceivedAt: '2024-11-03',
           isCancelled: false,
@@ -561,7 +549,6 @@ const AdminBusRentalPage = () => {
           amount: 120000.00,
           rentalDownpayment: 50000.00,
           rentalBalance: 70000.00,
-          isDownpaymentRefundable: true,
           downpaymentReceivedAt: '2024-11-11',
           balanceReceivedAt: null,
           isCancelled: false,
@@ -693,25 +680,7 @@ const AdminBusRentalPage = () => {
     className: string;
     icon: string;
   } => {
-    // Refunded (cancelled and refund processed)
-    if (record.refundedAt) {
-      return { 
-        label: 'Refunded', 
-        className: 'refunded',
-        icon: 'ri-refund-2-line'
-      };
-    }
-    
-    // Cancelled and refundable (but not yet refunded)
-    if (record.isCancelled && record.isDownpaymentRefundable) {
-      return { 
-        label: 'Cancelled (Refundable)', 
-        className: 'refund-processing',
-        icon: 'ri-error-warning-line'
-      };
-    }
-    
-    // Cancelled (non-refundable)
+    // Cancelled
     if (record.isCancelled) {
       return { 
         label: 'Cancelled', 
@@ -772,7 +741,6 @@ const AdminBusRentalPage = () => {
               amount: rowData?.amount || 0,
               rentalDownpayment: rowData?.rentalDownpayment || 0,
               rentalBalance: rowData?.rentalBalance || 0,
-              isDownpaymentRefundable: rowData?.isDownpaymentRefundable || false,
               downpaymentReceivedAt: rowData?.downpaymentReceivedAt || "",
               balanceReceivedAt: rowData?.balanceReceivedAt || "",
               isCancelled: rowData?.isCancelled || false,
@@ -800,7 +768,6 @@ const AdminBusRentalPage = () => {
               amount: rowData?.amount || 0,
               rentalDownpayment: rowData?.rentalDownpayment || 0,
               rentalBalance: rowData?.rentalBalance || 0,
-              isDownpaymentRefundable: rowData?.isDownpaymentRefundable || false,
               downpaymentReceivedAt: rowData?.downpaymentReceivedAt || "",
               balanceReceivedAt: rowData?.balanceReceivedAt || "",
               isCancelled: rowData?.isCancelled || false,
@@ -861,9 +828,6 @@ const AdminBusRentalPage = () => {
           <p><strong>Balance:</strong> ${formatMoney(record.rentalBalance)}</p>
           <hr/>
           <p style="color: #dc3545; font-weight: bold;">⚠️ This will mark the rental as cancelled.</p>
-          ${record.isDownpaymentRefundable 
-            ? '<p style="color: #28a745;">✓ Downpayment is refundable and can be processed later.</p>' 
-            : '<p style="color: #856404;">⚠️ Downpayment is non-refundable.</p>'}
         </div>
       `,
       icon: 'warning',
@@ -961,169 +925,6 @@ const AdminBusRentalPage = () => {
       } catch (err) {
         console.error('Error deleting rental:', err);
         showError('Failed to delete rental record', 'Error');
-      }
-    }
-  };
-
-  const handleRefund = async (id: number) => {
-    const record = data.find(item => item.id === id);
-    if (!record) return;
-
-    const today = new Date().toISOString().split('T')[0];
-
-    // Show enhanced refund form with date and notes
-    const result = await Swal.fire({
-      title: 'Process Downpayment Refund',
-      html: `
-        <div style="text-align: left; padding: 15px;">
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="margin: 5px 0;"><strong>Customer:</strong> ${record.entityName}</p>
-            <p style="margin: 5px 0;"><strong>Contract No.:</strong> ${record.sourceRefNo}</p>
-            <p style="margin: 5px 0;"><strong>Rental Period:</strong> ${record.rentalStartDate} to ${record.rentalEndDate}</p>
-            <p style="margin: 5px 0;"><strong>Cancelled Date:</strong> ${record.cancelledAt || 'N/A'}</p>
-            <p style="margin: 5px 0; font-size: 16px; color: #961C1E;"><strong>Refund Amount:</strong> ${formatMoney(record.rentalDownpayment)}</p>
-          </div>
-          
-          <div style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 4px; margin-bottom: 20px;">
-            <p style="margin: 0; color: #856404; font-weight: 600;">
-              ⚠️ This will mark the downpayment as refunded and update the rental status
-            </p>
-          </div>
-
-          <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 5px; color: #333; font-weight: 600;">
-              Refund Date: <span style="color: #dc3545;">*</span>
-            </label>
-            <input 
-              type="date" 
-              id="refund-date" 
-              class="swal2-input" 
-              value="${today}"
-              max="${today}"
-              style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;"
-            />
-          </div>
-
-          <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 5px; color: #333; font-weight: 600;">
-              Refund Notes:
-            </label>
-            <textarea 
-              id="refund-notes" 
-              class="swal2-textarea" 
-              placeholder="Optional: Add notes about the refund process..."
-              rows="3"
-              style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; resize: vertical;"
-            ></textarea>
-          </div>
-
-          <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #e0e0e0;">
-            <p style="margin-bottom: 10px; color: #333; font-weight: 600;">
-              Type <strong style="color: #961C1E;">REFUND</strong> to confirm:
-            </p>
-            <input 
-              id="refund-confirmation" 
-              class="swal2-input" 
-              placeholder="Type REFUND here"
-              style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; text-transform: uppercase;"
-            />
-          </div>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Process Refund',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#961C1E',
-      cancelButtonColor: '#6c757d',
-      background: 'white',
-      backdrop: false,
-      reverseButtons: true,
-      width: '600px',
-      customClass: {
-        popup: 'swal-custom-popup'
-      },
-      preConfirm: () => {
-        const confirmInput = document.getElementById('refund-confirmation') as HTMLInputElement;
-        const dateInput = document.getElementById('refund-date') as HTMLInputElement;
-        const notesInput = document.getElementById('refund-notes') as HTMLTextAreaElement;
-        
-        const confirmValue = confirmInput?.value?.trim().toUpperCase();
-        const refundDate = dateInput?.value?.trim();
-        const refundNotes = notesInput?.value?.trim();
-        
-        if (!refundDate) {
-          Swal.showValidationMessage('Please select a refund date');
-          return false;
-        }
-        
-        if (confirmValue !== 'REFUND') {
-          Swal.showValidationMessage('Please type REFUND to confirm');
-          return false;
-        }
-        
-        return { refundDate, refundNotes };
-      },
-      didOpen: () => {
-        const confirmInput = document.getElementById('refund-confirmation') as HTMLInputElement;
-        confirmInput?.focus();
-      }
-    });
-
-    if (result.isConfirmed && result.value) {
-      try {
-        const { refundDate, refundNotes } = result.value;
-
-        // TODO: Replace with actual API call to process refund
-        // const response = await fetch(`/api/admin/revenue/${id}/refund`, {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ 
-        //     userId: 'admin',
-        //     refundDate,
-        //     refundNotes
-        //   })
-        // });
-
-        // For now, update the record locally
-        setData(prevData => 
-          prevData.map(item => 
-            item.id === id 
-              ? { 
-                  ...item, 
-                  isDownpaymentRefundable: false, // Mark as no longer refundable (refund processed)
-                  refundedAt: refundDate,
-                  refundNotes: refundNotes || undefined
-                }
-              : item
-          )
-        );
-
-        await Swal.fire({
-          icon: 'success',
-          title: 'Refund Processed Successfully',
-          html: `
-            <div style="text-align: left; padding: 15px;">
-              <p style="margin: 8px 0;"><strong>Customer:</strong> ${record.entityName}</p>
-              <p style="margin: 8px 0;"><strong>Refund Amount:</strong> ${formatMoney(record.rentalDownpayment)}</p>
-              <p style="margin: 8px 0;"><strong>Refund Date:</strong> ${refundDate}</p>
-              ${refundNotes ? `<p style="margin: 8px 0;"><strong>Notes:</strong> ${refundNotes}</p>` : ''}
-            </div>
-          `,
-          confirmButtonColor: '#961C1E',
-          background: 'white',
-          backdrop: false,
-          timer: 4000,
-          timerProgressBar: true,
-          customClass: {
-            popup: 'swal-custom-popup'
-          }
-        });
-
-        fetchData(); // Refresh the data
-      } catch (err) {
-        console.error('Error processing refund:', err);
-        showError('Failed to process refund', 'Error');
       }
     }
   };
@@ -1306,20 +1107,6 @@ const AdminBusRentalPage = () => {
                                 title="Edit Rental"
                               >
                                 <i className="ri-edit-line"></i>
-                              </button>
-                            )}
-
-                            {/* Show Refund button if cancelled and downpayment is refundable */}
-                            {item.isCancelled && item.isDownpaymentRefundable && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRefund(item.id);
-                                }}
-                                className="refundBtn"
-                                title="Process Refund"
-                              >
-                                <i className="ri-money-dollar-circle-line"></i>
                               </button>
                             )}
 

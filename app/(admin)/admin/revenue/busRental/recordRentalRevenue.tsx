@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
     showSuccess,
-    showError
+    showError,
+    showConfirmation
 } from "@/utils/Alerts";
 import Swal from "sweetalert2";
 import { formatMoney } from "@/utils/formatting";
@@ -16,7 +17,6 @@ export interface RentalRevenueForm {
     amount: number; // total rental amount
     rentalDownpayment: number;
     rentalBalance: number; // auto-calculated
-    isDownpaymentRefundable: boolean; // checkbox
     downpaymentReceivedAt: string; // date picker
     balanceReceivedAt: string; // date picker
     isCancelled: boolean; // checkbox
@@ -51,7 +51,6 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
         amount: initialData?.amount || 0,
         rentalDownpayment: initialData?.rentalDownpayment || 0,
         rentalBalance: initialData?.rentalBalance || 0,
-        isDownpaymentRefundable: initialData?.isDownpaymentRefundable || false,
         downpaymentReceivedAt: initialData?.downpaymentReceivedAt || "",
         balanceReceivedAt: initialData?.balanceReceivedAt || "",
         isCancelled: initialData?.isCancelled || false,
@@ -227,17 +226,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
             return;
         }
 
-        const result = await Swal.fire({
-            title: 'Unsaved Changes',
-            text: 'You have unsaved changes. Are you sure you want to close?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#961C1E',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, close it',
-            cancelButtonText: 'Continue editing',
-            reverseButtons: true
-        });
+        const result = await showConfirmation('You have unsaved changes. Are you sure you want to close?', 'Unsaved Changes');
 
         if (result.isConfirmed) {
             onClose();
@@ -395,18 +384,6 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                     </select>
                                     <p className="add-error-message">{formErrors?.paymentMethodId}</p>
                                 </div>
-
-                                <div className="form-group" style={{ display: 'flex', alignItems: 'center', paddingTop: '28px' }}>
-                                    <input
-                                        type="checkbox"
-                                        id="isDownpaymentRefundable"
-                                        checked={rentalRevenueForm.isDownpaymentRefundable}
-                                        onChange={(e) => handleChange("isDownpaymentRefundable", e.target.checked)}
-                                    />
-                                    <label htmlFor="isDownpaymentRefundable" style={{ marginLeft: '8px', marginBottom: '0' }}>
-                                        Downpayment is Refundable
-                                    </label>
-                                </div>
                             </div>
 
                             {/* Rental Balance Display */}
@@ -531,12 +508,12 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                 <button type="submit" className="submit-btn" onClick={handleSubmit}>
                     {phase === 'record' && (
                         <>
-                            <i className="ri-save-3-line" /> Record Rental with Downpayment
+                            <i className="ri-save-3-line" /> Record Rental
                         </>
                     )}
                     {phase === 'balance' && (
                         <>
-                            <i className="ri-check-double-line" /> Confirm Balance Payment
+                            <i className="ri-check-double-line" /> Pay Balance
                         </>
                     )}
                 </button>

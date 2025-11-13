@@ -175,7 +175,7 @@ export const showConfirmation = (message: string, title: string) => {
     reverseButtons: true,
     customClass: {
     popup: 'swal-custom-popup'
-  }
+    }
   });
 };
 

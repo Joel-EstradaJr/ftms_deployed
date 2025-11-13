@@ -12,13 +12,10 @@ interface BusRentalRecord {
     amount: number;
     rentalDownpayment: number;
     rentalBalance: number;
-    isDownpaymentRefundable: boolean;
     downpaymentReceivedAt: string | null;
     balanceReceivedAt: string | null;
     isCancelled: boolean;
     cancelledAt?: string | null;
-    refundedAt?: string | null;
-    refundNotes?: string;
     dateRecorded: string;
     sourceRefNo: string;
     remarks?: string;
@@ -172,19 +169,6 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
                         </div>
-
-                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', paddingTop: '28px' }}>
-                            <input
-                                type="checkbox"
-                                id="isDownpaymentRefundable"
-                                checked={record.isDownpaymentRefundable}
-                                disabled
-                                style={{ width: 'auto' }}
-                            />
-                            <label htmlFor="isDownpaymentRefundable" style={{ marginLeft: '8px', marginBottom: '0' }}>
-                                Downpayment is Refundable
-                            </label>
-                        </div>
                     </div>
 
                     {/* Rental Balance Display */}
@@ -248,81 +232,36 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                 </>
             )}
 
-            {/* Cancellation & Refund Information (if applicable) */}
-            {(record.isCancelled || record.refundedAt) && (
+            {/* Cancellation Information (if applicable) */}
+            {record.isCancelled && (
                 <>
-                    <p className="details-title">{record.balanceReceivedAt ? 'IV' : 'III'}. Cancellation & Refund Information</p>
+                    <p className="details-title">{record.balanceReceivedAt ? 'IV' : 'III'}. Cancellation Information</p>
                     <div className="modal-content add">
                         <form className="add-form">
-                            {record.isCancelled && (
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>
-                                            <i className="ri-close-circle-line" style={{ marginRight: '5px', color: '#dc3545' }}></i>
-                                            Cancellation Date
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={record.cancelledAt ? formatDate(record.cancelledAt) : 'N/A'}
-                                            disabled
-                                            style={{ backgroundColor: '#ffe5e5', color: '#dc3545', fontWeight: 'bold' }}
-                                        />
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Cancellation Status</label>
-                                        <input
-                                            type="text"
-                                            value="Rental Cancelled"
-                                            disabled
-                                            style={{ backgroundColor: '#ffe5e5', color: '#dc3545', fontWeight: 'bold' }}
-                                        />
-                                    </div>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>
+                                        <i className="ri-close-circle-line" style={{ marginRight: '5px', color: '#dc3545' }}></i>
+                                        Cancellation Date
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={record.cancelledAt ? formatDate(record.cancelledAt) : 'N/A'}
+                                        disabled
+                                        style={{ backgroundColor: '#ffe5e5', color: '#dc3545', fontWeight: 'bold' }}
+                                    />
                                 </div>
-                            )}
 
-                            {record.refundedAt && (
-                                <>
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label>
-                                                <i className="ri-refund-2-line" style={{ marginRight: '5px', color: '#28a745' }}></i>
-                                                Refund Processed Date
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={formatDate(record.refundedAt)}
-                                                disabled
-                                                style={{ backgroundColor: '#e8f5e9', color: '#28a745', fontWeight: 'bold' }}
-                                            />
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label>Refund Amount</label>
-                                            <input
-                                                type="text"
-                                                value={formatMoney(record.rentalDownpayment)}
-                                                disabled
-                                                style={{ backgroundColor: '#e8f5e9', color: '#28a745', fontWeight: 'bold' }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {record.refundNotes && (
-                                        <div className="form-row">
-                                            <div className="form-group">
-                                                <label>Refund Notes</label>
-                                                <textarea
-                                                    value={record.refundNotes}
-                                                    disabled
-                                                    rows={3}
-                                                    style={{ backgroundColor: '#f5f5f5', resize: 'vertical', minHeight: '80px' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
+                                <div className="form-group">
+                                    <label>Cancellation Status</label>
+                                    <input
+                                        type="text"
+                                        value="Rental Cancelled"
+                                        disabled
+                                        style={{ backgroundColor: '#ffe5e5', color: '#dc3545', fontWeight: 'bold' }}
+                                    />
+                                </div>
+                            </div>
                         </form>
                     </div>
                 </>
@@ -332,8 +271,8 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
             {record.remarks && (
                 <>
                     <p className="details-title">
-                        {record.balanceReceivedAt && (record.isCancelled || record.refundedAt) ? 'V' : 
-                         record.balanceReceivedAt || (record.isCancelled || record.refundedAt) ? 'IV' : 'III'}. Additional Information (Optional)
+                        {record.balanceReceivedAt && record.isCancelled ? 'V' : 
+                         record.balanceReceivedAt || record.isCancelled ? 'IV' : 'III'}. Additional Information (Optional)
                     </p>
                     <div className="modal-content add">
                         <form className="add-form">
