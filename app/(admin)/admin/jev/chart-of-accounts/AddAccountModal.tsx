@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import ModalHeader from '@/app/Components/ModalHeader';
-import { showError } from '@/app/utils/Alerts';
+import { showError, showConfirmation } from '@/app/utils/Alerts';
 import { AccountType, AccountFormData, ChartOfAccount } from '@/app/types/jev';
 import { getNormalBalance, getAvailableParentAccounts } from '@/app/lib/jev/accountHelpers';
 import { validateAccountForm, validateParentChildRelationship } from '@/app/lib/jev/accountValidation';
-import '@/app/styles/jev/addAccount.css';
+import '@/app/styles/components/forms.css';
 import '@/app/styles/components/modal.css';
 
 interface AddAccountModalProps {
@@ -90,6 +89,16 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({ onClose, onSubmit, ac
         }
       }
 
+      // Show confirmation dialog
+      const result = await showConfirmation(
+        'Are you sure you want to add this account?',
+        'Confirm Add Account'
+      );
+
+      if (!result.isConfirmed) {
+        return;
+      }
+
       await onSubmit(formData);
     } catch (error) {
       console.error('Error creating account:', error);
@@ -110,198 +119,188 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({ onClose, onSubmit, ac
   const guidelines = getAccountCodeGuidelines();
 
   return (
-    <div className="modalOverlay">
-      <div className="modalContainer addAccountModal">
-        <ModalHeader 
-          title="Add New Account" 
-          onClose={onClose} 
-          showDateTime={true} 
-        />
+    <>
+      <div className="modal-heading">
+        <h1 className="modal-title">Add New Account</h1>
+        <div className="modal-date-time">
+          <p>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+          <p>{new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</p>
+        </div>
+        <button className="close-modal-btn" onClick={onClose}>
+          <i className="ri-close-line"></i>
+        </button>
+      </div>
 
-        <div className="modalContent">
-          <form onSubmit={handleSubmit}>
-            <div className="formFieldsHorizontal">
-              <div className="formInputs">
-
-                {/* Account Code and Name */}
-                <div className="formRow">
-                  <div className="formField">
-                    <label htmlFor="account_code">
-                      Account Code <span className="requiredTags">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="account_code"
-                      name="account_code"
-                      value={formData.account_code}
-                      onChange={handleInputChange}
-                      placeholder="e.g., 1010"
-                      maxLength={4}
-                      className={errors.account_code ? 'input-error' : ''}
-                    />
-                    {errors.account_code && (
-                      <div className="error-message">{errors.account_code}</div>
-                    )}
-                    <small style={{ color: 'var(--secondary-text-color)' }}>
-                      4-digit code following account type guidelines below
-                    </small>
-                  </div>
-
-                  <div className="formField">
-                    <label htmlFor="account_name">
-                      Account Name <span className="requiredTags">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="account_name"
-                      name="account_name"
-                      value={formData.account_name}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Cash on Hand"
-                      className={errors.account_name ? 'input-error' : ''}
-                    />
-                    {errors.account_name && (
-                      <div className="error-message">{errors.account_name}</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Account Type and Parent Account */}
-                <div className="formRow">
-                  <div className="formField">
-                    <label htmlFor="account_type">
-                      Account Type <span className="requiredTags">*</span>
-                    </label>
-                    <select
-                      id="account_type"
-                      name="account_type"
-                      value={formData.account_type}
-                      onChange={handleInputChange}
-                      className={errors.account_type ? 'input-error' : ''}
-                    >
-                      {accountTypes.map(type => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.account_type && (
-                      <div className="error-message">{errors.account_type}</div>
-                    )}
-                    <small style={{ color: 'var(--secondary-text-color)', fontSize: '12px' }}>
-                      {getNormalBalance(formData.account_type) === 'DEBIT' ? 
-                        '✓ Increases with debits' : 
-                        '✓ Increases with credits'}
-                    </small>
-                  </div>
-
-                  <div className="formField">
-                    <label htmlFor="parent_account_id">
-                      Parent Account <span style={{ color: 'var(--secondary-text-color)' }}>(Optional)</span>
-                    </label>
-                    <select
-                      id="parent_account_id"
-                      name="parent_account_id"
-                      value={formData.parent_account_id || ''}
-                      onChange={handleInputChange}
-                      className={errors.parent_account_id ? 'input-error' : ''}
-                    >
-                      <option value="">-- None (Root Level) --</option>
-                      {getAvailableParentAccounts(accounts, formData.account_type).map(acc => (
-                        <option key={acc.account_id} value={acc.account_id}>
-                          {acc.account_code} - {acc.account_name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.parent_account_id && (
-                      <div className="error-message">{errors.parent_account_id}</div>
-                    )}
-                    <small style={{ color: 'var(--secondary-text-color)', fontSize: '12px' }}>
-                      Create a subcategory (e.g., "BDO" under "Cash in Bank")
-                    </small>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="formField full-width">
-                  <label htmlFor="description">
-                    Description <span style={{ color: 'var(--secondary-text-color)' }}>(Optional)</span>
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description || ''}
-                    onChange={handleInputChange}
-                    placeholder="Provide details about this account's purpose..."
-                    rows={2}
-                  />
-                </div>
-
-                {/* Notes */}
-                <div className="formField full-width">
-                  <label htmlFor="notes">
-                    Internal Notes <span style={{ color: 'var(--secondary-text-color)' }}>(Optional)</span>
-                  </label>
-                  <textarea
-                    id="notes"
-                    name="notes"
-                    value={formData.notes || ''}
-                    onChange={handleInputChange}
-                    placeholder="Internal reminders or special instructions..."
-                    rows={2}
-                  />
-                </div>
-
-                {/* Guidelines Box */}
-                <div className="info-box">
-                  <h4><i className="ri-information-line"></i> Account Code Guidelines</h4>
-                  <ul>
-                    {guidelines.map((guide, idx) => (
-                      <li key={idx}>
-                        <strong>{guide.prefix}:</strong> {guide.type} <em>({guide.examples})</em>
-                      </li>
-                    ))}
-                  </ul>
-                  <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--secondary-text-color)' }}>
-                    <strong>Tip:</strong> Use parent accounts for categories (e.g., 1020 - Cash in Bank) 
-                    and child accounts for specific items (e.g., 1021 - BDO Account).
-                  </p>
-                </div>
-
-              </div>
+      {/* I. Account Information */}
+      <p className="details-title">I. Account Information</p>
+      <div className="modal-content add">
+        <form className="add-form">
+          <div className="form-row">
+            {/* Account Code */}
+            <div className="form-group">
+              <label htmlFor="account_code">
+                Account Code<span className="requiredTags"> *</span>
+              </label>
+              <input
+                type="text"
+                id="account_code"
+                name="account_code"
+                value={formData.account_code}
+                onChange={handleInputChange}
+                placeholder="e.g., 1010"
+                maxLength={4}
+                className={errors.account_code ? 'invalid-input' : ''}
+                required
+              />
+              <small className="hint-message">4-digit code following account type guidelines below</small>
+              <p className="add-error-message">{errors.account_code}</p>
             </div>
 
-            <div className="modalButtons">
-              <button 
-                type="button" 
-                className="cancelButton"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                className="addButton"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="loading-spinner"></span>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <i className="ri-add-line"></i>
-                    Create Account
-                  </>
-                )}
-              </button>
+            {/* Account Name */}
+            <div className="form-group">
+              <label htmlFor="account_name">
+                Account Name<span className="requiredTags"> *</span>
+              </label>
+              <input
+                type="text"
+                id="account_name"
+                name="account_name"
+                value={formData.account_name}
+                onChange={handleInputChange}
+                placeholder="e.g., Cash on Hand"
+                className={errors.account_name ? 'invalid-input' : ''}
+                required
+              />
+              <p className="add-error-message">{errors.account_name}</p>
             </div>
-          </form>
+          </div>
+
+          <div className="form-row">
+            {/* Account Type */}
+            <div className="form-group">
+              <label htmlFor="account_type">
+                Account Type<span className="requiredTags"> *</span>
+              </label>
+              <select
+                id="account_type"
+                name="account_type"
+                value={formData.account_type}
+                onChange={handleInputChange}
+                className={errors.account_type ? 'invalid-input' : ''}
+                required
+              >
+                {accountTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              <small className="hint-message">
+                {getNormalBalance(formData.account_type) === 'DEBIT' ? 
+                  '✓ Increases with debits' : 
+                  '✓ Increases with credits'}
+              </small>
+              <p className="add-error-message">{errors.account_type}</p>
+            </div>
+
+            {/* Parent Account */}
+            <div className="form-group">
+              <label htmlFor="parent_account_id">
+                Parent Account (Optional)
+              </label>
+              <select
+                id="parent_account_id"
+                name="parent_account_id"
+                value={formData.parent_account_id || ''}
+                onChange={handleInputChange}
+                className={errors.parent_account_id ? 'invalid-input' : ''}
+              >
+                <option value="">-- None (Root Level) --</option>
+                {getAvailableParentAccounts(accounts, formData.account_type).map(acc => (
+                  <option key={acc.account_id} value={acc.account_id}>
+                    {acc.account_code} - {acc.account_name}
+                  </option>
+                ))}
+              </select>
+              <small className="hint-message">Create a subcategory (e.g., "BDO" under "Cash in Bank")</small>
+              <p className="add-error-message">{errors.parent_account_id}</p>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* II. Additional Information (Optional) */}
+      <p className="details-title">II. Additional Information (Optional)</p>
+      <div className="modal-content add">
+        <form className="add-form">
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label htmlFor="description">Description</label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description || ''}
+                onChange={handleInputChange}
+                placeholder="Provide details about this account's purpose..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label htmlFor="notes">Internal Notes</label>
+              <textarea
+                id="notes"
+                name="notes"
+                value={formData.notes || ''}
+                onChange={handleInputChange}
+                placeholder="Internal reminders or special instructions..."
+                rows={3}
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* III. Account Code Guidelines */}
+      <p className="details-title">III. Account Code Guidelines</p>
+      <div className="modal-content add">
+        <div style={{ padding: '15px', backgroundColor: 'var(--table-header-color)', borderRadius: '6px' }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {guidelines.map((guide, idx) => (
+              <li key={idx} style={{ marginBottom: '8px', color: 'var(--primary-text-color)' }}>
+                <strong>{guide.prefix}:</strong> {guide.type} <em style={{ color: 'var(--secondary-text-color)' }}>({guide.examples})</em>
+              </li>
+            ))}
+          </ul>
+          <p style={{ marginTop: '15px', fontSize: '13px', color: 'var(--secondary-text-color)', marginBottom: 0 }}>
+            <strong>Tip:</strong> Use parent accounts for categories (e.g., 1020 - Cash in Bank) 
+            and child accounts for specific items (e.g., 1021 - BDO Account).
+          </p>
         </div>
       </div>
-    </div>
+
+      {/* Action Buttons */}
+      <div className="modal-actions">
+        <button
+          type="button"
+          className="cancel-btn"
+          onClick={onClose}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="submit-btn"
+          disabled={isSubmitting}
+          onClick={handleSubmit}
+        >
+          {isSubmitting ? 'Creating...' : 'Create Account'}
+        </button>
+      </div>
+    </>
   );
 };
 

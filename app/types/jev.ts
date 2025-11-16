@@ -48,6 +48,15 @@ export interface ChartOfAccount {
   account_name: string;
   account_type: AccountType;
   
+  // CLASSIFICATION FIELDS
+  category?: AccountSubType;
+  normal_balance?: NormalBalance;
+  is_contra_account?: boolean;
+  contra_to_code?: string;
+  expense_category?: string;
+  statement_section?: string;
+  display_order?: number;
+  
   // OPTIONAL FIELDS
   description?: string;
   notes?: string;
@@ -127,9 +136,17 @@ export interface AccountFormData {
   account_code: string;
   account_name: string;
   account_type: AccountType;
+  category?: AccountSubType;
+  normal_balance?: NormalBalance;
+  is_contra_account?: boolean;
+  contra_to_code?: string;
+  expense_category?: string;
+  statement_section?: string;
+  display_order?: number;
   description?: string;
   notes?: string;
   parent_account_id?: string;
+  is_active?: boolean;
 }
 
 export interface JournalEntryFormData {

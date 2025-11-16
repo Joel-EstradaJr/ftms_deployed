@@ -6,10 +6,9 @@ import { showSuccess, showError, showConfirmation } from '@/app/utils/Alerts';
 import PaginationComponent from '@/app/Components/pagination';
 import Loading from '@/app/Components/loading';
 import ErrorDisplay from '@/app/Components/errordisplay';
-import FilterDropdown, { FilterSection } from '@/app/Components/filter';
-import AddAccountModal from './AddAccountModal';
-import EditAccountModal from './EditAccountModal';
-import ViewAccountModal from './ViewAccountModal';
+import ModalManager from '@/app/Components/modalManager';
+import AccountFilter from '@/app/Components/AccountFilter';
+import RecordChartOfAccount from './recordChartOfAccount';
 import AddChildAccountModal from './AddChildAccountModal';
 import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
@@ -31,19 +30,15 @@ const ChartOfAccountsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
   const [search, setSearch] = useState('');
-  const [accountTypeFilter, setAccountTypeFilter] = useState<string>('');
+  const [accountTypeFilters, setAccountTypeFilters] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Modal states
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showAddChildModal, setShowAddChildModal] = useState(false);
-  const [showValidateModal, setShowValidateModal] = useState(false);
-  const [showAuditTrailModal, setShowAuditTrailModal] = useState(false);
+  // Modal states - Unified approach like tripRevenue
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [selectedAccount, setSelectedAccount] = useState<ChartOfAccount | null>(null);
 
   // Sample data for testing
@@ -230,9 +225,9 @@ const ChartOfAccountsPage = () => {
         );
       }
 
-      // Apply type filter
-      if (accountTypeFilter) {
-        filtered = filtered.filter(acc => acc.account_type === accountTypeFilter);
+      // Apply type filter (multiple types)
+      if (accountTypeFilters && accountTypeFilters.length > 0) {
+        filtered = filtered.filter(acc => accountTypeFilters.includes(acc.account_type));
       }
 
       // Apply status filter
@@ -254,57 +249,110 @@ const ChartOfAccountsPage = () => {
       setTotalPages(Math.ceil(filtered.length / pageSize));
       setLoading(false);
     }, 500);
-  }, [search, accountTypeFilter, statusFilter, currentPage, pageSize]);
+  }, [search, accountTypeFilters, statusFilter, currentPage, pageSize]);
 
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
 
-  // Filter sections for FilterDropdown component
-  const filterSections: FilterSection[] = [
-    {
-      id: 'accountType',
-      title: 'Account Type',
-      type: 'checkbox',
-      options: [
-        { id: AccountType.ASSET, label: 'Assets' },
-        { id: AccountType.LIABILITY, label: 'Liabilities' },
-        { id: AccountType.EQUITY, label: 'Equity' },
-        { id: AccountType.REVENUE, label: 'Revenue' },
-        { id: AccountType.EXPENSE, label: 'Expenses' },
-      ],
-      defaultValue: [],
-    },
-    {
-      id: 'status',
-      title: 'Status',
-      type: 'radio',
-      options: [
-        { id: 'all', label: 'All' },
-        { id: 'active', label: 'Active' },
-        { id: 'archived', label: 'Archived' },
-      ],
-      defaultValue: 'active',
-    },
-  ];
-
-  const handleFilterApply = (filterValues: Record<string, string | string[] | { from: string; to: string }>) => {
-    const accountTypes = filterValues.accountType as string[];
-    const status = filterValues.status as string;
-
-    // If accountTypes is empty, show all types, otherwise filter by selected types
-    if (accountTypes && accountTypes.length > 0) {
-      setAccountTypeFilter(accountTypes[0]); // For now, we'll use the first selected type
-      // TODO: Update fetchAccounts to handle multiple types
-    } else {
-      setAccountTypeFilter('');
-    }
-
-    setStatusFilter(status as 'active' | 'archived' | 'all');
+  // Handle filter changes from AccountFilter component
+  const handleFilterApply = (filterValues: { accountTypes: string[]; status: string }) => {
+    setAccountTypeFilters(filterValues.accountTypes);
+    setStatusFilter(filterValues.status as 'active' | 'archived' | 'all');
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  const handleAddAccount = async (formData: AccountFormData) => {
+  // Modal management functions - following tripRevenue pattern
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalContent(null);
+    setSelectedAccount(null);
+  };
+
+  const openAddModal = () => {
+    setModalContent(
+      <RecordChartOfAccount
+        mode="add"
+        accounts={sampleAccounts}
+        onClose={closeModal}
+        onSave={handleAddAccount}
+      />
+    );
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (account: ChartOfAccount) => {
+    setSelectedAccount(account);
+    setModalContent(
+      <RecordChartOfAccount
+        account={account}
+        mode="edit"
+        accounts={sampleAccounts}
+        onClose={closeModal}
+        onSave={async (data) => {
+          await showSuccess('Account updated successfully', 'Success');
+          closeModal();
+          fetchAccounts();
+        }}
+      />
+    );
+    setIsModalOpen(true);
+  };
+
+  const openViewModal = (account: ChartOfAccount) => {
+    setSelectedAccount(account);
+    setModalContent(
+      <RecordChartOfAccount
+        account={account}
+        mode="view"
+        accounts={sampleAccounts}
+        onClose={closeModal}
+        onSave={async () => {}} // No-op for view mode
+      />
+    );
+    setIsModalOpen(true);
+  };
+
+  const openAddChildModal = (account: ChartOfAccount) => {
+    setSelectedAccount(account);
+    setModalContent(
+      <AddChildAccountModal
+        parentAccount={account}
+        onClose={closeModal}
+        onSubmit={async (data) => {
+          await showSuccess('Child account created successfully', 'Success');
+          closeModal();
+          fetchAccounts();
+        }}
+      />
+    );
+    setIsModalOpen(true);
+  };
+
+  const openValidateModal = () => {
+    setModalContent(
+      <ValidateBalanceModal
+        onClose={closeModal}
+        onValidate={fetchAccounts}
+      />
+    );
+    setIsModalOpen(true);
+  };
+
+  const openAuditTrailModal = (account: ChartOfAccount) => {
+    setSelectedAccount(account);
+    setModalContent(
+      <AuditTrailModal
+        recordId={account.account_id}
+        recordType="ChartOfAccount"
+        recordName={`${account.account_code} - ${account.account_name}`}
+        onClose={closeModal}
+      />
+    );
+    setIsModalOpen(true);
+  };
+
+  const handleAddAccount = async (formData: Partial<ChartOfAccount>) => {
     try {
       // Find parent account details if parent_account_id is provided
       let parentAccount = undefined;
@@ -314,16 +362,23 @@ const ChartOfAccountsPage = () => {
 
       const newAccount: ChartOfAccount = {
         account_id: `temp_${Date.now()}`,
-        account_code: formData.account_code,
-        account_name: formData.account_name,
-        account_type: formData.account_type,
+        account_code: formData.account_code!,
+        account_name: formData.account_name!,
+        account_type: formData.account_type!,
+        category: formData.category,
+        normal_balance: formData.normal_balance,
+        is_contra_account: formData.is_contra_account,
+        contra_to_code: formData.contra_to_code,
+        expense_category: formData.expense_category,
+        statement_section: formData.statement_section,
+        display_order: formData.display_order || 0,
         description: formData.description,
         notes: formData.notes,
         parent_account_id: formData.parent_account_id,
         parent_account_code: parentAccount?.account_code,
         parent_account_name: parentAccount?.account_name,
         level: parentAccount ? 2 : 1,
-        is_active: true,
+        is_active: formData.is_active ?? true,
         is_system_account: false,
       };
 
@@ -332,27 +387,12 @@ const ChartOfAccountsPage = () => {
       sampleAccounts.push(newAccount);
       
       await showSuccess('Account created successfully!', 'Success');
-      setShowAddModal(false);
+      closeModal();
       fetchAccounts(); // Refresh the table
     } catch (error) {
       console.error('Error adding account:', error);
       await showError('Failed to create account', 'Error');
     }
-  };
-
-  const handleView = (account: ChartOfAccount) => {
-    setSelectedAccount(account);
-    setShowViewModal(true);
-  };
-
-  const handleEdit = (account: ChartOfAccount) => {
-    setSelectedAccount(account);
-    setShowEditModal(true);
-  };
-
-  const handleAddChild = (account: ChartOfAccount) => {
-    setSelectedAccount(account);
-    setShowAddChildModal(true);
   };
 
   const handleExport = async () => {
@@ -402,10 +442,7 @@ const ChartOfAccountsPage = () => {
         <div className="actionButtonsContainer">
           <button
             className="viewBtn"
-            onClick={() => {
-              setSelectedAccount(account);
-              setShowViewModal(true);
-            }}
+            onClick={() => openViewModal(account)}
             title="View Details"
           >
             <i className="ri-eye-line" />
@@ -419,10 +456,7 @@ const ChartOfAccountsPage = () => {
           </button>
           <button
             className="infoBtn"
-            onClick={() => {
-              setSelectedAccount(account);
-              setShowAuditTrailModal(true);
-            }}
+            onClick={() => openAuditTrailModal(account)}
             title="Audit Trail"
           >
             <i className="ri-history-line" />
@@ -437,20 +471,14 @@ const ChartOfAccountsPage = () => {
         <div className="actionButtonsContainer">
           <button
             className="viewBtn"
-            onClick={() => {
-              setSelectedAccount(account);
-              setShowViewModal(true);
-            }}
+            onClick={() => openViewModal(account)}
             title="View Details"
           >
             <i className="ri-eye-line" />
           </button>
           <button
             className="infoBtn"
-            onClick={() => {
-              setSelectedAccount(account);
-              setShowAuditTrailModal(true);
-            }}
+            onClick={() => openAuditTrailModal(account)}
             title="Audit Trail"
           >
             <i className="ri-history-line" />
@@ -466,20 +494,14 @@ const ChartOfAccountsPage = () => {
       <div className="actionButtonsContainer">
         <button
           className="viewBtn"
-          onClick={() => {
-            setSelectedAccount(account);
-            setShowViewModal(true);
-          }}
+          onClick={() => openViewModal(account)}
           title="View Details"
         >
           <i className="ri-eye-line" />
         </button>
         <button
           className="editBtn"
-          onClick={() => {
-            setSelectedAccount(account);
-            setShowEditModal(true);
-          }}
+          onClick={() => openEditModal(account)}
           title="Edit Account"
         >
           <i className="ri-edit-2-line" />
@@ -494,20 +516,14 @@ const ChartOfAccountsPage = () => {
         </button>
         <button
           className="addBtn"
-          onClick={() => {
-            setSelectedAccount(account);
-            setShowAddChildModal(true);
-          }}
+          onClick={() => openAddChildModal(account)}
           title="Add Child Account"
         >
           <i className="ri-node-tree" />
         </button>
         <button
           className="infoBtn"
-          onClick={() => {
-            setSelectedAccount(account);
-            setShowAuditTrailModal(true);
-          }}
+          onClick={() => openAuditTrailModal(account)}
           title="Audit Trail"
         >
           <i className="ri-history-line" />
@@ -559,11 +575,12 @@ const ChartOfAccountsPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <FilterDropdown
-            sections={filterSections}
+          
+          {/* Account Filter Component */}
+          <AccountFilter
             onApply={handleFilterApply}
             initialValues={{
-              accountType: [],
+              accountTypes: accountTypeFilters,
               status: statusFilter,
             }}
           />
@@ -575,14 +592,14 @@ const ChartOfAccountsPage = () => {
             </button>
 
             <button 
-              onClick={() => setShowValidateModal(true)} 
+              onClick={openValidateModal} 
               className="validateBtn"
               title="Validate account balances"
             >
               <i className="ri-checkbox-circle-line" /> Validate
             </button>
 
-            <button onClick={() => setShowAddModal(true)} id="addAccount">
+            <button onClick={openAddModal} id="addAccount">
               <i className="ri-add-line" /> Add Account
             </button>
           </div>
@@ -654,41 +671,8 @@ const ChartOfAccountsPage = () => {
                       </td>
 
                       {/* Actions */}
-                      <td>
-                        <div className="actionButtonsContainer">
-                          <button
-                            className="viewBtn"
-                            onClick={() => handleView(account)}
-                            title="View Details"
-                          >
-                            <i className="ri-eye-line"></i>
-                          </button>
-                          <button
-                            className="editBtn"
-                            onClick={() => handleEdit(account)}
-                            title="Edit"
-                          >
-                            <i className="ri-pencil-line"></i>
-                          </button>
-                          {canHaveChildren(account) && (
-                            <button
-                              className="addBtn"
-                              onClick={() => handleAddChild(account)}
-                              title="Add Child Account"
-                            >
-                              <i className="ri-add-line"></i>
-                            </button>
-                          )}
-                          {canArchiveAccount(account) && (
-                            <button
-                              className="deleteBtn"
-                              onClick={() => handleArchive(account)}
-                              title="Archive"
-                            >
-                              <i className="ri-archive-line"></i>
-                            </button>
-                          )}
-                        </div>
+                      <td className="actionButtons">
+                        {renderActionButtons(account)}
                       </td>
                     </tr>
                   );
@@ -710,73 +694,12 @@ const ChartOfAccountsPage = () => {
         />
       </div>
 
-      {/* Modals */}
-      {showAddModal && (
-        <AddAccountModal
-          onClose={() => setShowAddModal(false)}
-          onSubmit={handleAddAccount}
-          accounts={sampleAccounts}
-        />
-      )}
-
-      {showEditModal && selectedAccount && (
-        <EditAccountModal
-          account={selectedAccount}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedAccount(null);
-          }}
-          onSubmit={async (data) => {
-            await showSuccess('Account updated successfully', 'Success');
-            setShowEditModal(false);
-            fetchAccounts();
-          }}
-        />
-      )}
-
-      {showViewModal && selectedAccount && (
-        <ViewAccountModal
-          account={selectedAccount}
-          onClose={() => {
-            setShowViewModal(false);
-            setSelectedAccount(null);
-          }}
-        />
-      )}
-
-      {showAddChildModal && selectedAccount && (
-        <AddChildAccountModal
-          parentAccount={selectedAccount}
-          onClose={() => {
-            setShowAddChildModal(false);
-            setSelectedAccount(null);
-          }}
-          onSubmit={async (data) => {
-            await showSuccess('Child account created successfully', 'Success');
-            setShowAddChildModal(false);
-            fetchAccounts();
-          }}
-        />
-      )}
-
-      {showValidateModal && (
-        <ValidateBalanceModal
-          onClose={() => setShowValidateModal(false)}
-          onValidate={fetchAccounts}
-        />
-      )}
-
-      {showAuditTrailModal && selectedAccount && (
-        <AuditTrailModal
-          recordId={selectedAccount.account_id}
-          recordType="ChartOfAccount"
-          recordName={`${selectedAccount.account_code} - ${selectedAccount.account_name}`}
-          onClose={() => {
-            setShowAuditTrailModal(false);
-            setSelectedAccount(null);
-          }}
-        />
-      )}
+      {/* Dynamic Modal Manager - following tripRevenue pattern */}
+      <ModalManager
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        modalContent={modalContent}
+      />
     </div>
   );
 };

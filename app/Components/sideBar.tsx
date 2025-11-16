@@ -46,7 +46,7 @@ const Sidebar: React.FC = () => {
     "/budget-management/budgetRequest": "budget-request",
     "/jev/chart-of-accounts": "chart-of-accounts",
     "/jev/journal-entries": "journal-entries",
-    "/records-reports/JEV": "JEV",
+    "/records-reports/JEV": "JEV-records",
     "/asset-management": "asset-management",
   };
 
@@ -72,9 +72,10 @@ const Sidebar: React.FC = () => {
         setOpenSubMenu("purchase-management");
       } else if (["loan-request", "loan-payment"].includes(staticMatch)) {
         setOpenSubMenu("loan-management");
-      } else if (["JEV"].includes(staticMatch)) {
-        } else if (["JEV", "asset-management"].includes(staticMatch)) {
-          setOpenSubMenu("records-reports");
+      } else if (["chart-of-accounts", "journal-entries"].includes(staticMatch)) {
+        setOpenSubMenu("jev-management");
+      } else if (["JEV-records", "asset-management"].includes(staticMatch)) {
+        setOpenSubMenu("records-reports");
       } else if (["tripRevenue", "busRental", "otherRevenue"].includes(staticMatch)) {
         setOpenSubMenu("revenue-management");
       }
@@ -348,16 +349,55 @@ const Sidebar: React.FC = () => {
             <span>Financial Reports</span>
           </Link>
 
-          {/* JEV - Admin only */}
+          {/* JEV Module - Admin only */}
           {userRole === 'admin' && (
             <>
               <div
                 className={`nav-item module ${
-                  ["JEV"].includes(activeItem!) ? "active" : ""
+                  ["chart-of-accounts", "journal-entries"].includes(activeItem!) ? "active" : ""
+                }`}
+                onClick={() => toggleSubMenu("jev-management")}
+              >
+                <i className="ri-book-line"></i>
+                <span>Journal Entry Voucher</span>
+                <i
+                  className={`dropdown-arrow ri-arrow-down-s-line ${
+                    openSubMenu === "jev-management" ? "rotate" : ""
+                  }`}
+                />
+              </div>
+
+              {openSubMenu === "jev-management" && (
+                <div className="sub-menu active">
+                  <Link
+                    href={getUrl("/jev/chart-of-accounts")}
+                    className={`sub-item ${activeItem === "chart-of-accounts" ? "active" : ""}`}
+                    onClick={() => setActiveItem("chart-of-accounts")}
+                  >
+                    Chart of Accounts
+                  </Link>
+                  <Link
+                    href={getUrl("/jev/journal-entries")}
+                    className={`sub-item ${activeItem === "journal-entries" ? "active" : ""}`}
+                    onClick={() => setActiveItem("journal-entries")}
+                  >
+                    Journal Entries
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Records & Reports - Admin only */}
+          {userRole === 'admin' && (
+            <>
+              <div
+                className={`nav-item module ${
+                  ["JEV-records", "asset-management"].includes(activeItem!) ? "active" : ""
                 }`}
                 onClick={() => toggleSubMenu("records-reports")}
               >
-                <i className="ri-book-2-line"></i>
+                <i className="ri-folder-3-line"></i>
                 <span>Records & Reports</span>
                 <i
                   className={`dropdown-arrow ri-arrow-down-s-line ${
@@ -370,10 +410,10 @@ const Sidebar: React.FC = () => {
                 <div className="sub-menu active">
                   <Link
                     href={getUrl("/records-reports/JEV")}
-                    className={`sub-item ${activeItem === "JEV" ? "active" : ""}`}
-                    onClick={() => setActiveItem("JEV")}
+                    className={`sub-item ${activeItem === "JEV-records" ? "active" : ""}`}
+                    onClick={() => setActiveItem("JEV-records")}
                   >
-                    JEV
+                    JEV Records
                   </Link>
                   <Link
                     href={getUrl("/asset-management")}

@@ -1,0 +1,334 @@
+/* ==================== JOURNAL ENTRIES PAGE STYLES ==================== */
+
+/* Filter Groups */
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 14px;
+  color: var(--secondary-text-color);
+  white-space: nowrap;
+}
+
+.filter-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--foreground-color);
+  color: var(--primary-text-color);
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.filter-input:hover {
+  border-color: var(--primary-color);
+}
+
+.filter-input:focus {
+  border-color: var(--primary-color);
+}
+
+.clear-filters-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--foreground-color);
+  color: var(--secondary-text-color);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.3s;
+}
+
+.clear-filters-btn:hover {
+  background-color: var(--error-chip-bg-color);
+  color: var(--error-chip-text-color);
+  border-color: var(--error-chip-text-color);
+}
+
+/* ==================== JOURNAL ENTRY MODAL STYLES ==================== */
+
+/* Journal Lines Table in Modal */
+.journal-lines-section {
+  margin: 20px 0;
+}
+
+.journal-lines-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  margin-bottom: 10px;
+}
+
+.journal-lines-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+  margin-bottom: 15px;
+}
+
+.journal-lines-table thead {
+  background-color: var(--table-header-color);
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.journal-lines-table thead th {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.journal-lines-table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+}
+
+.journal-lines-table tbody tr:hover {
+  background-color: var(--table-row-hover-color);
+}
+
+.journal-lines-table tfoot {
+  background-color: var(--table-header-color);
+  font-weight: bold;
+}
+
+.journal-lines-table tfoot td {
+  padding: 10px;
+  border-top: 2px solid var(--border-color);
+}
+
+.journal-lines-table .totalCell {
+  text-align: right;
+  font-weight: bold;
+  color: var(--primary-text-color);
+}
+
+.journal-lines-table select,
+.journal-lines-table input[type="number"],
+.journal-lines-table input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: var(--foreground-color);
+}
+
+.journal-lines-table select:focus,
+.journal-lines-table input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.journal-lines-table input:disabled {
+  background-color: var(--background-color);
+  cursor: not-allowed;
+  color: var(--secondary-text-color);
+}
+
+/* Add/Remove Line Buttons */
+.addLineBtn {
+  padding: 8px 16px;
+  background-color: var(--info-color);
+  color: var(--foreground-color);
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.3s;
+}
+
+.addLineBtn:hover {
+  background-color: var(--info-hover-color);
+}
+
+.removeLineBtn {
+  padding: 4px 8px;
+  background-color: var(--error-color);
+  color: var(--foreground-color);
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+}
+
+.removeLineBtn:hover {
+  background-color: var(--error-hover-color);
+}
+
+/* Balance Status Indicator */
+.balanced {
+  color: var(--success-chip-text-color);
+  font-weight: 600;
+}
+
+.unbalanced {
+  color: var(--error-chip-text-color);
+  font-weight: 600;
+}
+
+/* Debit/Credit Amount Styling */
+.debit-amount {
+  color: var(--success-chip-text-color);
+  font-weight: 600;
+}
+
+.credit-amount {
+  color: var(--error-chip-text-color);
+  font-weight: 600;
+}
+
+/* ==================== ENTRY TYPE CHIP COLORS ==================== */
+/* These use existing chip classes but ensure consistency */
+
+.chip.manual,
+.chip.auto_manual {
+  background-color: var(--info-chip-bg-color);
+  color: var(--info-chip-text-color);
+}
+
+.chip.auto_revenue {
+  background-color: var(--success-chip-bg-color);
+  color: var(--success-chip-text-color);
+}
+
+.chip.auto_expense {
+  background-color: var(--error-chip-bg-color);
+  color: var(--error-chip-text-color);
+}
+
+.chip.auto_payroll,
+.chip.auto_loan,
+.chip.auto_purchase,
+.chip.auto_refund {
+  background-color: var(--warning-chip-bg-color);
+  color: var(--warning-chip-text-color);
+}
+
+.chip.adjustment,
+.chip.closing {
+  background-color: #D6E4FF;
+  color: #0050B3;
+}
+
+/* ==================== STATUS CHIP COLORS ==================== */
+
+.chip.draft,
+.chip.Draft {
+  background-color: var(--info-chip-bg-color);
+  color: var(--info-chip-text-color);
+}
+
+.chip.posted,
+.chip.Posted {
+  background-color: var(--success-chip-bg-color);
+  color: var(--success-chip-text-color);
+}
+
+.chip.reversed,
+.chip.Reversed {
+  background-color: #F5F5F5;
+  color: #616161;
+}
+
+/* ==================== SOURCE MODULE DISPLAY ==================== */
+
+.source-module-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background-color: var(--table-header-color);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--secondary-text-color);
+  font-weight: 500;
+}
+
+/* ==================== JOURNAL ENTRY SUMMARY CARD ==================== */
+
+.journal-entry-summary {
+  background-color: var(--table-header-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.journal-entry-summary .summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.journal-entry-summary .summary-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--primary-text-color);
+}
+
+.journal-entry-summary .summary-badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.journal-entry-summary .summary-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.journal-entry-summary .summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.journal-entry-summary .summary-label {
+  font-size: 12px;
+  color: var(--secondary-text-color);
+  font-weight: 500;
+}
+
+.journal-entry-summary .summary-value {
+  font-size: 14px;
+  color: var(--primary-text-color);
+  font-weight: 600;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .filter-input,
+  .filter-select {
+    width: 100%;
+  }
+
+  .journal-entry-summary .summary-details {
+    grid-template-columns: 1fr;
+  }
+}

@@ -17,7 +17,7 @@ interface RecordOtherRevenueModalProps {
   currentUser: string;
 }
 
-export interface OtherRevenueData {
+interface OtherRevenueData {
   id?: number;
   revenueCode: string;
   revenueType: 'OTHER';
