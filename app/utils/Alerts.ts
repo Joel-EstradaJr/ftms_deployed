@@ -128,10 +128,11 @@ export const showError = (message: string, title: string) => {
 };
 
 //WARNING
-export const showWarning = (message: string) => {
+export const showWarning = (title: string, message: string) => {
   return Swal.fire({
     icon: 'warning',
     text: message,
+    title: title,
     confirmButtonColor: '#961C1E',
     background: 'white',
     backdrop: false,

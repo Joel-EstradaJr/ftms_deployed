@@ -495,7 +495,7 @@ const OperationalExpensePage = () => {
   const currentUser = 'admin_user'; // TODO: Get from auth context
 
   // Modal management functions
-  const openModal = (mode: 'add' | 'edit' | 'view', rowData?: OperationalExpense) => {
+  const openModal = (mode: 'add' | 'edit' | 'view' | 'approve', rowData?: OperationalExpense) => {
     let content: React.ReactNode = null;
 
     if (mode === 'view' && rowData) {
@@ -522,7 +522,7 @@ const OperationalExpensePage = () => {
           onClose={closeModal}
         />
       );
-    } else if (mode === 'add' || mode === 'edit') {
+    } else if (mode === 'add' || mode === 'edit' || mode === 'approve') {
       const formData = rowData ? transformRecordToFormData(rowData) : null;
 
       content = (
@@ -552,7 +552,7 @@ const OperationalExpensePage = () => {
   };
 
   // Handle save operational expense (add or edit)
-  const handleSaveOperationalExpense = async (formData: OperationalExpenseData, mode: 'add' | 'edit') => {
+  const handleSaveOperationalExpense = async (formData: OperationalExpenseData, mode: 'add' | 'edit' | 'approve') => {
     try {
       console.log(`${mode === 'add' ? 'Adding' : 'Updating'} operational expense:`, formData);
 
@@ -574,8 +574,8 @@ const OperationalExpensePage = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       await showSuccess(
-        `${mode === 'add' ? 'Recorded' : 'Updated'}!`,
-        `Operational expense has been ${mode === 'add' ? 'recorded' : 'updated'} successfully.`
+        `${mode === 'add' ? 'Recorded' : mode === 'approve' ? 'Approved' : 'Updated'}!`,
+        `Operational expense has been ${mode === 'add' ? 'recorded' : mode === 'approve' ? 'approved and recorded' : 'updated'} successfully.`
       );
 
       closeModal();
@@ -649,20 +649,102 @@ const OperationalExpensePage = () => {
     }
   };
 
+  const handleApprove = async (id: string) => {
+    const expense = data.find(item => item.id === id);
+    if (expense) {
+      openModal('approve', expense);
+    }
+  };
+
+  const handleRollback = async (id: string) => {
+    try {
+      const result = await showConfirmation(
+        '<p>Are you sure you want to <b>rollback</b> this expense to <b>PENDING</b> status?</p><p>This will allow modifications to be made.</p>',
+        'Rollback to Pending'
+      );
+
+      if (result.isConfirmed) {
+        console.log('Rolling back operational expense:', id);
+
+        // TODO: Replace with actual API call
+        // const response = await fetch(`http://localhost:4000/api/admin/expenses/operational/${id}/rollback`, {
+        //   method: 'PUT',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ status: ExpenseStatus.PENDING })
+        // });
+
+        // if (!response.ok) throw new Error('Failed to rollback operational expense');
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        await showSuccess(
+          'Rolled Back!',
+          'Operational expense has been rolled back to PENDING status.'
+        );
+
+        fetchData(); // Refresh the data
+      }
+    } catch (error) {
+      console.error('Error rolling back operational expense:', error);
+      await showError(
+        'Error',
+        'Failed to rollback operational expense. Please try again.'
+      );
+    }
+  };
+
+  const handlePost = async (id: string) => {
+    try {
+      const expense = data.find(item => item.id === id);
+      if (!expense) return;
+
+      const result = await showConfirmation(
+        `<p>Are you sure you want to <b>POST</b> this expense?</p><p><b>Amount:</b> ${formatMoney(expense.amount)}</p><p><b>Description:</b> ${expense.description}</p><p>This will create a Journal Entry Voucher (JEV) and the expense cannot be modified afterward.</p>`,
+        'Post Expense to JEV'
+      );
+
+      if (result.isConfirmed) {
+        console.log('Posting operational expense:', id);
+
+        // TODO: Replace with actual API call
+        // const response = await fetch(`http://localhost:4000/api/admin/expenses/operational/${id}/post`, {
+        //   method: 'PUT',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ status: ExpenseStatus.POSTED })
+        // });
+
+        // if (!response.ok) throw new Error('Failed to post operational expense');
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        await showSuccess(
+          'Posted!',
+          'Operational expense has been posted to JEV successfully.'
+        );
+
+        fetchData(); // Refresh the data
+      }
+    } catch (error) {
+      console.error('Error posting operational expense:', error);
+      await showError(
+        'Error',
+        'Failed to post operational expense. Please try again.'
+      );
+    }
+  };
+
   // Filter sections for FilterDropdown
   const filterSections: FilterSection[] = [
     {
       id: 'dateRange',
       title: 'Date Range',
       type: 'dateRange',
-      icon: 'ri-calendar-line',
       defaultValue: { from: '', to: '' }
     },
     {
       id: 'expense_type',
       title: 'Expense Type',
       type: 'radio',
-      icon: 'ri-gas-station-line',
       options: [
         { id: '', label: 'All Types' },
         { id: OperationalExpenseType.FUEL, label: 'Fuel' },
@@ -679,7 +761,6 @@ const OperationalExpensePage = () => {
       id: 'status',
       title: 'Status',
       type: 'radio',
-      icon: 'ri-information-line',
       options: [
         { id: '', label: 'All Status' },
         { id: ExpenseStatus.PENDING, label: 'Pending' },
@@ -839,7 +920,6 @@ const OperationalExpensePage = () => {
                   expense_type: filters.expense_type || '',
                   status: filters.status || ''
                 }}
-                title="Operational Expense Filters"
               />
             </div>
 
@@ -900,7 +980,8 @@ const OperationalExpensePage = () => {
                           </span>
                         </td>
                         <td className="actionButtons">
-                          <div className="actionButtonsContainer"> 
+                          <div className="actionButtonsContainer">
+                            {/* View button - always visible */}
                             <button
                               className="viewBtn"
                               onClick={() => handleView(expense.id)}
@@ -908,23 +989,53 @@ const OperationalExpensePage = () => {
                             >
                               <i className="ri-eye-line"></i>
                             </button>
-                            <button
-                              className="editBtn"
-                              onClick={() => handleEdit(expense.id)}
-                              title="Edit Expense"
-                            >
-                              <i className="ri-edit-line"></i>
-                            </button>
-                            <button
-                              className="deleteBtn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(expense.id);
-                              }}
-                              title="Delete Expense"
-                            >
-                              <i className="ri-delete-bin-line"></i>
-                            </button>
+
+                            {/* Status-based action buttons */}
+                            {expense.status === ExpenseStatus.PENDING && (
+                              <>
+                                <button
+                                  className="approveBtn"
+                                  onClick={() => handleApprove(expense.id)}
+                                  title="Approve Expense"
+                                >
+                                  <i className="ri-check-line"></i>
+                                </button>
+                              </>
+                            )}
+
+                            {expense.status === ExpenseStatus.REJECTED && (
+                              <>
+                                <button
+                                  className="editBtn"
+                                  onClick={() => handleEdit(expense.id)}
+                                  title="Edit Expense"
+                                  disabled
+                                >
+                                  <i className="ri-edit-line"></i>
+                                </button>
+                              </>
+                            )}
+
+                            {expense.status === ExpenseStatus.APPROVED && (
+                              <>
+                                <button
+                                  className="rejectBtn"
+                                  onClick={() => handleRollback(expense.id)}
+                                  title="Rollback to Pending"
+                                >
+                                  <i className="ri-arrow-go-back-line"></i>
+                                </button>
+                                <button
+                                  className="submitBtn"
+                                  onClick={() => handlePost(expense.id)}
+                                  title="Post to JEV"
+                                >
+                                  <i className="ri-send-plane-line"></i>
+                                </button>
+                              </>
+                            )}
+
+                            {/* POSTED status - only view button visible (already rendered above) */}
                           </div>
                         </td>
                       </tr>

@@ -25,7 +25,7 @@ import { formatDate, formatMoney } from '../../../../utils/formatting';
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
 import ModalManager from '@/Components/modalManager';
-import RecordOtherRevenueModal, { OtherRevenueData } from './recordOtherRevenue';
+import RecordOtherRevenueModal from './recordOtherRevenue';
 import ViewOtherRevenueModal from './viewOtherRevenue';
 
 // TypeScript interfaces
@@ -67,39 +67,30 @@ interface OtherRevenueRecord {
 
 export type OtherRevenueData = {
   id?: number;
-  revenueCode: string; // ✅ exists (auto-generated)
-  revenueType: 'OTHER'; // ❌ MISSING - should be readonly "OTHER"
-  dateRecorded: string; // ✅ exists as transactionDate
-  otherRevenueCategory: string; // ❌ MISSING - dropdown: ASSET_SALE/INTEREST/PENALTIES/INSURANCE/DONATIONS/OTHER
-  amount: number; // ✅ exists
-  sourceRefNo: string; // ❌ MISSING - reference number
-  department: string; // ❌ MISSING - dropdown
-  discountAmount?: number; // ❌ MISSING - optional number
-  discountPercentage?: number; // ❌ MISSING - optional number
-  discountReason?: string; // ❌ MISSING - optional text
-  isUnearnedRevenue: boolean; // ❌ MISSING - checkbox
-  recognitionSchedule?: any; // ❌ MISSING - textarea, JSON for recognition
-  isVerified: boolean; // ❌ MISSING - checkbox
-  remarks?: string; // ❌ MISSING - textarea
+  revenueCode: string;
+  revenueType: 'OTHER';
+  dateRecorded: string;
+  otherRevenueCategory: string;
+  amount: number;
+  sourceRefNo: string;
+  department: string;
+  discountAmount?: number;
+  discountPercentage?: number;
+  discountReason?: string;
+  isUnearnedRevenue: boolean;
+  recognitionSchedule?: string;
+  isVerified: boolean;
+  remarks?: string;
   
-  // Relations/references
-  sourceId: number; // ✅ exists
-  paymentMethodId: number; // ✅ exists
+  // Relations
+  paymentMethodId: number;
   
   // View-only fields
-  verifiedBy?: string; // ❌ MISSING - readonly
-  verifiedAt?: string; // ❌ MISSING - readonly
-  receiptUrl?: string; // ❌ MISSING - document links
-  accountCode?: string; // ❌ MISSING - linked via ChartOfAccount.accountCode
-  
-  // Remove these fields:
-  sourceName: string;
-  description: string;
-  transactionDate: string;
-  externalRefType?: string;
-  externalRefId?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+  receiptUrl?: string;
+  accountCode?: string;
   createdBy: string;
-  approvedBy?: string;
 };
 
 interface PaginationMeta {

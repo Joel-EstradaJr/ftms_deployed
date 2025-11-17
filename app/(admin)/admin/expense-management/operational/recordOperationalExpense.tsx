@@ -8,9 +8,9 @@ import { showWarning, showError, showConfirmation } from "@/utils/Alerts";
 import { isValidAmount } from "@/utils/validation";
 
 interface RecordOperationalExpenseModalProps {
-  mode: "add" | "edit";
+  mode: "add" | "edit" | "approve";
   existingData?: OperationalExpenseData | null;
-  onSave: (formData: OperationalExpenseData, mode: "add" | "edit") => void;
+  onSave: (formData: OperationalExpenseData, mode: "add" | "edit" | "approve") => void;
   onClose: () => void;
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   departments: Array<{ id: number; name: string }>;
@@ -308,7 +308,7 @@ export default function RecordOperationalExpenseModal({
   return (
     <>
       <div className="modal-heading">
-        <h1 className="modal-title">{mode === 'add' ? 'Record Operational Expense' : 'Edit Operational Expense'}</h1>
+        <h1 className="modal-title">{mode === 'add' ? 'Record Operational Expense' : mode === 'approve' ? 'Approve Operational Expense' : 'Edit Operational Expense'}</h1>
         <div className="modal-date-time">
           <p>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
           <p>{new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</p>
@@ -350,6 +350,7 @@ export default function RecordOperationalExpenseModal({
                     onBlur={handleInputBlur}
                     className={errors.dateRecorded && touched.has('dateRecorded') ? 'input-error' : ''}
                     required
+                    disabled
                   />
                   {errors.dateRecorded && touched.has('dateRecorded') && (
                     <span className="error-message">{errors.dateRecorded}</span>
@@ -368,6 +369,7 @@ export default function RecordOperationalExpenseModal({
                     onBlur={handleInputBlur}
                     className={errors.expenseCategory && touched.has('expenseCategory') ? 'input-error' : ''}
                     required
+                    disabled
                   >
                     <option value="">Select Category</option>
                     {EXPENSE_CATEGORIES.map(cat => (
@@ -389,6 +391,8 @@ export default function RecordOperationalExpenseModal({
                     onChange={handleInputChange}
                     onBlur={handleInputBlur}
                     placeholder="e.g., Diesel, Premium Gasoline"
+                    disabled
+                    className="input-disabled"
                   />
                 </div>
               </div>
@@ -407,6 +411,7 @@ export default function RecordOperationalExpenseModal({
                     step="0.01"
                     min="0"
                     required
+                    disabled
                   />
                   {errors.amount && touched.has('amount') && (
                     <span className="error-message">{errors.amount}</span>
@@ -445,14 +450,16 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">II. Trip Assignment Details</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="cachedTripId">Cached Trip Assignment</label>
+                  <label htmlFor="cachedTripId">Trip Assignment <span className="requiredTags"> *</span></label>
                   <select
                     id="cachedTripId"
                     name="cachedTripId"
                     value={formData.cachedTripId || ''}
                     onChange={handleInputChange}
+                    required
+                    disabled={!!formData.cachedTripId || mode === 'edit'}
                   >
-                    <option value="">Select Trip (Optional)</option>
+                    <option value="">Select Trip</option>
                     {cachedTrips.map(trip => (
                       <option key={trip.id} value={trip.id}>
                         {trip.busPlateNumber} - {trip.route}
@@ -511,14 +518,15 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">III. Accounting Details</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="accountCodeId">Account Code</label>
+                  <label htmlFor="accountCodeId">Account Code<span className="requiredTags"> *</span></label>
                   <select
                     id="accountCodeId"
                     name="accountCodeId"
                     value={formData.accountCodeId || ''}
                     onChange={handleInputChange}
+                    required
                   >
-                    <option value="">Select Account Code (Optional)</option>
+                    <option value="">Select Account Code</option>
                     {chartOfAccounts.map(account => (
                       <option key={account.id} value={account.id}>
                         {account.accountCode} - {account.accountName}
@@ -530,16 +538,21 @@ export default function RecordOperationalExpenseModal({
                 <div className="form-group">
                   <label htmlFor="isReimbursable">Reimbursable Expense</label>
                   <div className="checkbox-wrapper">
-                    <input
-                      type="checkbox"
-                      id="isReimbursable"
-                      name="isReimbursable"
-                      checked={formData.isReimbursable}
-                      onChange={handleInputChange}
-                    />
-                    <label htmlFor="isReimbursable" className="checkbox-label">
-                      This expense is reimbursable to an employee
-                    </label>
+                    {/* <div className="checkbox-label"> */}
+                      <input
+                        type="checkbox"
+                        id="isReimbursable"
+                        name="isReimbursable"
+                        checked={formData.isReimbursable}
+                        onChange={handleInputChange}
+                      />
+                    {/* </div> */}
+
+                    {/* <div className="checkbox-label"> */}
+                      <label htmlFor="isReimbursable">
+                        This expense is reimbursable to an employee
+                      </label>
+                    {/* </div> */}
                   </div>
                 </div>
               </div>
@@ -559,6 +572,7 @@ export default function RecordOperationalExpenseModal({
                     name="receiptFile"
                     onChange={handleFileChange}
                     accept="image/jpeg,image/png,image/jpg,application/pdf"
+                    style={{ cursor: 'pointer' }}
                   />
                   <small className="field-note">Accepted formats: JPG, PNG, PDF (Max 5MB)</small>
                   {errors.receiptFile && (
@@ -625,7 +639,7 @@ export default function RecordOperationalExpenseModal({
           disabled={isSaving}
         >
           <i className={`ri-${isSaving ? 'loader-4-line spin' : 'save-line'}`}></i>
-          {isSaving ? 'Saving...' : (mode === 'add' ? 'Record Expense' : 'Update Expense')}
+          {isSaving ? 'Saving...' : (mode === 'add' ? 'Record Expense' : mode === 'approve' ? 'Approve & Record' : 'Update Expense')}
         </button>
       </div>
     </>

@@ -359,9 +359,9 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                         backgroundColor: formData.account_type === guideline.type ? 'var(--table-header-color)' : 'transparent'
                       }}
                     >
-                      <td style={{ padding: '8px', fontWeight: '500', color: 'var(--primary-color)' }}>{guideline.prefix}</td>
-                      <td style={{ padding: '8px' }}>{guideline.label}</td>
-                      <td style={{ padding: '8px', color: 'var(--secondary-text-color)', fontSize: '13px' }}>{guideline.examples}</td>
+                      <td style={{ color: 'var(--primary-color)' }}>{guideline.prefix}</td>
+                      <td>{guideline.label}</td>
+                      <td>{guideline.examples}</td>
                     </tr>
                   ))}
                 </tbody>

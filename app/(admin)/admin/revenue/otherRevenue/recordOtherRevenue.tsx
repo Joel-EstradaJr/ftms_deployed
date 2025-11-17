@@ -6,6 +6,7 @@ import "@/styles/revenue/recordOtherRevenue.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showConfirmation } from "@/utils/Alerts";
 import { isValidAmount } from "@/utils/validation";
+import { OtherRevenueData } from "./page";
 
 interface RecordOtherRevenueModalProps {
   mode: "add" | "edit";
@@ -15,34 +16,6 @@ interface RecordOtherRevenueModalProps {
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   departments: Array<{ id: number; name: string }>;
   currentUser: string;
-}
-
-interface OtherRevenueData {
-  id?: number;
-  revenueCode: string;
-  revenueType: 'OTHER';
-  dateRecorded: string;
-  otherRevenueCategory: string;
-  amount: number;
-  sourceRefNo: string;
-  department: string;
-  discountAmount?: number;
-  discountPercentage?: number;
-  discountReason?: string;
-  isUnearnedRevenue: boolean;
-  recognitionSchedule?: string;
-  isVerified: boolean;
-  remarks?: string;
-  
-  // Relations
-  paymentMethodId: number;
-  
-  // View-only fields
-  verifiedBy?: string;
-  verifiedAt?: string;
-  receiptUrl?: string;
-  accountCode?: string;
-  createdBy: string;
 }
 
 interface FormErrors {
@@ -129,7 +102,7 @@ export default function RecordOtherRevenueModal({
   // Auto-calculate discount amount when percentage changes
   useEffect(() => {
     if (formData.discountPercentage && formData.amount) {
-      const calculatedDiscount = (formData.amount * formData.discountPercentage) / 100;
+      const calculatedDiscount = (formData.amount * (formData.discountPercentage || 0)) / 100;
       setFormData(prev => ({
         ...prev,
         discountAmount: Number(calculatedDiscount.toFixed(2))
@@ -556,7 +529,7 @@ export default function RecordOtherRevenueModal({
                 className={formErrors.discountPercentage ? 'invalid-input' : ''}
                 placeholder="0.00"
               />
-              {formData.discountPercentage > 0 && (
+              {(formData.discountPercentage || 0) > 0 && (
                 <small className="hint-message">
                   Auto-calculated: {formatMoney(formData.discountAmount || 0)}
                 </small>
