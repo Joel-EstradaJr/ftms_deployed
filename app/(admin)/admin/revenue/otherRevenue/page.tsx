@@ -1174,56 +1174,7 @@ const AdminOtherRevenuePage = () => {
       <div className="elements">
         <div className="title">
           <h1>Other Revenue Records</h1>
-          <button
-            onClick={() => setShowAnalytics(!showAnalytics)}
-            className="analytics-toggle-btn"
-            title={showAnalytics ? "Hide Analytics" : "Show Analytics"}
-          >
-            <i className={showAnalytics ? "ri-eye-line" : "ri-eye-off-line"} />
-          </button>
         </div>
-
-        {showAnalytics && (
-          <>
-            {/* Analytics Cards */}
-            <div className="analytics-grid">
-              <div className="analytics-card total-revenue">
-                <h3>Total Revenue</h3>
-                <p>
-                  {formatMoney(analytics.totalRevenue)}
-                </p>
-                <small>Other revenue sources</small>
-              </div>
-
-              <div className="analytics-card transactions">
-                <h3>Transactions</h3>
-                <p>
-                  {analytics.transactionCount}
-                </p>
-                <small>Total records</small>
-              </div>
-
-              <div className="analytics-card top-sources">
-                <h3>Top Revenue Sources</h3>
-                <div className="top-sources-container">
-                  {analytics.topSources.length === 0 ? (
-                    <div className="no-data-message">
-                      No data available
-                    </div>
-                  ) : (
-                    analytics.topSources.map((source, index) => (
-                      <div key={source.sourceName} className="top-sources-item">
-                        <span className="source-name">{source.sourceName}</span>
-                        <span className="source-amount">{formatMoney(source.amount)}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
         <div className="settings">
           {/* Search bar with Filter button inline */}
           <div className="search-filter-container">
