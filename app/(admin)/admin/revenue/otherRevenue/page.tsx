@@ -27,7 +27,7 @@ import ErrorDisplay from '../../../../Components/errordisplay';
 import ModalManager from '@/Components/modalManager';
 import RecordOtherRevenueModal from './recordOtherRevenue';
 import ViewOtherRevenueModal from './viewOtherRevenue';
-import RecordPaymentModal from '@/Components/RecordPaymentModal';
+import RecordPaymentModal from '@/app/(admin)/admin/revenue/otherRevenue/RecordPaymentModal';
 import { RevenueScheduleFrequency, RevenueScheduleItem, PaymentStatus, PaymentRecordData } from '@/app/types/revenue';
 import { calculatePaymentStatus, processOverdueCarryover } from '@/utils/revenueScheduleCalculations';
 

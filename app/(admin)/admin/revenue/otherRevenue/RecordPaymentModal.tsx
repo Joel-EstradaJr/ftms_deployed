@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { RevenueScheduleItem, PaymentRecordData, PaymentStatus } from '../types/revenue';
-import { formatMoney, formatDate } from '../utils/formatting';
-import { validatePaymentAmount } from '../utils/validation';
-import { processCascadePayment } from '../utils/revenueScheduleCalculations';
-import { showError, showSuccess } from '../utils/Alerts';
+import { RevenueScheduleItem, PaymentRecordData, PaymentStatus } from '../../../../types/revenue';
+import { formatMoney, formatDate } from '../../../../utils/formatting';
+import { validatePaymentAmount } from '../../../../utils/validation';
+import { processCascadePayment } from '../../../../utils/revenueScheduleCalculations';
+import { showError, showSuccess } from '../../../../utils/Alerts';
 import Swal from 'sweetalert2';
 import '@/styles/components/forms.css';
 import '@/styles/components/modal2.css';
