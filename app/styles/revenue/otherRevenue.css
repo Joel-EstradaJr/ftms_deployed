@@ -152,3 +152,69 @@
  * 7. Add audit logging for all revenue modifications
  * 8. Consider implementing caching for frequently accessed analytics data
  */
+
+/* ---------- Installment Row Styling ---------- */
+
+/* Installment row grouping with alternating backgrounds */
+.installment-row {
+  background-color: inherit;
+}
+
+/* Use alternating colors for different revenue groups */
+.installment-row.revenue-1,
+.installment-row.revenue-3,
+.installment-row.revenue-5,
+.installment-row.revenue-7,
+.installment-row.revenue-9,
+.installment-row.revenue-11,
+.installment-row.revenue-13,
+.installment-row.revenue-15,
+.installment-row.revenue-17,
+.installment-row.revenue-19 {
+  background-color: #f9f9f9;
+}
+
+/* Installment and single badges now use .chip .normal for consistent look */
+
+/* Pay Button Styling */
+.payBtn {
+  background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.payBtn:hover {
+  background: linear-gradient(135deg, #388E3C 0%, #4CAF50 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.payBtn:active {
+  transform: translateY(0);
+}
+
+.payBtn i {
+  font-size: 1.1rem;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  /* Responsive style for chips used as badges */
+  .chip.normal {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+  }
+
+  .payBtn {
+    padding: 4px 8px;
+    font-size: 0.9rem;
+  }
+}

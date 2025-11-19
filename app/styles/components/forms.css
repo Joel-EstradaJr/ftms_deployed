@@ -431,3 +431,19 @@
 .modal-table-add-btn:hover {
     background-color: var(--info-hover-color);
 }
+
+/* cancel button */
+.modal-actions .cancel-btn {
+    width: 120px !important;
+    height: 35px !important;
+    border-radius: 8px !important;
+    background-color: var(--table-row-color) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease-in-out !important;
+    cursor: pointer !important;
+}
+
+.modal-actions .cancel-btn:hover {
+    background-color: var(--table-row-hover-color) !important;
+}

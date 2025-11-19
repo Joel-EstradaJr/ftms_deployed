@@ -27,6 +27,9 @@ import ErrorDisplay from '../../../../Components/errordisplay';
 import ModalManager from '@/Components/modalManager';
 import RecordOtherRevenueModal from './recordOtherRevenue';
 import ViewOtherRevenueModal from './viewOtherRevenue';
+import RecordPaymentModal from '@/Components/RecordPaymentModal';
+import { RevenueScheduleFrequency, RevenueScheduleItem, PaymentStatus, PaymentRecordData } from '@/app/types/revenue';
+import { calculatePaymentStatus, processOverdueCarryover } from '@/utils/revenueScheduleCalculations';
 
 // TypeScript interfaces
 interface RevenueSource {
@@ -63,6 +66,8 @@ interface OtherRevenueRecord {
   externalRefId?: string;
   createdBy: string;
   approvedBy?: string;
+  isUnearnedRevenue?: boolean;
+  scheduleItems?: RevenueScheduleItem[];
 }
 
 export type OtherRevenueData = {
@@ -81,6 +86,12 @@ export type OtherRevenueData = {
   recognitionSchedule?: string;
   isVerified: boolean;
   remarks?: string;
+  
+  // Payment Schedule Fields
+  scheduleFrequency?: RevenueScheduleFrequency;
+  scheduleStartDate?: string;
+  numberOfPayments?: number;
+  scheduleItems?: RevenueScheduleItem[];
   
   // Relations
   paymentMethodId: number;
@@ -126,7 +137,61 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     externalRefType: "ASSET_SALE",
     externalRefId: "AS-2024-001",
     createdBy: "admin",
-    approvedBy: "finance_manager"
+    approvedBy: "finance_manager",
+    isUnearnedRevenue: true,
+      scheduleItems: [
+      {
+        id: '1',
+        installmentNumber: 1,
+        originalDueDate: "2024-11-15",
+        currentDueDate: "2024-11-15",
+        originalDueAmount: 15000.00,
+        currentDueAmount: 15000.00,
+        paidAmount: 15000.00,
+        carriedOverAmount: 0,
+        isPastDue: false,
+        isEditable: false,
+        paymentStatus: PaymentStatus.PAID,
+        paidAt: "2024-11-14",
+        paidBy: "admin",
+        paymentMethod: "Bank Transfer",
+        referenceNumber: "PAY-001-2024",
+        remarks: "First installment paid on time",
+      },
+      {
+        id: '2',
+        installmentNumber: 2,
+        originalDueDate: "2024-12-15",
+        currentDueDate: "2024-12-15",
+        originalDueAmount: 15000.00,
+        currentDueAmount: 15000.00,
+        paidAmount: 10000.00,
+        carriedOverAmount: 0,
+        isPastDue: false,
+        isEditable: false,
+        paymentStatus: PaymentStatus.PARTIALLY_PAID,
+        paidAt: "2024-12-10",
+        paidBy: "admin",
+        paymentMethod: "Bank Transfer",
+        referenceNumber: "PAY-002-2024",
+        remarks: "Partial payment received",
+      },
+      {
+        id: '3',
+        installmentNumber: 3,
+        originalDueDate: "2025-01-15",
+        currentDueDate: "2025-01-15",
+        originalDueAmount: 15000.00,
+        currentDueAmount: 20000.00,
+        paidAmount: 0,
+        carriedOverAmount: 5000.00,
+        isPastDue: false,
+        isEditable: true,
+        paymentStatus: PaymentStatus.PENDING,
+        // Unpaid installment, optional fields omitted
+        remarks: "Carried over balance from installment 2",
+      }
+    ]
   },
   {
     id: 2,
@@ -421,11 +486,13 @@ const AdminOtherRevenuePage = () => {
   const [activeFilters, setActiveFilters] = useState<{
     sources: string[];
     paymentMethods: string[];
+    paymentStatuses: string[];
     dateRange: { from: string; to: string };
     amountRange: { from: string; to: string };
   }>({
     sources: [],
     paymentMethods: [],
+    paymentStatuses: [],
     dateRange: { from: '', to: '' },
     amountRange: { from: '', to: '' }
   });
@@ -447,6 +514,11 @@ const AdminOtherRevenuePage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<OtherRevenueRecord | null>(null);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+
+  // Payment modal state
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedScheduleItem, setSelectedScheduleItem] = useState<RevenueScheduleItem | null>(null);
+  const [selectedRevenueRecord, setSelectedRevenueRecord] = useState<OtherRevenueRecord | null>(null);
 
   // Fetch filter options (revenue sources and payment methods)
   const fetchFilterOptions = async () => {
@@ -489,7 +561,8 @@ const AdminOtherRevenuePage = () => {
       discountAmount: 0,
       discountPercentage: 0,
       discountReason: '',
-      isUnearnedRevenue: false,
+      isUnearnedRevenue: record.isUnearnedRevenue || false,
+      scheduleItems: record.scheduleItems || [],
       recognitionSchedule: '',
       isVerified: false,
       remarks: record.description || '',
@@ -547,6 +620,40 @@ const AdminOtherRevenuePage = () => {
     setActiveRow(null);
   };
 
+  // Payment modal handlers
+  const openPaymentModal = (scheduleItem: RevenueScheduleItem, revenueRecord: OtherRevenueRecord) => {
+    setSelectedScheduleItem(scheduleItem);
+    setSelectedRevenueRecord(revenueRecord);
+    setIsPaymentModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setSelectedScheduleItem(null);
+    setSelectedRevenueRecord(null);
+  };
+
+  const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
+    try {
+      // TODO: POST to backend API /api/cash-transactions/payment
+      console.log('Payment data to submit:', paymentData);
+
+      // Mock success - in production this would be an actual API call
+      // const response = await fetch('/api/cash-transactions/payment', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(paymentData)
+      // });
+
+      // For now, simulate success and refresh data
+      await fetchData();
+      closePaymentModal();
+    } catch (error) {
+      console.error('Payment recording failed:', error);
+      throw error; // Let RecordPaymentModal handle error display
+    }
+  };
+
   // Handle save other revenue (both add and edit)
   const handleSaveOtherRevenue = async (formData: OtherRevenueData, mode: 'add' | 'edit') => {
     try {
@@ -580,6 +687,61 @@ const AdminOtherRevenuePage = () => {
 
       // Temporarily use mock data - skip actual API call
       console.log('Would submit to API:', { method, url, payload });
+
+      // Update mock data locally so UI shows saved changes during development
+      if (mode === 'add') {
+        // Generate simple incrementing numeric id
+        const nextId = (MOCK_OTHER_REVENUE_DATA.reduce((max, r) => Math.max(max, r.id), 0) || 0) + 1;
+
+        const sourceObj = revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory) || { id: 0, name: formData.otherRevenueCategory, sourceCode: formData.otherRevenueCategory };
+        const paymentMethodObj = paymentMethods.find(p => p.id === formData.paymentMethodId) || { id: formData.paymentMethodId || 0, methodName: '', methodCode: '' };
+
+        const newRecord: OtherRevenueRecord = {
+          id: nextId,
+          revenueCode: formData.revenueCode,
+          transactionDate: formData.dateRecorded,
+          source: sourceObj,
+          description: formData.remarks || '',
+          amount: formData.amount,
+          paymentMethod: paymentMethodObj,
+          paymentMethodId: paymentMethodObj.id,
+          sourceId: sourceObj.id,
+          externalRefType: formData.otherRevenueCategory,
+          externalRefId: formData.sourceRefNo || undefined,
+          createdBy: formData.createdBy || 'admin'
+        };
+
+        if (formData.isUnearnedRevenue) {
+          newRecord.isUnearnedRevenue = true;
+          newRecord.scheduleItems = formData.scheduleItems || [];
+        }
+
+        // Add to the top for visibility
+        MOCK_OTHER_REVENUE_DATA.unshift(newRecord);
+      } else {
+        // Edit existing record in mock data
+        const idx = MOCK_OTHER_REVENUE_DATA.findIndex(r => r.id === activeRow?.id);
+        if (idx !== -1) {
+          const sourceObj = revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory) || { id: 0, name: formData.otherRevenueCategory, sourceCode: formData.otherRevenueCategory };
+          const paymentMethodObj = paymentMethods.find(p => p.id === formData.paymentMethodId) || { id: formData.paymentMethodId || 0, methodName: '', methodCode: '' };
+
+          MOCK_OTHER_REVENUE_DATA[idx] = {
+            ...MOCK_OTHER_REVENUE_DATA[idx],
+            revenueCode: formData.revenueCode,
+            transactionDate: formData.dateRecorded,
+            source: sourceObj,
+            description: formData.remarks || '',
+            amount: formData.amount,
+            paymentMethod: paymentMethodObj,
+            paymentMethodId: paymentMethodObj.id,
+            sourceId: sourceObj.id,
+            externalRefType: formData.otherRevenueCategory,
+            externalRefId: formData.sourceRefNo || undefined,
+            isUnearnedRevenue: formData.isUnearnedRevenue,
+            scheduleItems: formData.scheduleItems || []
+          };
+        }
+      }
 
       showSuccess(
         `Revenue record ${mode === 'add' ? 'added' : 'updated'} successfully`,
@@ -753,7 +915,25 @@ const AdminOtherRevenuePage = () => {
       const endIndex = startIndex + pageSize;
       const paginatedData = filteredData.slice(startIndex, endIndex);
 
-      setData(paginatedData);
+      // Process overdue carryover for records with schedule items
+      const processedData = paginatedData.map(record => {
+        if (record.isUnearnedRevenue && record.scheduleItems && record.scheduleItems.length > 0) {
+          const { updatedItems, carryoversProcessed } = processOverdueCarryover(record.scheduleItems);
+          
+          if (carryoversProcessed > 0) {
+            console.log(`Processed ${carryoversProcessed} carryover(s) for revenue ${record.revenueCode}`);
+            // TODO: In production, save updatedItems to backend
+          }
+          
+          return {
+            ...record,
+            scheduleItems: updatedItems
+          };
+        }
+        return record;
+      });
+
+      setData(processedData);
       setTotalPages(calculatedTotalPages);
       setTotalCount(totalRecords);
 
@@ -816,6 +996,7 @@ const AdminOtherRevenuePage = () => {
   const handleFilterApply = (filterValues: {
     sources: string[];
     paymentMethods: string[];
+    paymentStatuses: string[];
     dateRange: { from: string; to: string };
     amountRange: { from: string; to: string };
   }) => {
@@ -872,6 +1053,93 @@ const AdminOtherRevenuePage = () => {
         showError('Failed to delete revenue record', 'Error');
       }
     }
+  };
+
+  // Transform data to include installment rows for unearned revenue
+  interface TableRow {
+    id: string; // Unique identifier for React key (revenueId-installmentNumber)
+    revenueId: number;
+    revenueCode: string;
+    transactionDate: string;
+    source: { id: number; name: string; sourceCode: string };
+    description: string;
+    amount: number;
+    paymentMethod: { id: number; methodName: string; methodCode: string };
+    isInstallmentRow: boolean;
+    installmentNumber?: number;
+    totalInstallments?: number;
+    dueDate?: string;
+    balance?: number;
+    paymentStatus?: PaymentStatus;
+    scheduleItem?: RevenueScheduleItem;
+    originalRecord: OtherRevenueRecord;
+  }
+
+  const transformDataToRows = (): TableRow[] => {
+    const rows: TableRow[] = [];
+
+    data.forEach(record => {
+      // Check if this is unearned revenue with schedule
+      if (record.isUnearnedRevenue && record.scheduleItems && record.scheduleItems.length > 0) {
+        // Create one row per installment
+        record.scheduleItems
+          .sort((a, b) => a.installmentNumber - b.installmentNumber)
+          .forEach((scheduleItem) => {
+            const balance = scheduleItem.currentDueAmount - scheduleItem.paidAmount;
+            const status = calculatePaymentStatus(scheduleItem);
+
+            rows.push({
+              id: `${record.id}-${scheduleItem.installmentNumber}`,
+              revenueId: record.id,
+              revenueCode: record.revenueCode,
+              transactionDate: record.transactionDate,
+              source: record.source,
+              description: record.description,
+              amount: record.amount,
+              paymentMethod: record.paymentMethod,
+              isInstallmentRow: true,
+              installmentNumber: scheduleItem.installmentNumber,
+              totalInstallments: record.scheduleItems!.length,
+              dueDate: scheduleItem.currentDueDate,
+              balance: balance,
+              paymentStatus: status,
+              scheduleItem: scheduleItem,
+              originalRecord: record
+            });
+          });
+      } else {
+        // Regular revenue record (single row)
+        rows.push({
+          id: `${record.id}-single`,
+          revenueId: record.id,
+          revenueCode: record.revenueCode,
+          transactionDate: record.transactionDate,
+          source: record.source,
+          description: record.description,
+          amount: record.amount,
+          paymentMethod: record.paymentMethod,
+          isInstallmentRow: false,
+          originalRecord: record
+        });
+      }
+    });
+
+    return rows;
+  };
+
+  const tableRows = transformDataToRows();
+
+  // Apply payment status filter to table rows
+  const filteredTableRows = activeFilters.paymentStatuses.length > 0
+    ? tableRows.filter(row => {
+        if (!row.isInstallmentRow) return true; // Always show non-installment rows
+        return row.paymentStatus && activeFilters.paymentStatuses.includes(row.paymentStatus);
+      })
+    : tableRows;
+
+  // Get payment status chip class
+  const getPaymentStatusClass = (status: PaymentStatus): string => {
+    return `chip ${status.toLowerCase().replace('_', '-')}`;
   };
 
   // Loading state
@@ -980,6 +1248,14 @@ const AdminOtherRevenuePage = () => {
                 id: method.id.toString(),
                 label: method.methodName
               }))}
+              paymentStatuses={[
+                { id: PaymentStatus.PENDING, label: 'Pending' },
+                { id: PaymentStatus.PAID, label: 'Paid' },
+                { id: PaymentStatus.PARTIALLY_PAID, label: 'Partially Paid' },
+                { id: PaymentStatus.OVERDUE, label: 'Overdue' },
+                { id: PaymentStatus.CANCELLED, label: 'Cancelled' },
+                { id: PaymentStatus.WRITTEN_OFF, label: 'Written Off' }
+              ]}
               onApply={handleFilterApply}
               initialValues={activeFilters}
             />
@@ -998,7 +1274,6 @@ const AdminOtherRevenuePage = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>No.</th>
                   <th
                     onClick={() => handleSort("transactionDate")}
                     className="sortable-header"
@@ -1006,8 +1281,9 @@ const AdminOtherRevenuePage = () => {
                   >
                     Transaction Date{getSortIndicator("transactionDate")}
                   </th>
+                  <th>Installment</th>
+                  <th>Due Date</th>
                   <th>Source</th>
-                  <th>Description</th>
                   <th
                     onClick={() => handleSort("amount")}
                     className="sortable-header"
@@ -1015,7 +1291,8 @@ const AdminOtherRevenuePage = () => {
                   >
                     Amount{getSortIndicator("amount")}
                   </th>
-                  <th>Payment Method</th>
+                  <th>Balance</th>
+                  <th>Payment Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1026,56 +1303,118 @@ const AdminOtherRevenuePage = () => {
                       Loading...
                     </td>
                   </tr>
-                ) : data.length === 0 ? (
+                ) : filteredTableRows.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="empty-cell">
                       No other revenue records found.
                     </td>
                   </tr>
                 ) : (
-                  data.map((item, index) => {
-                    // Calculate row number based on current page
-                    const rowNumber = (currentPage - 1) * pageSize + index + 1;
+                  filteredTableRows.map((row, index) => {
+                    // Determine if this is the first row of a group for styling
+                    const isFirstInstallmentRow = row.isInstallmentRow && row.installmentNumber === 1;
+                    const rowClass = row.isInstallmentRow ? `installment-row revenue-${row.revenueId}` : '';
 
                     return (
-                      <tr key={item.id}>
-                        <td>{rowNumber}</td>
-                        <td>{formatDate(item.transactionDate)}</td>
-                        <td>{item.source.name}</td>
-                        <td>{item.description || 'N/A'}</td>
-                        <td>{formatMoney(item.amount)}</td>
-                        <td>{item.paymentMethod.methodName}</td>
+                      <tr key={row.id} className={rowClass}>
+                        <td>{formatDate(row.transactionDate)}</td>
+                        
+                        {/* Installment Column */}
+                        <td>
+                          {row.isInstallmentRow ? (
+                            <span className="chip normal">
+                              {row.installmentNumber} of {row.totalInstallments}
+                            </span>
+                          ) : (
+                            <span className="chip normal">Single</span>
+                          )}
+                        </td>
+
+                        {/* Due Date Column */}
+                        <td>
+                          {row.dueDate ? formatDate(row.dueDate) : '—'}
+                        </td>
+
+                        <td>{row.source.name}</td>
+                        <td>{formatMoney(row.amount)}</td>
+
+                        {/* Balance Column */}
+                        <td>
+                          {row.isInstallmentRow && row.balance !== undefined ? (
+                            <span style={{ 
+                              color: row.balance > 0 ? '#FF4949' : '#4CAF50',
+                              fontWeight: '600'
+                            }}>
+                              {formatMoney(row.balance)}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+
+                        {/* Payment Status Column */}
+                        <td>
+                          {row.paymentStatus ? (
+                            <span className={getPaymentStatusClass(row.paymentStatus)}>
+                              {row.paymentStatus.replace('_', ' ')}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        
+                        {/* Actions Column */}
                         <td className="actionButtons">
                           <div className="actionButtonsContainer">
-                            {/* View button */}
-                            <button
-                              className="viewBtn"
-                              onClick={() => openModal('view', item)}
-                              title="View Record"
-                            >
-                              <i className="ri-eye-line"></i>
-                            </button>
+                            {/* Show View/Edit/Delete only for first installment or single records */}
+                            {(!row.isInstallmentRow || isFirstInstallmentRow) && (
+                              <>
+                                {/* View button */}
+                                <button
+                                  className="viewBtn"
+                                  onClick={() => openModal('view', row.originalRecord)}
+                                  title="View Record"
+                                >
+                                  <i className="ri-eye-line"></i>
+                                </button>
 
-                            {/* Edit button */}
-                            <button
-                              className="editBtn"
-                              onClick={() => openModal('edit', item)}
-                              title="Edit Record"
-                            >
-                              <i className="ri-edit-2-line" />
-                            </button>
+                                {/* Edit button */}
+                                <button
+                                  className="editBtn"
+                                  onClick={() => openModal('edit', row.originalRecord)}
+                                  title="Edit Record"
+                                >
+                                  <i className="ri-edit-2-line" />
+                                </button>
 
-                            {/* Delete button */}
-                            <button
-                              className="deleteBtn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(item.id);
-                              }}
-                              title="Delete Record"
-                            >
-                              <i className="ri-delete-bin-line" />
-                            </button>
+                                {/* Delete button */}
+                                <button
+                                  className="deleteBtn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(row.revenueId);
+                                  }}
+                                  title="Delete Record"
+                                >
+                                  <i className="ri-delete-bin-line" />
+                                </button>
+                              </>
+                            )}
+
+                            {/* Pay button for installment rows */}
+                            {row.isInstallmentRow && 
+                             row.paymentStatus && 
+                             row.paymentStatus !== PaymentStatus.PAID &&
+                             row.paymentStatus !== PaymentStatus.CANCELLED &&
+                             row.paymentStatus !== PaymentStatus.WRITTEN_OFF && (
+                              <button
+                                className="payBtn"
+                                onClick={() => openPaymentModal(row.scheduleItem!, row.originalRecord)}
+                                title="Record Payment"
+                              >
+                                <i className="ri-money-dollar-circle-line"></i>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1103,6 +1442,26 @@ const AdminOtherRevenuePage = () => {
         onClose={closeModal}
         modalContent={modalContent}
       />
+
+      {/* Payment Modal */}
+      {isPaymentModalOpen && selectedScheduleItem && selectedRevenueRecord && (
+        <ModalManager
+          isOpen={isPaymentModalOpen}
+          onClose={closePaymentModal}
+          modalContent={
+            <RecordPaymentModal
+              revenueId={selectedRevenueRecord.id}
+              revenueCode={selectedRevenueRecord.revenueCode}
+              scheduleItems={selectedRevenueRecord.scheduleItems || []}
+              selectedInstallment={selectedScheduleItem}
+              paymentMethods={paymentMethods}
+              currentUser="admin"
+              onPaymentRecorded={handlePaymentRecorded}
+              onClose={closePaymentModal}
+            />
+          }
+        />
+      )}
     </div>
   );
 };

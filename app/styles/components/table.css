@@ -275,3 +275,63 @@ td.actionButtons {
   background-color: #fee2e2;
   color: #991b1b;
 }
+
+/* ----- INSTALLMENT ROW GROUPING ----- */
+/* Installment rows for unearned revenue */
+tbody tr.installment-row {
+  background-color: var(--foreground-color);
+}
+
+tbody tr.installment-row:hover {
+  background-color: var(--table-row-hover-color) !important;
+}
+
+/* First installment row in a group - add top border for visual separation */
+tbody tr.installment-row:first-of-type {
+  border-top: 2px solid var(--border-color);
+}
+
+/* Add subtle left border to group installments visually */
+tbody tr.installment-row td:first-child {
+  border-left: 3px solid #667eea;
+}
+
+/* Use chips for badges; remove custom installment/single badge styles
+   Installment and single badges now use .chip + .normal classes */
+
+/* ----- MATCH BUTTON (Teal) ----- */
+.matchBtn {
+  background-color: #14b8a6 !important;
+}
+.matchBtn:hover {
+  background-color: #0d9488 !important;
+}
+
+/* ----- SORTABLE HEADERS ----- */
+thead th.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+thead th.sortable-header:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ----- EMPTY AND LOADING STATES ----- */
+.loading-cell,
+.empty-cell {
+  text-align: center !important;
+  padding: 2rem !important;
+  color: var(--secondary-text-color);
+  font-style: italic;
+}
+
+.loading-cell {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

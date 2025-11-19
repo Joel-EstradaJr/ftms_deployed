@@ -286,3 +286,95 @@ export interface RevenueFilters {
   page?: number;
   limit?: number;
 }
+
+// ============================================================
+// UNEARNED REVENUE PAYMENT SCHEDULE TYPES
+// ============================================================
+
+export enum RevenueScheduleFrequency {
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+  ANNUAL = 'ANNUAL',
+  CUSTOM = 'CUSTOM'
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PARTIALLY_PAID = 'PARTIALLY_PAID',
+  PAID = 'PAID',
+  OVERDUE = 'OVERDUE',
+  CANCELLED = 'CANCELLED',
+  WRITTEN_OFF = 'WRITTEN_OFF'
+}
+
+export interface RevenuePaymentSchedule {
+  id?: number;
+  scheduleId: string;
+  revenueId: number;
+  revenueCode: string;
+  frequency: RevenueScheduleFrequency;
+  totalAmount: number;
+  numberOfPayments: number;
+  startDate: string;
+  endDate?: string;
+  scheduleItems: RevenueScheduleItem[];
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+}
+
+export interface RevenueScheduleItem {
+  id?: string;
+  scheduleId?: string;
+  installmentNumber: number;
+  originalDueDate: string;
+  currentDueDate: string;
+  originalDueAmount: number;
+  currentDueAmount: number;
+  paidAmount: number;
+  carriedOverAmount: number;
+  paymentStatus: PaymentStatus;
+  isPastDue: boolean;
+  isEditable: boolean;
+  paidAt?: string;
+  paidBy?: string;
+  paymentMethod?: string;
+  referenceNumber?: string;
+  remarks?: string;
+}
+
+export interface PaymentCascadeResult {
+  success: boolean;
+  totalAmountApplied: number;
+  remainingAmount: number;
+  affectedInstallments: {
+    installmentNumber: number;
+    scheduleItemId: string;
+    amountApplied: number;
+    previousBalance: number;
+    newBalance: number;
+    newStatus: PaymentStatus;
+  }[];
+  message?: string;
+}
+
+export interface PaymentRecordData {
+  revenueId: number;
+  revenueCode: string;
+  scheduleItemId: string;
+  scheduleItemIds?: string[];
+  installmentNumber: number;
+  amountToPay: number;
+  paymentDate: string;
+  paymentMethodId: number;
+  paymentMethod?: string;
+  referenceNumber?: string;
+  remarks?: string;
+  recordedBy: string;
+  cascadeBreakdown?: {
+    installmentNumber: number;
+    scheduleItemId: string;
+    amountApplied: number;
+  }[];
+}

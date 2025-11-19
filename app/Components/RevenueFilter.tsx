@@ -14,6 +14,7 @@ import FilterDropdown, { FilterSection, FilterOption } from "./filter";
 interface RevenueFilterValues {
     sources: string[];
     paymentMethods: string[];
+    paymentStatuses: string[];
     dateRange: { from: string; to: string };
     amountRange: { from: string; to: string };
 }
@@ -21,6 +22,7 @@ interface RevenueFilterValues {
 interface RevenueFilterProps {
     sources: FilterOption[];
     paymentMethods: FilterOption[];
+    paymentStatuses?: FilterOption[];
     onApply: (filterValues: RevenueFilterValues) => void;
     initialValues?: Partial<RevenueFilterValues>;
 }
@@ -28,6 +30,7 @@ interface RevenueFilterProps {
 export default function RevenueFilter({
     sources,
     paymentMethods,
+    paymentStatuses = [],
     onApply,
     initialValues = {}
 }: RevenueFilterProps) {
@@ -52,6 +55,15 @@ export default function RevenueFilter({
             options: paymentMethods,
             defaultValue: []
         },
+        // Payment Status filter (only if provided)
+        ...(paymentStatuses.length > 0 ? [{
+            id: 'paymentStatuses',
+            title: 'Payment Status',
+            type: 'checkbox' as const,
+            icon: 'ri-file-list-3-line',
+            options: paymentStatuses,
+            defaultValue: []
+        }] : []),
         // Transaction Date Range filter
         {
             id: 'dateRange',
@@ -79,6 +91,7 @@ export default function RevenueFilter({
     const convertedInitialValues = {
         sources: initialValues.sources || [],
         paymentMethods: initialValues.paymentMethods || [],
+        paymentStatuses: initialValues.paymentStatuses || [],
         dateRange: initialValues.dateRange || { from: '', to: '' },
         amountRange: initialValues.amountRange || { from: '', to: '' }
     };
@@ -89,6 +102,7 @@ export default function RevenueFilter({
         onApply({
             sources: (filterValues.sources as string[]) || [],
             paymentMethods: (filterValues.paymentMethods as string[]) || [],
+            paymentStatuses: (filterValues.paymentStatuses as string[]) || [],
             dateRange: (filterValues.dateRange as { from: string; to: string }) || { from: '', to: '' },
             amountRange: (filterValues.amountRange as { from: string; to: string }) || { from: '', to: '' }
         });
