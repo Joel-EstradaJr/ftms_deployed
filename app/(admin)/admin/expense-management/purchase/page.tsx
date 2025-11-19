@@ -3,15 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import FilterDropdown, { FilterSection } from '../../../../Components/filter';
 import ExportButton from '../../../../Components/ExportButton';
-import PurchaseExpenseViewModal from './PurchaseExpenseViewModal';
+import ModalManager from '../../../../Components/modalManager';
+import ViewPurchaseExpense from './viewPurchaseExpense';
+import RecordPurchaseExpense from './recordPurchaseExpense';
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
 import PaginationComponent from '../../../../Components/pagination';
-import { PurchaseExpense, PurchaseExpenseFilters } from '../../../../types/expenses';
+import { PurchaseExpense, PurchaseExpenseFilters, PaymentStatus } from '../../../../types/expenses';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
+import { showSuccess, showError } from '../../../../utils/Alerts';
 import '../../../../styles/components/table.css';
 import '../../../../styles/components/chips.css';
-import '../../../../styles/expense-management/purchase.css';
 
 const PurchaseExpensePage: React.FC = () => {
   const [expenses, setExpenses] = useState<PurchaseExpense[]>([]);
@@ -21,6 +23,11 @@ const PurchaseExpensePage: React.FC = () => {
   const [selectedExpense, setSelectedExpense] = useState<PurchaseExpense | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filters, setFilters] = useState<PurchaseExpenseFilters>({});
+  const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+
+  // Payment status tracking (fetched from CashTransaction API)
+  const [paymentStatuses, setPaymentStatuses] = useState<Record<string, PaymentStatus>>({});
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -31,6 +38,7 @@ const PurchaseExpensePage: React.FC = () => {
   const samplePurchaseExpenses: PurchaseExpense[] = [
     {
       id: 'PUR-001',
+      expense_code: 'EXP-PUR-2024-001',
       date: '2024-01-25',
       pr_number: 'PR-2024-001',
       pr_date: '2024-01-10',
@@ -73,6 +81,7 @@ const PurchaseExpensePage: React.FC = () => {
     },
     {
       id: 'PUR-002',
+      expense_code: 'EXP-PUR-2024-002',
       date: '2024-01-28',
       pr_number: 'PR-2024-002',
       pr_date: '2024-01-15',
@@ -103,6 +112,44 @@ const PurchaseExpensePage: React.FC = () => {
       approved_by: 'manager@ftms.com',
       approved_at: '2024-01-16T10:00:00Z',
       updated_at: '2024-01-29T08:00:00Z',
+    },
+    {
+      id: 'PUR-003',
+      expense_code: 'EXP-PUR-2024-003',
+      date: '2024-02-01',
+      pr_number: 'PR-2024-003',
+      pr_date: '2024-01-20',
+      description: 'Office supplies and equipment',
+      amount: 35000.00,
+      category: 'Supplies',
+      budget_code: 'BUD-ADMIN-2024',
+      budget_allocated: 300000.00,
+      budget_utilized: 85000.00,
+      status: 'DRAFT',
+      supplier: 'Office Depot',
+      items: [
+        {
+          item_name: 'Printer Paper',
+          quantity: 50,
+          unit_measure: 'reams',
+          unit_cost: 250,
+          supplier: 'Office Depot',
+          subtotal: 12500,
+          type: 'supply'
+        },
+        {
+          item_name: 'Printer Toner',
+          quantity: 15,
+          unit_measure: 'pcs',
+          unit_cost: 1500,
+          supplier: 'Office Depot',
+          subtotal: 22500,
+          type: 'supply'
+        }
+      ],
+      created_by: 'admin@ftms.com',
+      created_at: '2024-01-20T08:00:00Z',
+      updated_at: '2024-02-01T09:00:00Z',
     },
   ];
 
@@ -146,6 +193,24 @@ const PurchaseExpensePage: React.FC = () => {
 
       setExpenses(filtered);
       setTotalCount(filtered.length);
+
+      // TODO: Fetch actual payment statuses from CashTransaction API
+      // const paymentStatusPromises = filtered.map(exp => 
+      //   fetch(`/api/cash-transactions/payment-status?expenseId=${exp.id}&expenseType=PURCHASE`)
+      // );
+      // const paymentResults = await Promise.all(paymentStatusPromises);
+      // const statuses = paymentResults.reduce((acc, result, idx) => {
+      //   acc[filtered[idx].id] = result.payment_status;
+      //   return acc;
+      // }, {});
+      
+      // Mock payment status data for demonstration
+      const mockPaymentStatuses: Record<string, PaymentStatus> = {
+        'PUR-001': PaymentStatus.PAID,
+        'PUR-002': PaymentStatus.PARTIALLY_PAID,
+        'PUR-003': PaymentStatus.PENDING,
+      };
+      setPaymentStatuses(mockPaymentStatuses);
     } catch (err) {
       setError(500);
       console.error(err);
@@ -165,10 +230,40 @@ const PurchaseExpensePage: React.FC = () => {
 
   const handleRowClick = (expense: PurchaseExpense) => {
     setSelectedExpense(expense);
+    setIsViewModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseViewModal = () => {
+    setIsViewModalOpen(false);
     setSelectedExpense(null);
+  };
+
+  const handleOpenEditModal = (expense: PurchaseExpense) => {
+    setSelectedExpense(expense);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedExpense(null);
+  };
+
+  const handleSave = async (formData: any) => {
+    try {
+      // TODO: Replace with actual API call
+      // const response = await fetch(`/api/admin/expenses/purchase/${formData.id}`, {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(formData)
+      // });
+
+      showSuccess('Purchase expense updated successfully', 'Success');
+      handleCloseEditModal();
+      fetchData();
+    } catch (error) {
+      showError('Failed to update purchase expense', 'Error');
+      console.error(error);
+    }
   };
 
   // Filter sections for FilterDropdown
@@ -177,18 +272,15 @@ const PurchaseExpensePage: React.FC = () => {
       id: 'dateRange',
       title: 'Date Range',
       type: 'dateRange',
-      icon: 'ri-calendar-line',
       defaultValue: { from: '', to: '' }
     },
     {
       id: 'status',
       title: 'Status',
       type: 'radio',
-      icon: 'ri-information-line',
       options: [
         { id: '', label: 'All Status' },
         { id: 'DRAFT', label: 'Draft' },
-        { id: 'MATCHED', label: 'Matched' },
         { id: 'DELIVERED', label: 'Delivered' },
         { id: 'POSTED', label: 'Posted' },
         { id: 'CLOSED', label: 'Closed' },
@@ -199,25 +291,18 @@ const PurchaseExpensePage: React.FC = () => {
     }
   ];
 
-  // Calculate budget utilization percentage
-  const getBudgetUtilization = (expense: PurchaseExpense): string => {
-    if (!expense.budget_allocated || expense.budget_allocated === 0) return 'N/A';
-    const percentage = ((expense.budget_utilized || 0) / expense.budget_allocated) * 100;
-    return `${percentage.toFixed(1)}%`;
-  };
-
   // Prepare export data
   const exportData = expenses.map((exp) => ({
-    Date: formatDate(exp.date),
+    'Expense Code': exp.expense_code || exp.id,
     'PR Number': exp.pr_number,
     'DR Number': exp.dr_number || 'N/A',
-    Description: exp.description,
-    Supplier: exp.supplier || 'N/A',
-    Category: exp.category || 'N/A',
-    Amount: formatMoney(exp.amount),
-    'Budget Code': exp.budget_code || 'N/A',
-    'Budget Utilization': getBudgetUtilization(exp),
-    Status: exp.status.charAt(0).toUpperCase() + exp.status.slice(1).toLowerCase(),
+    'Description': exp.description,
+    'Supplier': exp.supplier || 'N/A',
+    'Category': exp.category || 'N/A',
+    'Amount': formatMoney(exp.amount),
+    'Payment Status': paymentStatuses[exp.id] || 'PENDING',
+    'Status': exp.status,
+    'Date': formatDate(exp.date),
   }));
 
   if (loading) return <Loading />;
@@ -258,7 +343,6 @@ const PurchaseExpensePage: React.FC = () => {
                 dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
                 status: filters.status || ''
               }}
-              title="Purchase Expense Filters"
             />
           </div>
 
@@ -276,59 +360,60 @@ const PurchaseExpensePage: React.FC = () => {
             <table className="data-table purchase-table">
               <thead>
                 <tr>
-                  <th>Date</th>
+                  <th>Expense Code</th>
                   <th>PR Number</th>
-                  <th>DR Number</th>
-                  <th>Description</th>
-                  <th>Supplier</th>
                   <th>Amount</th>
-                  <th>Budget Utilization</th>
+                  <th>Payment Status</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="no-data">
+                    <td colSpan={6} className="no-data">
                       No purchase expenses found
                     </td>
                   </tr>
                 ) : (
-                  expenses.map((expense, index) => {
-                    const budgetUtilization = getBudgetUtilization(expense);
-                    const utilizationPercent =
-                      expense.budget_allocated && expense.budget_allocated > 0
-                        ? ((expense.budget_utilized || 0) / expense.budget_allocated) * 100
-                        : 0;
-
-                    return (
-                      <tr
-                        key={expense.id}
-                        onClick={() => handleRowClick(expense)}
-                        className="expense-row"
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <td>{formatDate(expense.date)}</td>
-                        <td>{expense.pr_number}</td>
-                        <td>{expense.dr_number || '-'}</td>
-                        <td className="description-cell">{expense.description}</td>
-                        <td>{expense.supplier || 'N/A'}</td>
-                        <td className="amount-cell">{formatMoney(expense.amount)}</td>
-                        <td>
-                          <span
-                            className={`budget-utilization ${
-                              utilizationPercent > 80
-                                ? 'high'
-                                : utilizationPercent > 50
-                                ? 'medium'
-                                : 'low'
-                            }`}
+                  expenses.map((expense) => (
+                    <tr key={expense.id} className="expense-row">
+                      <td>{expense.expense_code || expense.id}</td>
+                      <td>{expense.pr_number}</td>
+                      <td className="amount-cell">{formatMoney(expense.amount)}</td>
+                      <td>
+                        <span className={`chip ${(paymentStatuses[expense.id] || 'pending').toLowerCase().replace('_', '-')}`}>
+                          {paymentStatuses[expense.id] || 'PENDING'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`chip ${expense.status.toLowerCase()}`}>
+                          {expense.status}
+                        </span>
+                      </td>
+                      <td className="actionButtons">
+                        <div className="actionButtonsContainer">
+                          <button
+                            className="viewBtn"
+                            onClick={() => handleRowClick(expense)}
+                            title="View Details"
                           >
-                            {budgetUtilization}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
+                            <i className="ri-eye-line"></i>
+                          </button>
+                          <button
+                            className="editBtn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditModal(expense);
+                            }}
+                            title="Edit"
+                          >
+                            <i className="ri-edit-line"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -344,9 +429,32 @@ const PurchaseExpensePage: React.FC = () => {
         />
       </div>
 
-      {selectedExpense && (
-        <PurchaseExpenseViewModal expense={selectedExpense} onClose={handleCloseModal} />
-      )}
+      <ModalManager
+        isOpen={isViewModalOpen}
+        onClose={handleCloseViewModal}
+        modalContent={
+          selectedExpense ? (
+            <ViewPurchaseExpense
+              expense={selectedExpense}
+              onClose={handleCloseViewModal}
+            />
+          ) : null
+        }
+      />
+
+      <ModalManager
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        modalContent={
+          selectedExpense ? (
+            <RecordPurchaseExpense
+              existingData={selectedExpense}
+              onSave={handleSave}
+              onClose={handleCloseEditModal}
+            />
+          ) : null
+        }
+      />
     </div>
   );
 };

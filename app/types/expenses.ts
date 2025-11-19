@@ -33,12 +33,40 @@ export enum ExpenseStatus {
 // Purchase Expense Status (more detailed)
 export enum PurchaseExpenseStatus {
   DRAFT = 'DRAFT',
-  MATCHED = 'MATCHED',
   DELIVERED = 'DELIVERED',
   POSTED = 'POSTED',
   CLOSED = 'CLOSED',
   REFUNDED = 'REFUNDED',
   REPLACED = 'REPLACED'
+}
+
+// Payment Status (computed from CashTransaction records)
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PARTIALLY_PAID = 'PARTIALLY_PAID',
+  PAID = 'PAID',
+  OVERDUE = 'OVERDUE',
+  CANCELLED = 'CANCELLED',
+  WRITTEN_OFF = 'WRITTEN_OFF'
+}
+
+// Payment Information from CashTransaction
+export interface PaymentInfo {
+  payment_status: PaymentStatus;
+  total_paid: number;
+  balance: number;
+  due_date?: string;
+  payment_terms?: string;
+  payment_history: PaymentHistoryItem[];
+}
+
+export interface PaymentHistoryItem {
+  id: string;
+  payment_date: string;
+  amount: number;
+  payment_method: string;
+  reference_number?: string;
+  created_by: string;
 }
 
 // Item Interface for expenses
@@ -95,6 +123,7 @@ export interface AdministrativeExpense {
 // Purchase Expense Interface
 export interface PurchaseExpense {
   id: string;
+  expense_code?: string;
   pr_number: string;
   pr_date: string;
   dr_number?: string;
@@ -112,6 +141,13 @@ export interface PurchaseExpense {
   items?: ExpenseItem[];
   adjustment_reason?: string;
   adjustment_amount?: number;
+  linked_purchase_id?: string;
+  goods_receipt_date?: string;
+  supplier_price_updated?: boolean;
+  account_code?: string;
+  remarks?: string;
+  inventory_integration_id?: string;
+  inventory_order_ref?: string;
   created_by: string;
   approved_by?: string;
   created_at: string;

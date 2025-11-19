@@ -1,0 +1,225 @@
+/* ============================================================
+   SEARCHABLE DROPDOWN COMPONENT
+   Aligned with globals.css design system
+   ============================================================ */
+
+.searchable-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-dropdown.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Dropdown Trigger - Matches form input styling */
+.dropdown-trigger {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 12px !important;
+  background-color: var(--modal-input-select-background-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--search-input-border-radius) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  min-height: var(--search-input-height) !important;
+  font-size: 14px !important;
+}
+
+.dropdown-trigger:hover:not(.disabled) {
+  border-color: var(--primary-color) !important;
+  box-shadow: var(--box-shadow) !important;
+}
+
+.dropdown-trigger.open {
+  border-color: var(--primary-color) !important;
+  box-shadow: var(--box-shadow) !important;
+}
+
+.dropdown-trigger .placeholder {
+  color: var(--secondary-text-color) !important;
+  font-size: 14px !important;
+}
+
+.dropdown-trigger .selected {
+  color: var(--primary-text-color) !important;
+  font-size: 14px !important;
+  font-weight: normal !important;
+}
+
+.dropdown-trigger .dropdown-icon {
+  color: var(--secondary-text-color) !important;
+  font-size: 18px !important;
+  transition: transform 0.2s ease !important;
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  background-color: var(--foreground-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--modal-border-radius) !important;
+  box-shadow: var(--box-shadow) !important;
+  z-index: 1000 !important;
+  max-height: 320px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  animation: dropdownFadeIn 0.2s ease !important;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search Input Section */
+.dropdown-search {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  background-color: var(--modal-content-background-color) !important;
+  border-radius: var(--modal-border-radius) var(--modal-border-radius) 0 0 !important;
+}
+
+.dropdown-search .search-icon {
+  color: var(--secondary-text-color) !important;
+  font-size: 16px !important;
+}
+
+.dropdown-search .search-input {
+  flex: 1 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  color: var(--primary-text-color) !important;
+  font-size: 14px !important;
+  padding: 0 !important;
+}
+
+.dropdown-search .search-input::placeholder {
+  color: var(--secondary-text-color) !important;
+}
+
+.dropdown-search .clear-search-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--secondary-text-color) !important;
+  cursor: pointer !important;
+  border-radius: 50% !important;
+  transition: all 0.15s ease !important;
+  padding: 0 !important;
+}
+
+.dropdown-search .clear-search-btn:hover {
+  background-color: var(--border-color) !important;
+  color: var(--primary-text-color) !important;
+}
+
+/* Options List */
+.dropdown-options {
+  overflow-y: auto !important;
+  max-height: 260px !important;
+  padding: 4px !important;
+}
+
+.dropdown-options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-options::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dropdown-options::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.dropdown-options::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-text-color);
+}
+
+/* Dropdown Option */
+.dropdown-option {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 12px !important;
+  cursor: pointer !important;
+  border-radius: var(--table-action-button-border-radius) !important;
+  transition: all 0.15s ease !important;
+}
+
+.dropdown-option:hover {
+  background-color: var(--table-row-hover-color) !important;
+}
+
+.dropdown-option.selected {
+  background-color: rgba(150, 28, 30, 0.1) !important;
+}
+
+.dropdown-option.selected:hover {
+  background-color: rgba(150, 28, 30, 0.15) !important;
+}
+
+.dropdown-option .option-content {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.dropdown-option .option-label {
+  color: var(--primary-text-color) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+.dropdown-option .option-description {
+  color: var(--secondary-text-color) !important;
+  font-size: 12px !important;
+}
+
+.dropdown-option .check-icon {
+  color: var(--primary-color) !important;
+  font-size: 18px !important;
+  flex-shrink: 0 !important;
+}
+
+/* No Options Message */
+.no-options {
+  padding: 20px !important;
+  text-align: center !important;
+  color: var(--secondary-text-color) !important;
+  font-size: 14px !important;
+}
+
+/* Invalid/Error State - Matches form validation */
+.searchable-dropdown.invalid .dropdown-trigger {
+  border: 2px solid var(--error-color) !important;
+  outline: 2px solid var(--error-color) !important;
+}
+
+.searchable-dropdown.invalid .dropdown-trigger:hover,
+.searchable-dropdown.invalid .dropdown-trigger.open {
+  box-shadow: 0 0 0 1px var(--error-color) !important;
+}

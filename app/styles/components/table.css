@@ -157,7 +157,8 @@ td.actionButtons {
 .actionButtonsContainer .rejectBtn,
 .actionButtonsContainer .exportBtn,
 .actionButtonsContainer .auditBtn,
-.actionButtonsContainer .refundBtn {
+.actionButtonsContainer .refundBtn,
+.actionButtonsContainer .matchBtn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -248,4 +249,29 @@ td.actionButtons {
 }
 .refundBtn:hover {
   background-color: var(--warning-hover-color) !important;
+}
+
+
+/* Budget utilization indicators */
+.budget-utilization {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.budget-utilization.low {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.budget-utilization.medium {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.budget-utilization.high {
+  background-color: #fee2e2;
+  color: #991b1b;
 }

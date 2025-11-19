@@ -204,3 +204,34 @@
     background-color: #f3e8ff;
     color: #6b21a8;
 }
+
+/* ============================================================
+   PAYMENT STATUS - Purchase Expense Payment Tracking
+   ============================================================ */
+.chip.pending {
+    background-color: var(--warning-chip-bg-color);
+    color: var(--warning-chip-text-color);
+}
+
+.chip.partially-paid {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.chip.paid {
+    background-color: var(--success-chip-bg-color);
+    color: var(--success-chip-text-color);
+    font-weight: 600;
+}
+
+.chip.overdue {
+    background-color: var(--error-chip-bg-color);
+    color: var(--error-chip-text-color);
+    animation: pulse 2s infinite;
+}
+
+.chip.cancelled,
+.chip.written-off {
+    background-color: var(--neutral-chip-bg-color);
+    color: var(--neutral-chip-text-color);
+}
