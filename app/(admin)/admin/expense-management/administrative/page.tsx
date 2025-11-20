@@ -3,15 +3,26 @@
 import React, { useState, useEffect } from 'react';
 import FilterDropdown, { FilterSection } from '../../../../Components/filter';
 import ExportButton from '../../../../Components/ExportButton';
-import AdminExpenseViewModal from './AdminExpenseViewModal';
+import ModalManager from '../../../../Components/modalManager';
+import RecordPaymentModal from '@/Components/RecordPaymentModal';
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
-import PaginationComponent from '../../../../Components/pagination';
-import { AdministrativeExpense, AdministrativeExpenseFilters } from '../../../../types/expenses';
-import { formatDate, formatMoney } from '../../../../utils/formatting';
+import PaginationComponent from '../../../../Components/pagination'
+
 import '../../../../styles/components/table.css';
 import '../../../../styles/components/chips.css';
-import '../../../../styles/expense-management/administrative.css';
+
+import ViewAdminExpenseModal from './viewAdminExpense';
+import RecordAdminExpenseModal from './recordAdminExpense';
+
+import { processCascadePayment as processExpenseCascade } from '@/app/utils/expenseScheduleCalculations';
+import { formatDate, formatMoney } from '../../../../utils/formatting';
+
+import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem } from '../../../../types/expenses';
+import { PaymentRecordData } from '@/app/types/payments';
+
+
+
 
 const AdministrativeExpensePage: React.FC = () => {
   const [expenses, setExpenses] = useState<AdministrativeExpense[]>([]);
@@ -19,9 +30,22 @@ const AdministrativeExpensePage: React.FC = () => {
   const [error, setError] = useState<string | number | null>(null);
 
   const [selectedExpense, setSelectedExpense] = useState<AdministrativeExpense | null>(null);
-  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('view');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filters, setFilters] = useState<AdministrativeExpenseFilters>({});
+
+  // Modal states using ModalManager pattern
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeRow, setActiveRow] = useState<AdministrativeExpense | null>(null);
+  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  // Payment modal states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedScheduleItem, setSelectedScheduleItem] = useState<any | null>(null);
+  const [selectedExpenseRecord, setSelectedExpenseRecord] = useState<AdministrativeExpense | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: number; methodName: string; methodCode: string }>>([
+    { id: 1, methodName: 'Bank Transfer', methodCode: 'BANK' },
+    { id: 2, methodName: 'Cash', methodCode: 'CASH' },
+    { id: 3, methodName: 'Check', methodCode: 'CHECK' }
+  ]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -34,11 +58,14 @@ const AdministrativeExpensePage: React.FC = () => {
       id: 'ADM-001',
       date: '2024-01-15',
       expense_type: 'OFFICE_SUPPLIES',
+      category: 'OFFICE_SUPPLIES',
+      subcategory: 'Paper & Pens',
       description: 'Printer paper, pens, and office supplies for admin office',
       amount: 2500.00,
       department: 'Administration',
       vendor: 'Office Depot',
       invoice_number: 'INV-2024-001',
+      isPrepaid: false,
       items: [
         {
           item_name: 'Printer Paper',
@@ -69,11 +96,14 @@ const AdministrativeExpensePage: React.FC = () => {
       id: 'ADM-002',
       date: '2024-01-20',
       expense_type: 'UTILITIES',
+      category: 'UTILITIES',
+      subcategory: 'Electricity',
       description: 'Monthly electricity bill for main office',
       amount: 15000.00,
       department: 'Administration',
       vendor: 'Electric Company',
       invoice_number: 'INV-ELEC-JAN-2024',
+      isPrepaid: false,
       items: [
         {
           item_name: 'Electricity Consumption',
@@ -154,10 +184,151 @@ const AdministrativeExpensePage: React.FC = () => {
     setSelectedExpense(expense);
   };
 
-  const handleCloseModal = () => {
-    // Clear selected expense and reset modal mode so the modal unmounts
-    setSelectedExpense(null);
-    setModalMode('view');
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalContent(null);
+    setActiveRow(null);
+  };
+
+  const closePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setSelectedScheduleItem(null);
+    setSelectedExpenseRecord(null);
+    // Also clear modalContent if it was used for payment modal
+    setModalContent(null);
+  };
+
+  const openPaymentModal = (scheduleItem: any, expense: AdministrativeExpense) => {
+    setSelectedScheduleItem(scheduleItem);
+    setSelectedExpenseRecord(expense);
+
+    setModalContent(
+      <RecordPaymentModal
+        entityType="expense"
+        recordId={expense.id}
+        recordRef={expense.invoice_number}
+        scheduleItems={(expense.scheduleItems || []).map(i => ({ ...(i as any) }))}
+        selectedInstallment={scheduleItem}
+        paymentMethods={paymentMethods}
+        currentUser={expense.created_by}
+        onPaymentRecorded={handlePaymentRecorded}
+        onClose={closePaymentModal}
+        processCascadePayment={processExpenseCascade}
+      />
+    );
+
+    setIsPaymentModalOpen(true);
+    setIsModalOpen(true);
+  };
+
+  const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
+    // Update the local state with the payment result for demo/mock purposes
+    // In production, this should call an API and refresh the data
+    const { scheduleItemId, cascadeBreakdown } = paymentData;
+
+    setExpenses(prev => {
+      return prev.map(exp => {
+        if (exp.id !== paymentData.recordId) return exp;
+        const items = exp.scheduleItems?.map(item => {
+          // If the schedule item is affected by the cascade, update its paidAmount
+          const affected = cascadeBreakdown?.find((a: any) => a.scheduleItemId === item.id);
+          if (affected) {
+            const newPaid = (item.paidAmount || 0) + affected.amountApplied;
+            return {
+              ...item,
+              paidAmount: newPaid,
+              paymentStatus: newPaid >= item.currentDueAmount ? PaymentStatus.PAID : PaymentStatus.PARTIALLY_PAID
+            };
+          }
+          return item;
+        }) || [];
+        // Recompute overall paymentStatus and remainingBalance
+        const totalPaid = items.reduce((s: any, i: any) => s + (i.paidAmount || 0), 0);
+        const remainingBalance = (exp.amount || 0) - totalPaid;
+        const newPaymentStatus = remainingBalance <= 0 ? PaymentStatus.PAID : totalPaid > 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PENDING;
+
+        return {
+          ...exp,
+          scheduleItems: items,
+          remainingBalance,
+          paymentStatus: newPaymentStatus
+        };
+      });
+    });
+
+    closePaymentModal();
+  };
+
+  // Open modal with different modes
+  const openModal = (mode: 'view' | 'add' | 'edit', rowData?: AdministrativeExpense) => {
+    if (rowData) {
+      setActiveRow(rowData);
+    }
+
+    if (mode === 'view' && rowData) {
+      setModalContent(
+        <ViewAdminExpenseModal
+          data={rowData}
+          onClose={closeModal}
+          onEdit={(data) => openModal('edit', data)}
+          onRecordPayment={(scheduleItem?: ExpenseScheduleItem) => {
+            // Default to earliest pending installment if none passed
+            const pendingItem = scheduleItem || (rowData.scheduleItems || []).find((it: ExpenseScheduleItem) => it.paymentStatus === PaymentStatus.PENDING || it.paymentStatus === PaymentStatus.PARTIALLY_PAID);
+            if (pendingItem) openPaymentModal(pendingItem, rowData);
+          }}
+        />
+      );
+    } else if (mode === 'add') {
+      setModalContent(
+        <RecordAdminExpenseModal
+          mode="add"
+          existingData={null}
+          onSave={handleSave}
+          onClose={closeModal}
+          currentUser="admin@ftms.com"
+        />
+      );
+    } else if (mode === 'edit' && rowData) {
+      setModalContent(
+        <RecordAdminExpenseModal
+          mode="edit"
+          existingData={rowData}
+          onSave={handleSave}
+          onClose={closeModal}
+          currentUser="admin@ftms.com"
+        />
+      );
+    }
+
+    setIsModalOpen(true);
+  };
+
+  const handleSave = (formData: AdministrativeExpense, mode: 'add' | 'edit') => {
+    if (mode === 'add') {
+      const newExpense = {
+        ...formData,
+        id: `ADM-${Date.now()}`, // Mock ID
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setExpenses(prev => [newExpense, ...prev]);
+    } else {
+      setExpenses(prev => prev.map(exp => exp.id === formData.id ? formData : exp));
+    }
+    closeModal();
+  };
+
+  // Action handlers
+  const handleAdd = () => {
+    openModal('add');
+  };
+
+  const handleView = (expense: AdministrativeExpense) => {
+    openModal('view', expense);
+  };
+
+  const handleEdit = (expense: AdministrativeExpense) => {
+    openModal('edit', expense);
   };
 
   // Filter sections for FilterDropdown
@@ -166,14 +337,12 @@ const AdministrativeExpensePage: React.FC = () => {
       id: 'dateRange',
       title: 'Date Range',
       type: 'dateRange',
-      icon: 'ri-calendar-line',
       defaultValue: { from: '', to: '' }
     },
     {
       id: 'expense_type',
       title: 'Expense Type',
       type: 'radio',
-      icon: 'ri-folder-line',
       options: [
         { id: '', label: 'All Types' },
         { id: 'OFFICE_SUPPLIES', label: 'Office Supplies' },
@@ -199,7 +368,14 @@ const AdministrativeExpensePage: React.FC = () => {
     Amount: formatMoney(exp.amount),
   }));
 
-  if (loading) return <Loading />;
+  if (loading) {
+      return (
+        <div className="card">
+          <h1 className="title">Administrative Expenses</h1>
+          <Loading />
+        </div>
+      );
+    }
   if (error) return <ErrorDisplay errorCode={error} onRetry={() => { setError(null); fetchData(); }} />;
 
   return (
@@ -237,7 +413,6 @@ const AdministrativeExpensePage: React.FC = () => {
                 dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
                 expense_type: filters.expense_type || '',
               }}
-              title="Administrative Expense Filters"
             />
           </div>
 
@@ -248,11 +423,8 @@ const AdministrativeExpensePage: React.FC = () => {
               title="Administrative Expenses Report"
             />
             <button 
-              className="addExpenseBtn"
-              onClick={() => {
-                setSelectedExpense(null);
-                setModalMode('add');
-              }}
+              className="addButton"
+              onClick={handleAdd}
             >
               <i className="ri-add-line"></i>
               Add Expense
@@ -266,11 +438,11 @@ const AdministrativeExpensePage: React.FC = () => {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Expense Type</th>
+                  <th>Category</th>
+                  <th>Subcategory</th>
                   <th>Vendor</th>
-                  <th>Invoice Number</th>
-                  <th>Description</th>
                   <th>Amount</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -286,39 +458,52 @@ const AdministrativeExpensePage: React.FC = () => {
                     <tr
                       key={expense.id}
                       className="expense-row"
-                      style={{ cursor: 'pointer' }}
                       onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedExpense(expense);
-                                setModalMode('view');
-                              }}
+                        e.stopPropagation();
+                        handleView(expense);
+                      }}
                       title="View Expense"
                     >
                       <td>{formatDate(expense.date)}</td>
                       <td>
                         <span className={`chip ${expense.expense_type.toLowerCase()}`}>
-                          {expense.expense_type.replace(/_/g, ' ')}
+                          {expense.category || expense.expense_type.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td>{expense.vendor || 'N/A'}</td>
-                      <td>{expense.invoice_number || 'N/A'}</td>
-                      <td className="description-cell">{expense.description}</td>
-                      <td className="amount-cell">{formatMoney(expense.amount)}</td>
+                      <td>{expense.subcategory || '-'}</td>
+                      <td>{expense.vendor}</td>
+                      <td>{formatMoney(expense.amount)}</td>
                       <td>
-                        <div className="actionButtons">
-                          <div className="actionButtonsContainer">
-                            <button
-                              className="editBtn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedExpense(expense);
-                                setModalMode('edit');
-                              }}
-                              title="Edit Expense"
-                            >
-                              <i className="ri-edit-line"></i>
-                            </button>
-                          </div>
+                        {expense.paymentStatus ? (
+                          <span className={`chip ${expense.paymentStatus.toLowerCase().replace('_', '-')}`}>
+                            {expense.paymentStatus.replace('_', ' ')}
+                          </span>
+                        ) : (
+                          <span className="chip pending">PENDING</span>
+                        )}
+                      </td>
+                      <td className="actionButtons">
+                        <div className="actionButtonsContainer">
+                          <button
+                            className="viewBtn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleView(expense);
+                            }}
+                            title="View"
+                          >
+                            <i className="ri-eye-line"></i>
+                          </button>
+                          <button
+                            className="editBtn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(expense);
+                            }}
+                            title="Edit"
+                          >
+                            <i className="ri-pencil-line"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -338,26 +523,12 @@ const AdministrativeExpensePage: React.FC = () => {
         />
       </div>
 
-      {(selectedExpense || modalMode === 'add') && (
-        <AdminExpenseViewModal 
-          mode={modalMode}
-          expense={selectedExpense}
-          onClose={handleCloseModal}
-          onSave={(updatedExpense) => {
-            if (modalMode === 'add') {
-              // Add new expense to the list
-              setExpenses(prev => [updatedExpense, ...prev]);
-            } else if (modalMode === 'edit') {
-              // Update existing expense
-              setExpenses(prev => prev.map(exp => 
-                exp.id === updatedExpense.id ? updatedExpense : exp
-              ));
-            }
-            setSelectedExpense(null);
-            setModalMode('view');
-          }}
-        />
-      )}
+      {/* Modal Manager */}
+      <ModalManager
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        modalContent={modalContent}
+      />
     </div>
   );
 };

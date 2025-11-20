@@ -6,8 +6,8 @@ import {
 } from "@/utils/Alerts";
 import Swal from "sweetalert2";
 import { formatMoney } from "@/utils/formatting";
-import "../../../../styles/components/forms.css";
-import "../../../../styles/components/modal.css";
+import "@/styles/components/forms.css";
+import "@/styles/components/modal2.css";
 
 // Export the interface so it can be imported by other components
 export interface RentalRevenueForm {

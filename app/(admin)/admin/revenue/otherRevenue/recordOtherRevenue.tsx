@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
-import "@/styles/revenue/recordOtherRevenue.css";
+
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showConfirmation } from "@/utils/Alerts";
 import { isValidAmount } from "@/utils/validation";
@@ -29,9 +29,6 @@ interface FormErrors {
   sourceRefNo: string;
   department: string;
   paymentMethodId: string;
-  discountAmount: string;
-  discountPercentage: string;
-  discountReason: string;
   recognitionSchedule: string;
   numberOfPayments: string;
   scheduleStartDate: string;
@@ -73,9 +70,6 @@ export default function RecordOtherRevenueModal({
     amount: existingData?.amount || 0,
     sourceRefNo: existingData?.sourceRefNo || '',
     department: existingData?.department || '',
-    discountAmount: existingData?.discountAmount || 0,
-    discountPercentage: existingData?.discountPercentage || 0,
-    discountReason: existingData?.discountReason || '',
     isUnearnedRevenue: existingData?.isUnearnedRevenue || false,
     recognitionSchedule: existingData?.recognitionSchedule || '',
     scheduleFrequency: existingData?.scheduleFrequency || undefined,
@@ -101,9 +95,6 @@ export default function RecordOtherRevenueModal({
     sourceRefNo: '',
     department: '',
     paymentMethodId: '',
-    discountAmount: '',
-    discountPercentage: '',
-    discountReason: '',
     recognitionSchedule: '',
     remarks: '',
     numberOfPayments: '',
@@ -112,17 +103,6 @@ export default function RecordOtherRevenueModal({
 
   const [isFormValid, setIsFormValid] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-
-  // Auto-calculate discount amount when percentage changes
-  useEffect(() => {
-    if (formData.discountPercentage && formData.amount) {
-      const calculatedDiscount = (formData.amount * (formData.discountPercentage || 0)) / 100;
-      setFormData(prev => ({
-        ...prev,
-        discountAmount: Number(calculatedDiscount.toFixed(2))
-      }));
-    }
-  }, [formData.discountPercentage, formData.amount]);
 
   // Generate schedule when relevant fields change
   useEffect(() => {
@@ -221,25 +201,6 @@ export default function RecordOtherRevenueModal({
         }
         break;
 
-      case 'discountAmount':
-        if (value && value > formData.amount) {
-          errorMessage = 'Discount amount cannot exceed total amount';
-        }
-        break;
-
-      case 'discountPercentage':
-        if (value && (value < 0 || value > 100)) {
-          errorMessage = 'Discount percentage must be between 0 and 100';
-        }
-        break;
-
-      case 'discountReason':
-        // Require discount reason only when the discount amount or percentage is greater than zero
-        if (((formData.discountAmount || 0) > 0 || (formData.discountPercentage || 0) > 0) && !value) {
-          errorMessage = 'Discount reason is required when discount is applied';
-        }
-        break;
-
       case 'recognitionSchedule':
         // Recognition schedule is optional when a payment schedule (scheduleItems) is generated.
         // Require only if unearned revenue is enabled AND there are no schedule items to define the schedule.
@@ -307,18 +268,6 @@ export default function RecordOtherRevenueModal({
     const paymentMethodErr = validateFormField('paymentMethodId', formData.paymentMethodId);
     const remarksErr = validateFormField('remarks', formData.remarks);
 
-    let discountValid = true;
-    const discountErrors: string[] = [];
-    if ((formData.discountAmount || 0) > 0 || (formData.discountPercentage || 0) > 0) {
-      const discountAmountErr = validateFormField('discountAmount', formData.discountAmount);
-      const percentErr = validateFormField('discountPercentage', formData.discountPercentage);
-      const reasonErr = validateFormField('discountReason', formData.discountReason);
-      if (discountAmountErr) discountErrors.push(discountAmountErr);
-      if (percentErr) discountErrors.push(percentErr);
-      if (reasonErr) discountErrors.push(reasonErr);
-      discountValid = discountErrors.length === 0;
-    }
-
     let unearnedValid = true;
     const unearnedErrors: string[] = [];
     if (formData.isUnearnedRevenue) {
@@ -347,7 +296,6 @@ export default function RecordOtherRevenueModal({
     if (deptErr) errors.push(deptErr);
     if (paymentMethodErr) errors.push(paymentMethodErr);
     if (remarksErr) errors.push(remarksErr);
-    errors.push(...discountErrors);
     errors.push(...unearnedErrors);
 
     const isValid = errors.length === 0;
@@ -475,11 +423,6 @@ export default function RecordOtherRevenueModal({
     }
 
     onSave(formData, mode);
-  };
-
-  // Calculate net amount after discount
-  const calculateNetAmount = (): number => {
-    return formData.amount - (formData.discountAmount || 0);
   };
 
   return (
@@ -658,91 +601,8 @@ export default function RecordOtherRevenueModal({
         </form>
       </div>
 
-      {/* II. Discount Information (Optional) */}
-      <p className="details-title">II. Discount Information (Optional)</p>
-      <div className="modal-content add">
-        <form className="add-form">
-          <div className="form-row">
-            {/* Discount Amount */}
-            <div className="form-group">
-              <label>Discount Amount</label>
-              <input
-                type="number"
-                value={formData.discountAmount}
-                onChange={(e) => handleInputChange('discountAmount', parseFloat(e.target.value) || 0)}
-                onBlur={() => handleInputBlur('discountAmount')}
-                min="0"
-                step="0.01"
-                className={formErrors.discountAmount ? 'invalid-input' : ''}
-                placeholder="0.00"
-              />
-              <p className="add-error-message">{formErrors.discountAmount}</p>
-            </div>
-
-            {/* Discount Percentage */}
-            <div className="form-group">
-              <label>Discount Percentage (%)</label>
-              <input
-                type="number"
-                value={formData.discountPercentage}
-                onChange={(e) => handleInputChange('discountPercentage', parseFloat(e.target.value) || 0)}
-                onBlur={() => handleInputBlur('discountPercentage')}
-                min="0"
-                max="100"
-                step="0.01"
-                className={formErrors.discountPercentage ? 'invalid-input' : ''}
-                placeholder="0.00"
-              />
-              {(formData.discountPercentage || 0) > 0 && (
-                <small className="hint-message">
-                  Auto-calculated: {formatMoney(formData.discountAmount || 0)}
-                </small>
-              )}
-              <p className="add-error-message">{formErrors.discountPercentage}</p>
-            </div>
-          </div>
-
-          {(((formData.discountAmount || 0) > 0) || ((formData.discountPercentage || 0) > 0)) ? (
-            <>
-              <div className="form-row">
-                {/* Discount Reason */}
-                <div className="form-group full-width">
-                  <label>
-                    Discount Reason<span className="requiredTags"> *</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.discountReason}
-                    onChange={(e) => handleInputChange('discountReason', e.target.value)}
-                    onBlur={() => handleInputBlur('discountReason')}
-                    className={formErrors.discountReason ? 'invalid-input' : ''}
-                    placeholder="Reason for discount..."
-                    required
-                  />
-                  <p className="add-error-message">{formErrors.discountReason}</p>
-                </div>
-              </div>
-
-              <div className="form-row">
-                {/* Net Amount (Read-only) */}
-                <div className="form-group">
-                  <label>Net Amount</label>
-                  <input
-                    type="text"
-                    value={formatMoney(calculateNetAmount())}
-                    disabled
-                    className="disabled-field net-amount-field"
-                  />
-                  <small className="hint-message">Amount after discount</small>
-                </div>
-              </div>
-            </>
-          ) : null}
-        </form>
-      </div>
-
-      {/* III. Unearned Revenue Payment Schedule (Optional) */}
-      <p className="details-title">III. Unearned Revenue Payment Schedule (Optional)</p>
+      {/* II. Unearned Revenue Payment Schedule (Optional) */}
+      <p className="details-title">II. Unearned Revenue Payment Schedule (Optional)</p>
       <div className="modal-content add">
         <form className="add-form">
           <div className="form-row">
@@ -960,8 +820,8 @@ export default function RecordOtherRevenueModal({
         </form>
       </div>
 
-      {/* IV. Additional Information (Optional) */}
-      <p className="details-title">IV. Additional Information (Optional)</p>
+      {/* III. Additional Information (Optional) */}
+      <p className="details-title">III. Additional Information (Optional)</p>
       <div className="modal-content add">
         <form className="add-form">
           <div className="form-row">

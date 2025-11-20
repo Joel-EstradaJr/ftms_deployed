@@ -1,5 +1,11 @@
 // ==================== EXPENSE MANAGEMENT TYPE DEFINITIONS ====================
 
+import { 
+  PaymentStatus as BasePaymentStatus,
+  ScheduleFrequency as BaseScheduleFrequency,
+  ScheduleItem as BaseScheduleItem
+} from './schedule';
+
 // Operational Expense Types
 export enum OperationalExpenseType {
   FUEL = 'FUEL',
@@ -41,14 +47,25 @@ export enum PurchaseExpenseStatus {
 }
 
 // Payment Status (computed from CashTransaction records)
-export enum PaymentStatus {
-  PENDING = 'PENDING',
-  PARTIALLY_PAID = 'PARTIALLY_PAID',
-  PAID = 'PAID',
-  OVERDUE = 'OVERDUE',
-  CANCELLED = 'CANCELLED',
-  WRITTEN_OFF = 'WRITTEN_OFF'
-}
+/**
+ * @deprecated Use PaymentStatus from './schedule' instead
+ * Type alias maintained for backward compatibility
+ */
+export const PaymentStatus = BasePaymentStatus;
+export type PaymentStatus = BasePaymentStatus;
+
+/**
+ * @deprecated Use ScheduleFrequency from './schedule' instead
+ * Type alias maintained for backward compatibility
+ */
+export const ExpenseScheduleFrequency = BaseScheduleFrequency;
+export type ExpenseScheduleFrequency = BaseScheduleFrequency;
+
+/**
+ * @deprecated Use ScheduleItem from './schedule' instead
+ * Type alias maintained for backward compatibility
+ */
+export type ExpenseScheduleItem = BaseScheduleItem;
 
 // Payment Information from CashTransaction
 export interface PaymentInfo {
@@ -105,7 +122,9 @@ export interface OperationalExpense {
 // Administrative Expense Interface
 export interface AdministrativeExpense {
   id: string;
-  expense_type: string;
+  expense_type: string; // This might be mapped to category
+  category: string; // New field
+  subcategory: string; // New field
   date: string;
   amount: number;
   description: string;
@@ -113,6 +132,22 @@ export interface AdministrativeExpense {
   vendor?: string;
   invoice_number?: string;
   items?: ExpenseItem[];
+  
+  // Prepaid/Payable fields
+  isPrepaid: boolean;
+  frequency?: ExpenseScheduleFrequency;
+  startDate?: string;
+  endDate?: string;
+  scheduleItems?: ExpenseScheduleItem[];
+  
+  // Payment details
+  paymentMethod?: string;
+  referenceNo?: string;
+  receiptUrl?: string;
+  remarks?: string;
+  paymentStatus?: PaymentStatus;
+  remainingBalance?: number;
+
   created_by: string;
   approved_by?: string;
   created_at: string;

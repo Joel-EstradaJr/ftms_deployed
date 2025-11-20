@@ -13,23 +13,22 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import "../../../../styles/revenue/revenue.css";
-import "../../../../styles/revenue/busRevenue.css";
-import "../../../../styles/revenue/viewBusRental.css";
 import "../../../../styles/components/table.css";
 import "../../../../styles/components/chips.css";
+
+import ModalManager from '../../../../Components/modalManager';
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
-
 import PaginationComponent from "../../../../Components/pagination";
 import RevenueFilter from "../../../../Components/RevenueFilter";
 import Swal from 'sweetalert2';
 
 import { showSuccess, showError } from '../../../../utils/Alerts';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
+
 import RecordRentalRevenueModal from './recordRentalRevenue';
 import ViewRentalDetailsModal from './viewRentalDetails';
-import ModalManager from '../../../../Components/modalManager';
+
 
 
 // TypeScript interfaces
@@ -975,7 +974,7 @@ const AdminBusRentalPage = () => {
         <div className="settings">
           {/* Search bar with Filter button inline */}
           <div className="search-filter-container">
-            <div className="revenue_searchBar">
+            <div className="searchBar">
               <i className="ri-search-line" />
               <input
                 className="searchInput"

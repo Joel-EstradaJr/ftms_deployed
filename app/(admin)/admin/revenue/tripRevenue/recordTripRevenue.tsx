@@ -59,7 +59,7 @@
 
 import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
-import "@/styles/revenue/recordTripRevenue.css";
+
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showRemittanceConfirmation } from "@/utils/Alerts";
 

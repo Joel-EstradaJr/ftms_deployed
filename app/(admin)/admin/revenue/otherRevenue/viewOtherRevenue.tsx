@@ -3,15 +3,16 @@
 import React, { useState } from "react";
 import "@/styles/components/forms.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
-import { OtherRevenueData } from "./recordOtherRevenue";
+import { OtherRevenueData } from "./page";
 import PaymentScheduleTable from "@/Components/PaymentScheduleTable";
-import { PaymentStatus } from "@/app/types/revenue";
+import { PaymentStatus, RevenueScheduleItem } from "@/app/types/revenue";
 
 interface ViewOtherRevenueModalProps {
   revenueData: OtherRevenueData & {
     paymentMethodName?: string;
   };
   onClose: () => void;
+  onRecordPayment?: (scheduleItem?: RevenueScheduleItem) => void;
 }
 
 const OTHER_REVENUE_CATEGORIES_MAP: { [key: string]: string } = {
@@ -23,7 +24,7 @@ const OTHER_REVENUE_CATEGORIES_MAP: { [key: string]: string } = {
   'OTHER': 'Other',
 };
 
-export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOtherRevenueModalProps) {
+export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPayment }: ViewOtherRevenueModalProps) {
   
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
 
@@ -65,14 +66,14 @@ export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOthe
 
     const stats = {
       total: items.length,
-      paid: items.filter(i => i.paymentStatus === PaymentStatus.PAID).length,
-      pending: items.filter(i => i.paymentStatus === PaymentStatus.PENDING).length,
-      overdue: items.filter(i => i.paymentStatus === PaymentStatus.OVERDUE).length,
-      totalPaid: items.reduce((sum, i) => sum + i.paidAmount, 0),
-      totalAmount: items.reduce((sum, i) => sum + i.currentDueAmount, 0),
+      paid: items.filter((i: RevenueScheduleItem) => i.paymentStatus === PaymentStatus.PAID).length,
+      pending: items.filter((i: RevenueScheduleItem) => i.paymentStatus === PaymentStatus.PENDING).length,
+      overdue: items.filter((i: RevenueScheduleItem) => i.paymentStatus === PaymentStatus.OVERDUE).length,
+      totalPaid: items.reduce((sum: number, i: RevenueScheduleItem) => sum + i.paidAmount, 0),
+      totalAmount: items.reduce((sum: number, i: RevenueScheduleItem) => sum + i.currentDueAmount, 0),
       nextPayment: items
-        .filter(i => i.paymentStatus !== PaymentStatus.PAID && i.paymentStatus !== PaymentStatus.CANCELLED)
-        .sort((a, b) => new Date(a.currentDueDate).getTime() - new Date(b.currentDueDate).getTime())[0] || null
+        .filter((i: RevenueScheduleItem) => i.paymentStatus !== PaymentStatus.PAID && i.paymentStatus !== PaymentStatus.CANCELLED)
+        .sort((a: RevenueScheduleItem, b: RevenueScheduleItem) => new Date(a.currentDueDate).getTime() - new Date(b.currentDueDate).getTime())[0] || null
     };
 
     return stats;
@@ -83,7 +84,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOthe
   // Check if there are any pending or overdue payments
   const hasPendingPayments = scheduleStats && 
     revenueData.scheduleItems && 
-    revenueData.scheduleItems.some(item => 
+    revenueData.scheduleItems.some((item: RevenueScheduleItem) => 
       item.paymentStatus === PaymentStatus.PENDING || 
       item.paymentStatus === PaymentStatus.OVERDUE ||
       item.paymentStatus === PaymentStatus.PARTIALLY_PAID
@@ -255,7 +256,17 @@ export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOthe
               <button
                 type="button"
                 className="submit-btn"
-                onClick={() => {/* TODO: Open payment modal */}}
+                onClick={() => {
+                  // Find first unpaid installment
+                  const firstUnpaid = revenueData.scheduleItems?.find(
+                    item => item.paymentStatus === PaymentStatus.OVERDUE || 
+                            item.paymentStatus === PaymentStatus.PARTIALLY_PAID || 
+                            item.paymentStatus === PaymentStatus.PENDING
+                  );
+                  if (firstUnpaid && onRecordPayment) {
+                    onRecordPayment(firstUnpaid);
+                  }
+                }}
                 style={{ 
                   fontSize: '0.85rem', 
                   padding: '0.5rem 1rem',
@@ -268,180 +279,6 @@ export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOthe
             )}
           </div>
 
-          {/* Summary Cards */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(4, 1fr)', 
-            gap: '1rem', 
-            marginBottom: '1rem',
-            marginTop: '0.5rem'
-          }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              padding: '1rem',
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>🔢</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                {scheduleStats.total}
-              </div>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Total Installments</div>
-            </div>
-
-            <div style={{
-              background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
-              color: 'white',
-              padding: '1rem',
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>✅</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                {scheduleStats.paid}
-              </div>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Paid</div>
-            </div>
-
-            <div style={{
-              background: 'linear-gradient(135deg, #FFA726 0%, #FFB74D 100%)',
-              color: 'white',
-              padding: '1rem',
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>⏳</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                {scheduleStats.pending}
-              </div>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Pending</div>
-            </div>
-
-            <div style={{
-              background: 'linear-gradient(135deg, #EF5350 0%, #E57373 100%)',
-              color: 'white',
-              padding: '1rem',
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>⚠️</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                {scheduleStats.overdue}
-              </div>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Overdue</div>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem',
-              fontWeight: '600'
-            }}>
-              <span>Payment Progress</span>
-              <span>
-                {formatMoney(scheduleStats.totalPaid)} / {formatMoney(scheduleStats.totalAmount)}
-                {' '}({Math.round((scheduleStats.totalPaid / scheduleStats.totalAmount) * 100)}%)
-              </span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '24px',
-              backgroundColor: '#e0e0e0',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              position: 'relative'
-            }}>
-              <div style={{
-                width: `${(scheduleStats.totalPaid / scheduleStats.totalAmount) * 100}%`,
-                height: '100%',
-                background: 'linear-gradient(90deg, #4CAF50 0%, #66BB6A 100%)',
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-          </div>
-
-          {/* Next Payment Alert */}
-          {scheduleStats.nextPayment && (
-            <div style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '6px',
-              marginBottom: '1rem',
-              background: (() => {
-                const dueDate = new Date(scheduleStats.nextPayment.currentDueDate);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                
-                if (diffDays < 0) {
-                  return '#FFEBEE'; // Overdue - red background
-                } else if (diffDays <= 7) {
-                  return '#FFF3E0'; // Due soon - orange background
-                } else {
-                  return '#E3F2FD'; // Normal - blue background
-                }
-              })(),
-              border: (() => {
-                const dueDate = new Date(scheduleStats.nextPayment.currentDueDate);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                
-                if (diffDays < 0) {
-                  return '1px solid #FFCDD2';
-                } else if (diffDays <= 7) {
-                  return '1px solid #FFE0B2';
-                } else {
-                  return '1px solid #BBDEFB';
-                }
-              })()
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <strong style={{ 
-                    color: (() => {
-                      const dueDate = new Date(scheduleStats.nextPayment.currentDueDate);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                      
-                      if (diffDays < 0) return '#C62828';
-                      else if (diffDays <= 7) return '#EF6C00';
-                      else return '#1565C0';
-                    })()
-                  }}>
-                    {(() => {
-                      const dueDate = new Date(scheduleStats.nextPayment.currentDueDate);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                      
-                      if (diffDays < 0) {
-                        return `⚠️ OVERDUE: ${Math.abs(diffDays)} day(s) past due`;
-                      } else if (diffDays === 0) {
-                        return '⚠️ DUE TODAY';
-                      } else if (diffDays <= 7) {
-                        return `⚠️ Due in ${diffDays} day(s)`;
-                      } else {
-                        return `Next payment in ${diffDays} day(s)`;
-                      }
-                    })()}
-                  </strong>
-                  <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', color: '#666' }}>
-                    Installment #{scheduleStats.nextPayment.installmentNumber} • {formatDate(scheduleStats.nextPayment.currentDueDate)}
-                  </div>
-                </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#333' }}>
-                  {formatMoney(scheduleStats.nextPayment.currentDueAmount - scheduleStats.nextPayment.paidAmount)}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Payment Schedule Table */}
           <div className="modal-content view">
             <PaymentScheduleTable
@@ -449,6 +286,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOthe
               mode="view"
               totalAmount={scheduleStats.totalAmount}
               isUnearnedRevenue={true}
+              onRecordPayment={onRecordPayment}
             />
           </div>
 
@@ -498,12 +336,12 @@ export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOthe
                     </thead>
                     <tbody>
                       {revenueData.scheduleItems
-                        .filter(item => item.paidAmount > 0)
-                        .sort((a, b) => {
+                        .filter((item: RevenueScheduleItem) => item.paidAmount > 0)
+                        .sort((a: RevenueScheduleItem, b: RevenueScheduleItem) => {
                           if (!a.paidAt || !b.paidAt) return 0;
                           return new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime();
                         })
-                        .map((item, idx) => (
+                        .map((item: RevenueScheduleItem, idx: number) => (
                           <tr key={idx}>
                             <td>{item.paidAt ? formatDate(item.paidAt) : 'N/A'}</td>
                             <td>{formatMoney(item.paidAmount)}</td>
@@ -513,7 +351,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose }: ViewOthe
                             <td>{item.paidBy || 'N/A'}</td>
                           </tr>
                         ))}
-                      {revenueData.scheduleItems.filter(item => item.paidAmount > 0).length === 0 && (
+                      {revenueData.scheduleItems.filter((item: RevenueScheduleItem) => item.paidAmount > 0).length === 0 && (
                         <tr>
                           <td colSpan={6} style={{ textAlign: 'center', padding: '1.5rem', color: '#999' }}>
                             No payment history yet

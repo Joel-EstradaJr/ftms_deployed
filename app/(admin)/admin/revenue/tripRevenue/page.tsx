@@ -58,23 +58,22 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import "../../../../styles/revenue/revenue.css";
-import "../../../../styles/revenue/recordRevenue.css";
-import "../../../../styles/components/table.css";
-import "../../../../styles/components/chips.css";
-import Loading from '../../../../Components/loading';
-import ErrorDisplay from '../../../../Components/errordisplay';
+import "@/styles/components/table.css";
+import "@/styles/components/chips.css";
+import "@/styles/components/config.css";
+ 
+import Loading from '@/Components/loading';
+import ErrorDisplay from '@/Components/errordisplay';
 import ModalManager from "@/Components/modalManager";
-
-import PaginationComponent from "../../../../Components/pagination";
-import RevenueFilter from "../../../../Components/RevenueFilter";
+import PaginationComponent from "@/Components/pagination";
+import RevenueFilter from "@/Components/RevenueFilter";
 
 import ViewTripRevenueModal from "./viewTripRevenue";
 import RecordTripRevenueModal from "./recordTripRevenue"; // Combined add/edit modal
 import ConfigModal, { ConfigData } from "./configModal"; // Configuration modal
 
-import { showSuccess, showError } from '../../../../utils/Alerts';
-import { formatDate, formatMoney } from '../../../../utils/formatting';
+import { showSuccess, showError } from '@/utils/Alerts';
+import { formatDate, formatMoney } from '@/utils/formatting';
 
 // TypeScript interfaces
 interface BusTripRecord {
@@ -1037,7 +1036,7 @@ const AdminTripRevenuePage = () => {
 
         <div className="settings">
           <div className="search-filter-container">
-            <div className="revenue_searchBar">
+            <div className="searchBar">
               <i className="ri-search-line" />
               <input
                 className="searchInput"
@@ -1155,17 +1154,7 @@ const AdminTripRevenuePage = () => {
                             </button>
                           )}
 
-                          {item.status === 'loaned' && (
-                            <button
-                              className="editBtn"
-                              onClick={() => openModal("edit", item)}
-                              title="Edit Remittance"
-                            >
-                              <i className="ri-edit-line" />
-                            </button>
-                          )}
-
-                          {(item.status === 'remitted') && (
+                          {(item.status === 'loaned' || item.status === 'remitted') && (
                             <button
                               className="editBtn"
                               onClick={() => openModal("edit", item)}

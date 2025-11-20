@@ -1,8 +1,8 @@
 import React from "react";
 import { formatMoney, formatDate } from "@/utils/formatting";
-import "../../../../styles/components/forms.css";
-import "../../../../styles/components/modal.css";
-import "../../../../styles/components/chips.css";
+import "@/styles/components/forms.css";
+import "@/styles/components/modal2.css";
+import "@/styles/components/chips.css";
 
 interface BusRentalRecord {
     id: number;

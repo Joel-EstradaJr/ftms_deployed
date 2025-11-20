@@ -13,23 +13,29 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import "../../../../styles/revenue/revenue.css";
-import "../../../../styles/revenue/otherRevenue.css";
+
 import "../../../../styles/components/table.css";
 import "../../../../styles/components/chips.css";
-import PaginationComponent from "../../../../Components/pagination";
-import RevenueFilter from "../../../../Components/RevenueFilter";
+
 import Swal from 'sweetalert2';
 import { showSuccess, showError } from '../../../../utils/Alerts';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
+import { calculatePaymentStatus, processCascadePayment as processRevenueCascade, processOverdueCarryover } from '@/app/utils/revenueScheduleCalculations';
+
+
+import PaginationComponent from "../../../../Components/pagination";
+import RevenueFilter from "../../../../Components/RevenueFilter";
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
 import ModalManager from '@/Components/modalManager';
+
 import RecordOtherRevenueModal from './recordOtherRevenue';
 import ViewOtherRevenueModal from './viewOtherRevenue';
-import RecordPaymentModal from '@/app/(admin)/admin/revenue/otherRevenue/RecordPaymentModal';
-import { RevenueScheduleFrequency, RevenueScheduleItem, PaymentStatus, PaymentRecordData } from '@/app/types/revenue';
-import { calculatePaymentStatus, processOverdueCarryover } from '@/utils/revenueScheduleCalculations';
+import RecordPaymentModal from '@/Components/RecordPaymentModal';
+
+import { RevenueScheduleFrequency, RevenueScheduleItem, PaymentStatus } from '@/app/types/revenue';
+import { PaymentRecordData } from '@/app/types/payments';
+
 
 // TypeScript interfaces
 interface RevenueSource {
@@ -588,6 +594,11 @@ const AdminOtherRevenuePage = () => {
               paymentMethodName: rowData!.paymentMethod.methodName,
             }}
             onClose={closeModal}
+            onRecordPayment={(scheduleItem?: RevenueScheduleItem) => {
+              if (scheduleItem && rowData) {
+                openPaymentModal(scheduleItem, rowData);
+              }
+            }}
           />
         );
         break;
@@ -622,7 +633,31 @@ const AdminOtherRevenuePage = () => {
 
   // Payment modal handlers
   const openPaymentModal = (scheduleItem: RevenueScheduleItem, revenueRecord: OtherRevenueRecord) => {
-    setSelectedScheduleItem(scheduleItem);
+    const scheduleItems = revenueRecord.scheduleItems || [];
+    
+    // Find the earliest unpaid installment: prioritize OVERDUE > PARTIALLY_PAID > PENDING
+    const overdueItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.OVERDUE);
+    const partiallyPaidItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.PARTIALLY_PAID);
+    const pendingItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.PENDING);
+    
+    let targetItem = scheduleItem;
+    
+    // If there's an overdue item, always pay that first
+    if (overdueItems.length > 0) {
+      targetItem = overdueItems[0];
+    }
+    // Otherwise, if clicked item is PAID, find the next unpaid one
+    else if (scheduleItem.paymentStatus === PaymentStatus.PAID) {
+      if (partiallyPaidItems.length > 0) {
+        targetItem = partiallyPaidItems[0];
+      } else if (pendingItems.length > 0) {
+        targetItem = pendingItems[0];
+      }
+    }
+    // If clicked item is PARTIALLY_PAID and there's no overdue, allow payment to it
+    // (user may want to complete the partial payment)
+    
+    setSelectedScheduleItem(targetItem);
     setSelectedRevenueRecord(revenueRecord);
     setIsPaymentModalOpen(true);
   };
@@ -1178,7 +1213,7 @@ const AdminOtherRevenuePage = () => {
         <div className="settings">
           {/* Search bar with Filter button inline */}
           <div className="search-filter-container">
-            <div className="revenue_searchBar">
+            <div className="searchBar">
               <i className="ri-search-line" />
               <input
                 className="searchInput"
@@ -1214,7 +1249,7 @@ const AdminOtherRevenuePage = () => {
 
           {/* Add Revenue Button on the right */}
           <div className="filters">
-            <button onClick={handleAdd} id='addRevenue'>
+            <button onClick={handleAdd} className='addButton'>
               <i className="ri-add-line" /> Add Revenue
             </button>
           </div>
@@ -1401,14 +1436,16 @@ const AdminOtherRevenuePage = () => {
           onClose={closePaymentModal}
           modalContent={
             <RecordPaymentModal
-              revenueId={selectedRevenueRecord.id}
-              revenueCode={selectedRevenueRecord.revenueCode}
+              entityType="revenue"
+              recordId={selectedRevenueRecord.id}
+              recordRef={selectedRevenueRecord.revenueCode}
               scheduleItems={selectedRevenueRecord.scheduleItems || []}
               selectedInstallment={selectedScheduleItem}
               paymentMethods={paymentMethods}
               currentUser="admin"
               onPaymentRecorded={handlePaymentRecorded}
               onClose={closePaymentModal}
+              processCascadePayment={processRevenueCascade}
             />
           }
         />

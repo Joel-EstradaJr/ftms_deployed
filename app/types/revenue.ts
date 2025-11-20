@@ -1,5 +1,11 @@
 // Revenue Types aligned with revised Prisma schema
 
+import { 
+  PaymentStatus as BasePaymentStatus,
+  ScheduleFrequency as BaseScheduleFrequency,
+  ScheduleItem as BaseScheduleItem
+} from './schedule';
+
 export interface Revenue {
   id: number;
   revenueCode: string;
@@ -291,22 +297,19 @@ export interface RevenueFilters {
 // UNEARNED REVENUE PAYMENT SCHEDULE TYPES
 // ============================================================
 
-export enum RevenueScheduleFrequency {
-  DAILY = 'DAILY',
-  WEEKLY = 'WEEKLY',
-  MONTHLY = 'MONTHLY',
-  ANNUAL = 'ANNUAL',
-  CUSTOM = 'CUSTOM'
-}
+/**
+ * @deprecated Use ScheduleFrequency from './schedule' instead
+ * Type alias maintained for backward compatibility
+ */
+export const RevenueScheduleFrequency = BaseScheduleFrequency;
+export type RevenueScheduleFrequency = BaseScheduleFrequency;
 
-export enum PaymentStatus {
-  PENDING = 'PENDING',
-  PARTIALLY_PAID = 'PARTIALLY_PAID',
-  PAID = 'PAID',
-  OVERDUE = 'OVERDUE',
-  CANCELLED = 'CANCELLED',
-  WRITTEN_OFF = 'WRITTEN_OFF'
-}
+/**
+ * @deprecated Use PaymentStatus from './schedule' instead
+ * Type alias maintained for backward compatibility
+ */
+export const PaymentStatus = BasePaymentStatus;
+export type PaymentStatus = BasePaymentStatus;
 
 export interface RevenuePaymentSchedule {
   id?: number;
@@ -324,57 +327,10 @@ export interface RevenuePaymentSchedule {
   updatedAt?: string;
 }
 
-export interface RevenueScheduleItem {
-  id?: string;
-  scheduleId?: string;
-  installmentNumber: number;
-  originalDueDate: string;
-  currentDueDate: string;
-  originalDueAmount: number;
-  currentDueAmount: number;
-  paidAmount: number;
-  carriedOverAmount: number;
-  paymentStatus: PaymentStatus;
-  isPastDue: boolean;
-  isEditable: boolean;
-  paidAt?: string;
-  paidBy?: string;
-  paymentMethod?: string;
-  referenceNumber?: string;
-  remarks?: string;
-}
+/**
+ * @deprecated Use ScheduleItem from './schedule' instead
+ * Type alias maintained for backward compatibility
+ */
+export type RevenueScheduleItem = BaseScheduleItem;
 
-export interface PaymentCascadeResult {
-  success: boolean;
-  totalAmountApplied: number;
-  remainingAmount: number;
-  affectedInstallments: {
-    installmentNumber: number;
-    scheduleItemId: string;
-    amountApplied: number;
-    previousBalance: number;
-    newBalance: number;
-    newStatus: PaymentStatus;
-  }[];
-  message?: string;
-}
-
-export interface PaymentRecordData {
-  revenueId: number;
-  revenueCode: string;
-  scheduleItemId: string;
-  scheduleItemIds?: string[];
-  installmentNumber: number;
-  amountToPay: number;
-  paymentDate: string;
-  paymentMethodId: number;
-  paymentMethod?: string;
-  referenceNumber?: string;
-  remarks?: string;
-  recordedBy: string;
-  cascadeBreakdown?: {
-    installmentNumber: number;
-    scheduleItemId: string;
-    amountApplied: number;
-  }[];
-}
+export type { PaymentCascadeResult, PaymentRecordData } from './payments';

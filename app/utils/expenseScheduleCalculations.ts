@@ -1,5 +1,5 @@
 /**
- * Revenue Schedule Calculations - Backward Compatibility Layer
+ * Expense Schedule Calculations - Backward Compatibility Layer
  * 
  * @deprecated This file now re-exports from './scheduleCalculations'
  * Please update your imports to use './scheduleCalculations' directly

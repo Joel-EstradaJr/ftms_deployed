@@ -1,29 +1,29 @@
 'use client';
 
 import React, { useState } from 'react';
-import { RevenueScheduleItem, RevenueScheduleFrequency, PaymentStatus } from '../types/revenue';
+import { ExpenseScheduleItem, ExpenseScheduleFrequency, PaymentStatus } from '../types/expenses';
 import { formatMoney, formatDate } from '../utils/formatting';
-import { distributeAmount, smartDistributeAmount, validateDateRange } from '../utils/revenueScheduleCalculations';
+import { distributeAmount, smartDistributeAmount, validateDateRange } from '../utils/expenseScheduleCalculations';
 import '../styles/components/table.css';
 import '../styles/components/chips.css';
 import '../styles/components/forms.css';
 
-interface PaymentScheduleTableProps {
-  scheduleItems: RevenueScheduleItem[];
+interface ExpenseScheduleTableProps {
+  scheduleItems: ExpenseScheduleItem[];
   mode: 'add' | 'edit' | 'view';
-  onItemChange?: (items: RevenueScheduleItem[]) => void;
+  onItemChange?: (items: ExpenseScheduleItem[]) => void;
   totalAmount: number;
-  isUnearnedRevenue: boolean;
-  frequency?: RevenueScheduleFrequency;
-  onRecordPayment?: (item: RevenueScheduleItem) => void;
+  isPrepaid: boolean;
+  frequency?: ExpenseScheduleFrequency;
+  onRecordPayment?: (item: ExpenseScheduleItem) => void;
 }
 
-const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
+const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
   scheduleItems,
   mode,
   onItemChange,
   totalAmount,
-  isUnearnedRevenue,
+  isPrepaid,
   frequency,
   onRecordPayment
 }) => {
@@ -31,7 +31,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   const [editingAmountIndex, setEditingAmountIndex] = useState<number | null>(null);
   const [dateError, setDateError] = useState<string>('');
 
-  if (!isUnearnedRevenue || scheduleItems.length === 0) {
+  if (!isPrepaid || scheduleItems.length === 0) {
     return (
       <div className="modal-content view">
         <p className="no-data">No payment schedule configured</p>
@@ -66,7 +66,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   };
 
   const handleAddDate = () => {
-    if (!onItemChange || frequency !== RevenueScheduleFrequency.CUSTOM) return;
+    if (!onItemChange || frequency !== ExpenseScheduleFrequency.CUSTOM) return;
 
     const today = new Date();
     const lastItem = scheduleItems[scheduleItems.length - 1];
@@ -76,7 +76,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
     const newDate = new Date(lastDate);
     newDate.setDate(newDate.getDate() + 1);
     
-    const newItem: RevenueScheduleItem = {
+    const newItem: ExpenseScheduleItem = {
       id: `temp-${Date.now()}`,
       installmentNumber: scheduleItems.length + 1,
       originalDueDate: formatDateInput(newDate),
@@ -96,7 +96,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   };
 
   const handleRemoveDate = (index: number) => {
-    if (!onItemChange || frequency !== RevenueScheduleFrequency.CUSTOM) return;
+    if (!onItemChange || frequency !== ExpenseScheduleFrequency.CUSTOM) return;
 
     // Can only remove if it's the last item and not paid
     if (index !== scheduleItems.length - 1 || !scheduleItems[index].isEditable) {
@@ -159,18 +159,19 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
         }
       `}</style>
       
-      <div className="table-wrapper">
+      <div className="table-wrapper" style={{ maxHeight: '400px', marginBottom: '20px' }}>
         <table className="modal-table">
           <thead className="modal-table-heading">
             <tr>
+              <th style={{ width: '60px' }}>No.</th>
               <th style={{ width: '140px' }}>Due Date</th>
               {mode !== 'add' && <th style={{ width: '120px' }}>Original Amount</th>}
               {totalCarriedOver > 0 && <th style={{ width: '120px' }}>Carried Over</th>}
               <th style={{ width: '120px' }}>Current Due</th>
               {showPaidColumn && <th style={{ width: '120px' }}>Paid Amount</th>}
               <th style={{ width: '120px' }}>Balance</th>
-              <th style={{ width: '110px' }}>Status</th>
-              {isEditable && frequency === RevenueScheduleFrequency.CUSTOM && (
+              <th style={{ width: '140px' }}>Status</th>
+              {isEditable && frequency === ExpenseScheduleFrequency.CUSTOM && (
                 <th style={{ width: '80px' }}>Actions</th>
               )}
               {onRecordPayment && (
@@ -188,6 +189,26 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
               return (
                 <tr key={item.id || index}>
+                  {/* Installment Number */}
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <span>{item.installmentNumber}</span>
+                      {hasCarryOver && (
+                        <span 
+                          title={`Includes carried over amount: ${formatMoney(item.carriedOverAmount)}`}
+                          style={{ 
+                            display: 'inline-block',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: '#FF8C00',
+                            animation: 'pulse-dot 2s infinite'
+                          }}
+                        />
+                      )}
+                    </div>
+                  </td>
+
                   {/* Due Date */}
                   <td>
                     {isDateEditable && editingDateIndex === index ? (
@@ -200,6 +221,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                           min={new Date().toISOString().split('T')[0]}
                           autoFocus
                           className={dateError ? 'invalid-input' : ''}
+                          style={{ width: '100%', padding: '4px' }}
                         />
                         {dateError && <small className="error-text">{dateError}</small>}
                       </div>
@@ -212,7 +234,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                         }}
                       >
                         {formatDate(item.currentDueDate)}
-                        {!item.isEditable && <i className="ri-lock-line"></i>}
+                        {!item.isEditable && <i className="ri-lock-line" style={{ marginLeft: '5px', fontSize: '12px' }}></i>}
                       </span>
                     )}
                   </td>
@@ -278,27 +300,23 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                   </td>
 
                   {/* Actions (Custom frequency only) */}
-                  {isEditable && frequency === RevenueScheduleFrequency.CUSTOM && (
+                  {isEditable && frequency === ExpenseScheduleFrequency.CUSTOM && (
                     <td style={{ textAlign: 'center' }}>
                       {index === scheduleItems.length - 1 && item.isEditable && (
-                        <div className='actionButtonsContainer'>
-                            <button
-                                onClick={() => handleRemoveDate(index)}
-                                className="deleteBtn"
-                                title="Remove"
-                                >
-                                <i className="ri-delete-bin-line"></i>
-                            </button>
-                        </div>
-                        
+                        <button
+                          onClick={() => handleRemoveDate(index)}
+                          className="deleteBtn"
+                          title="Remove"
+                          style={{ width: '28px', height: '28px' }}
+                        >
+                          <i className="ri-delete-bin-line"></i>
+                        </button>
                       )}
                     </td>
                   )}
                   {onRecordPayment && (
                     <td style={{ textAlign: 'center' }}>
-                      {item.paymentStatus !== PaymentStatus.PAID &&
-                       item.paymentStatus !== PaymentStatus.CANCELLED &&
-                       item.paymentStatus !== PaymentStatus.WRITTEN_OFF && (
+                      {item.paymentStatus !== PaymentStatus.PAID && (
                         <button
                           onClick={() => onRecordPayment(item)}
                           className="recordBtn"
@@ -316,30 +334,30 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
             {/* Totals Row */}
             <tr style={{ borderTop: '2px solid var(--border-color)', fontWeight: '600', backgroundColor: 'var(--table-header-color)' }}>
-              <td>
+              <td colSpan={mode !== 'add' ? 2 : 1}>
                 TOTAL:
               </td>
               {mode !== 'add' && <td>{formatMoney(scheduleItems.reduce((sum, item) => sum + item.originalDueAmount, 0))}</td>}
-              {totalCarriedOver > 0 && <td>{formatMoney(totalCarriedOver)}</td>}
+              {totalCarriedOver > 0 && <td style={{ color: '#FF8C00' }}>{formatMoney(totalCarriedOver)}</td>}
               <td>{formatMoney(totalDue)}</td>
               {showPaidColumn && <td>{formatMoney(totalPaid)}</td>}
               <td style={{ color: totalBalance > 0 ? '#FF4949' : '#4CAF50' }}>{formatMoney(totalBalance)}</td>
-              <td colSpan={frequency === RevenueScheduleFrequency.CUSTOM && isEditable ? 2 : 1}></td>
+              <td colSpan={frequency === ExpenseScheduleFrequency.CUSTOM && isEditable ? 2 : 1}></td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Add Date Button for Custom Frequency */}
-      {isEditable && frequency === RevenueScheduleFrequency.CUSTOM && (
-        <div>
+      {isEditable && frequency === ExpenseScheduleFrequency.CUSTOM && (
+        <div style={{ marginTop: '10px' }}>
           <button
             type="button"
             onClick={handleAddDate}
             className="modal-table-add-btn"
           >
             <i className="ri-add-line"></i>
-            Add  Date
+            Add Installment Date
           </button>
         </div>
       )}
@@ -347,7 +365,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
       {/* Warning if total mismatch */}
       {Math.abs(totalDue - totalAmount) > 0.01 && (
         <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#FFF3CD', borderRadius: '4px', border: '1px solid #FFE69C' }}>
-          <i className="ri-alert-line" style={{ color: '#856404'}}></i>
+          <i className="ri-alert-line" style={{ color: '#856404', marginRight: '5px' }}></i>
           <span style={{ color: '#856404', fontSize: '14px' }}>
             Warning: Total due ({formatMoney(totalDue)}) does not match total amount ({formatMoney(totalAmount)})
           </span>
@@ -364,4 +382,4 @@ function formatDateInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export default PaymentScheduleTable;
+export default ExpenseScheduleTable;
