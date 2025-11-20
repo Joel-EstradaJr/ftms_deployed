@@ -315,17 +315,18 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
                     </td>
                   )}
                   {onRecordPayment && (
-                    <td style={{ textAlign: 'center' }}>
-                      {item.paymentStatus !== PaymentStatus.PAID && (
-                        <button
-                          onClick={() => onRecordPayment(item)}
-                          className="recordBtn"
-                          title="Record Payment"
-                          style={{ width: '34px', height: '34px' }}
-                        >
-                          <i className="ri-money-dollar-circle-line"></i>
-                        </button>
-                      )}
+                    <td className="actionButtons">
+                      <div className="actionButtonsContainer">
+                        {item.paymentStatus !== PaymentStatus.PAID && (
+                          <button
+                            onClick={() => onRecordPayment(item)}
+                            className="payBtn"
+                            title="Record Payment"
+                          >
+                            <i className="ri-money-dollar-circle-line"></i>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>

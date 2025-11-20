@@ -18,7 +18,7 @@ import RecordAdminExpenseModal from './recordAdminExpense';
 import { processCascadePayment as processExpenseCascade } from '@/app/utils/expenseScheduleCalculations';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 
-import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem } from '../../../../types/expenses';
+import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseScheduleFrequency } from '../../../../types/expenses';
 import { PaymentRecordData } from '@/app/types/payments';
 
 
@@ -66,6 +66,7 @@ const AdministrativeExpensePage: React.FC = () => {
       vendor: 'Office Depot',
       invoice_number: 'INV-2024-001',
       isPrepaid: false,
+      paymentStatus: PaymentStatus.PAID,
       items: [
         {
           item_name: 'Printer Paper',
@@ -104,6 +105,7 @@ const AdministrativeExpensePage: React.FC = () => {
       vendor: 'Electric Company',
       invoice_number: 'INV-ELEC-JAN-2024',
       isPrepaid: false,
+      paymentStatus: PaymentStatus.PENDING,
       items: [
         {
           item_name: 'Electricity Consumption',
@@ -120,6 +122,196 @@ const AdministrativeExpensePage: React.FC = () => {
       approved_by: 'manager@ftms.com',
       approved_at: '2024-01-20T16:00:00Z',
       updated_at: '2024-01-21T10:00:00Z',
+    },
+    {
+      id: 'ADM-003',
+      date: '2024-02-01',
+      expense_type: 'INSURANCE',
+      category: 'INSURANCE',
+      subcategory: 'Vehicle Insurance',
+      description: 'Annual vehicle insurance premium - 12 monthly installments',
+      amount: 60000.00,
+      department: 'Administration',
+      vendor: 'Insurance Corp',
+      invoice_number: 'INV-INS-2024-001',
+      isPrepaid: true,
+      frequency: ExpenseScheduleFrequency.MONTHLY,
+      startDate: '2024-02-15',
+      paymentStatus: PaymentStatus.PARTIALLY_PAID,
+      scheduleItems: [
+        {
+          id: 'SCH-003-1',
+          installmentNumber: 1,
+          originalDueDate: '2024-02-15',
+          currentDueDate: '2024-02-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 5000,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PAID,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-2',
+          installmentNumber: 2,
+          originalDueDate: '2024-03-15',
+          currentDueDate: '2024-03-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 3000,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PARTIALLY_PAID,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-3',
+          installmentNumber: 3,
+          originalDueDate: '2024-04-15',
+          currentDueDate: '2024-04-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-4',
+          installmentNumber: 4,
+          originalDueDate: '2024-05-15',
+          currentDueDate: '2024-05-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-5',
+          installmentNumber: 5,
+          originalDueDate: '2024-06-15',
+          currentDueDate: '2024-06-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-6',
+          installmentNumber: 6,
+          originalDueDate: '2024-07-15',
+          currentDueDate: '2024-07-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-7',
+          installmentNumber: 7,
+          originalDueDate: '2024-08-15',
+          currentDueDate: '2024-08-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-8',
+          installmentNumber: 8,
+          originalDueDate: '2024-09-15',
+          currentDueDate: '2024-09-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-9',
+          installmentNumber: 9,
+          originalDueDate: '2024-10-15',
+          currentDueDate: '2024-10-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-10',
+          installmentNumber: 10,
+          originalDueDate: '2024-11-15',
+          currentDueDate: '2024-11-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-11',
+          installmentNumber: 11,
+          originalDueDate: '2024-12-15',
+          currentDueDate: '2024-12-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        },
+        {
+          id: 'SCH-003-12',
+          installmentNumber: 12,
+          originalDueDate: '2025-01-15',
+          currentDueDate: '2025-01-15',
+          originalDueAmount: 5000,
+          currentDueAmount: 5000,
+          paidAmount: 0,
+          carriedOverAmount: 0,
+          paymentStatus: PaymentStatus.PENDING,
+          isPastDue: false,
+          isEditable: false
+        }
+      ],
+      items: [
+        {
+          item_name: 'Vehicle Insurance Premium',
+          quantity: 12,
+          unit_measure: 'months',
+          unit_cost: 5000,
+          supplier: 'Insurance Corp',
+          subtotal: 60000,
+          type: 'service'
+        }
+      ],
+      created_by: 'admin@ftms.com',
+      created_at: '2024-02-01T10:00:00Z',
+      approved_by: 'manager@ftms.com',
+      approved_at: '2024-02-01T15:00:00Z',
+      updated_at: '2024-03-20T11:30:00Z',
     },
   ];
 
@@ -331,6 +523,41 @@ const AdministrativeExpensePage: React.FC = () => {
     openModal('edit', expense);
   };
 
+  const handleRecordPayment = (expense: AdministrativeExpense) => {
+    // For prepaid expenses with schedule items, find the first pending installment
+    if (expense.isPrepaid && expense.scheduleItems && expense.scheduleItems.length > 0) {
+      const pendingItem = expense.scheduleItems.find(
+        item => item.paymentStatus === PaymentStatus.PENDING || item.paymentStatus === PaymentStatus.PARTIALLY_PAID
+      );
+      if (pendingItem) {
+        openPaymentModal(pendingItem, expense);
+      }
+    } else {
+      // For non-prepaid expenses, create a single installment for payment
+      const singleInstallment: ExpenseScheduleItem = {
+        id: `${expense.id}-SINGLE`,
+        installmentNumber: 1,
+        originalDueDate: expense.date,
+        currentDueDate: expense.date,
+        originalDueAmount: expense.amount,
+        currentDueAmount: expense.amount,
+        paidAmount: 0,
+        carriedOverAmount: 0,
+        paymentStatus: PaymentStatus.PENDING,
+        isPastDue: false,
+        isEditable: false
+      };
+      
+      // Create a temporary expense object with schedule for payment modal
+      const expenseWithSchedule = {
+        ...expense,
+        scheduleItems: [singleInstallment]
+      };
+      
+      openPaymentModal(singleInstallment, expenseWithSchedule);
+    }
+  };
+
   // Filter sections for FilterDropdown
   const filterSections: FilterSection[] = [
     {
@@ -504,6 +731,21 @@ const AdministrativeExpensePage: React.FC = () => {
                           >
                             <i className="ri-pencil-line"></i>
                           </button>
+                          {/* Payment button - show for PENDING or PARTIALLY_PAID expenses */}
+                          {expense.paymentStatus && 
+                           (expense.paymentStatus === PaymentStatus.PENDING || 
+                            expense.paymentStatus === PaymentStatus.PARTIALLY_PAID) && (
+                            <button
+                              className="payBtn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRecordPayment(expense);
+                              }}
+                              title="Record Payment"
+                            >
+                              <i className="ri-money-dollar-circle-line"></i>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

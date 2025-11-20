@@ -94,7 +94,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
   const handleInputBlur = (field: keyof AdministrativeExpense, value: any) => {
     if (field === 'date') {
       if (!isNotFutureDate(value)) {
-        showWarning('Date cannot be in the future. Please select today or a past date.');
+        showWarning('Date cannot be in the future. Please select today or a past date.', 'Invalid Input');
       }
     } else if (field === 'description') {
       const errors = validateField(value, {
@@ -104,7 +104,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
         label: 'Description'
       });
       if (errors.length > 0) {
-        showWarning(errors[0]);
+        showWarning(errors[0], 'Invalid Input');
       }
     } else if (field === 'vendor') {
       const errors = validateField(value, {
@@ -113,7 +113,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
         label: 'Vendor'
       });
       if (errors.length > 0) {
-        showWarning(errors[0]);
+        showWarning(errors[0], 'Invalid Input');
       }
     } else if (field === 'invoice_number') {
       const errors = validateField(value, {
@@ -122,7 +122,7 @@ const AdminExpenseViewModal: React.FC<AdminExpenseViewModalProps> = ({
         label: 'Invoice Number'
       });
       if (errors.length > 0) {
-        showWarning(errors[0]);
+        showWarning(errors[0], 'Invalid Input');
       }
     }
   };

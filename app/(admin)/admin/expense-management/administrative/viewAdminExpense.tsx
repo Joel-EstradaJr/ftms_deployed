@@ -7,6 +7,7 @@ import "@/styles/components/chips.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { AdministrativeExpense, ExpenseScheduleItem, PaymentStatus } from "@/app/types/expenses";
 import ExpenseScheduleTable from "@/Components/ExpenseScheduleTable";
+import ItemsTable, { Item } from "@/Components/itemTable";
 
 interface ViewAdminExpenseModalProps {
   data: AdministrativeExpense;
@@ -36,7 +37,7 @@ export default function ViewAdminExpenseModal({
   return (
     <>
       <div className="modal-heading modal-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: 'calc(100% - 200px)' }}>
           <h1 className="modal-title">Expense Details</h1>
           {data.paymentStatus && (
             <span className={`chip ${getStatusChipClass(data.paymentStatus)}`}>
@@ -48,125 +49,163 @@ export default function ViewAdminExpenseModal({
           <p>{new Date(data.created_at).toLocaleDateString()}</p>
           <p>{new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
         </div>
-        <button onClick={onClose} className="close-modal-btn view"><i className="ri-close-line" /></button>
+        <button onClick={onClose} className="close-modal-btn"><i className="ri-close-line" /></button>
       </div>
 
+      {/* I. Expense Information */}
+      <p className="details-title">I. Expense Information</p>
       <div className="modal-content view">
-          <div className="view-section">
-            <h3>General Information</h3>
-            <div className="view-grid">
-              <div className="view-item">
-                <label>Date</label>
-                <p>{formatDate(data.date)}</p>
-              </div>
-              <div className="view-item">
-                <label>Category</label>
-                <p>{data.category}</p>
-              </div>
-              <div className="view-item">
-                <label>Subcategory</label>
-                <p>{data.subcategory || '-'}</p>
-              </div>
-              <div className="view-item">
-                <label>Amount</label>
-                <p className="amount-text">{formatMoney(data.amount)}</p>
-              </div>
-              <div className="view-item">
-                <label>Vendor / Payee</label>
-                <p>{data.vendor}</p>
-              </div>
-              <div className="view-item">
-                <label>Invoice / Ref No.</label>
-                <p>{data.invoice_number || '-'}</p>
-              </div>
+        <form className="view-form">
+          {/* Row: Date + Category */}
+          <div className="form-row">
+            <div className="form-group">
+              <label>Date</label>
+              <p>{formatDate(data.date)}</p>
             </div>
-            
-            {data.description && (
-              <div className="view-item full-width" style={{ marginTop: '10px' }}>
+            <div className="form-group">
+              <label>Category</label>
+              <p>{data.category}</p>
+            </div>
+          </div>
+
+          {/* Row: Subcategory + Amount */}
+          <div className="form-row">
+            <div className="form-group">
+              <label>Subcategory</label>
+              <p>{data.subcategory || '-'}</p>
+            </div>
+            <div className="form-group">
+              <label>Amount</label>
+              <p style={{ fontWeight: 'bold', color: '#961C1E' }}>{formatMoney(data.amount)}</p>
+            </div>
+          </div>
+
+          {/* Row: Vendor + Invoice */}
+          <div className="form-row">
+            <div className="form-group">
+              <label>Vendor / Payee</label>
+              <p>{data.vendor}</p>
+            </div>
+            <div className="form-group">
+              <label>Invoice / Ref No.</label>
+              <p>{data.invoice_number || '-'}</p>
+            </div>
+          </div>
+
+          {/* Row: Description (full width) */}
+          {data.description && (
+            <div className="form-row">
+              <div className="form-group full-width">
                 <label>Description</label>
                 <p>{data.description}</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </form>
+      </div>
 
-          {data.isPrepaid && data.scheduleItems && data.scheduleItems.length > 0 && (
-            <div className="view-section">
-              <h3>Payment Schedule</h3>
-              <div className="view-grid">
-                <div className="view-item">
+      {/* II. Expense Items */}
+      {data.items && data.items.length > 0 && (
+        <>
+          <p className="details-title">II. Expense Items</p>
+          <div className="modal-content view" style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
+            <ItemsTable
+              items={data.items.map(item => ({
+                item_name: item.item_name || '',
+                quantity: item.quantity || 1,
+                unit_measure: item.unit_measure || 'pcs',
+                unit_cost: item.unit_cost || 0,
+                supplier: item.supplier || '',
+                subtotal: item.subtotal || 0,
+                type: item.type || 'supply'
+              }))}
+              onItemsChange={() => {}}
+              showItems={true}
+              onToggleItems={() => {}}
+              readOnly={true}
+              title="Expense Items"
+            />
+          </div>
+        </>
+      )}
+
+      {/* III. Payment Schedule */}
+      {data.isPrepaid && data.scheduleItems && data.scheduleItems.length > 0 && (
+        <>
+          <p className="details-title">III. Payment Schedule</p>
+          <div className="modal-content view">
+            <form className="view-form">
+              <div className="form-row">
+                <div className="form-group">
                   <label>Frequency</label>
                   <p>{data.frequency}</p>
                 </div>
-                <div className="view-item">
+                <div className="form-group">
                   <label>Start Date</label>
                   <p>{formatDate(data.startDate || '')}</p>
                 </div>
               </div>
               
-              <div style={{ marginTop: '15px' }}>
-                <ExpenseScheduleTable
-                  scheduleItems={data.scheduleItems}
-                  mode="view"
-                  totalAmount={data.amount}
-                  isPrepaid={true}
-                  frequency={data.frequency}
-                  onRecordPayment={(item) => {
-                    (onRecordPaymentProp as any)?.(item);
-                    if (!onRecordPaymentProp) {
-                      // default: call with first pending installment if no handler
-                      const pending = (data.scheduleItems || []).find(it => it.paymentStatus === PaymentStatus.PENDING || it.paymentStatus === PaymentStatus.PARTIALLY_PAID);
-                      if (pending) (onRecordPaymentProp as any)?.(pending);
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {!data.isPrepaid && (
-            <div className="view-section">
-              <h3>Payment Details</h3>
-              <div className="view-grid">
-                <div className="view-item">
-                  <label>Payment Method</label>
-                  <p>{data.paymentMethod || '-'}</p>
-                </div>
-                <div className="view-item">
-                  <label>Reference No.</label>
-                  <p>{data.referenceNo || '-'}</p>
+              <div className="form-row">
+                <div className="form-group full-width">
+                  <label>Payment Schedule</label>
+                  <ExpenseScheduleTable
+                    scheduleItems={data.scheduleItems}
+                    mode="view"
+                    totalAmount={data.amount}
+                    isPrepaid={true}
+                    frequency={data.frequency}
+                    onRecordPayment={(item) => {
+                      (onRecordPaymentProp as any)?.(item);
+                      if (!onRecordPaymentProp) {
+                        const pending = (data.scheduleItems || []).find(it => it.paymentStatus === PaymentStatus.PENDING || it.paymentStatus === PaymentStatus.PARTIALLY_PAID);
+                        if (pending) (onRecordPaymentProp as any)?.(pending);
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            </div>
-          )}
+            </form>
+          </div>
+        </>
+      )}
 
-          {data.remarks && (
-            <div className="view-section">
-              <h3>Remarks</h3>
-              <p>{data.remarks}</p>
+      {/* IV. Additional Info */}
+      <p className="details-title">IV. Additional Info</p>
+      <div className="modal-content view">
+        <form className="view-form">
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label>Remarks</label>
+              <p>{data.remarks || 'No remarks'}</p>
             </div>
-          )}
+          </div>
+        </form>
+      </div>
 
-          <div className="view-section">
-            <h3>Audit Trail</h3>
-            <div className="view-grid">
-              <div className="view-item">
-                <label>Created By</label>
-                <p>{data.created_by}</p>
-              </div>
-              <div className="view-item">
-                <label>Created At</label>
-                <p>{new Date(data.created_at).toLocaleString()}</p>
-              </div>
+      {/* V. Audit Trail */}
+      <p className="details-title">V. Audit Trail</p>
+      <div className="modal-content view">
+        <form className="view-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label>Created By</label>
+              <p>{data.created_by}</p>
             </div>
-        </div>
+            <div className="form-group">
+              <label>Created At</label>
+              <p>{new Date(data.created_at).toLocaleString()}</p>
+            </div>
+          </div>
+        </form>
       </div>
 
       <div className="modal-actions">
         {onEdit && (
           <button 
             onClick={() => onEdit(data)} 
-            className="edit-btn"
-            style={{ marginRight: 'auto' }}
+            className="submit-btn"
+            style={{ marginRight: 'auto', backgroundColor: 'var(--info-color)' }}
           >
             <i className="ri-pencil-line"></i> Edit Expense
           </button>
@@ -177,13 +216,12 @@ export default function ViewAdminExpenseModal({
               const pending = (data.scheduleItems || []).find(it => it.paymentStatus === PaymentStatus.PENDING || it.paymentStatus === PaymentStatus.PARTIALLY_PAID);
               if (pending) (onRecordPaymentProp as any)?.(pending);
             }}
-            className="primary-btn"
-            style={{ marginRight: '8px' }}
+            className="pay-btn"
           >
             <i className="ri-money-dollar-circle-line"></i> Record Payment
           </button>
         )}
-        <button onClick={onClose} className="secondary-btn">Close</button>
+        <button onClick={onClose} className="cancel-btn">Close</button>
       </div>
     </>
   );

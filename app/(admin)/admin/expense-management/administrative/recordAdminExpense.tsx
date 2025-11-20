@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
 import "@/styles/components/modal2.css";
+import "@/styles/expense-management/administrative.css";
+import "@/styles/components/chips.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showConfirmation } from "@/utils/Alerts";
 import { isValidAmount } from "@/utils/validation";
@@ -15,6 +17,7 @@ import {
 } from "@/app/types/expenses";
 import { generateScheduleDates, generateScheduleItems, validateSchedule } from "@/app/utils/expenseScheduleCalculations";
 import ExpenseScheduleTable from "@/Components/ExpenseScheduleTable";
+import ItemsTable, { Item } from "@/Components/itemTable";
 
 interface RecordAdminExpenseModalProps {
   mode: "add" | "edit";
@@ -83,6 +86,19 @@ export default function RecordAdminExpenseModal({
 
   const [scheduleItems, setScheduleItems] = useState<ExpenseScheduleItem[]>(existingData?.scheduleItems || []);
   const [numberOfPayments, setNumberOfPayments] = useState<number>(existingData?.scheduleItems?.length || 2);
+  const [items, setItems] = useState<Item[]>(
+    existingData?.items?.map(item => ({
+      item_name: item.item_name || '',
+      quantity: item.quantity || 1,
+      unit_measure: item.unit_measure || 'pcs',
+      unit_cost: item.unit_cost || 0,
+      supplier: item.supplier || '',
+      subtotal: item.subtotal || 0,
+      type: item.type || 'supply'
+    })) || []
+  );
+  const [showItems, setShowItems] = useState<boolean>(!!existingData?.items && existingData.items.length > 0);
+  const [itemsValid, setItemsValid] = useState(true);
 
   const [formErrors, setFormErrors] = useState<FormErrors>({
     date: '',
@@ -207,6 +223,12 @@ export default function RecordAdminExpenseModal({
     setFormData(prev => ({ ...prev, scheduleItems: newItems }));
   };
 
+  const handleItemsChange = (newItems: Item[]) => {
+    setItems(newItems);
+    const totalAmount = newItems.reduce((sum, item) => sum + item.subtotal, 0);
+    setFormData(prev => ({ ...prev, amount: totalAmount, items: newItems as any[] }));
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     if (e && typeof (e as any).preventDefault === 'function') (e as any).preventDefault();
 
@@ -228,6 +250,12 @@ export default function RecordAdminExpenseModal({
 
     if (Object.values(errors).some(err => err !== '')) {
       showError('Please fix the errors in the form','error');
+      return;
+    }
+
+    // Validate items if any are present
+    if (showItems && items.length > 0 && !itemsValid) {
+      showError('Please fix the errors in expense items', 'error');
       return;
     }
 
@@ -303,18 +331,15 @@ export default function RecordAdminExpenseModal({
             <div className="form-group">
               <label>Amount <span className="requiredTags">*</span></label>
               <div className="form-row" style={{ alignItems: 'center' }}>
-                <span className="currency-symbol">₱</span>
                 <input
-                  type="number"
-                  name="amount"
-                  value={formData.amount || ''}
-                  onChange={handleInputChange}
-                  className={formErrors.amount ? 'error' : ''}
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  value={formatMoney(formData.amount)}
+                  readOnly
+                  className="readonly-input"
+                  style={{ fontWeight: 'bold', color: '#961C1E' }}
                 />
               </div>
-              {formErrors.amount && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.amount}</p>}
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>Auto-calculated from expense items</p>
             </div>
           </div>
 
@@ -358,8 +383,22 @@ export default function RecordAdminExpenseModal({
 
       </div>
 
-      {/* II. Payment Schedule */}
-      <p className="details-title">II. Payment Schedule</p>
+      {/* II. Expense Items */}
+      <p className="details-title">II. Expense Items (Optional)</p>
+      <div className={`modal-content ${mode}`}>
+        <ItemsTable
+          items={items}
+          onItemsChange={handleItemsChange}
+          showItems={showItems}
+          onToggleItems={() => setShowItems(!showItems)}
+          readOnly={false}
+          title="Expense Items"
+          onValidityChange={setItemsValid}
+        />
+      </div>
+
+      {/* III. Payment Schedule */}
+      <p className="details-title">III. Payment Schedule</p>
       <div className={`modal-content ${mode}`}>
         <form className={`${mode}-form`}>
           {/* Prepaid / Payable Section */}
@@ -444,8 +483,8 @@ export default function RecordAdminExpenseModal({
           </form>
       </div>
 
-      {/* III. Additional Info */}
-      <p className="details-title">III. Additional Info</p>
+      {/* IV. Additional Info */}
+      <p className="details-title">IV. Additional Info</p>
       <div className={`modal-content ${mode}`}>
         <form className={`${mode}-form`}>
 

@@ -10,7 +10,8 @@ This document provides comprehensive guidance for integrating the Trip Revenue f
 3. [Database Tables](#database-tables)
 4. [Data Flow](#data-flow)
 5. [Important Business Logic](#important-business-logic)
-6. [Implementation Examples](#implementation-examples)
+6. [Loan Payment System](#loan-payment-system)
+7. [Implementation Examples](#implementation-examples)
 
 ---
 
@@ -19,8 +20,12 @@ This document provides comprehensive guidance for integrating the Trip Revenue f
 The Trip Revenue Management system handles:
 - Recording bus trip revenue remittances
 - Automatic loan creation for shortfalls or missed deadlines
+- Individual loan payment tracking for driver and conductor
+- Loan payment with payment method and timestamp recording
+- Administrative loan closure (write-off capability)
 - Support for driver-only or driver+conductor scenarios
 - Configurable rules for minimum wage, deadlines, and loan distribution
+- Partial payment status tracking
 
 ---
 
@@ -214,6 +219,76 @@ The Trip Revenue Management system handles:
 
 ---
 
+### 6. POST /api/admin/revenue/loan-payment
+**Purpose:** Record individual loan payment or close loan
+
+**Request Body (Payment):**
+```json
+{
+  "assignment_id": "ASSIGN-001",
+  "employeeType": "driver",
+  "employeeId": "EMP-001",
+  "payment": {
+    "date": "2024-11-20",
+    "time": "02:30:45 PM",
+    "amount": 750.00,
+    "method": "Cash",
+    "recordedBy": "Admin"
+  }
+}
+```
+
+**Request Body (Close Loan):**
+```json
+{
+  "assignment_id": "ASSIGN-001",
+  "action": "closeLoan",
+  "closedBy": "Admin",
+  "closedDate": "2024-11-20T14:30:45.000Z"
+}
+```
+
+**Response Format:**
+```json
+{
+  "success": true,
+  "message": "Payment recorded successfully",
+  "data": {
+    "loanDetails": {
+      "totalAmount": 1500.00,
+      "dueDate": "2024-11-30",
+      "driverPaid": 750.00,
+      "driverStatus": "Paid",
+      "driverPayments": [
+        {
+          "date": "2024-11-20",
+          "time": "02:30:45 PM",
+          "amount": 750.00,
+          "method": "Cash",
+          "recordedBy": "Admin"
+        }
+      ],
+      "conductorPaid": 0,
+      "conductorStatus": "Pending",
+      "overallStatus": "Partial"
+    }
+  }
+}
+```
+
+**Backend Processing:**
+1. For payments:
+   - Update the specific employee's payment array in loan details
+   - Update employee's paid amount and status
+   - Calculate overall status (Pending → Partial → Paid)
+   - Return updated loanDetails
+2. For closure:
+   - Set overallStatus to 'Closed'
+   - Record closure details (who, when)
+   - Allow closure even with unpaid balance (administrative write-off)
+
+---
+
 ## Database Tables
 
 ### Tables Involved:
@@ -312,13 +387,113 @@ A loan is automatically created when:
 
 ### 5. Status Progression
 
+**Remittance Status:**
 ```
 PENDING → ON_TIME → LATE → CONVERTED_TO_LOAN
-         ↓
-      REMITTED (if full amount paid)
-         ↓
-      LOANED (if shortfall or deadline exceeded)
 ```
+
+**Main Status:**
+```
+PENDING → REMITTED (full payment, no loan)
+       ↓
+       LOANED (shortfall or deadline exceeded)
+```
+
+**Loan Payment Status (overallStatus):**
+```
+PENDING → PARTIAL (one employee paid in two-employee scenario)
+       ↓
+       PAID (all employees paid in full)
+       ↓
+       CLOSED (administrative closure/write-off)
+```
+
+**Note:** Status calculation now uses `remittanceDueDate` field instead of just hours from `date_assigned`. If current date > remittanceDueDate, status becomes CONVERTED_TO_LOAN.
+
+---
+
+## Loan Payment System
+
+### Overview
+When a trip deficit loan is created (due to shortfall or deadline exceeded), the system tracks individual payments from driver and conductor separately.
+
+### Loan Details Structure
+```json
+{
+  "loanDetails": {
+    "totalAmount": 1500.00,
+    "dueDate": "2024-11-30",
+    "createdDate": "2024-11-20",
+    "driverShare": 750.00,
+    "driverPaid": 375.00,
+    "driverStatus": "Pending",
+    "driverPayments": [
+      {
+        "date": "2024-11-20",
+        "time": "02:30:45 PM",
+        "amount": 375.00,
+        "method": "Cash",
+        "recordedBy": "Admin"
+      }
+    ],
+    "conductorShare": 750.00,
+    "conductorPaid": 750.00,
+    "conductorStatus": "Paid",
+    "conductorPayments": [
+      {
+        "date": "2024-11-20",
+        "time": "03:15:30 PM",
+        "amount": 750.00,
+        "method": "Payroll Deduction",
+        "recordedBy": "Admin"
+      }
+    ],
+    "overallStatus": "Partial"
+  }
+}
+```
+
+### Payment Methods
+- **Cash** - Direct cash payment
+- **Payroll Deduction** - Deducted from employee salary
+- **Bank Transfer** - Electronic payment
+
+### Individual Employee Status
+- **Pending** - No payment or partial payment made
+- **Paid** - Full share amount paid
+- **Overdue** - Due date passed without full payment
+
+### Overall Loan Status
+- **Pending** - No payments made or both employees unpaid
+- **Partial** - One employee paid in full (two-employee scenario)
+- **Paid** - All employees paid in full
+- **Overdue** - Due date passed without full payment
+- **Closed** - Administratively closed (can have unpaid balance)
+
+### Payment Validation
+- **Exact Amount Matching** - User must enter exact remaining balance (tolerance: ±0.01)
+- **Typed Confirmation** - User must type "PAY" to confirm payment
+- **Payment Method Required** - Must select from available methods
+
+### Close Loan Functionality
+- **Available Anytime** - Admin can close loan at any time
+- **Unpaid Balance Warning** - Shows warning if balance remains
+- **Write-Off Capability** - Closing with unpaid balance writes off the debt
+- **Typed Confirmation** - User must type "CLOSE" to confirm
+
+### Driver-Only Scenario
+- **100% to Driver** - Full loan amount assigned to driver
+- **No Conductor Fields** - Conductor share/payments omitted
+- **Direct Status Transition** - Pending → Paid (no Partial status)
+
+### Frontend Display
+- **Status Chips:**
+  - Partially Paid: Yellow background (#fef3c7)
+  - Paid: Green success colors
+  - Closed: Gray neutral colors
+  - Overdue: Red with pulse animation
+- **Pay Loan Button:** Disabled when status is Paid or Closed
+- **Audit Trail:** All payments recorded with timestamp and recorded by
 
 ---
 
@@ -374,8 +549,8 @@ PENDING → ON_TIME → LATE → CONVERTED_TO_LOAN
 
 **Trip Details:**
 - Date Assigned: 2024-11-01
-- Current Date: 2024-11-10 (9 days = 216 hours)
-- Duration to Loan: 168 hours (7 days)
+- Remittance Due Date: 2024-11-08
+- Current Date: 2024-11-10
 - Expected Remittance: ₱10,000
 
 **System Behavior:**
@@ -383,6 +558,49 @@ PENDING → ON_TIME → LATE → CONVERTED_TO_LOAN
 - Full ₱10,000 converted to loan
 - Status: 'loaned'
 - Remarks: "Automatically converted to loan"
+- loanDetails initialized with driverShare and conductorShare
+
+### Example 5: Loan Payment (Partial)
+
+**Loan Details:**
+- Total Amount: ₱2,000
+- Driver Share: ₱1,000 (remaining: ₱1,000)
+- Conductor Share: ₱1,000 (remaining: ₱1,000)
+- Overall Status: Pending
+
+**Driver Makes Payment:**
+- Amount: ₱1,000
+- Method: Cash
+- Result:
+  - driverPaid: ₱1,000
+  - driverStatus: Paid
+  - overallStatus: Partial (conductor still owes ₱1,000)
+
+**Conductor Makes Payment:**
+- Amount: ₱1,000
+- Method: Payroll Deduction
+- Result:
+  - conductorPaid: ₱1,000
+  - conductorStatus: Paid
+  - overallStatus: Paid (all paid in full)
+
+### Example 6: Administrative Loan Closure
+
+**Loan Details:**
+- Total Amount: ₱2,000
+- Driver Paid: ₱500
+- Conductor Paid: ₱0
+- Unpaid Balance: ₱1,500
+- Overall Status: Overdue
+
+**Admin Closes Loan:**
+- Action: closeLoan
+- Warning shown: "Unpaid balance: ₱1,500"
+- User types "CLOSE" to confirm
+- Result:
+  - overallStatus: Closed
+  - Unpaid balance written off
+  - No further payments required
 
 ---
 
@@ -396,6 +614,10 @@ PENDING → ON_TIME → LATE → CONVERTED_TO_LOAN
 - [ ] POST /api/admin/revenue/remittance creates records
 - [ ] POST /api/admin/revenue/remittance creates loans when needed
 - [ ] PUT /api/admin/revenue/remittance updates records
+- [ ] POST /api/admin/revenue/loan-payment records driver payment
+- [ ] POST /api/admin/revenue/loan-payment records conductor payment
+- [ ] POST /api/admin/revenue/loan-payment closes loan
+- [ ] POST /api/admin/revenue/loan-payment calculates overallStatus correctly
 
 ### Data Integrity:
 - [ ] Conductor/driver IDs and name fields are included
@@ -407,8 +629,15 @@ PENDING → ON_TIME → LATE → CONVERTED_TO_LOAN
 - [ ] Boundary calculation is correct
 - [ ] Percentage calculation is correct
 - [ ] Minimum wage validation works
-- [ ] Loan creation triggers correctly
+- [ ] Loan creation triggers correctly (shortfall or CONVERTED_TO_LOAN status)
+- [ ] LATE status does NOT create loan (only warning)
 - [ ] Loan distribution is accurate (50/50 or 100% driver)
+- [ ] Payment tracking works for individual employees
+- [ ] Overall status updates correctly (Pending → Partial → Paid)
+- [ ] Partial status shows when one employee paid (two-employee scenario)
+- [ ] Driver-only loans work (100% to driver, no Partial status)
+- [ ] Administrative loan closure works with unpaid balance
+- [ ] Status calculation uses remittanceDueDate correctly
 
 ---
 
@@ -421,4 +650,5 @@ For questions or issues with backend integration, please refer to:
 
 ---
 
-**Last Updated:** November 11, 2025
+**Last Updated:** November 20, 2025  
+**Version:** 2.0 - Added loan payment system, payment tracking, and administrative closure
