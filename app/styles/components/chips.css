@@ -213,9 +213,11 @@
     color: var(--warning-chip-text-color);
 }
 
-.chip.partially-paid {
+.chip.partially-paid,
+.chip.partial {
     background-color: #fef3c7;
     color: #92400e;
+    font-weight: 600;
 }
 
 .chip.paid {

@@ -70,6 +70,7 @@ import RevenueFilter from "@/Components/RevenueFilter";
 
 import ViewTripRevenueModal from "./viewTripRevenue";
 import RecordTripRevenueModal from "./recordTripRevenue"; // Combined add/edit modal
+import RecordLoanPaymentModal from "./recordLoanPayment"; // Loan payment modal
 import ConfigModal, { ConfigData } from "./configModal"; // Configuration modal
 
 import { showSuccess, showError } from '@/utils/Alerts';
@@ -108,6 +109,35 @@ interface BusTripRecord {
   amount: number | null;
   status: string; // 'remitted' or 'pending'
   remarks: string | null;
+  dueDate?: string | null; // Loan due date (for loaned status)
+  
+  // Loan payment details (for loaned status)
+  loanDetails?: {
+    totalAmount: number;
+    dueDate: string;
+    createdDate: string;
+    driverShare: number;
+    driverPaid: number;
+    driverStatus: 'Pending' | 'Paid' | 'Overdue';
+    driverPayments: Array<{
+      date: string;
+      time: string;
+      amount: number;
+      method: string;
+      recordedBy: string;
+    }>;
+    conductorShare?: number;
+    conductorPaid?: number;
+    conductorStatus?: 'Pending' | 'Paid' | 'Overdue';
+    conductorPayments?: Array<{
+      date: string;
+      time: string;
+      amount: number;
+      method: string;
+      recordedBy: string;
+    }>;
+    overallStatus: 'Pending' | 'Partial' | 'Paid' | 'Overdue' | 'Closed';
+  };
   
   // Computed/display fields
   driverName?: string; // Computed from employee fields
@@ -145,7 +175,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-001",
     bus_trip_id: "TRIP-001",
     bus_route: "S. Palay to Sta. Cruz, S. Palay to PITX",
-    date_assigned: "2024-11-10",
+    date_assigned: "2025-11-10",
     trip_fuel_expense: 2500.00,
     trip_revenue: 15000.00,
     assignment_type: "Boundary",
@@ -162,7 +192,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "001",
     bus_brand: "Hilltop",
-    dateRecorded: "2024-11-11",
+    dateRecorded: "2025-11-11",
     amount: 15000.00,
     status: "remitted",
     remarks: "On-time remittance, no issues",
@@ -185,7 +215,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-002",
     bus_trip_id: "TRIP-002",
     bus_route: "S. Palay to Sta. Cruz",
-    date_assigned: "2024-11-01", // Old date - will be auto-converted to loaned (trip deficit)
+    date_assigned: "2025-11-01", // Old date - will be auto-converted to loaned (trip deficit)
     trip_fuel_expense: 2200.00,
     trip_revenue: 12500.00,
     assignment_type: "Percentage",
@@ -225,7 +255,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-003",
     bus_trip_id: "TRIP-003",
     bus_route: "S. Palay to PITX",
-    date_assigned: "2024-11-09",
+    date_assigned: "2025-11-09",
     trip_fuel_expense: 3000.00,
     trip_revenue: 18000.00,
     assignment_type: "Boundary",
@@ -242,7 +272,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "003",
     bus_brand: "DARJ",
-    dateRecorded: "2024-11-10",
+    dateRecorded: "2025-11-10",
     amount: 18000.00,
     status: "remitted",
     remarks: "Complete remittance with fuel receipts",
@@ -265,7 +295,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-004",
     bus_trip_id: "TRIP-004",
     bus_route: "Sta. Cruz to S. Palay",
-    date_assigned: "2024-11-02", // Old date - will be auto-converted to loaned (trip deficit)
+    date_assigned: "2025-11-02", // Old date - will be auto-converted to loaned (trip deficit)
     trip_fuel_expense: 1800.00,
     trip_revenue: 10000.00,
     amount: 0,
@@ -306,7 +336,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-005",
     bus_trip_id: "TRIP-005",
     bus_route: "S. Palay to Sta. Cruz, S. Palay to PITX",
-    date_assigned: "2024-11-08",
+    date_assigned: "2025-11-08",
     trip_fuel_expense: 2800.00,
     trip_revenue: 16500.00,
     amount: 0,
@@ -324,7 +354,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "005",
     bus_brand: "Agila",
-    dateRecorded: "2024-11-09",
+    dateRecorded: "2025-11-09",
     status: "pending",
     remarks: "Remitted with complete documentation",
     driverName: "Carlos Mendoza Villanueva, III",
@@ -346,8 +376,8 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-006",
     bus_trip_id: "TRIP-006",
     bus_route: "PITX to S. Palay",
-    date_assigned: "2024-11-03",
-    dateRecorded: "2024-11-03",
+    date_assigned: "2025-11-03",
+    dateRecorded: "2025-11-03",
     trip_fuel_expense: 2100.00,
     trip_revenue: 11000.00,
     amount: 0,
@@ -387,7 +417,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-007",
     bus_trip_id: "TRIP-007",
     bus_route: "S. Palay to Sta. Cruz",
-    date_assigned: "2024-11-10",
+    date_assigned: "2025-11-10",
     trip_fuel_expense: 2000.00,
     trip_revenue: 10000.00,
     assignment_type: "Boundary",
@@ -404,7 +434,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "007",
     bus_brand: "Hilltop",
-    dateRecorded: "2024-11-11",
+    dateRecorded: "2025-11-11",
     amount: 5000.00, // Less than expected (7000 + 2000 = 9000), so it's loaned
     status: "Trip Deficit",
     remarks: "Partial remittance - shortfall converted to loan",
@@ -429,7 +459,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-008",
     bus_trip_id: "TRIP-008",
     bus_route: "S. Palay to Sta. Cruz",
-    date_assigned: "2024-11-10",
+    date_assigned: "2025-11-10",
     trip_fuel_expense: 1500.00,
     trip_revenue: 8000.00,
     assignment_type: "Boundary",
@@ -476,6 +506,7 @@ const MOCK_PAYMENT_METHODS: PaymentMethod[] = [
 const AdminTripRevenuePage = () => {
   // State for data and UI
   const [data, setData] = useState<BusTripRecord[]>([]);
+  const [fullDataset, setFullDataset] = useState<BusTripRecord[]>(MOCK_BUS_TRIP_DATA); // Persistent mock data
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
@@ -487,6 +518,7 @@ const AdminTripRevenuePage = () => {
     durationToLoan: 168,
     defaultConductorShare: 50,
     defaultDriverShare: 50,
+    defaultLoanDueDays: 30,
   });
 
   // Filter options state
@@ -524,7 +556,7 @@ const AdminTripRevenuePage = () => {
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
 
   // Open modal with different modes
-  const openModal = (mode: "view" | "add" | "edit" | "config", rowData?: BusTripRecord) => {
+  const openModal = (mode: "view" | "add" | "edit" | "config" | "payLoan", rowData?: BusTripRecord) => {
     let content;
 
     switch (mode) {
@@ -546,6 +578,13 @@ const AdminTripRevenuePage = () => {
           mode={mode}
           tripData={rowData!}
           onSave={handleSaveTripRevenue}
+          onClose={closeModal}
+        />;
+        break;
+      case "payLoan":
+        content = <RecordLoanPaymentModal
+          tripData={rowData!}
+          onSave={handleLoanPayment}
           onClose={closeModal}
         />;
         break;
@@ -612,6 +651,113 @@ const AdminTripRevenuePage = () => {
     */
   };
 
+  // Handle loan payment
+  const handleLoanPayment = async (paymentData: any) => {
+    // TODO: BACKEND CONNECTION
+    // Expected endpoint: POST /api/admin/revenue/loan-payment
+    // Request body:
+    // {
+    //   assignment_id: string,
+    //   employeeType: 'driver' | 'conductor',
+    //   employeeId: string,
+    //   payment: {
+    //     date: string,
+    //     time: string,
+    //     amount: number,
+    //     method: string,
+    //     recordedBy: string
+    //   }
+    // }
+    // OR for closing loan:
+    // {
+    //   assignment_id: string,
+    //   action: 'closeLoan',
+    //   closedBy: string,
+    //   closedDate: string
+    // }
+    
+    console.log('Recording loan payment:', paymentData);
+    
+    // Update persistent mock data
+    setFullDataset(prevData => prevData.map(item => {
+      if (item.assignment_id === paymentData.assignment_id) {
+        if (paymentData.action === 'closeLoan') {
+          // Close the loan
+          return {
+            ...item,
+            loanDetails: item.loanDetails ? {
+              ...item.loanDetails,
+              overallStatus: 'Closed' as const
+            } : item.loanDetails
+          };
+        } else {
+          // Record payment
+          const loanDetails = item.loanDetails;
+          if (!loanDetails) return item;
+
+          if (paymentData.employeeType === 'driver') {
+            const newDriverPaid = loanDetails.driverPaid + paymentData.payment.amount;
+            const newDriverStatus: 'Pending' | 'Paid' | 'Overdue' = 
+              Math.abs(newDriverPaid - loanDetails.driverShare) < 0.01 ? 'Paid' : 'Pending';
+            
+            const hasConductor = item.conductorId && item.conductorName && item.conductorName !== 'N/A';
+            let newOverallStatus = loanDetails.overallStatus;
+            
+            if (hasConductor) {
+              if (newDriverStatus === 'Paid' && loanDetails.conductorStatus === 'Paid') {
+                newOverallStatus = 'Paid';
+              } else if (newDriverStatus === 'Paid' || loanDetails.conductorStatus === 'Paid') {
+                newOverallStatus = 'Partial';
+              }
+            } else {
+              newOverallStatus = newDriverStatus === 'Paid' ? 'Paid' : 'Pending';
+            }
+
+            return {
+              ...item,
+              loanDetails: {
+                ...loanDetails,
+                driverPaid: newDriverPaid,
+                driverStatus: newDriverStatus,
+                driverPayments: [...loanDetails.driverPayments, paymentData.payment],
+                overallStatus: newOverallStatus
+              }
+            };
+          } else if (paymentData.employeeType === 'conductor') {
+            const newConductorPaid = (loanDetails.conductorPaid || 0) + paymentData.payment.amount;
+            const newConductorStatus: 'Pending' | 'Paid' | 'Overdue' = 
+              Math.abs(newConductorPaid - (loanDetails.conductorShare || 0)) < 0.01 ? 'Paid' : 'Pending';
+            
+            let newOverallStatus = loanDetails.overallStatus;
+            if (loanDetails.driverStatus === 'Paid' && newConductorStatus === 'Paid') {
+              newOverallStatus = 'Paid';
+            } else if (loanDetails.driverStatus === 'Paid' || newConductorStatus === 'Paid') {
+              newOverallStatus = 'Partial';
+            }
+
+            return {
+              ...item,
+              loanDetails: {
+                ...loanDetails,
+                conductorPaid: newConductorPaid,
+                conductorStatus: newConductorStatus,
+                conductorPayments: [...(loanDetails.conductorPayments || []), paymentData.payment],
+                overallStatus: newOverallStatus
+              }
+            };
+          }
+        }
+      }
+      return item;
+    }));
+    
+    // Refresh displayed data
+    fetchData();
+    
+    // Don't close modal automatically to allow multiple payments
+    // closeModal();
+  };
+
   // Handle save trip revenue (both add and edit)
   const handleSaveTripRevenue = async (formData: any, mode: "add" | "edit") => {
     // TODO: BACKEND CONNECTION
@@ -667,9 +813,9 @@ const AdminTripRevenuePage = () => {
     // Simulate success for now
     showSuccess(`Trip revenue ${mode === 'add' ? 'recorded' : 'updated'} successfully (MOCK)`, 'Success');
     
-    // Update local mock data
+    // Update persistent mock data
     if (mode === 'add') {
-      setData(prevData => prevData.map(item => 
+      setFullDataset(prevData => prevData.map(item => 
         item.assignment_id === formData.assignment_id
           ? {
               ...item,
@@ -681,7 +827,7 @@ const AdminTripRevenuePage = () => {
           : item
       ));
     } else {
-      setData(prevData => prevData.map(item => 
+      setFullDataset(prevData => prevData.map(item => 
         item.assignment_id === formData.assignment_id
           ? {
               ...item,
@@ -692,6 +838,9 @@ const AdminTripRevenuePage = () => {
           : item
       ));
     }
+    
+    // Refresh displayed data
+    fetchData();
     
     closeModal();
     
@@ -795,13 +944,51 @@ const AdminTripRevenuePage = () => {
 
     // Check if deadline exceeded (converted to loan)
     if (hoursDiff > config.durationToLoan) {
-      console.log(`[${record.body_number}] ✓ Converting to loaned (trip deficit) - Setting dateRecorded and amount=0`);
+      const dateRecorded = now.toISOString().split('T')[0];
+      const dueDate = new Date(now);
+      dueDate.setDate(dueDate.getDate() + config.defaultLoanDueDays);
+      const dueDateStr = dueDate.toISOString().split('T')[0];
+      
+      // Calculate loan shares based on conductor presence
+      const hasConductor = record.conductorId && record.conductorName && record.conductorName !== 'N/A';
+      const totalAmount = record.trip_revenue; // Total trip deficit is the unpaid revenue
+      
+      let driverShare = totalAmount;
+      let conductorShare = undefined;
+      
+      if (hasConductor) {
+        // Split based on configured shares
+        driverShare = totalAmount * (config.defaultDriverShare / 100);
+        conductorShare = totalAmount * (config.defaultConductorShare / 100);
+      }
+      
+      // Determine if already overdue
+      const isOverdue = now > dueDate;
+      
+      console.log(`[${record.body_number}] ✓ Converting to loaned (trip deficit) - Setting dateRecorded=${dateRecorded}, dueDate=${dueDateStr} (${config.defaultLoanDueDays} days)`);
       return {
         ...record,
         status: 'loaned', // Deadline exceeded, converted to loan
-        dateRecorded: now.toISOString().split('T')[0], // Set current date as dateRecorded
+        dateRecorded: dateRecorded, // Set current date as dateRecorded
         amount: 0, // No payment made, amount is 0
-        remarks: 'Automatically converted to loan - Deadline exceeded with no remittance'
+        dueDate: dueDateStr, // Calculate due date based on config
+        remarks: `Automatically converted to loan - Deadline exceeded with no remittance. Due: ${formatDate(dueDateStr)}`,
+        loanDetails: {
+          totalAmount,
+          dueDate: dueDateStr,
+          createdDate: dateRecorded,
+          driverShare,
+          driverPaid: 0,
+          driverStatus: isOverdue ? 'Overdue' : 'Pending',
+          driverPayments: [],
+          ...(hasConductor && conductorShare ? {
+            conductorShare,
+            conductorPaid: 0,
+            conductorStatus: isOverdue ? 'Overdue' : 'Pending',
+            conductorPayments: []
+          } : {}),
+          overallStatus: isOverdue ? 'Overdue' : 'Pending'
+        }
       };
     }
 
@@ -849,7 +1036,7 @@ const AdminTripRevenuePage = () => {
     
     // Simulate API delay
     setTimeout(() => {
-      let filteredData = [...MOCK_BUS_TRIP_DATA];
+      let filteredData = [...fullDataset];
 
       // Check and update status for all records
       filteredData = filteredData.map(record => checkAndUpdateStatus(record));
@@ -988,6 +1175,14 @@ const AdminTripRevenuePage = () => {
     return sortOrder === "asc" ? " ↑" : " ↓";
   };
 
+  // Calculate loan due date (configurable days from dateRecorded)
+  const getLoanDueDate = (dateRecorded: string | null): string => {
+    if (!dateRecorded) return 'N/A';
+    const dueDate = new Date(dateRecorded);
+    dueDate.setDate(dueDate.getDate() + config.defaultLoanDueDays);
+    return formatDate(dueDate.toISOString().split('T')[0]);
+  };
+
   // Handle filter apply
   const handleFilterApply = (filterValues: {
     sources: string[];
@@ -1099,19 +1294,20 @@ const AdminTripRevenuePage = () => {
                   <th>Assignment Type</th>
                   <th>Payment Method</th>
                   <th>Status</th>
+                  <th>Due Date</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
                       Loading...
                     </td>
                   </tr>
                 ) : data.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
                       No bus trip records found.
                     </td>
                   </tr>
@@ -1120,19 +1316,32 @@ const AdminTripRevenuePage = () => {
                     <tr key={item.assignment_id}>
                       <td>{item.body_number}</td>
                       <td>{formatDate(item.date_assigned)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatMoney(item.trip_revenue)}</td>
+                      <td>{formatMoney(item.trip_revenue)}</td>
                       <td>{item.assignment_type}</td>
                       <td>{item.payment_method}</td>
                       <td>
                         <span className={`chip ${
                           item.status === 'remitted' ? 'completed' : 
-                          item.status === 'loaned' ? 'loan' : 
+                          item.status === 'loaned' ? (
+                            item.loanDetails?.overallStatus === 'Partial' ? 'partially-paid' :
+                            item.loanDetails?.overallStatus === 'Paid' ? 'paid' :
+                            item.loanDetails?.overallStatus === 'Closed' ? 'closed' :
+                            'loan'
+                          ) : 
                           'pending'
                         }`}>
                           {item.status === 'remitted' ? 'Remitted' : 
-                           item.status === 'loaned' ? 'Loaned' : 
+                           item.status === 'loaned' ? (
+                             item.loanDetails?.overallStatus === 'Partial' ? 'Partially Paid' :
+                             item.loanDetails?.overallStatus === 'Paid' ? 'Paid' :
+                             item.loanDetails?.overallStatus === 'Closed' ? 'Closed' :
+                             'Loaned'
+                           ) : 
                            'Pending'}
                         </span>
+                      </td>
+                      <td>
+                        {item.status === 'loaned' ? getLoanDueDate(item.dateRecorded) : '-'}
                       </td>
                       <td className="actionButtons">
                         <div className="actionButtonsContainer">
@@ -1154,7 +1363,27 @@ const AdminTripRevenuePage = () => {
                             </button>
                           )}
 
-                          {(item.status === 'loaned' || item.status === 'remitted') && (
+                          {item.status === 'loaned' && (
+                            <>
+                              <button
+                                className="editBtn"
+                                onClick={() => openModal("payLoan", item)}
+                                title={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed' ? 'Loan already paid/closed' : 'Pay Loan'}
+                                disabled={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed'}
+                              >
+                                <i className="ri-hand-coin-line" />
+                              </button>
+                              <button
+                                className="editBtn"
+                                onClick={() => openModal("edit", item)}
+                                title="Edit Loan Details"
+                              >
+                                <i className="ri-edit-line" />
+                              </button>
+                            </>
+                          )}
+
+                          {item.status === 'remitted' && (
                             <button
                               className="editBtn"
                               onClick={() => openModal("edit", item)}

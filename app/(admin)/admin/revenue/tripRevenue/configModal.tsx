@@ -54,6 +54,7 @@ export interface ConfigData {
   durationToLoan: number; // Hours until converted to loan
   defaultConductorShare: number; // Percentage share for conductor (0-100)
   defaultDriverShare: number; // Percentage share for driver (0-100)
+  defaultLoanDueDays: number; // Days until loan is due (default 30)
 }
 
 interface FormErrors {
@@ -62,6 +63,7 @@ interface FormErrors {
   durationToLoan: string;
   defaultConductorShare: string;
   defaultDriverShare: string;
+  defaultLoanDueDays: string;
 }
 
 export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigModalProps) {
@@ -71,6 +73,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     durationToLoan: currentConfig?.durationToLoan || 168,
     defaultConductorShare: currentConfig?.defaultConductorShare || 50,
     defaultDriverShare: currentConfig?.defaultDriverShare || 50,
+    defaultLoanDueDays: currentConfig?.defaultLoanDueDays || 30,
   });
 
   // Update formData when currentConfig changes (modal reopens)
@@ -83,6 +86,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
         durationToLoan: currentConfig.durationToLoan,
         defaultConductorShare: currentConfig.defaultConductorShare,
         defaultDriverShare: currentConfig.defaultDriverShare,
+        defaultLoanDueDays: currentConfig.defaultLoanDueDays,
       });
     }
   }, [currentConfig]);
@@ -93,6 +97,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     durationToLoan: '',
     defaultConductorShare: '',
     defaultDriverShare: '',
+    defaultLoanDueDays: '',
   });
 
   const [isFormValid, setIsFormValid] = useState(false);
@@ -139,6 +144,14 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
           errorMessage = 'Driver share cannot exceed 100%';
         }
         break;
+      
+      case 'defaultLoanDueDays':
+        if (!value || value <= 0) {
+          errorMessage = 'Loan due days must be greater than 0';
+        } else if (value > 365) {
+          errorMessage = 'Loan due days cannot exceed 365 days (1 year)';
+        }
+        break;
     }
 
     setFormErrors(prev => ({
@@ -156,6 +169,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     const durationToLoanValid = validateFormField('durationToLoan', formData.durationToLoan);
     const conductorShareValid = validateFormField('defaultConductorShare', formData.defaultConductorShare);
     const driverShareValid = validateFormField('defaultDriverShare', formData.defaultDriverShare);
+    const loanDueDaysValid = validateFormField('defaultLoanDueDays', formData.defaultLoanDueDays);
 
     // Check if shares add up to 100%
     if (formData.defaultConductorShare + formData.defaultDriverShare !== 100) {
@@ -163,7 +177,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       return false;
     }
 
-    return minimumWageValid && durationToLateValid && durationToLoanValid && conductorShareValid && driverShareValid;
+    return minimumWageValid && durationToLateValid && durationToLoanValid && conductorShareValid && driverShareValid && loanDueDaysValid;
   };
 
   // Check form validity on data changes
@@ -176,11 +190,13 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       formData.defaultConductorShare >= 0 &&
       formData.defaultDriverShare >= 0 &&
       formData.defaultConductorShare + formData.defaultDriverShare === 100 &&
+      formData.defaultLoanDueDays > 0 &&
       formErrors.minimumWage === '' &&
       formErrors.durationToLate === '' &&
       formErrors.durationToLoan === '' &&
       formErrors.defaultConductorShare === '' &&
-      formErrors.defaultDriverShare === '';
+      formErrors.defaultDriverShare === '' &&
+      formErrors.defaultLoanDueDays === '';
     
     setIsFormValid(isValid);
   }, [formData, formErrors]);
@@ -354,6 +370,35 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
                 Hours after assignment before remittance is converted to loan (must be at least 1hr higher than Duration to Late)
               </small>
               <p className="add-error-message">{formErrors.durationToLoan}</p>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>
+                Loan Due Date (Days)<span className="requiredTags"> *</span>
+              </label>
+              <input
+                type="number"
+                value={formData.defaultLoanDueDays}
+                onChange={(e) => handleInputChange('defaultLoanDueDays', e.target.value)}
+                onBlur={() => handleInputBlur('defaultLoanDueDays')}
+                onKeyPress={(e) => {
+                  // Only allow digits 0-9
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                min="1"
+                max="365"
+                className={formErrors.defaultLoanDueDays ? 'invalid-input' : ''}
+                placeholder="30"
+                required
+              />
+              <small className="hint-message">
+                Days from loan creation until payment is due (maximum 365 days)
+              </small>
+              <p className="add-error-message">{formErrors.defaultLoanDueDays}</p>
             </div>
           </div>
 

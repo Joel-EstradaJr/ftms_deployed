@@ -117,6 +117,14 @@ textarea.input-error {
 .addButton:hover {
   background: var(--primary-hover-color) !important;
 }
+.addButton:disabled {
+  background: var(--button-disabled-color) !important;
+}
+.addButton:disabled:hover {
+  background: var(--button-disabled-color) !important;
+}
+
+
 
 :root {
 

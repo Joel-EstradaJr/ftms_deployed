@@ -321,16 +321,20 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     const now = new Date();
     const assignedDate = new Date(tripData.date_assigned);
     
-    // Calculate hours difference
-    const hoursDiff = (now.getTime() - assignedDate.getTime()) / (1000 * 60 * 60);
+    // Use the remittanceDueDate if set, otherwise calculate from assigned date
+    const dueDate = formData.remittanceDueDate 
+      ? new Date(formData.remittanceDueDate + 'T23:59:59') // End of due date
+      : new Date(assignedDate.getTime() + formData.durationToLoan * 60 * 60 * 1000);
     
-    // Check if deadline has passed - converted to loan
-    if (hoursDiff > formData.durationToLoan) {
+    const lateDate = new Date(assignedDate.getTime() + formData.durationToLate * 60 * 60 * 1000);
+    
+    // Check if deadline has passed (now is after due date) - converted to loan
+    if (now > dueDate) {
       return 'CONVERTED_TO_LOAN';
     }
     
-    // Check if late (past durationToLate but before durationToLoan)
-    if (hoursDiff >= formData.durationToLate) {
+    // Check if late (past durationToLate but before due date)
+    if (now >= lateDate && now <= dueDate) {
       return 'LATE';
     }
     
@@ -361,7 +365,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
         amount: 0
       }));
     }
-  }, [formData.durationToLoan, tripData.date_assigned]);
+  }, [formData.durationToLoan, formData.remittanceDueDate, tripData.date_assigned]);
 
   // Update loan amount when remitted amount changes or when conversion to loan detected
   useEffect(() => {
@@ -442,17 +446,14 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
 
   // Check if loan should be created (either shortfall or deadline exceeded)
   const shouldCreateLoan = (): boolean => {
-    // Check if deadline has passed (in hours)
-    const now = new Date();
-    const assignedDate = new Date(tripData.date_assigned);
-    const hoursDiff = (now.getTime() - assignedDate.getTime()) / (1000 * 60 * 60);
-    const deadlinePassed = hoursDiff > formData.durationToLoan;
+    const status = calculateRemittanceStatus();
     
     // Create loan if:
     // 1. There's a shortfall (amount > 0 but less than expected), OR
-    // 2. Deadline exceeded (amount will be 0, full expected becomes loan)
-    if (deadlinePassed) {
-      return true; // Always create loan when deadline exceeded
+    // 2. Status is CONVERTED_TO_LOAN (deadline completely exceeded)
+    // Note: LATE status alone does NOT create a loan - only shows warning
+    if (status === 'CONVERTED_TO_LOAN') {
+      return true; // Always create loan when converted to loan
     }
     
     return hasRemittanceShortfall(); // Create loan when there's a shortfall

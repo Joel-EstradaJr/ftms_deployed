@@ -71,6 +71,14 @@ interface ViewTripRevenueModalProps {
     // Computed/display fields
     driverName?: string;
     conductorName?: string;
+    
+    // Driver details
+    driverId?: string;
+    driverPosition?: string;
+    
+    // Conductor details
+    conductorId?: string;
+    conductorPosition?: string;
   };
   onClose: () => void;
 }
@@ -175,9 +183,18 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
       loanInterest = loanAmount * 0.10; // 10% interest
       totalLoanAmount = loanAmount + loanInterest;
       
-      // Calculate shares (default 50/50 split)
-      conductorShare = totalLoanAmount * (config.defaultConductorShare / 100);
-      driverShare = totalLoanAmount * (config.defaultDriverShare / 100);
+      // Check if conductor is assigned
+      const hasConductor = tripData.conductorName && tripData.conductorName !== 'N/A';
+      
+      if (hasConductor) {
+        // Split loan according to configuration
+        conductorShare = totalLoanAmount * (config.defaultConductorShare / 100);
+        driverShare = totalLoanAmount * (config.defaultDriverShare / 100);
+      } else {
+        // No conductor - entire loan goes to driver
+        conductorShare = 0;
+        driverShare = totalLoanAmount;
+      }
     }
 
     setCalculatedData({
@@ -291,36 +308,39 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
       <p className="details-title">II. Assigned Employee</p>
       <div className="modal-content view">
         <form className="view-form">
-          {/* Employee ID and Position */}
+          {/* Driver Details */}
           <div className="form-row">
-            {/* Employee ID */}
             <div className="form-group">
               <label>Employee ID</label>
-              <p>{tripData.employee_id}</p>
-            </div>
-
-            {/* Position */}
-            <div className="form-group">
-              <label>Position</label>
-              <p>{tripData.position_name}</p>
+              <p>{tripData.driverId || tripData.employee_id}</p>
             </div>
           </div>
-
-
-          {/* Driver and Conductor Names */}
+          
           <div className="form-row">
-            {/* Driver Name */}
             <div className="form-group">
-              <label>Driver Name</label>
-              <p>{tripData.driverName || 'N/A'}</p>
-            </div>
-
-            {/* Conductor Name */}
-            <div className="form-group">
-              <label>Conductor Name</label>
-              <p>{tripData.conductorName || 'N/A'}</p>
+              <label>{tripData.driverName || 'N/A'}</label>
+              <p>{tripData.driverPosition || tripData.position_name || 'Driver'}</p>
             </div>
           </div>
+
+          {/* Conductor Details - Only show if conductor exists */}
+          {tripData.conductorName && tripData.conductorName !== 'N/A' && (
+            <>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Employee ID</label>
+                  <p>{tripData.conductorId || 'N/A'}</p>
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>{tripData.conductorName}</label>
+                  <p>{tripData.conductorPosition || 'Conductor'}</p>
+                </div>
+              </div>
+            </>
+          )}
         </form>
       </div>
 
@@ -466,13 +486,15 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
 
               {/* Conductor and driver shares */}
               <div className="form-row">
-                <div className="form-group">
-                  <label>Conductor Share ({config.defaultConductorShare}%)</label>
-                  <p>{formatMoney(calculatedData.conductorShare)}</p>
-                </div>
+                {tripData.conductorName && tripData.conductorName !== 'N/A' && (
+                  <div className="form-group">
+                    <label>Conductor Share ({config.defaultConductorShare}%)</label>
+                    <p>{formatMoney(calculatedData.conductorShare)}</p>
+                  </div>
+                )}
 
                 <div className="form-group">
-                  <label>Driver Share ({config.defaultDriverShare}%)</label>
+                  <label>Driver Share ({tripData.conductorName && tripData.conductorName !== 'N/A' ? `${config.defaultDriverShare}%` : '100%'})</label>
                   <p>{formatMoney(calculatedData.driverShare)}</p>
                 </div>
               </div>

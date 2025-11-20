@@ -119,6 +119,36 @@
 
 /* ----- BUTTONS ----- */
 
+/* pay button */
+.pay-btn {
+    width: 190px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    border-radius: 8px;
+    background-color: var(--success-color);
+    color: var(--foreground-color);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.pay-btn i {
+    font-weight: 500;
+}
+
+.pay-btn:hover {
+    background-color: var(--success-hover-color);
+}
+
+.pay-btn:disabled {
+    background-color: var(--button-disabled-color);
+    cursor: not-allowed;
+}
+
 /* submit stock button */
 .modal-actions .submit-btn {
     width: 170px;
