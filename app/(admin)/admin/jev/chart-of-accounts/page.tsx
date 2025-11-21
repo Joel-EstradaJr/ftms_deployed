@@ -13,6 +13,8 @@ import AddChildAccountModal from './AddChildAccountModal';
 import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
 import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
+import { fetchChartOfAccounts } from '@/app/services/chartOfAccountsService';
+import { ApiError } from '@/app/lib/api';
 import {getAccountTypeClass, 
         getAccountStatusInfo, 
         canArchiveAccount,
@@ -26,6 +28,7 @@ import '@/app/styles/JEV/JEV_table.css';
 
 const ChartOfAccountsPage = () => {
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
+  const [allAccounts, setAllAccounts] = useState<ChartOfAccount[]>([]); // Store all accounts for filtering
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
@@ -41,219 +44,81 @@ const ChartOfAccountsPage = () => {
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [selectedAccount, setSelectedAccount] = useState<ChartOfAccount | null>(null);
 
-  // Sample data for testing
-  const sampleAccounts: ChartOfAccount[] = [
-    // PARENT ACCOUNTS (Root level)
-    {
-      account_id: '1',
-      account_code: '1010',
-      account_name: 'Cash on Hand',
-      account_type: AccountType.ASSET,
-      description: 'Physical cash available',
-      is_active: true,
-      is_system_account: true,
-      level: 1,
-    },
-    {
-      account_id: '2',
-      account_code: '1020',
-      account_name: 'Cash in Bank',
-      account_type: AccountType.ASSET,
-      description: 'Bank deposits',
-      is_active: true,
-      is_system_account: true,
-      level: 1,
-    },
-    
-    // CHILD ACCOUNTS (Under "Cash in Bank")
-    {
-      account_id: '3',
-      account_code: '1021',
-      account_name: 'BDO Savings Account',
-      account_type: AccountType.ASSET,
-      description: 'BDO primary savings account',
-      parent_account_id: '2',
-      parent_account_code: '1020',
-      parent_account_name: 'Cash in Bank',
-      is_active: true,
-      is_system_account: false,
-      level: 2,
-    },
-    {
-      account_id: '4',
-      account_code: '1022',
-      account_name: 'BPI Current Account',
-      account_type: AccountType.ASSET,
-      description: 'BPI business current account',
-      parent_account_id: '2',
-      parent_account_code: '1020',
-      parent_account_name: 'Cash in Bank',
-      is_active: true,
-      is_system_account: false,
-      level: 2,
-    },
-    {
-      account_id: '5',
-      account_code: '1023',
-      account_name: 'Metrobank Payroll Account',
-      account_type: AccountType.ASSET,
-      description: 'Payroll disbursement account',
-      parent_account_id: '2',
-      parent_account_code: '1020',
-      parent_account_name: 'Cash in Bank',
-      is_active: true,
-      is_system_account: false,
-      level: 2,
-    },
-    
-    // MORE PARENT ACCOUNTS
-    {
-      account_id: '6',
-      account_code: '1210',
-      account_name: 'Loan Receivable - Employee',
-      account_type: AccountType.ASSET,
-      description: 'Employee loans',
-      is_active: true,
-      is_system_account: false,
-      level: 1,
-    },
-    {
-      account_id: '7',
-      account_code: '2010',
-      account_name: 'Accounts Payable',
-      account_type: AccountType.LIABILITY,
-      description: 'Amounts owed to suppliers',
-      is_active: true,
-      is_system_account: true,
-      level: 1,
-    },
-    
-    // PARENT: Revenue
-    {
-      account_id: '8',
-      account_code: '4000',
-      account_name: 'Bus Operations Revenue',
-      account_type: AccountType.REVENUE,
-      description: 'All revenue from bus operations',
-      is_active: true,
-      is_system_account: true,
-      level: 1,
-    },
-    
-    // CHILDREN: Revenue breakdown
-    {
-      account_id: '9',
-      account_code: '4010',
-      account_name: 'Route 1 Revenue',
-      account_type: AccountType.REVENUE,
-      description: 'Revenue from Route 1',
-      parent_account_id: '8',
-      parent_account_code: '4000',
-      parent_account_name: 'Bus Operations Revenue',
-      is_active: true,
-      is_system_account: false,
-      level: 2,
-    },
-    {
-      account_id: '10',
-      account_code: '4020',
-      account_name: 'Route 2 Revenue',
-      account_type: AccountType.REVENUE,
-      description: 'Revenue from Route 2',
-      parent_account_id: '8',
-      parent_account_code: '4000',
-      parent_account_name: 'Bus Operations Revenue',
-      is_active: true,
-      is_system_account: false,
-      level: 2,
-    },
-    
-    // PARENT: Expenses
-    {
-      account_id: '11',
-      account_code: '5000',
-      account_name: 'Operating Expenses',
-      account_type: AccountType.EXPENSE,
-      description: 'All operating expenses',
-      is_active: true,
-      is_system_account: true,
-      level: 1,
-    },
-    
-    // CHILDREN: Expense breakdown
-    {
-      account_id: '12',
-      account_code: '5010',
-      account_name: 'Salary Expense',
-      account_type: AccountType.EXPENSE,
-      description: 'Employee salaries',
-      parent_account_id: '11',
-      parent_account_code: '5000',
-      parent_account_name: 'Operating Expenses',
-      is_active: true,
-      is_system_account: false,
-      level: 2,
-    },
-    {
-      account_id: '13',
-      account_code: '5020',
-      account_name: 'Fuel Expense',
-      account_type: AccountType.EXPENSE,
-      description: 'Fuel costs',
-      parent_account_id: '11',
-      parent_account_code: '5000',
-      parent_account_name: 'Operating Expenses',
-      is_active: true,
-      is_system_account: false,
-      level: 2,
-    },
-  ];
+  // Fetch accounts from API
+  const loadAccountsFromApi = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorCode(null);
 
-  const fetchAccounts = useCallback(() => {
-    setLoading(true);
-    
-    // Simulate API call with setTimeout
-    setTimeout(() => {
-      let filtered = [...sampleAccounts];
-
-      // Apply search filter
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filtered = filtered.filter(acc => 
-          acc.account_code.toLowerCase().includes(searchLower) ||
-          acc.account_name.toLowerCase().includes(searchLower)
-        );
-      }
-
-      // Apply type filter (multiple types)
-      if (accountTypeFilters && accountTypeFilters.length > 0) {
-        filtered = filtered.filter(acc => accountTypeFilters.includes(acc.account_type));
-      }
-
-      // Apply status filter
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter(acc => 
-          statusFilter === 'active' ? acc.is_active : !acc.is_active
-        );
-      }
-
-      // Sort by account code
-      filtered.sort((a, b) => a.account_code.localeCompare(b.account_code));
-
-      // Pagination
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedAccounts = filtered.slice(startIndex, endIndex);
-
-      setAccounts(paginatedAccounts);
-      setTotalPages(Math.ceil(filtered.length / pageSize));
+      const data = await fetchChartOfAccounts();
+      setAllAccounts(data);
       setLoading(false);
-    }, 500);
-  }, [search, accountTypeFilters, statusFilter, currentPage, pageSize]);
+    } catch (err) {
+      setLoading(false);
+      if (err instanceof ApiError) {
+        setError(err.message);
+        setErrorCode(err.status);
+      } else {
+        setError('An unexpected error occurred while fetching accounts');
+        setErrorCode(500);
+      }
+      console.error('Error fetching chart of accounts:', err);
+    }
+  }, []);
 
+  // Apply filters and pagination to the loaded accounts
+  const applyFiltersAndPagination = useCallback(() => {
+    let filtered = [...allAccounts];
+
+    // Apply search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(acc => 
+        acc.account_code.toLowerCase().includes(searchLower) ||
+        acc.account_name.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply type filter (multiple types)
+    if (accountTypeFilters && accountTypeFilters.length > 0) {
+      filtered = filtered.filter(acc => accountTypeFilters.includes(acc.account_type));
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(acc => 
+        statusFilter === 'active' ? acc.is_active : !acc.is_active
+      );
+    }
+
+    // Sort by account code
+    filtered.sort((a, b) => a.account_code.localeCompare(b.account_code));
+
+    // Calculate total pages
+    const totalItems = filtered.length;
+    const calculatedTotalPages = Math.ceil(totalItems / pageSize);
+    setTotalPages(calculatedTotalPages);
+
+    // Pagination
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedAccounts = filtered.slice(startIndex, endIndex);
+
+    setAccounts(paginatedAccounts);
+  }, [allAccounts, search, accountTypeFilters, statusFilter, currentPage, pageSize]);
+
+  // Initial load from API
   useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
+    loadAccountsFromApi();
+  }, [loadAccountsFromApi]);
+
+  // Apply filters whenever they change
+  useEffect(() => {
+    if (allAccounts.length > 0) {
+      applyFiltersAndPagination();
+    }
+  }, [applyFiltersAndPagination, allAccounts]);
 
   // Handle filter changes from AccountFilter component
   const handleFilterApply = (filterValues: { accountTypes: string[]; status: string }) => {
@@ -273,7 +138,7 @@ const ChartOfAccountsPage = () => {
     setModalContent(
       <RecordChartOfAccount
         mode="add"
-        accounts={sampleAccounts}
+        accounts={allAccounts}
         onClose={closeModal}
         onSave={handleAddAccount}
       />
@@ -287,12 +152,12 @@ const ChartOfAccountsPage = () => {
       <RecordChartOfAccount
         account={account}
         mode="edit"
-        accounts={sampleAccounts}
+        accounts={allAccounts}
         onClose={closeModal}
         onSave={async (data) => {
           await showSuccess('Account updated successfully', 'Success');
           closeModal();
-          fetchAccounts();
+          loadAccountsFromApi();
         }}
       />
     );
@@ -305,7 +170,7 @@ const ChartOfAccountsPage = () => {
       <RecordChartOfAccount
         account={account}
         mode="view"
-        accounts={sampleAccounts}
+        accounts={allAccounts}
         onClose={closeModal}
         onSave={async () => {}} // No-op for view mode
       />
@@ -322,7 +187,7 @@ const ChartOfAccountsPage = () => {
         onSubmit={async (data) => {
           await showSuccess('Child account created successfully', 'Success');
           closeModal();
-          fetchAccounts();
+          loadAccountsFromApi();
         }}
       />
     );
@@ -333,7 +198,7 @@ const ChartOfAccountsPage = () => {
     setModalContent(
       <ValidateBalanceModal
         onClose={closeModal}
-        onValidate={fetchAccounts}
+        onValidate={loadAccountsFromApi}
       />
     );
     setIsModalOpen(true);
@@ -357,7 +222,7 @@ const ChartOfAccountsPage = () => {
       // Find parent account details if parent_account_id is provided
       let parentAccount = undefined;
       if (formData.parent_account_id) {
-        parentAccount = sampleAccounts.find(acc => acc.account_id === formData.parent_account_id);
+        parentAccount = allAccounts.find((acc: ChartOfAccount) => acc.account_id === formData.parent_account_id);
       }
 
       const newAccount: ChartOfAccount = {
@@ -382,13 +247,12 @@ const ChartOfAccountsPage = () => {
         is_system_account: false,
       };
 
-      // TODO: Replace with actual API call
-      // For now, just add to sampleAccounts array
-      sampleAccounts.push(newAccount);
+      // TODO: Call API to create account
+      // await createChartOfAccount(newAccount);
       
       await showSuccess('Account created successfully!', 'Success');
       closeModal();
-      fetchAccounts(); // Refresh the table
+      loadAccountsFromApi(); // Refresh the table
     } catch (error) {
       console.error('Error adding account:', error);
       await showError('Failed to create account', 'Error');
@@ -405,7 +269,7 @@ const ChartOfAccountsPage = () => {
       return;
     }
     
-    const childCount = getChildCount(account.account_id, sampleAccounts);
+    const childCount = getChildCount(account.account_id, allAccounts);
     if (childCount > 0) {
       await showError('Cannot archive account with child accounts', 'Error');
       return;
@@ -419,7 +283,7 @@ const ChartOfAccountsPage = () => {
 
     if (result.isConfirmed) {
       await showSuccess('Account archived successfully', 'Success');
-      fetchAccounts();
+      loadAccountsFromApi();
     }
   };
 
@@ -431,13 +295,17 @@ const ChartOfAccountsPage = () => {
 
     if (result.isConfirmed) {
       await showSuccess('Account restored successfully', 'Success');
-      fetchAccounts();
+      loadAccountsFromApi();
     }
   };
 
   const renderActionButtons = (account: ChartOfAccount) => {
-    if (!account.is_active) {
-      // Archived account
+    // Determine deleted state: prefer `is_deleted` if available, fallback to inverse of `is_active`
+    const isDeleted = (account as any).is_deleted ?? !account.is_active;
+    const childCount = getChildCount(account.account_id, allAccounts);
+
+    if (isDeleted) {
+      // Archived: show only View + Unarchive
       return (
         <div className="actionButtonsContainer">
           <button
@@ -450,46 +318,15 @@ const ChartOfAccountsPage = () => {
           <button
             className="successBtn"
             onClick={() => handleRestore(account)}
-            title="Restore Account"
+            title="Unarchive Account"
           >
             <i className="ri-refresh-line" />
           </button>
-          <button
-            className="infoBtn"
-            onClick={() => openAuditTrailModal(account)}
-            title="Audit Trail"
-          >
-            <i className="ri-history-line" />
-          </button>
         </div>
       );
     }
 
-    // System account (view only)
-    if (account.is_system_account) {
-      return (
-        <div className="actionButtonsContainer">
-          <button
-            className="viewBtn"
-            onClick={() => openViewModal(account)}
-            title="View Details"
-          >
-            <i className="ri-eye-line" />
-          </button>
-          <button
-            className="infoBtn"
-            onClick={() => openAuditTrailModal(account)}
-            title="Audit Trail"
-          >
-            <i className="ri-history-line" />
-          </button>
-        </div>
-      );
-    }
-
-    // Active account (full access)
-    const childCount = getChildCount(account.account_id, sampleAccounts);
-    
+    // Active: show only View, Edit, Archive (keep archive disabled when not allowed)
     return (
       <div className="actionButtonsContainer">
         <button
@@ -510,23 +347,9 @@ const ChartOfAccountsPage = () => {
           className="deleteBtn"
           onClick={() => handleArchive(account)}
           title="Archive Account"
-          disabled={childCount > 0}
+          disabled={!canArchiveAccount(account) || childCount > 0}
         >
           <i className="ri-archive-line" />
-        </button>
-        <button
-          className="addBtn"
-          onClick={() => openAddChildModal(account)}
-          title="Add Child Account"
-        >
-          <i className="ri-node-tree" />
-        </button>
-        <button
-          className="infoBtn"
-          onClick={() => openAuditTrailModal(account)}
-          title="Audit Trail"
-        >
-          <i className="ri-history-line" />
         </button>
       </div>
     );
@@ -539,10 +362,9 @@ const ChartOfAccountsPage = () => {
         <ErrorDisplay
           errorCode={errorCode}
           onRetry={() => {
-            setLoading(true);
             setError(null);
             setErrorCode(null);
-            //refresh/fetch data again
+            loadAccountsFromApi();
           }}
         />
       </div>
@@ -620,7 +442,7 @@ const ChartOfAccountsPage = () => {
               </thead>
               <tbody>
                 {accounts.map((account) => {
-                  const childCount = getChildCount(account.account_id, sampleAccounts);
+                  const childCount = getChildCount(account.account_id, allAccounts);
                   const isParent = childCount > 0;
                   
                   return (
