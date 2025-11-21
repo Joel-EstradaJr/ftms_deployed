@@ -8,17 +8,40 @@ import "../../../styles/expense/expense.css";
 import "../../../styles/components/table.css";
 import PaginationComponent from "../../../Components/pagination";
 import AddExpense from "./addExpense"; 
-import ErrorDisplay from '../../../Components/ErrorDisplay';
+import ErrorDisplay from '../../../Components/errordisplay';
 import Swal from 'sweetalert2';
 import EditExpenseModal from "./editExpense";
 import ViewExpenseModal from "./viewExpense";
-import { getAllAssignmentsWithRecorded } from '@/lib/operations/assignments';
 import { formatDateTime, formatDate } from '../../../utils/formatting';
 import Loading from '../../../Components/loading';
 import { showSuccess, showError, showConfirmation } from '../../../utils/Alerts';
 import { formatDisplayText } from '@/app/utils/formatting';
 import FilterDropdown, { FilterSection } from "../../../Components/filter";
-import type { Assignment } from '@/lib/operations/assignments';
+
+// Assignment type definition
+interface Assignment {
+  assignment_id: string;
+  bus_trip_id?: string;
+  bus_plate_number: string;
+  bus_route: string;
+  bus_type: string | null;
+  driver_name: string | null;
+  conductor_name: string | null;
+}
+
+// Mock function to get all assignments
+const getAllAssignmentsWithRecorded = async (): Promise<Assignment[]> => {
+  // TODO: Replace with actual API call
+  try {
+    const response = await fetch('/api/assignments');
+    if (!response.ok) throw new Error('Failed to fetch assignments');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching assignments:', error);
+    return [];
+  }
+};
 
 
 
@@ -171,7 +194,7 @@ const ExpensePage = () => {
   const fetchCategories = async () => {
     try {
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/globals/categories');
+      const response = await fetch('/api/globals/categories');
       if (!response.ok) throw new Error('Failed to fetch categories');
       const categoriesData = await response.json();
       // Filter categories that are applicable to expense module
@@ -215,7 +238,7 @@ const ExpensePage = () => {
       setError(null);
       console.log('📡 Fetching expenses from /api/expense...');
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expense');
+      const response = await fetch('/api/expense');
       console.log('📥 Response status:', response.status);
       if (!response.ok) throw new Error('Failed to fetch expenses');
       const result = await response.json();
@@ -332,12 +355,14 @@ const filteredData = data.filter((item: ExpenseData) => {
 
       // Mock response for now
       const response = { ok: true };
-      const result: ExpenseRecord = {
+      const result = {
         ...newExpense,
         expense_id: `EXP${Date.now()}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        status: 'PENDING'
+        is_deleted: false,
+        category: newExpense.category ? { category_id: newExpense.category_id || '', name: newExpense.category } : { category_id: '', name: '' },
+        payment_method: { id: newExpense.payment_method_id || '', name: 'Cash' },
       } as ExpenseRecord;
 
       if (!response.ok) throw new Error('Create failed');
@@ -511,7 +536,7 @@ const filteredData = data.filter((item: ExpenseData) => {
     try {
       // First get the export ID from the API
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const idResponse = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/generate-export-id');
+      const idResponse = await fetch('/api/generate-export-id');
       if (!idResponse.ok) {
         throw new Error('Failed to generate export ID');
       }
@@ -521,8 +546,7 @@ const filteredData = data.filter((item: ExpenseData) => {
       const details = generateExportDetails();
 
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/auditlogs/export', {
+      const response = await fetch('/api/auditlogs/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -664,8 +688,7 @@ const filteredData = data.filter((item: ExpenseData) => {
       <div className="card">
         <h1 className="title">Expense Management</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to load expense data."
+          errorCode={503}
           onRetry={fetchExpenses}
         />
       </div>

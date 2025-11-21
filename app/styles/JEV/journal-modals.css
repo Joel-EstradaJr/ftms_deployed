@@ -56,16 +56,13 @@
   text-align: center;
 }
 
-.journal-lines-table thead th.account-header {
-  width: 30%;
-}
 
-.journal-lines-table thead th.description-header {
-  width: 25%;
+.journal-lines-table thead th.account-header {
+  width: 45%;
 }
 
 .journal-lines-table thead th.amount-header {
-  width: 15%;
+  width: 20%;
   text-align: right;
 }
 
@@ -102,7 +99,7 @@
 }
 
 .journal-lines-table tbody td.account-cell {
-  width: 30%;
+  width: 45%;
   position: relative;
   overflow: visible;
 }
@@ -113,12 +110,8 @@
   overflow: visible;
 }
 
-.journal-lines-table tbody td.description-cell {
-  width: 25%;
-}
-
 .journal-lines-table tbody td.amount-cell {
-  width: 15%;
+  width: 20%;
   text-align: right;
   font-family: 'Courier New', monospace;
 }
@@ -314,15 +307,11 @@
 /* ----- Responsive Design ----- */
 @media (max-width: 768px) {
   .journal-lines-table thead th.account-header {
-    width: 40%;
-  }
-
-  .journal-lines-table thead th.description-header {
-    width: 30%;
+    width: 55%;
   }
 
   .journal-lines-table thead th.amount-header {
-    width: 20%;
+    width: 25%;
   }
 }
 
@@ -381,10 +370,6 @@
   width: var(--jev-account-cell-width);
 }
 
-.journal-lines-table thead th.description-header {
-  width: var(--jev-description-cell-width);
-}
-
 .journal-lines-table thead th.amount-header {
   width: var(--jev-amount-cell-width);
   text-align: right;
@@ -432,10 +417,6 @@
   width: 100%;
   position: relative;
   overflow: visible;
-}
-
-.journal-lines-table tbody td.description-cell {
-  width: var(--jev-description-cell-width);
 }
 
 .journal-lines-table tbody td.amount-cell {
@@ -785,15 +766,11 @@
   }
 
   .journal-lines-table thead th.account-header {
-    width: 40%;
-  }
-
-  .journal-lines-table thead th.description-header {
-    width: 30%;
+    width: 55%;
   }
 
   .journal-lines-table thead th.amount-header {
-    width: 20%;
+    width: 25%;
   }
 
   .detailRow {

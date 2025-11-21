@@ -200,9 +200,8 @@ textarea.input-error {
 
   /* JEV Sizes */
   --jev-table-max-height: 400px;
-  --jev-account-cell-width: 35%;
-  --jev-description-cell-width: 25%;
-  --jev-amount-cell-width: 15%;
+  --jev-account-cell-width: 45%;
+  --jev-amount-cell-width: 20%;
   --jev-actions-cell-width: 10%;
   --jev-form-section-padding: 20px 0;
   --jev-form-field-gap: 20px;
