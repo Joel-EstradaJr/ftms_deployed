@@ -3,15 +3,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatDate } from '../../../../utils/formatting';;
 import { showSuccess, showError, showConfirmation } from '@/app/utils/Alerts';
+
 import PaginationComponent from '@/app/Components/pagination';
 import Loading from '@/app/Components/loading';
 import ErrorDisplay from '@/app/Components/errordisplay';
 import ModalManager from '@/app/Components/modalManager';
-import AccountFilter from '@/app/Components/AccountFilter';
+import FilterDropdown, { FilterSection } from '@/app/Components/filter';
+
 import RecordChartOfAccount from './recordChartOfAccount';
 import AddChildAccountModal from './AddChildAccountModal';
 import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
+
 import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
 import { fetchChartOfAccounts } from '@/app/services/chartOfAccountsService';
 import { ApiError } from '@/app/lib/api';
@@ -21,6 +24,7 @@ import {getAccountTypeClass,
         getChildCount,
         canHaveChildren,
         isParentAccount} from '@/app/lib/jev/accountHelpers';
+
 import '@/app/styles/JEV/chart-of-accounts.css';
 import '@/app/styles/components/table.css'; 
 import '@/app/styles/components/chips.css';
@@ -43,6 +47,34 @@ const ChartOfAccountsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [selectedAccount, setSelectedAccount] = useState<ChartOfAccount | null>(null);
+
+  // Define filter sections for FilterDropdown
+  const filterSections: FilterSection[] = [
+    {
+      id: 'accountTypes',
+      title: 'Account Type',
+      type: 'checkbox',
+      options: [
+        { id: AccountType.ASSET, label: 'Assets' },
+        { id: AccountType.LIABILITY, label: 'Liabilities' },
+        { id: AccountType.EQUITY, label: 'Equity' },
+        { id: AccountType.REVENUE, label: 'Revenue' },
+        { id: AccountType.EXPENSE, label: 'Expenses' },
+      ],
+      defaultValue: []
+    },
+    {
+      id: 'status',
+      title: 'Status',
+      type: 'radio',
+      options: [
+        { id: 'all', label: 'All' },
+        { id: 'active', label: 'Active' },
+        { id: 'archived', label: 'Archived' },
+      ],
+      defaultValue: 'active'
+    }
+  ];
 
   // Fetch accounts from API
   const loadAccountsFromApi = useCallback(async () => {
@@ -120,10 +152,10 @@ const ChartOfAccountsPage = () => {
     }
   }, [applyFiltersAndPagination, allAccounts]);
 
-  // Handle filter changes from AccountFilter component
-  const handleFilterApply = (filterValues: { accountTypes: string[]; status: string }) => {
-    setAccountTypeFilters(filterValues.accountTypes);
-    setStatusFilter(filterValues.status as 'active' | 'archived' | 'all');
+  // Handle filter changes from FilterDropdown component
+  const handleFilterApply = (filterValues: Record<string, any>) => {
+    setAccountTypeFilters((filterValues.accountTypes as string[]) || []);
+    setStatusFilter((filterValues.status as 'active' | 'archived' | 'all') || 'active');
     setCurrentPage(1); // Reset to first page when filters change
   };
 
@@ -386,26 +418,30 @@ const ChartOfAccountsPage = () => {
         <h1 className="title">Chart of Accounts</h1>
 
         <div className="settings">
-          {/* Search Bar */}
-          <div className="searchBar">
-            <i className="ri-search-line" />
-            <input
-              type="text"
-              className="searchInput"
-              placeholder="Search account code or name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+          <div className='search-filter-container'>
+            {/* Search Bar */}
+            <div className="searchBar">
+              <i className="ri-search-line" />
+              <input
+                type="text"
+                className="searchInput"
+                placeholder="Search account code or name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <br/>
+            {/* Filter Component */}
+            <FilterDropdown
+              sections={filterSections}
+              onApply={handleFilterApply}
+              initialValues={{
+                accountTypes: accountTypeFilters,
+                status: statusFilter,
+              }}
             />
           </div>
           
-          {/* Account Filter Component */}
-          <AccountFilter
-            onApply={handleFilterApply}
-            initialValues={{
-              accountTypes: accountTypeFilters,
-              status: statusFilter,
-            }}
-          />
 
           {/* Filters and Actions */}
           <div className="filters">
