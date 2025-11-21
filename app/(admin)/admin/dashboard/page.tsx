@@ -5,6 +5,7 @@ import ExportConfirmationModal from "../../../Components/ExportConfirmationModal
 import ErrorDisplay from '../../../Components/errordisplay';
 import "../../../styles/dashboard/dashboard.css";
 import Loading from '../../../Components/loading';
+import { ModernLineChart, ModernDoughnutChart } from "../../../Components/ModernCharts";
 import EmotionSettingsModal from "../../../Components/dashboardEmotion";
 
 interface DashboardData {
@@ -367,17 +368,25 @@ const DashboardPage = () => {
                 {/* Revenue Card */}
                 <div className="metricCard revenue">
                   <div className="metricCard-header">
-                    <div className="metricCard-icon">💰</div>
-                    <div className="metricCard-title">
-                      <h3>Revenue</h3>
-                      <span className="categoryCount">
-                        {Object.keys(dashboardData.revenue.byCategory).length} Streams
-                      </span>
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Revenue</h3>
+                        <span className="categoryCount">
+                          {Object.keys(dashboardData.revenue.byCategory).length} revenue streams
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="metricCard-value">
-                    ₱{(dashboardData.revenue.total / 1000).toFixed(1)}K
+                  <div className="metricCard-mainContent">
+                    <div className="metricCard-value">
+                      ₱{(dashboardData.revenue.total / 1000).toFixed(1)}k
+                    </div>
+                    <div className="metricCard-change">
+                      <span className="arrow">↑</span>
+                      <span>3.48%</span>
+                    </div>
                   </div>
+                  <div className="metricCard-subtitle">Since last month</div>
                   <div className="metricCard-details">
                     {Object.values(dashboardData.revenue.byCategory).map((cat) => (
                       <div key={cat.name} className="detailItem">
@@ -395,17 +404,25 @@ const DashboardPage = () => {
                 {/* Expenses Card */}
                 <div className="metricCard expenses">
                   <div className="metricCard-header">
-                    <div className="metricCard-icon">💸</div>
-                    <div className="metricCard-title">
-                      <h3>Expenses</h3>
-                      <span className="categoryCount">
-                        {Object.keys(dashboardData.expense.byCategory).length} Categories
-                      </span>
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Expenses</h3>
+                        <span className="categoryCount">
+                          {Object.keys(dashboardData.expense.byCategory).length} expense categories
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="metricCard-value">
-                    ₱{(dashboardData.expense.total / 1000).toFixed(1)}K
+                  <div className="metricCard-mainContent">
+                    <div className="metricCard-value">
+                      ₱{(dashboardData.expense.total / 1000).toFixed(1)}k
+                    </div>
+                    <div className="metricCard-change">
+                      <span className="arrow">↓</span>
+                      <span>1.10%</span>
+                    </div>
                   </div>
+                  <div className="metricCard-subtitle">Since yesterday</div>
                   <div className="metricCard-details">
                     {Object.values(dashboardData.expense.byCategory).map((cat) => (
                       <div key={cat.name} className="detailItem">
@@ -423,25 +440,34 @@ const DashboardPage = () => {
                 {/* Profit Card */}
                 <div className="metricCard profit">
                   <div className="metricCard-header">
-                    <div className="metricCard-icon">📈</div>
-                    <div className="metricCard-title">
-                      <h3>Net Profit</h3>
-                      <span className="categoryCount">
-                        {((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(1)}% Margin
-                      </span>
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Net Profit</h3>
+                        <span className="categoryCount">
+                          {((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(1)}% profit margin
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="metricCard-value">
-                    ₱{dashboardData.profit.toLocaleString()}
+                  <div className="metricCard-mainContent">
+                    <div className="metricCard-value">
+                      ₱{dashboardData.profit.toLocaleString()}
+                    </div>
+                    <div className="metricCard-change">
+                      <span className="arrow">↑</span>
+                      <span>1.2%</span>
+                    </div>
                   </div>
+                  <div className="metricCard-subtitle">Since last month</div>
                 </div>
 
                 {/* Emotion Card */}
                 <div className="metricCard emotion">
                   <div className="metricCard-header">
-                    <div className="metricCard-icon">😊</div>
-                    <div className="metricCard-title">
-                      <h3>Performance Status</h3>
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Performance Status</h3>
+                      </div>
                     </div>
                     <button 
                       className="three-dots-btn"
@@ -467,14 +493,24 @@ const DashboardPage = () => {
               </div>
             </div>
 
-            {/* Right Column - Graph & Insights */}
             <div className="graphSection">
+              {/* Revenue Trend Chart */}
+              <div className="graphContainer">
+                <div className="title">
+                  <h2>Revenue Trend</h2>
+                </div>
+                <div className="chartWrapper">
+                  <ModernLineChart />
+                </div>
+              </div>
+
+              {/* Financial Breakdown */}
               <div className="graphContainer">
                 <div className="title">
                   <h2>Financial Breakdown</h2>
                 </div>
                 <div className="pieChartContainer">
-                  <PieChart 
+                  <ModernDoughnutChart 
                     revenueData={Object.fromEntries(
                       Object.entries(dashboardData.revenue.byCategory).map(([key, value]) => [key, value.amount])
                     )}
@@ -482,33 +518,6 @@ const DashboardPage = () => {
                       Object.entries(dashboardData.expense.byCategory).map(([key, value]) => [key, value.amount])
                     )}
                   />
-                </div>
-              </div>
-
-              <div className="insightsSection">
-                <h3>Key Insights</h3>
-                <div className="insightCard">
-                  <div className="insightCard-title">Profit Margin</div>
-                  <div className="insightCard-content">
-                    Your profit margin is {((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(1)}%
-                    {((dashboardData.profit / dashboardData.revenue.total) * 100) > 30 
-                      ? " - Excellent performance!" 
-                      : " - Consider optimizing expenses."}
-                  </div>
-                </div>
-                <div className="insightCard">
-                  <div className="insightCard-title">Top Revenue Source</div>
-                  <div className="insightCard-content">
-                    {Object.values(dashboardData.revenue.byCategory)
-                      .sort((a, b) => b.amount - a.amount)[0]?.name || "N/A"} contributes the most to revenue
-                  </div>
-                </div>
-                <div className="insightCard">
-                  <div className="insightCard-title">Largest Expense</div>
-                  <div className="insightCard-content">
-                    {Object.values(dashboardData.expense.byCategory)
-                      .sort((a, b) => b.amount - a.amount)[0]?.name || "N/A"} is your highest expense category
-                  </div>
                 </div>
               </div>
             </div>
