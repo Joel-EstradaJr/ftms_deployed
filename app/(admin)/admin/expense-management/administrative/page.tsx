@@ -17,6 +17,8 @@ import RecordAdminExpenseModal from './recordAdminExpense';
 
 import { processCascadePayment as processExpenseCascade } from '@/app/utils/expenseScheduleCalculations';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
+import Swal from 'sweetalert2';
+import { showSuccess, showError } from '@/app/utils/Alerts';
 
 import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseScheduleFrequency } from '../../../../types/expenses';
 import { PaymentRecordData } from '@/app/types/payments';
@@ -558,6 +560,38 @@ const AdministrativeExpensePage: React.FC = () => {
     }
   };
 
+  const handlePostToJEV = async (expense: AdministrativeExpense) => {
+    const result = await Swal.fire({
+      title: 'Post to JEV?',
+      text: `Are you sure you want to post ${expense.invoice_number || expense.id} to the Journal Entry Voucher?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, post it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        // TODO: Replace with actual API call
+        // await fetch(`/api/admin/expenses/administrative/${expense.id}/post-to-jev`, { method: 'POST' });
+        
+        // Update local state to mark as POSTED
+        setExpenses(prev => prev.map(exp => 
+          exp.id === expense.id 
+            ? { ...exp, status: 'POSTED' } 
+            : exp
+        ));
+        
+        showSuccess('Success', 'Expense has been posted to JEV successfully.');
+      } catch (error) {
+        console.error('Error posting to JEV:', error);
+        showError('Error', 'Failed to post expense to JEV. Please try again.');
+      }
+    }
+  };
+
   // Filter sections for FilterDropdown
   const filterSections: FilterSection[] = [
     {
@@ -728,10 +762,12 @@ const AdministrativeExpensePage: React.FC = () => {
                               handleEdit(expense);
                             }}
                             title="Edit"
+                            disabled={expense.status === 'POSTED'}
+                            style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                           >
                             <i className="ri-pencil-line"></i>
                           </button>
-                          {/* Payment button - show for PENDING or PARTIALLY_PAID expenses */}
+                          {/* Payment button - show for PENDING or PARTIALLY_PAID expenses, disable when POSTED */}
                           {expense.paymentStatus && 
                            (expense.paymentStatus === PaymentStatus.PENDING || 
                             expense.paymentStatus === PaymentStatus.PARTIALLY_PAID) && (
@@ -742,8 +778,23 @@ const AdministrativeExpensePage: React.FC = () => {
                                 handleRecordPayment(expense);
                               }}
                               title="Record Payment"
+                              disabled={expense.status === 'POSTED'}
+                              style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                             >
                               <i className="ri-money-dollar-circle-line"></i>
+                            </button>
+                          )}
+                          {/* Post to JEV button - show for PAID expenses */}
+                          {expense.paymentStatus === PaymentStatus.PAID && expense.status !== 'POSTED' && (
+                            <button
+                              className="submitBtn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePostToJEV(expense);
+                              }}
+                              title="Post to JEV"
+                            >
+                              <i className="ri-send-plane-line"></i>
                             </button>
                           )}
                         </div>

@@ -128,6 +128,7 @@ export interface AdministrativeExpense {
   date: string;
   amount: number;
   description: string;
+  status?: string; // Status field (e.g., PENDING, APPROVED, POSTED)
   department?: string;
   vendor?: string;
   invoice_number?: string;
