@@ -5,17 +5,21 @@ import FilterDropdown, { FilterSection } from '../../../../Components/filter';
 import ExportButton from '../../../../Components/ExportButton';
 import ModalManager from '../../../../Components/modalManager';
 import RecordPaymentModal from '@/Components/RecordPaymentModal';
-import ViewPurchaseExpense from './viewPurchaseExpense';
-import RecordPurchaseExpense from './recordPurchaseExpense';
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
 import PaginationComponent from '../../../../Components/pagination';
+import Swal from 'sweetalert2';
+
+import ViewPurchaseExpense from './viewPurchaseExpense';
+import RecordPurchaseExpense from './recordPurchaseExpense';
+
 import { PurchaseExpense, PurchaseExpenseFilters, PaymentStatus, ExpenseScheduleItem } from '../../../../types/expenses';
 import { PaymentRecordData } from '@/app/types/payments';
+
 import { processCascadePayment as processExpenseCascade } from '@/app/utils/expenseScheduleCalculations';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showSuccess, showError } from '../../../../utils/Alerts';
-import Swal from 'sweetalert2';
+
 import '../../../../styles/components/table.css';
 import '../../../../styles/components/chips.css';
 
@@ -262,8 +266,8 @@ const PurchaseExpensePage: React.FC = () => {
   };
 
   const closePaymentModal = () => {
-    setIsPaymentModalOpen(false);
     setPaymentModalContent(null);
+    setIsPaymentModalOpen(false);
   };
 
   const openPaymentModal = (expense: PurchaseExpense) => {
@@ -542,14 +546,14 @@ const PurchaseExpensePage: React.FC = () => {
                           {/* Post to JEV button - show for DELIVERED expenses */}
                           {expense.status === 'DELIVERED' && (
                             <button
-                              className="postBtn"
+                              className="submitBtn"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePostToJEV(expense);
                               }}
                               title="Post to JEV"
                             >
-                              <i className="ri-file-transfer-line"></i>
+                              <i className="ri-send-plane-line"></i>
                             </button>
                           )}
                           {/* Payment button - show for PENDING or PARTIALLY_PAID expenses */}

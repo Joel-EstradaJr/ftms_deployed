@@ -383,11 +383,11 @@ const AdministrativeExpensePage: React.FC = () => {
   };
 
   const closePaymentModal = () => {
-    setIsPaymentModalOpen(false);
+    setModalContent(null);
     setSelectedScheduleItem(null);
     setSelectedExpenseRecord(null);
-    // Also clear modalContent if it was used for payment modal
-    setModalContent(null);
+    setIsPaymentModalOpen(false);
+    setIsModalOpen(false);
   };
 
   const openPaymentModal = (scheduleItem: any, expense: AdministrativeExpense) => {
