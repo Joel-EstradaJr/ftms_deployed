@@ -4,110 +4,21 @@
 import React, { useState, useEffect, useCallback} from "react";
 import "../../../../styles/payroll/payroll.css";
 import "../../../../styles/components/table.css";
-import "../../../../styles/components/chips.css";
+import "../../../../styles/components/chips.css"
 import PaginationComponent from "../../../../Components/pagination";
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
-import Swal from 'sweetalert2';
-import { showSuccess } from '../../../../utils/Alerts';
-import ViewPayrollModal from "./viewPayroll";
-import { endOfMonth, format, getDaysInMonth } from 'date-fns';
-
-// Individual employee payroll record type
-type PayrollRecord = {
-  payroll_id: string;
-  employee_number: string;
-  employee_name: string;
-  first_name: string;
-  middle_name?: string;
-  last_name: string;
-  suffix?: string;
-  employee_status: string;
-  hire_date: string;
-  termination_date?: string | null;
-  job_title: string;
-  department: string;
-  payroll_period: "Monthly" | "Semi-Monthly" | "Weekly";
-  payroll_start_date: string;
-  payroll_end_date: string;
-  basic_rate: number;
-  days_worked: number;
-  // Earnings
-  basic_pay: number;
-  overtime_regular: number;
-  overtime_holiday: number;
-  service_incentive_leave: number;
-  holiday_pay: number;
-  thirteenth_month_pay: number;
-  // Benefits
-  revenue_benefit: number;
-  safety_benefit: number;
-  additional_benefits: number;
-  // Deductions
-  sss_deduction: number;
-  philhealth_deduction: number;
-  pag_ibig_deduction: number;
-  cash_advance: number;
-  damage_shortage: number;
-  other_deductions: number;
-  // Totals
-  gross_total_earnings: number;
-  total_deductions: number;
-  net_pay: number;
-  // Status
-  status: "Released" | "Pending" | string;
-  date_released?: string | null;
-  created_by?: string;
-  // New fields for signature/remarks
-  signature?: string;
-  remarks?: string;
-  holiday_adjustment?: number;
-  allowance?: number;
-  total_salary?: number;
-};
-
-// Payroll period group type for the main table
-type PayrollPeriodGroup = {
-  period_id: string;
-  cut_off_period: string; // e.g., "June 1 – 30, 2025"
-  payroll_type: "Monthly" | "Semi-Monthly" | "Weekly";
-  start_date: string;
-  end_date: string;
-  employees_covered: number;
-  status: "Released" | "Pending";
-  total_payroll_amount: number;
-  records: PayrollRecord[];
-};
-
-interface PayrollGenError {
-  employee: string;
-  reason: string;
-}
-
-interface PayrollGenSummary {
-  generated: number;
-  skipped: number;
-  errors: PayrollGenError[];
-}
-
-// Define EligibleEmployee type
-interface EligibleEmployee {
-  employeeNumber: string;
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  suffix?: string;
-  position?: {
-    positionName?: string;
-    department?: { departmentName?: string };
-  };
-  payrollPeriod?: string;
-}
+import FilterDropdown, { FilterSection } from '../../../../Components/filter';
+import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
+import { formatMoney, formatDate } from '../../../../utils/formatting';
+import { PayrollBatch, PayrollBatchFormData } from './types';
+import RecordPayrollBatch from './recordPayrollBatch';
+import ViewPayrollBatch from './viewPayrollBatch';
+import ModalManager from '../../../../Components/modalManager';
 
 const PayrollPage = () => {
-  // State
-  const [data, setData] = useState<PayrollRecord[]>([]);
-  const [groupedData, setGroupedData] = useState<PayrollPeriodGroup[]>([]);
+  // State for payroll batches
+  const [batches, setBatches] = useState<PayrollBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,84 +26,25 @@ const PayrollPage = () => {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [payrollTypeFilter, setPayrollTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [filterValues, setFilterValues] = useState<Record<string, any>>({});
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
 
-  // View Payroll modal
+  // Modal states
+  const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [periodToView, setPeriodToView] = useState<PayrollPeriodGroup | null>(null);
+  const [editMode, setEditMode] = useState<'add' | 'edit'>('add');
+  const [selectedBatch, setSelectedBatch] = useState<PayrollBatch | null>(null);
 
-  // Payroll Generation Modal
-  const [genModalOpen, setGenModalOpen] = useState(false);
-  const [genStart, setGenStart] = useState("");
-  const [genEnd, setGenEnd] = useState("");
-  const [genPeriodType, setGenPeriodType] = useState("monthly");
-  const [genLoading, setGenLoading] = useState(false);
+  // Current user (TODO: Get from auth context)
+  const currentUser = 'Admin User';
 
-  const [genError, setGenError] = useState<string | null>(null);
-
-  // Add state for eligible employees and selection
-  const [eligibleEmployees, setEligibleEmployees] = useState<EligibleEmployee[]>([]);
-  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-
-  // Add state for export modal
-  const [exportingPeriod, setExportingPeriod] = useState<PayrollPeriodGroup | null>(null);
-
-  // Add state for semi-monthly selection
-  const [semiMonthPart, setSemiMonthPart] = useState<'first' | 'second'>('first');
-
-  // Add state for results modal
-  const [resultsModalOpen, setResultsModalOpen] = useState(false);
-  const [resultsData, setResultsData] = useState<PayrollGenSummary | null>(null);
-
-  // Function to group payroll records by period
-  const groupPayrollRecords = useCallback((records: PayrollRecord[]): PayrollPeriodGroup[] => {
-    const groups: { [key: string]: PayrollPeriodGroup } = {};
-
-    records.forEach(record => {
-      const key = `${record.payroll_start_date}_${record.payroll_end_date}_${record.payroll_period}`;
-      
-      if (!groups[key]) {
-        const startDate = new Date(record.payroll_start_date);
-        const endDate = new Date(record.payroll_end_date);
-        
-        groups[key] = {
-          period_id: key,
-          cut_off_period: `${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} – ${endDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
-          payroll_type: record.payroll_period,
-          start_date: record.payroll_start_date,
-          end_date: record.payroll_end_date,
-          employees_covered: 0,
-          status: record.status as "Released" | "Pending",
-          total_payroll_amount: 0,
-          records: []
-        };
-      }
-      
-      groups[key].records.push(record);
-      groups[key].employees_covered += 1;
-      groups[key].total_payroll_amount += record.net_pay;
-      
-      // If any record is pending, the group is pending
-      if (record.status === "Pending") {
-        groups[key].status = "Pending";
-      }
-    });
-
-    return Object.values(groups).sort((a, b) => 
-      new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
-    );
-  }, []);
-
-  // Fetch payroll data from API
-  const fetchPayrollData = useCallback(async (isSearch = false) => {
+  // Fetch payroll batches from API
+  const fetchPayrollBatches = useCallback(async (isSearch = false) => {
     try {
       if (isSearch) {
         setSearchLoading(true);
@@ -201,31 +53,49 @@ const PayrollPage = () => {
       }
       setError(null);
       
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll
-      // Build query parameters
-      // const params = new URLSearchParams({
-      //   page: currentPage.toString(),
-      //   pageSize: pageSize.toString(),
-      // });
-      // if (search.trim()) {
-      //   params.append('search', search.trim());
-      // }
-      // const response = await fetch(`/api/payroll?${params}`);
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-      // const result = await response.json();
-      console.warn('API integration pending - using mock payroll data');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll/batches
+      console.warn('API integration pending - using mock payroll batch data');
       
-      // Use mock empty data
-      const records: PayrollRecord[] = [];
-      setData(records);
+      // Mock data for demonstration
+      const mockBatches: PayrollBatch[] = [
+        {
+          id: '1',
+          batchCode: 'PAY-202511-001',
+          periodStart: '2025-11-01',
+          periodEnd: '2025-11-30',
+          totalGross: 150000,
+          totalDeductions: 30000,
+          totalNet: 120000,
+          totalEmployees: 5,
+          status: 'PENDING',
+          createdBy: 'Admin User',
+          createdAt: '2025-11-20T10:00:00Z',
+          payrolls: [
+            {
+              id: 'p1',
+              batchId: '1',
+              employeeId: 'EMP-001',
+              baseSalary: 15600,
+              allowances: 2000,
+              deductions: 1500,
+              netPay: 16100,
+              isDisbursed: false,
+              createdAt: '2025-11-20T10:00:00Z',
+              employee: {
+                employeeNumber: 'EMP-001',
+                firstName: 'Juan',
+                lastName: 'Dela Cruz',
+                department: 'Operations',
+                position: 'Driver',
+                status: 'active'
+              }
+            }
+          ]
+        }
+      ];
       
-      // Group the records
-      const grouped = groupPayrollRecords(records);
-      setGroupedData(grouped);
-      
-      setTotalPages(1);
+      setBatches(mockBatches);
+      setTotalPages(Math.ceil(mockBatches.length / pageSize));
       
       if (isSearch) {
         setSearchLoading(false);
@@ -233,20 +103,21 @@ const PayrollPage = () => {
         setLoading(false);
       }
     } catch (err) {
-      console.error("Error fetching payroll data:", err);
+      console.error("Error fetching payroll batches:", err);
       setError("Error retrieving payroll data.");
+      setErrorCode(500);
       if (isSearch) {
         setSearchLoading(false);
       } else {
         setLoading(false);
       }
     }
-  }, [currentPage, pageSize, search, groupPayrollRecords]);
+  }, [currentPage, pageSize]);
 
   // Fetch data when component mounts or filters change
   useEffect(() => {
-    fetchPayrollData(false);
-  }, [fetchPayrollData]);
+    fetchPayrollBatches(false);
+  }, [fetchPayrollBatches]);
 
   // Separate effect for search with debouncing
   useEffect(() => {
@@ -254,19 +125,19 @@ const PayrollPage = () => {
       if (currentPage !== 1) {
         setCurrentPage(1);
       } else {
-        fetchPayrollData(true);
+        fetchPayrollBatches(true);
       }
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [search, currentPage, fetchPayrollData]);
+  }, [search]);
 
   // Effect to handle page changes
   useEffect(() => {
     if (currentPage !== 1) {
-      fetchPayrollData(false);
+      fetchPayrollBatches(false);
     }
-  }, [currentPage, pageSize, fetchPayrollData]);
+  }, [currentPage, pageSize]);
 
   // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -293,189 +164,171 @@ const PayrollPage = () => {
 
   // Handle retry
   const handleRetry = () => {
-    fetchPayrollData(false);
+    fetchPayrollBatches(false);
+  };
+
+  // Define filter sections for FilterDropdown
+  const filterSections: FilterSection[] = [
+    {
+      id: 'status',
+      title: 'Status',
+      type: 'checkbox',
+      options: [
+        { id: 'pending', label: 'Pending' },
+        { id: 'approved', label: 'Approved' },
+        { id: 'disbursed', label: 'Disbursed' },
+        { id: 'cancelled', label: 'Cancelled' }
+      ],
+      defaultValue: []
+    },
+    {
+      id: 'dateRange',
+      title: 'Period Date Range',
+      type: 'dateRange',
+      defaultValue: { from: '', to: '' }
+    }
+  ];
+
+  // Handle filter apply
+  const handleApplyFilters = (values: Record<string, any>) => {
+    setFilterValues(values);
+    setCurrentPage(1);
   };
 
   // Filter logic for client-side filtering
-  const filteredData = groupedData.filter(item =>
-    (!statusFilter || item.status.toLowerCase() === statusFilter.toLowerCase()) &&
-    (!payrollTypeFilter || item.payroll_type.toLowerCase() === payrollTypeFilter.toLowerCase()) &&
-    (!search || (
-      item.cut_off_period.toLowerCase().includes(search.toLowerCase()) ||
-      item.payroll_type.toLowerCase().includes(search.toLowerCase())
-    ))
-  );
-
-  // Unique payroll types for filter dropdowns
-  const payrollTypes = Array.from(new Set(groupedData.map((d) => d.payroll_type)));
-
-  const handleReleaseWithConfirm = (periodIds: string[]) => {
-    Swal.fire({
-      title: 'Confirm Release',
-      text: 'Are you sure you want to release these payroll periods?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Release',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true,
-      background: 'white',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        handleRelease(periodIds);
-      }
-    });
-  };
-
-  // Handle release action
-  const handleRelease = async (periodIds: string[]) => {
-    if (periodIds.length === 0) return;
-    try {
-      // Get all records from the selected periods
-      const recordsToRelease = data.filter(record => 
-        periodIds.some(periodId => {
-          const [start, end, period] = periodId.split('_');
-          return record.payroll_start_date === start && 
-                 record.payroll_end_date === end && 
-                 record.payroll_period === period;
-        })
-      );
-      
-      // TEMPORARY: API calls disabled
-      console.warn('Release payroll API disabled - using mock');
-      
-      // TODO: Uncomment when ftms_backend API is ready:
-      // await fetch('http://localhost:4000/api/payroll', {
-      //   method: 'PATCH',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${getAuthToken()}`
-      //   },
-      //   body: JSON.stringify(recordsToRelease),
-      // });
-      
-      await fetchPayrollData(false);
-      showSuccess('Payroll periods released! (MOCK)', 'Success');
-    } catch {
-      setError('Failed to release payroll periods');
-    }
-  };
-
-  // Fetch eligible employees from HR for the selected period and payroll period
-  const fetchEligibleEmployees = async () => {
-    setPreviewLoading(true);
-    setPreviewError(null);
-    setEligibleEmployees([]);
-    setSelectedEmployees([]);
-    try {
-      const res = await fetch(`/api/payroll/eligible-employees?start=${genStart}&end=${genEnd}&payrollPeriod=${genPeriodType}`);
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Failed to fetch employees");
-      
-      const employees = data.employees as EligibleEmployee[];
-      setEligibleEmployees(employees);
-      
-      if (employees.length === 0) {
-        setPreviewError(`No eligible employees found for ${genPeriodType} payroll period. Please check employee configurations.`);
-      } else {
-        setSelectedEmployees(employees.map((e) => e.employeeNumber));
-      }
-    } catch (err: unknown) {
-      setPreviewError(err instanceof Error ? err.message : "Failed to fetch employees");
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
-  // Handle select/deselect all
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedEmployees(eligibleEmployees.map(e => e.employeeNumber));
-    } else {
-      setSelectedEmployees([]);
-    }
-  };
-
-  // Handle individual checkbox
-  const handleSelectEmployee = (empNum: string, checked: boolean) => {
-    setSelectedEmployees(prev =>
-      checked ? [...prev, empNum] : prev.filter(e => e !== empNum)
+  const filteredData = batches.filter(batch => {
+    // Search filter
+    const matchesSearch = !search || (
+      batch.batchCode.toLowerCase().includes(search.toLowerCase()) ||
+      formatDate(batch.periodStart).toLowerCase().includes(search.toLowerCase()) ||
+      formatDate(batch.periodEnd).toLowerCase().includes(search.toLowerCase())
     );
-  };
 
-  // Enhanced payroll generation handler
-  const handleGeneratePayroll = async () => {
-    setGenLoading(true);
-    setGenError(null);
+    // Status filter (from FilterDropdown)
+    const statusValues = filterValues.status || [];
+    const matchesStatus = statusValues.length === 0 || 
+      statusValues.includes(batch.status.toLowerCase());
+
+    // Date range filter
+    const dateRange = filterValues.dateRange || { from: '', to: '' };
+    let matchesDateRange = true;
+    if (dateRange.from || dateRange.to) {
+      const periodStart = new Date(batch.periodStart);
+      const periodEnd = new Date(batch.periodEnd);
+      
+      if (dateRange.from) {
+        const fromDate = new Date(dateRange.from);
+        matchesDateRange = matchesDateRange && (periodStart >= fromDate || periodEnd >= fromDate);
+      }
+      
+      if (dateRange.to) {
+        const toDate = new Date(dateRange.to);
+        matchesDateRange = matchesDateRange && (periodStart <= toDate || periodEnd <= toDate);
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDateRange;
+  });
+
+  // Handle save (add/edit) payroll batch
+  const handleSaveBatch = async (formData: PayrollBatchFormData, mode: 'add' | 'edit') => {
     try {
-      // TEMPORARY: API calls disabled
-      console.warn('Generate payroll API disabled - using mock');
+      // TODO: Replace with actual API call to ftms_backend
+      console.warn('Save payroll batch API call pending');
+      console.log('Form data:', formData);
       
-      // Mock response
-      const data: PayrollGenSummary = {
-        generated: selectedEmployees.length,
-        skipped: 0,
-        errors: []
-      };
+      // Mock success
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setResultsData(data);
-      setResultsModalOpen(true);
-      fetchPayrollData(false);
-      
-      // TODO: Uncomment when ftms_backend API is ready:
-      // const res = await fetch("http://localhost:4000/api/payroll/generate", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     'Authorization': `Bearer ${getAuthToken()}`
-      //   },
-      //   body: JSON.stringify({ start: genStart, end: genEnd, periodType: genPeriodType, employees: selectedEmployees }),
-      // });
-      // const data = await res.json();
-      // if (!data.success) throw new Error(data.error || "Unknown error");
-      // setResultsData(data as PayrollGenSummary);
-      // setResultsModalOpen(true);
-      // fetchPayrollData(false);
-    } catch (err: unknown) {
-      setGenError(err instanceof Error ? err.message : "Failed to generate payroll");
-    } finally {
-      setGenLoading(false);
+      await fetchPayrollBatches(false);
+      setRecordModalOpen(false);
+      setSelectedBatch(null);
+    } catch (error) {
+      throw new Error('Failed to save payroll batch');
     }
   };
 
-  // Helper for month picker
-  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const [year, month] = e.target.value.split('-');
-    const firstDay = new Date(Number(year), Number(month) - 1, 1);
-    const lastDay = endOfMonth(firstDay);
-    setGenStart(format(firstDay, 'yyyy-MM-dd'));
-    setGenEnd(format(lastDay, 'yyyy-MM-dd'));
-  };
-
-  // Helper for semi-monthly picker
-  const handleSemiMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const [year, month] = e.target.value.split('-');
-    if (semiMonthPart === 'first') {
-      setGenStart(format(new Date(Number(year), Number(month) - 1, 1), 'yyyy-MM-dd'));
-      setGenEnd(format(new Date(Number(year), Number(month) - 1, 15), 'yyyy-MM-dd'));
-    } else {
-      const lastDay = getDaysInMonth(new Date(Number(year), Number(month) - 1));
-      setGenStart(format(new Date(Number(year), Number(month) - 1, 16), 'yyyy-MM-dd'));
-      setGenEnd(format(new Date(Number(year), Number(month) - 1, lastDay), 'yyyy-MM-dd'));
+  // Handle disbursement
+  const handleDisburse = async (batchId: string, payrollIds: string[]) => {
+    try {
+      // TODO: Replace with actual API call to ftms_backend
+      console.warn('Disburse payroll API call pending');
+      console.log('Disbursing payrolls:', payrollIds, 'in batch:', batchId);
+      
+      // Mock success
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await fetchPayrollBatches(false);
+    } catch (error) {
+      throw new Error('Failed to disburse payroll');
     }
   };
 
-  // Helper for week picker
-  const handleWeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const [year, week] = e.target.value.split('-W');
-    const firstDay = new Date(Number(year), 0, 1 + (Number(week) - 1) * 7);
-    // Adjust to Monday
-    const day = firstDay.getDay();
-    const monday = new Date(firstDay);
-    monday.setDate(firstDay.getDate() - ((day + 6) % 7));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    setGenStart(format(monday, 'yyyy-MM-dd'));
-    setGenEnd(format(sunday, 'yyyy-MM-dd'));
+  // Handle delete batch
+  const handleDeleteBatch = async (batchId: string) => {
+    const confirmed = await showConfirmation(
+      'Are you sure you want to delete this payroll batch?',
+      'Confirm Delete'
+    );
+
+    if (confirmed.isConfirmed) {
+      try {
+        // TODO: Replace with actual API call to ftms_backend
+        console.warn('Delete payroll batch API call pending');
+        
+        await fetchPayrollBatches(false);
+        showSuccess('Payroll batch deleted successfully', 'Success');
+      } catch (error) {
+        showError('Failed to delete payroll batch', 'Error');
+      }
+    }
+  };
+
+  // Handle release all pending
+  const handleReleaseAll = async () => {
+    const pendingBatches = filteredData.filter(b => b.status.toLowerCase() === 'pending');
+    
+    if (pendingBatches.length === 0) {
+      showError('No pending payroll batches to release', 'No Pending Batches');
+      return;
+    }
+
+    const confirmed = await showConfirmation(
+      `Release all ${pendingBatches.length} pending payroll batch(es)?`,
+      'Confirm Release All'
+    );
+
+    if (confirmed.isConfirmed) {
+      try {
+        // TODO: Replace with ftms_backend API call
+        console.warn('API integration pending - mock release all');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        showSuccess(`${pendingBatches.length} payroll batch(es) released successfully`, 'Success');
+        fetchPayrollBatches(false);
+      } catch (error) {
+        showError('Failed to release payroll batches', 'Error');
+      }
+    }
+  };
+
+  // Handle open add modal
+  const handleOpenAddModal = () => {
+    setEditMode('add');
+    setSelectedBatch(null);
+    setRecordModalOpen(true);
+  };
+
+  // Handle open edit modal
+  const handleOpenEditModal = (batch: PayrollBatch) => {
+    setEditMode('edit');
+    setSelectedBatch(batch);
+    setRecordModalOpen(true);
+  };
+
+  // Handle open view modal
+  const handleOpenViewModal = (batch: PayrollBatch) => {
+    setSelectedBatch(batch);
+    setViewModalOpen(true);
   };
 
   if (loading) {
@@ -497,7 +350,7 @@ const PayrollPage = () => {
             setLoading(true);
             setError(null);
             setErrorCode(null);
-            fetchPayrollData(false);
+            fetchPayrollBatches(false);
           }}
         />
       </div>
@@ -511,107 +364,82 @@ const PayrollPage = () => {
           <h1>Payroll Management</h1>
         </div>
 
-        {/* Payroll Generation Button */}
-        <div style={{ marginBottom: 16 }}>
-          <button className="releaseAllBtn" onClick={() => setGenModalOpen(true)}>
-            <i className="ri-add-line" /> Generate Payroll
-          </button>
-        </div>
-
+        {/* Settings: Search Bar + Filters */}
         <div className="settings">
-          <div className="searchBar">
-            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
-              <i className="ri-search-line" />
-              <input
-                type="text"
-                placeholder="Search here..."
-                value={search}
-                onChange={handleSearchChange}
-                onKeyDown={handleSearchKeyPress}
-                disabled={searchLoading}
-              />
-              {searchLoading && (
-                <div style={{ marginLeft: '8px', color: '#666' }}>
-                  <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} />
-                </div>
-              )}
-              {search && !searchLoading && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  title="Clear search"
-                >
-                  ×
-                </button>
-              )}
-            </form>
+          <div className="search-filter-container">
+            <div className="searchBar">
+              <form onSubmit={handleSearchSubmit}>
+                <i className="ri-search-line" />
+                <input
+                  type="text"
+                  placeholder="Search batch code, period..."
+                  value={search}
+                  onChange={handleSearchChange}
+                  onKeyDown={handleSearchKeyPress}
+                  disabled={searchLoading}
+                  className="searchInput"
+                />
+
+              </form>
+            </div>
+            <FilterDropdown
+              sections={filterSections}
+              onApply={handleApplyFilters}
+              initialValues={filterValues}
+            />
           </div>
 
           <div className="filters">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="filterSelect"
+            <button
+              className="generatePayrollBtn"
+              onClick={handleOpenAddModal}
             >
-              <option value="">All Status</option>
-              <option key="pending" value="pending">Pending</option>
-              <option key="released" value="released">Released</option>
-            </select>
-
-            <select
-              value={payrollTypeFilter}
-              onChange={(e) => setPayrollTypeFilter(e.target.value)}
-              className="filterSelect"
-            >
-              <option value="">All Payroll Types</option>
-              {payrollTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+              <i className="ri-add-line" /> Generate Payroll Batch
+            </button>
 
             <button
               className="releaseAllBtn"
-              disabled={filteredData.filter(r => r.status === "Pending").length === 0}
-              onClick={() => handleReleaseWithConfirm(filteredData.filter(r => r.status === "Pending").map(r => r.period_id))}
+              onClick={handleReleaseAll}
+              disabled={filteredData.filter(b => b.status.toLowerCase() === 'pending').length === 0}
             >
               <i className="ri-check-double-line" /> Release All Pending
             </button>
           </div>
         </div>
 
-        {/* Payroll Table */}
+        {/* Payroll Batches Table */}
         <div className="table-wrapper">
           <div className="tableContainer">
             <table className="data-table">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Cut-Off Period</th>
-                  <th>Payroll Type</th>
-                  <th>Employees Covered</th>
-                  <th>Total Amount</th>
+                  <th>Batch Code</th>
+                  <th>Period Start</th>
+                  <th>Period End</th>
+                  <th>Total Employees</th>
+                  <th>Total Net</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((item, index) => (
-                  <tr key={item.period_id}
+                {filteredData.map((batch, index) => (
+                  <tr 
+                    key={batch.id}
                     style={{ cursor: "pointer" }}
-                    onClick={() => {
-                      setPeriodToView(item);
-                      setViewModalOpen(true);
-                    }}
+                    onClick={() => handleOpenViewModal(batch)}
                   >
                     <td>{(currentPage - 1) * pageSize + index + 1}</td>
-                    <td>{item.cut_off_period}</td>
-                    <td>{item.payroll_type}</td>
-                    <td>{item.employees_covered}</td>
-                    <td>₱{item.total_payroll_amount.toLocaleString()}</td>
+                    <td>{batch.batchCode}</td>
+                    <td>{formatDate(batch.periodStart)}</td>
+                    <td>{formatDate(batch.periodEnd)}</td>
+                    <td>{batch.totalEmployees}</td>
+                    <td>{formatMoney(batch.totalNet)}</td>
                     <td>
-                      <span className={`chip ${item.status}`}>{item.status}</span>
+                      <span className={`chip ${batch.status.toLowerCase()}`}>
+                        {batch.status}
+                      </span>
                     </td>
                     <td>
                       <div className="actionButtonsContainer">
@@ -619,41 +447,31 @@ const PayrollPage = () => {
                           className="viewBtn"
                           onClick={e => {
                             e.stopPropagation();
-                            setPeriodToView(item);
-                            setViewModalOpen(true);
+                            handleOpenViewModal(batch);
                           }}
                           title="View Details"
                         >
                           <i className="ri-eye-line" />
                         </button>
-                        <button
-                          className="exportBtn"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setExportingPeriod(item);
-                          }}
-                          title="Export"
-                        >
-                          <i className="ri-download-line" />
-                        </button>
-                        <button
-                          className="releaseBtn"
-                          disabled={item.status !== "Pending"}
-                          onClick={e => {
-                            e.stopPropagation();
-                            if (item.status === "Pending") handleReleaseWithConfirm([item.period_id]);
-                          }}
-                          title={item.status === "Pending" ? "Release Payroll" : "Already Released"}
-                        >
-                          <i className="ri-check-double-line" />
-                        </button>
+                        {batch.status === 'PENDING' && (
+                          <button
+                            className="editBtn"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleOpenEditModal(batch);
+                            }}
+                            title="Edit Batch"
+                          >
+                            <i className="ri-edit-line" />
+                          </button>
+                        )}
                         <button
                           className="deleteBtn"
                           onClick={e => {
                             e.stopPropagation();
-                            // TODO: Implement delete logic
+                            handleDeleteBatch(batch.id);
                           }}
-                          title="Delete Payroll"
+                          title="Delete Batch"
                         >
                           <i className="ri-delete-bin-line" />
                         </button>
@@ -664,7 +482,7 @@ const PayrollPage = () => {
               </tbody>
             </table>
             {!loading && filteredData.length === 0 && (
-              <p className="noRecords">No payroll records found.</p>
+              <p className="noRecords">No payroll batches found.</p>
             )}
           </div>
         </div>
@@ -677,379 +495,49 @@ const PayrollPage = () => {
           onPageSizeChange={setPageSize}
         />
 
-        {viewModalOpen && periodToView && (
-          <ViewPayrollModal
-            period={periodToView}
+        {/* Record Payroll Batch Modal */}
+        {recordModalOpen && (
+          <ModalManager
+            isOpen={recordModalOpen}
             onClose={() => {
-              setViewModalOpen(false);
-              setPeriodToView(null);
+              setRecordModalOpen(false);
+              setSelectedBatch(null);
             }}
+            modalContent={
+              <RecordPayrollBatch
+                mode={editMode}
+                existingData={selectedBatch}
+                onSave={handleSaveBatch}
+                onClose={() => {
+                  setRecordModalOpen(false);
+                  setSelectedBatch(null);
+                }}
+                currentUser={currentUser}
+              />
+            }
           />
         )}
 
-        {/* Payroll Generation Modal */}
-        {genModalOpen && (
-          <div className="modalOverlay">
-            <div className="viewPayrollModal" style={{ minWidth: 400, maxWidth: 540, borderRadius: 14, boxShadow: '0 6px 32px rgba(0,0,0,0.14)', background: '#fff', padding: 0 }}>
-              <div className="modalHeader" style={{ borderBottom: '1px solid #eee', marginBottom: 0, padding: '24px 32px 12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h2 style={{ fontWeight: 700, fontSize: 24, margin: 0 }}>Generate Payroll</h2>
-                <button className="closeButton" style={{ fontSize: 24, color: '#888', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setGenModalOpen(false)}>&times;</button>
-              </div>
-              <div className="modalBody" style={{ background: '#f7f7f9', borderRadius: 8, padding: 32, margin: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-                  <label style={{ fontWeight: 600, fontSize: 16, minWidth: 120 }}>Payroll Period:</label>
-                  <select value={genPeriodType} onChange={e => setGenPeriodType(e.target.value)} style={{ fontSize: 16, padding: '8px 16px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', minWidth: 140, fontWeight: 500 }}>
-                    <option value="monthly">Monthly</option>
-                    <option value="semi-monthly">Semi-Monthly</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
-                <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-                  {genPeriodType === 'monthly' && (
-                    <label style={{ fontWeight: 500, fontSize: 15, minWidth: 120 }}>Month:
-                      <input
-                        type="month"
-                        onChange={handleMonthChange}
-                        style={{ marginLeft: 8, fontSize: 16, padding: '8px 12px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', minWidth: 120 }}
-                      />
-                    </label>
-                  )}
-                  {genPeriodType === 'semi-monthly' && (
-                    <>
-                      <label style={{ fontWeight: 500, fontSize: 15, minWidth: 120 }}>Month:
-                        <input
-                          type="month"
-                          onChange={handleSemiMonthChange}
-                          style={{ marginLeft: 8, fontSize: 16, padding: '8px 12px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', minWidth: 120 }}
-                        />
-                      </label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 8 }}>
-                        <label style={{ fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center' }}>
-                          <input
-                            type="radio"
-                            name="semiMonthPart"
-                            value="first"
-                            checked={semiMonthPart === 'first'}
-                            onChange={() => setSemiMonthPart('first')}
-                            style={{ marginRight: 6 }}
-                          />
-                          1–15
-                        </label>
-                        <label style={{ fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center' }}>
-                          <input
-                            type="radio"
-                            name="semiMonthPart"
-                            value="second"
-                            checked={semiMonthPart === 'second'}
-                            onChange={() => setSemiMonthPart('second')}
-                            style={{ marginRight: 6 }}
-                          />
-                          16–End
-                        </label>
-                      </div>
-                    </>
-                  )}
-                  {genPeriodType === 'weekly' && (
-                    <label style={{ fontWeight: 500, fontSize: 15, minWidth: 120 }}>Week:
-                      <input
-                        type="week"
-                        onChange={handleWeekChange}
-                        style={{ marginLeft: 8, fontSize: 16, padding: '8px 12px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', minWidth: 120 }}
-                      />
-                    </label>
-                  )}
-                  {genPeriodType === 'custom' && (
-                    <>
-                      <label style={{ fontWeight: 500, fontSize: 15, minWidth: 120 }}>Start Date:
-                        <input type="date" value={genStart} onChange={e => setGenStart(e.target.value)} style={{ marginLeft: 8, fontSize: 16, padding: '8px 12px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', minWidth: 120 }} />
-                      </label>
-                      <label style={{ fontWeight: 500, fontSize: 15, minWidth: 120 }}>End Date:
-                        <input type="date" value={genEnd} onChange={e => setGenEnd(e.target.value)} style={{ marginLeft: 8, fontSize: 16, padding: '8px 12px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', minWidth: 120 }} />
-                      </label>
-                    </>
-                  )}
-                </div>
-                {/* Period summary */}
-                {(genStart && genEnd) && (
-                  <div style={{ marginBottom: 24, fontSize: 15, color: '#333', background: '#fffbe6', borderRadius: 8, padding: '10px 18px', border: '1px solid #ffe58f', fontWeight: 500, letterSpacing: 0.2 }}>
-                    <span style={{ color: '#bfa100', marginRight: 8 }}>🗓️</span>
-                    <b>Selected Period:</b> {genStart} to {genEnd}
-                  </div>
-                )}
-                <div style={{ margin: '18px 0', borderTop: '1px solid #e5e5e5' }} />
-                {eligibleEmployees.length > 0 && (
-                  <div style={{ marginBottom: 24, background: '#fff', borderRadius: 8, padding: 14, border: '1px solid #eee', maxHeight: 220, overflowY: 'auto' }}>
-                    <table className="data-table" style={{ fontSize: 14 }}>
-                      <thead>
-                        <tr>
-                          <th><input type="checkbox" checked={selectedEmployees.length === eligibleEmployees.length} onChange={e => handleSelectAll(e.target.checked)} /></th>
-                          <th>Employee Number</th>
-                          <th>Employee Name</th>
-                          <th>Department</th>
-                          <th>Position</th>
-                          <th>Payroll Period</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {eligibleEmployees.map(emp => (
-                          <tr key={emp.employeeNumber}>
-                            <td><input type="checkbox" checked={selectedEmployees.includes(emp.employeeNumber)} onChange={e => handleSelectEmployee(emp.employeeNumber, e.target.checked)} /></td>
-                            <td>{emp.employeeNumber}</td>
-                            <td>{[emp.firstName, emp.middleName, emp.lastName, emp.suffix].filter(Boolean).join(' ')}</td>
-                            <td>{emp.position?.department?.departmentName || '-'}</td>
-                            <td>{emp.position?.positionName || '-'}</td>
-                            <td>{emp.payrollPeriod || genPeriodType}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                
-                {/* No eligible employees message */}
-                {!previewLoading && eligibleEmployees.length === 0 && genStart && genEnd && (
-                  <div style={{ 
-                    background: '#fff3cd', 
-                    borderRadius: 8, 
-                    padding: 20, 
-                    border: '1px solid #ffeaa7',
-                    marginBottom: 24,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: 18, color: '#856404', marginBottom: 8 }}>
-                      <span style={{ marginRight: 8 }}>⚠️</span>
-                      No Eligible Employees Found
-                    </div>
-                    <div style={{ fontSize: 14, color: '#856404', lineHeight: 1.5 }}>
-                      No employees are eligible for <strong>{genPeriodType}</strong> payroll period<br />
-                      from <strong>{genStart}</strong> to <strong>{genEnd}</strong>.<br /><br />
-                      This could be because:
-                      <ul style={{ textAlign: 'left', margin: '8px 0 0 20px', padding: 0 }}>
-                        <li>No employees are configured for this payroll period type</li>
-                        <li>All employees are inactive</li>
-                        <li>No employees match the selected criteria</li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
-                {previewError && <div style={{ color: 'red', marginBottom: 12 }}>{previewError}</div>}
-                {genError && <div style={{ color: 'red', marginBottom: 12 }}>{genError}</div>}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 18 }}>
-                  <button
-                    className="releaseAllBtn"
-                    style={{ minWidth: 180, fontSize: 16, fontWeight: 600, background: '#22c55e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 0', boxShadow: '0 1px 4px rgba(34,197,94,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 0.2s' }}
-                    onClick={fetchEligibleEmployees}
-                    disabled={previewLoading || !genStart || !genEnd}
-                    title="Preview eligible employees for this period"
-                  >
-                    {previewLoading ? <span className="loader" style={{ width: 18, height: 18, border: '2px solid #fff', borderTop: '2px solid #22c55e', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite' }} /> : <i className="ri-search-line" style={{ fontSize: 18 }} />}
-                    {previewLoading ? 'Loading...' : 'Preview Eligible Employees'}
-                  </button>
-                  <button
-                    className="releaseAllBtn"
-                    style={{ minWidth: 180, fontSize: 16, fontWeight: 600, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 0', boxShadow: '0 1px 4px rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 0.2s' }}
-                    onClick={handleGeneratePayroll}
-                    disabled={genLoading || selectedEmployees.length === 0}
-                    title="Generate payroll for selected employees"
-                  >
-                    {genLoading ? <span className="loader" style={{ width: 18, height: 18, border: '2px solid #fff', borderTop: '2px solid #2563eb', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite' }} /> : <i className="ri-check-double-line" style={{ fontSize: 18 }} />}
-                    Generate Payroll
-                  </button>
-                </div>
-              </div>
-              <div className="modalFooter" style={{ borderTop: '1px solid #eee', marginTop: 0, padding: '18px 32px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="closeBtn" style={{ fontSize: 16, borderRadius: 8, padding: '10px 28px', background: '#f4f4f4', color: '#333', border: '1px solid #ccc', fontWeight: 600 }} onClick={() => setGenModalOpen(false)}>Close</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Export Confirmation Modal */}
-        {exportingPeriod && (
-          <div className="modalOverlay">
-            <div className="viewPayrollModal">
-              <div className="modalHeader">
-                <h2>Export Payroll</h2>
-                <button className="closeButton" onClick={() => setExportingPeriod(null)}>&times;</button>
-              </div>
-              <div className="modalBody">
-                <p>Are you sure you want to export payroll for <b>{exportingPeriod.cut_off_period}</b> ({exportingPeriod.payroll_type})?</p>
-              </div>
-              <div className="modalFooter">
-                <button className="closeBtn" onClick={() => setExportingPeriod(null)}>Cancel</button>
-                <button
-                  className="releaseAllBtn"
-                  onClick={async () => {
-                    // TEMPORARY: Export disabled
-                    console.warn('Payroll export API disabled');
-                    alert('Export functionality will be available once backend API is connected');
-                    setExportingPeriod(null);
-                    
-                    // TODO: Uncomment when ftms_backend API is ready:
-                    // const { start_date, end_date, payroll_type } = exportingPeriod;
-                    // const res = await fetch('http://localhost:4000/api/payroll/export', {
-                    //   method: 'POST',
-                    //   headers: {
-                    //     'Content-Type': 'application/json',
-                    //     'Authorization': `Bearer ${getAuthToken()}`
-                    //   },
-                    //   body: JSON.stringify({ start: start_date, end: end_date, payrollPeriod: payroll_type })
-                    // });
-                    // if (res.ok) {
-                    //   const blob = await res.blob();
-                    //   const url = window.URL.createObjectURL(blob);
-                    //   const a = document.createElement('a');
-                    //   a.href = url;
-                    //   a.download = `payroll_export_${start_date}_to_${end_date}.xlsx`;
-                    //   document.body.appendChild(a);
-                    //   a.click();
-                    //   a.remove();
-                    //   window.URL.revokeObjectURL(url);
-                    // } else {
-                    //   alert('Failed to export payroll.');
-                    // }
-                    // setExportingPeriod(null);
-                  }}
-                >
-                  Export
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Results Modal */}
-        {resultsModalOpen && resultsData && (
-          <div className="modalOverlay">
-            <div className="viewPayrollModal" style={{ minWidth: 500, maxWidth: 600, borderRadius: 14, boxShadow: '0 6px 32px rgba(0,0,0,0.14)', background: '#fff', padding: 0 }}>
-              <div className="modalHeader" style={{ borderBottom: '1px solid #eee', marginBottom: 0, padding: '24px 32px 12px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h2 style={{ fontWeight: 700, fontSize: 24, margin: 0 }}>
-                  {resultsData.generated > 0 ? '✅ Payroll Generated Successfully' : '⚠️ Payroll Generation Results'}
-                </h2>
-                <button className="closeButton" style={{ fontSize: 24, color: '#888', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setResultsModalOpen(false)}>&times;</button>
-              </div>
-              <div className="modalBody" style={{ background: '#f7f7f9', borderRadius: 8, padding: 32, margin: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                {/* Summary Cards */}
-                <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-                  <div style={{ flex: 1, background: '#d4edda', borderRadius: 8, padding: 16, textAlign: 'center', border: '1px solid #c3e6cb' }}>
-                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#155724' }}>{resultsData.generated}</div>
-                    <div style={{ fontSize: 14, color: '#155724' }}>Generated</div>
-                  </div>
-                  <div style={{ flex: 1, background: '#fff3cd', borderRadius: 8, padding: 16, textAlign: 'center', border: '1px solid #ffeaa7' }}>
-                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#856404' }}>{resultsData.skipped}</div>
-                    <div style={{ fontSize: 14, color: '#856404' }}>Skipped</div>
-                  </div>
-                  {resultsData.errors && resultsData.errors.length > 0 && (
-                    <div style={{ flex: 1, background: '#f8d7da', borderRadius: 8, padding: 16, textAlign: 'center', border: '1px solid #f5c6cb' }}>
-                      <div style={{ fontSize: 24, fontWeight: 'bold', color: '#721c24' }}>{resultsData.errors.length}</div>
-                      <div style={{ fontSize: 14, color: '#721c24' }}>Errors</div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Error Details */}
-                {resultsData.errors && resultsData.errors.length > 0 && (
-                  <div style={{ background: '#fff', borderRadius: 8, padding: 20, border: '1px solid #eee', marginBottom: 24 }}>
-                    <h3 style={{ margin: '0 0 16px 0', color: '#721c24', fontSize: 18, fontWeight: 600 }}>
-                      <span style={{ marginRight: 8 }}>❌</span>
-                      Issues Found
-                    </h3>
-                    <div style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
-                      The following employees already have payroll records for the selected period:
-                    </div>
-                    <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-                      {resultsData.errors.map((error: PayrollGenError, index: number) => (
-                        <div key={index} style={{ 
-                          padding: '12px 16px', 
-                          background: '#f8f9fa', 
-                          borderRadius: 6, 
-                          marginBottom: 8,
-                          border: '1px solid #e9ecef',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12
-                        }}>
-                          <div style={{ 
-                            width: 8, 
-                            height: 8, 
-                            borderRadius: '50%', 
-                            background: '#dc3545',
-                            flexShrink: 0
-                          }} />
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#333', marginBottom: 2 }}>
-                              {error.employee}
-                            </div>
-                            <div style={{ fontSize: 13, color: '#666' }}>
-                              {error.reason === 'date overlap' 
-                                ? 'Payroll record already exists for this period' 
-                                : error.reason}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Success Message */}
-                {resultsData.generated > 0 && (
-                  <div style={{ background: '#d4edda', borderRadius: 8, padding: 16, border: '1px solid #c3e6cb', marginBottom: 24 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 18 }}>✅</span>
-                      <span style={{ fontWeight: 600, color: '#155724' }}>
-                        Successfully generated {resultsData.generated} payroll record{resultsData.generated !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-                  <button
-                    className="closeBtn"
-                    style={{ 
-                      fontSize: 16, 
-                      borderRadius: 8, 
-                      padding: '12px 24px', 
-                      background: '#6c757d', 
-                      color: '#fff', 
-                      border: 'none', 
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'background 0.2s'
-                    }}
-                    onClick={() => setResultsModalOpen(false)}
-                  >
-                    Close
-                  </button>
-                  {resultsData.generated > 0 && (
-                    <button
-                      className="releaseAllBtn"
-                      style={{ 
-                        fontSize: 16, 
-                        borderRadius: 8, 
-                        padding: '12px 24px', 
-                        background: '#28a745', 
-                        color: '#fff', 
-                        border: 'none', 
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }}
-                      onClick={() => {
-                        setResultsModalOpen(false);
-                        setGenModalOpen(false);
-                      }}
-                    >
-                      View Payroll Records
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* View Payroll Batch Modal */}
+        {viewModalOpen && selectedBatch && (
+          <ModalManager
+            isOpen={viewModalOpen}
+            onClose={() => {
+              setViewModalOpen(false);
+              setSelectedBatch(null);
+            }}
+            modalContent={
+              <ViewPayrollBatch
+                batch={selectedBatch}
+                onClose={() => {
+                  setViewModalOpen(false);
+                  setSelectedBatch(null);
+                }}
+                onDisburse={handleDisburse}
+                currentUser={currentUser}
+              />
+            }
+          />
         )}
       </div>
     </div>
