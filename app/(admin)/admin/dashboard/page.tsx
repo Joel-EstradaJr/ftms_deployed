@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PieChart from "../../../Components/pieChart";
 import ExportConfirmationModal from "../../../Components/ExportConfirmationModal";
-import ErrorDisplay from '../../../Components/ErrorDisplay';
+import ErrorDisplay from '../../../Components/errordisplay';
 import "../../../styles/dashboard/dashboard.css";
 import Loading from '../../../Components/loading';
 import EmotionSettingsModal from "../../../Components/dashboardEmotion";
@@ -279,8 +279,7 @@ const DashboardPage = () => {
       <div className="card">
         <h1 className="title">Dashboard</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to load dashboard data."
+          errorCode={503}
           onRetry={() => {
             setError(null);
             loadDashboardData();
