@@ -158,7 +158,8 @@ td.actionButtons {
 .actionButtonsContainer .exportBtn,
 .actionButtonsContainer .auditBtn,
 .actionButtonsContainer .refundBtn,
-.actionButtonsContainer .matchBtn {
+.actionButtonsContainer .matchBtn,
+.actionButtonsContainer .postBtn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -305,6 +306,14 @@ tbody tr.installment-row td:first-child {
 }
 .matchBtn:hover {
   background-color: #0d9488 !important;
+}
+
+/* ----- POST TO JEV BUTTON (Purple) ----- */
+.postBtn {
+  background-color: #9C27B0 !important;
+}
+.postBtn:hover {
+  background-color: #7B1FA2 !important;
 }
 
 /* ----- SORTABLE HEADERS ----- */

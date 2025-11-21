@@ -4,14 +4,18 @@ import React, { useState, useEffect } from 'react';
 import FilterDropdown, { FilterSection } from '../../../../Components/filter';
 import ExportButton from '../../../../Components/ExportButton';
 import ModalManager from '../../../../Components/modalManager';
+import RecordPaymentModal from '@/Components/RecordPaymentModal';
 import ViewPurchaseExpense from './viewPurchaseExpense';
 import RecordPurchaseExpense from './recordPurchaseExpense';
 import Loading from '../../../../Components/loading';
 import ErrorDisplay from '../../../../Components/errordisplay';
 import PaginationComponent from '../../../../Components/pagination';
-import { PurchaseExpense, PurchaseExpenseFilters, PaymentStatus } from '../../../../types/expenses';
+import { PurchaseExpense, PurchaseExpenseFilters, PaymentStatus, ExpenseScheduleItem } from '../../../../types/expenses';
+import { PaymentRecordData } from '@/app/types/payments';
+import { processCascadePayment as processExpenseCascade } from '@/app/utils/expenseScheduleCalculations';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showSuccess, showError } from '../../../../utils/Alerts';
+import Swal from 'sweetalert2';
 import '../../../../styles/components/table.css';
 import '../../../../styles/components/chips.css';
 
@@ -28,6 +32,15 @@ const PurchaseExpensePage: React.FC = () => {
 
   // Payment status tracking (fetched from CashTransaction API)
   const [paymentStatuses, setPaymentStatuses] = useState<Record<string, PaymentStatus>>({});
+  
+  // Payment modal states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentModalContent, setPaymentModalContent] = useState<React.ReactNode>(null);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: number; methodName: string; methodCode: string }>>([
+    { id: 1, methodName: 'Bank Transfer', methodCode: 'BANK' },
+    { id: 2, methodName: 'Cash', methodCode: 'CASH' },
+    { id: 3, methodName: 'Check', methodCode: 'CHECK' }
+  ]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -248,6 +261,120 @@ const PurchaseExpensePage: React.FC = () => {
     setSelectedExpense(null);
   };
 
+  const closePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setPaymentModalContent(null);
+  };
+
+  const openPaymentModal = (expense: PurchaseExpense) => {
+    // For purchase expenses, create a single installment for the full amount
+    const singleInstallment: ExpenseScheduleItem = {
+      id: `${expense.id}-SINGLE`,
+      installmentNumber: 1,
+      originalDueDate: expense.date,
+      currentDueDate: expense.date,
+      originalDueAmount: expense.amount,
+      currentDueAmount: expense.amount,
+      paidAmount: 0,
+      carriedOverAmount: 0,
+      paymentStatus: PaymentStatus.PENDING,
+      isPastDue: false,
+      isEditable: false
+    };
+
+    setPaymentModalContent(
+      <RecordPaymentModal
+        entityType="expense"
+        recordId={expense.id}
+        recordRef={expense.expense_code || expense.pr_number}
+        scheduleItems={[singleInstallment]}
+        selectedInstallment={singleInstallment}
+        paymentMethods={paymentMethods}
+        currentUser="admin@ftms.com"
+        onPaymentRecorded={handlePaymentRecorded}
+        onClose={closePaymentModal}
+        processCascadePayment={processExpenseCascade}
+      />
+    );
+
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
+    // Update payment status locally for demo purposes
+    // In production, this would call an API and refresh from server
+    const { recordId, amountToPay } = paymentData;
+    
+    setPaymentStatuses(prev => {
+      const expense = expenses.find(e => e.id === recordId);
+      if (!expense) return prev;
+      
+      const recordIdStr = String(recordId);
+      const currentPaid = expense.amount - (prev[recordIdStr] === PaymentStatus.PAID ? 0 : 
+                                            prev[recordIdStr] === PaymentStatus.PARTIALLY_PAID ? expense.amount * 0.5 : 
+                                            expense.amount);
+      const newTotalPaid = currentPaid + amountToPay;
+      const newStatus = newTotalPaid >= expense.amount ? PaymentStatus.PAID : 
+                       newTotalPaid > 0 ? PaymentStatus.PARTIALLY_PAID : 
+                       PaymentStatus.PENDING;
+      
+      return { ...prev, [recordIdStr]: newStatus };
+    });
+
+    closePaymentModal();
+    
+    // Refresh the view modal if it's open
+    if (isViewModalOpen && selectedExpense?.id === recordId) {
+      setIsViewModalOpen(false);
+      setTimeout(() => {
+        const updatedExpense = expenses.find(e => e.id === recordId);
+        if (updatedExpense) {
+          setSelectedExpense(updatedExpense);
+          setIsViewModalOpen(true);
+        }
+      }, 100);
+    }
+  };
+
+  const handleRecordPayment = (expense: PurchaseExpense) => {
+    openPaymentModal(expense);
+  };
+
+  const handlePostToJEV = async (expense: PurchaseExpense) => {
+    const result = await Swal.fire({
+      title: 'Confirm Posting',
+      text: 'Are you sure you want to post this record?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#9C27B0',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, post it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      // TODO: Replace with actual API call to post to JEV
+      // const response = await fetch(`/api/admin/expenses/purchase/${expense.id}/post-to-jev`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' }
+      // });
+
+      showSuccess(`Purchase expense ${expense.expense_code || expense.id} posted to JEV successfully`, 'Posted to JEV');
+      
+      // Update status to POSTED locally
+      setExpenses(prev => prev.map(exp => 
+        exp.id === expense.id ? { ...exp, status: 'POSTED' } : exp
+      ));
+    } catch (error) {
+      showError('Failed to post to JEV', 'Error');
+      console.error(error);
+    }
+  };
+
   const handleSave = async (formData: any) => {
     try {
       // TODO: Replace with actual API call
@@ -406,10 +533,42 @@ const PurchaseExpensePage: React.FC = () => {
                               e.stopPropagation();
                               handleOpenEditModal(expense);
                             }}
-                            title="Edit"
+                            title={expense.status === 'POSTED' ? 'Cannot edit posted records' : 'Edit'}
+                            disabled={expense.status === 'POSTED'}
+                            style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                           >
                             <i className="ri-edit-line"></i>
                           </button>
+                          {/* Post to JEV button - show for DELIVERED expenses */}
+                          {expense.status === 'DELIVERED' && (
+                            <button
+                              className="postBtn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePostToJEV(expense);
+                              }}
+                              title="Post to JEV"
+                            >
+                              <i className="ri-file-transfer-line"></i>
+                            </button>
+                          )}
+                          {/* Payment button - show for PENDING or PARTIALLY_PAID expenses */}
+                          {paymentStatuses[expense.id] && 
+                           (paymentStatuses[expense.id] === PaymentStatus.PENDING || 
+                            paymentStatuses[expense.id] === PaymentStatus.PARTIALLY_PAID) && (
+                            <button
+                              className="payBtn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRecordPayment(expense);
+                              }}
+                              title={expense.status === 'POSTED' ? 'Cannot record payment for posted records' : 'Record Payment'}
+                              disabled={expense.status === 'POSTED'}
+                              style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            >
+                              <i className="ri-money-dollar-circle-line"></i>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -437,9 +596,16 @@ const PurchaseExpensePage: React.FC = () => {
             <ViewPurchaseExpense
               expense={selectedExpense}
               onClose={handleCloseViewModal}
+              onRecordPayment={() => handleRecordPayment(selectedExpense)}
             />
           ) : null
         }
+      />
+
+      <ModalManager
+        isOpen={isPaymentModalOpen}
+        onClose={closePaymentModal}
+        modalContent={paymentModalContent}
       />
 
       <ModalManager

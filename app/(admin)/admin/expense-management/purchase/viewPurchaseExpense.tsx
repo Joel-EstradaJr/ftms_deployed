@@ -10,9 +10,10 @@ import '../../../../styles/components/chips.css';
 interface ViewPurchaseExpenseProps {
   expense: PurchaseExpense;
   onClose: () => void;
+  onRecordPayment?: () => void;
 }
 
-const ViewPurchaseExpense: React.FC<ViewPurchaseExpenseProps> = ({ expense, onClose }) => {
+const ViewPurchaseExpense: React.FC<ViewPurchaseExpenseProps> = ({ expense, onClose, onRecordPayment }) => {
   const [showItems, setShowItems] = useState(true);
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [loadingPayment, setLoadingPayment] = useState(false);
@@ -209,15 +210,12 @@ const ViewPurchaseExpense: React.FC<ViewPurchaseExpenseProps> = ({ expense, onCl
               </>
             )}
 
-            {paymentInfo.balance > 0 && (
+            {paymentInfo.balance > 0 && onRecordPayment && (
               <div className="form-row" style={{ marginTop: '15px' }}>
                 <button 
                   type="button"
                   className="submit-btn"
-                  onClick={() => {
-                    // TODO: Open Cash Transaction modal for payment recording
-                    alert('Record Payment functionality will open Cash Transaction modal');
-                  }}
+                  onClick={onRecordPayment}
                   style={{ width: 'auto', padding: '10px 20px' }}
                 >
                   <i className="ri-money-dollar-circle-line" style={{ marginRight: '8px' }}></i>
