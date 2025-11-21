@@ -287,51 +287,14 @@ const Sidebar: React.FC = () => {
             <span>Financial Reports</span>
           </Link>
 
-          {/* JEV Module - Admin only */}
-          {userRole === 'admin' && (
-            <>
-              <div
-                className={`nav-item module ${
-                  ["chart-of-accounts", "journal-entries"].includes(activeItem!) ? "active" : ""
-                }`}
-                onClick={() => toggleSubMenu("jev-management")}
-              >
-                <i className="ri-book-line"></i>
-                <span>Journal Entry Voucher</span>
-                <i
-                  className={`dropdown-arrow ri-arrow-down-s-line ${
-                    openSubMenu === "jev-management" ? "rotate" : ""
-                  }`}
-                />
-              </div>
 
-              {openSubMenu === "jev-management" && (
-                <div className="sub-menu active">
-                  <Link
-                    href={getUrl("/jev/chart-of-accounts")}
-                    className={`sub-item ${activeItem === "chart-of-accounts" ? "active" : ""}`}
-                    onClick={() => setActiveItem("chart-of-accounts")}
-                  >
-                    Chart of Accounts
-                  </Link>
-                  <Link
-                    href={getUrl("/jev/journal-entries")}
-                    className={`sub-item ${activeItem === "journal-entries" ? "active" : ""}`}
-                    onClick={() => setActiveItem("journal-entries")}
-                  >
-                    Journal Entries
-                  </Link>
-                </div>
-              )}
-            </>
-          )}
 
           {/* Records & Reports - Admin only */}
           {userRole === 'admin' && (
             <>
               <div
                 className={`nav-item module ${
-                  ["JEV-records", "asset-management"].includes(activeItem!) ? "active" : ""
+                  ["journal-entries","chart-of-accounts", "asset-management"].includes(activeItem!) ? "active" : ""
                 }`}
                 onClick={() => toggleSubMenu("records-reports")}
               >
@@ -347,12 +310,21 @@ const Sidebar: React.FC = () => {
               {openSubMenu === "records-reports" && (
                 <div className="sub-menu active">
                   <Link
-                    href={getUrl("/records-reports/JEV")}
-                    className={`sub-item ${activeItem === "JEV-records" ? "active" : ""}`}
-                    onClick={() => setActiveItem("JEV-records")}
+                    href={getUrl("/jev/chart-of-accounts")}
+                    className={`sub-item ${activeItem === "chart-of-accounts" ? "active" : ""}`}
+                    onClick={() => setActiveItem("chart-of-accounts")}
                   >
-                    JEV Records
+                    Chart of Accounts
                   </Link>
+
+                  <Link
+                    href={getUrl("/jev/journal-entries")}
+                    className={`sub-item ${activeItem === "journal-entries" ? "active" : ""}`}
+                    onClick={() => setActiveItem("journal-entries")}
+                  >
+                    Journal Entries
+                  </Link>
+
                   <Link
                     href={getUrl("/asset-management")}
                     className={`sub-item ${activeItem === "asset-management" ? "active" : ""}`}

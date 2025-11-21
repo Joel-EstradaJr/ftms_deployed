@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { showError, showConfirmation } from '@/app/utils/Alerts';
 import { formatDate, formatMoney } from '@/app/utils/formatting';
 import { JournalEntry, JournalStatus } from '@/app/types/jev';
-import '@/app/styles/general/forms.css';
+import '@/app/styles/components/forms.css';
 import '@/app/styles/JEV/journal-entries.css';
 
 interface PostEntryModalProps {
@@ -26,19 +26,19 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
     return (
       <>
         <div className="modal-heading">
-          <h2>Post Journal Entry</h2>
-          <button onClick={onClose} className="closeBtn">
+          <h2 className="modal-title">Post Journal Entry</h2>
+          <button onClick={onClose} className="close-modal-btn">
             <i className="ri-close-line"></i>
           </button>
         </div>
-        <div className="modal-content view">
+        <div className="modal-content view-form">
           <div className="error-message">
             <i className="ri-error-warning-line"></i>
             Only draft entries can be posted. This entry is already {entry.status.toLowerCase()}.
           </div>
         </div>
         <div className="modal-actions">
-          <button onClick={onClose} className="cancelBtn">Close</button>
+          <button onClick={onClose} className="cancel-btn">Close</button>
         </div>
       </>
     );
@@ -49,12 +49,12 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
     return (
       <>
         <div className="modal-heading">
-          <h2>Post Journal Entry</h2>
-          <button onClick={onClose} className="closeBtn">
+          <h2 className="modal-title">Post Journal Entry</h2>
+          <button onClick={onClose} className="close-modal-btn">
             <i className="ri-close-line"></i>
           </button>
         </div>
-        <div className="modal-content view">
+        <div className="modal-content view-form">
           <div className="error-message">
             <i className="ri-error-warning-line"></i>
             This entry cannot be posted because it is not balanced.
@@ -63,7 +63,7 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
           </div>
         </div>
         <div className="modal-actions">
-          <button onClick={onClose} className="cancelBtn">Close</button>
+          <button onClick={onClose} className="cancel-btn">Close</button>
         </div>
       </>
     );
@@ -101,16 +101,16 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
   return (
     <>
       <div className="modal-heading">
-        <h2>Post Journal Entry</h2>
-        <button onClick={onClose} className="closeBtn" disabled={isPosting}>
+        <h2 className="modal-title">Post Journal Entry</h2>
+        <button onClick={onClose} className="close-modal-btn" disabled={isPosting}>
           <i className="ri-close-line"></i>
         </button>
       </div>
 
-      <div className="modal-content add">
+      <div className="modal-content add-form">
         {/* Entry Summary */}
         <div className="form-section">
-          <h3>Entry Summary</h3>
+          <h3 className="details-title">Entry Summary</h3>
           
           <div className="form-row">
             <div className="form-group">
@@ -153,7 +153,7 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
 
         {/* Posting Date */}
         <div className="form-section">
-          <h3>Posting Information</h3>
+          <h3 className="details-title">Posting Information</h3>
           
           <div className="form-group">
             <label htmlFor="posting_date">
@@ -183,7 +183,7 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
 
         {/* Journal Lines Preview */}
         <div className="form-section">
-          <h3>Journal Lines ({entry.journal_lines.length})</h3>
+          <h3 className="details-title">Journal Lines ({entry.journal_lines.length})</h3>
           
           <div className="journal-lines-table">
             <table>
@@ -217,12 +217,12 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
       </div>
 
       <div className="modal-actions">
-        <button onClick={onClose} className="cancelBtn" disabled={isPosting}>
+        <button onClick={onClose} className="cancel-btn" disabled={isPosting}>
           Cancel
         </button>
         <button 
           onClick={handlePost} 
-          className="submitBtn"
+          className="submit-btn"
           disabled={isPosting || !postingDate}
         >
           {isPosting ? (

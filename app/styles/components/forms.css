@@ -24,12 +24,13 @@
 .modal-content.add .add-form,
 .modal-content.edit .edit-form,
 .modal-content.view .view-form,
-.modal-content.view-expired .view-form {
+.modal-content.view-expired .view-form,
+.modal-content {
     width: 100%;
     display: flex;
     flex-direction: column;
     justify-self: center;
-    gap: 12px;
+    gap: 12px!important;
 }
 
 .form-group {

@@ -179,8 +179,36 @@ textarea.input-error {
   --table-header-hover-color: #DDDDDD;
   --table-row-hover-color: #ECECEC;
   --warning-hover-color: #E6B800;
+  
   /* Shadow */
   --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+
+  /* JEV Colors */
+  --jev-balanced-bg: #D1F7D1;
+  --jev-balanced-text: #23915F;
+  --jev-unbalanced-bg: #FFDDDD;
+  --jev-unbalanced-text: #A50000;
+  --jev-line-hover-bg: #F5F5F5;
+  --jev-changed-field-bg: #FFFDE7;
+  --jev-changed-field-border: #FBC02D;
+  --jev-totals-bg: #F9F9F9;
+  --jev-reset-button-bg: #FF9800;
+  --jev-reset-button-hover: #F57C00;
+  --jev-undo-button-bg: #9E9E9E;
+  --jev-undo-button-hover: #757575;
+  --jev-undo-highlight-bg: #E3F2FD;
+
+  /* JEV Sizes */
+  --jev-table-max-height: 400px;
+  --jev-account-cell-width: 35%;
+  --jev-description-cell-width: 25%;
+  --jev-amount-cell-width: 15%;
+  --jev-actions-cell-width: 10%;
+  --jev-form-section-padding: 20px 0;
+  --jev-form-field-gap: 20px;
+  --jev-modal-content-padding: 24px;
+  --jev-changed-icon-size: 16px;
+  --jev-action-button-gap: 12px;
 
   /* ================ SIZES ================*/
 

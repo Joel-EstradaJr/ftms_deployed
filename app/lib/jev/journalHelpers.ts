@@ -29,27 +29,37 @@ export const formatEntryType = (type: EntryType): string => {
  * Get entry type color class
  */
 export const getEntryTypeClass = (type: EntryType): string => {
-  if (type === EntryType.MANUAL) return 'manual-entry';
-  if (type.startsWith('AUTO_')) return 'auto-entry';
-  if (type === EntryType.ADJUSTMENT) return 'adjustment-entry';
-  if (type === EntryType.CLOSING) return 'closing-entry';
-  return '';
+  switch (type) {
+    case EntryType.MANUAL:
+      return 'manual';
+    case EntryType.AUTO_MANUAL:
+      return 'auto_manual';
+    case EntryType.AUTO_REVENUE:
+      return 'auto_revenue';
+    case EntryType.AUTO_EXPENSE:
+      return 'auto_expense';
+    case EntryType.AUTO_PAYROLL:
+      return 'auto_payroll';
+    case EntryType.AUTO_LOAN:
+      return 'auto_loan';
+    case EntryType.AUTO_PURCHASE:
+      return 'auto_purchase';
+    case EntryType.AUTO_REFUND:
+      return 'auto_refund';
+    case EntryType.ADJUSTMENT:
+      return 'adjustment';
+    case EntryType.CLOSING:
+      return 'closing';
+    default:
+      return '';
+  }
 };
 
 /**
  * Get status color class
  */
 export const getStatusClass = (status: JournalStatus): string => {
-  switch (status) {
-    case JournalStatus.DRAFT:
-      return 'warning-chip';
-    case JournalStatus.POSTED:
-      return 'success-chip';
-    case JournalStatus.REVERSED:
-      return 'error-chip';
-    default:
-      return '';
-  }
+  return status.toLowerCase();
 };
 
 /**

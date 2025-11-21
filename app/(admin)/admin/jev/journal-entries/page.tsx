@@ -1,20 +1,28 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { JournalEntry, JournalEntryFormData, ChartOfAccount, EntryType, JournalStatus } from '@/app/types/jev';
-import { formatDate, formatMoney, formatDisplayText } from '@/app/utils/formatting';
+import { JournalEntry, JournalEntryFormData, ChartOfAccount, EntryType, JournalStatus, AccountType, NormalBalance } from '@/app/types/jev';
+
 import { getEntryTypeClass, getStatusClass } from '@/app/lib/jev/journalHelpers';
+
 import PaginationComponent from '@/app/Components/pagination';
 import Loading from '@/app/Components/loading';
 import ErrorDisplay from '@/app/Components/errordisplay';
 import ModalManager from '@/app/Components/modalManager';
 import ExportButton from '@/app/Components/ExportButton';
+import FilterDropdown, { FilterSection } from '@/app/Components/filter';
+
 import AddJournalEntryModal from './AddJournalEntryModal';
 import EditJournalEntryModal from './EditJournalEntryModal';
 import ViewJournalEntryModal from './ViewJournalEntryModal';
 import PostEntryModal from './PostEntryModal';
+
+
 import { showSuccess, showError, showConfirmation } from '@/app/utils/Alerts';
+import { formatDate, formatMoney, formatDisplayText } from '@/app/utils/formatting';
+
 import '@/app/styles/components/table.css';
+import '@/app/styles/components/modal2.css';
 import '@/app/styles/JEV/journal-entries.css';
 import '@/app/styles/components/chips.css';
 
@@ -44,6 +52,39 @@ export default function JournalEntriesPage() {
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
 
+  // Mock Chart of Accounts
+  const mockAccounts: ChartOfAccount[] = [
+    // Assets
+    { account_id: '1010', account_code: '1010', account_name: 'Cash on Hand', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '1020', account_code: '1020', account_name: 'Cash in Bank - BPI', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '1030', account_code: '1030', account_name: 'Accounts Receivable', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '1040', account_code: '1040', account_name: 'Inventory - Fuel', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '1500', account_code: '1500', account_name: 'Transportation Equipment', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '1510', account_code: '1510', account_name: 'Office Equipment', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    
+    // Liabilities
+    { account_id: '2010', account_code: '2010', account_name: 'Accounts Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    { account_id: '2020', account_code: '2020', account_name: 'Loans Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    { account_id: '2030', account_code: '2030', account_name: 'SSS Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    { account_id: '2040', account_code: '2040', account_name: 'PhilHealth Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    
+    // Equity
+    { account_id: '3010', account_code: '3010', account_name: 'Capital', account_type: AccountType.EQUITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    { account_id: '3020', account_code: '3020', account_name: 'Retained Earnings', account_type: AccountType.EQUITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    
+    // Revenue
+    { account_id: '4010', account_code: '4010', account_name: 'Fare Revenue', account_type: AccountType.REVENUE, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    { account_id: '4020', account_code: '4020', account_name: 'Charter Revenue', account_type: AccountType.REVENUE, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
+    
+    // Expenses
+    { account_id: '5010', account_code: '5010', account_name: 'Fuel Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '5020', account_code: '5020', account_name: 'Maintenance Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '5030', account_code: '5030', account_name: 'Salaries Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '5040', account_code: '5040', account_name: 'Rent Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '5050', account_code: '5050', account_name: 'Utilities Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+    { account_id: '5060', account_code: '5060', account_name: 'Insurance Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
+  ];
+
   // Mock data - TODO: Replace with API call
   const mockEntries: JournalEntry[] = [
     {
@@ -65,7 +106,28 @@ export default function JournalEntriesPage() {
       posted_at: '2024-11-15T08:30:00',
       posted_by: 'System',
       updated_at: '2024-11-15T08:30:00',
-      journal_lines: []
+      journal_lines: [
+        {
+          line_id: '1-1',
+          journal_entry_id: '1',
+          account_id: '1020',
+          account: mockAccounts.find(a => a.account_id === '1020'),
+          line_number: 1,
+          description: 'Cash collection from fare revenue',
+          debit_amount: 50000.00,
+          credit_amount: 0
+        },
+        {
+          line_id: '1-2',
+          journal_entry_id: '1',
+          account_id: '4010',
+          account: mockAccounts.find(a => a.account_id === '4010'),
+          line_number: 2,
+          description: 'Fare revenue - Bus 101',
+          debit_amount: 0,
+          credit_amount: 50000.00
+        }
+      ]
     },
     {
       journal_entry_id: '2',
@@ -80,7 +142,28 @@ export default function JournalEntriesPage() {
       created_at: '2024-11-14T14:20:00',
       created_by: 'Admin User',
       updated_at: '2024-11-14T14:20:00',
-      journal_lines: []
+      journal_lines: [
+        {
+          line_id: '2-1',
+          journal_entry_id: '2',
+          account_id: '5010',
+          account: mockAccounts.find(a => a.account_id === '5010'),
+          line_number: 1,
+          description: 'Fuel expense adjustment',
+          debit_amount: 15000.00,
+          credit_amount: 0
+        },
+        {
+          line_id: '2-2',
+          journal_entry_id: '2',
+          account_id: '1040',
+          account: mockAccounts.find(a => a.account_id === '1040'),
+          line_number: 2,
+          description: 'Inventory reduction',
+          debit_amount: 0,
+          credit_amount: 15000.00
+        }
+      ]
     },
     {
       journal_entry_id: '3',
@@ -101,7 +184,48 @@ export default function JournalEntriesPage() {
       posted_at: '2024-11-13T10:00:00',
       posted_by: 'System',
       updated_at: '2024-11-13T10:00:00',
-      journal_lines: []
+      journal_lines: [
+        {
+          line_id: '3-1',
+          journal_entry_id: '3',
+          account_id: '5030',
+          account: mockAccounts.find(a => a.account_id === '5030'),
+          line_number: 1,
+          description: 'Salaries and wages',
+          debit_amount: 110000.00,
+          credit_amount: 0
+        },
+        {
+          line_id: '3-2',
+          journal_entry_id: '3',
+          account_id: '2030',
+          account: mockAccounts.find(a => a.account_id === '2030'),
+          line_number: 2,
+          description: 'SSS contribution withheld',
+          debit_amount: 0,
+          credit_amount: 5000.00
+        },
+        {
+          line_id: '3-3',
+          journal_entry_id: '3',
+          account_id: '2040',
+          account: mockAccounts.find(a => a.account_id === '2040'),
+          line_number: 3,
+          description: 'PhilHealth contribution withheld',
+          debit_amount: 0,
+          credit_amount: 3000.00
+        },
+        {
+          line_id: '3-4',
+          journal_entry_id: '3',
+          account_id: '1020',
+          account: mockAccounts.find(a => a.account_id === '1020'),
+          line_number: 4,
+          description: 'Net payroll disbursement',
+          debit_amount: 0,
+          credit_amount: 102000.00
+        }
+      ]
     },
     {
       journal_entry_id: '4',
@@ -122,7 +246,38 @@ export default function JournalEntriesPage() {
       posted_at: '2024-11-12T11:15:00',
       posted_by: 'System',
       updated_at: '2024-11-12T11:15:00',
-      journal_lines: []
+      journal_lines: [
+        {
+          line_id: '4-1',
+          journal_entry_id: '4',
+          account_id: '5010',
+          account: mockAccounts.find(a => a.account_id === '5010'),
+          line_number: 1,
+          description: 'Fuel expense',
+          debit_amount: 20000.00,
+          credit_amount: 0
+        },
+        {
+          line_id: '4-2',
+          journal_entry_id: '4',
+          account_id: '5020',
+          account: mockAccounts.find(a => a.account_id === '5020'),
+          line_number: 2,
+          description: 'Maintenance and repairs',
+          debit_amount: 12000.00,
+          credit_amount: 0
+        },
+        {
+          line_id: '4-3',
+          journal_entry_id: '4',
+          account_id: '2010',
+          account: mockAccounts.find(a => a.account_id === '2010'),
+          line_number: 3,
+          description: 'Accounts payable',
+          debit_amount: 0,
+          credit_amount: 32000.00
+        }
+      ]
     },
     {
       journal_entry_id: '5',
@@ -137,7 +292,28 @@ export default function JournalEntriesPage() {
       created_at: '2024-11-10T16:45:00',
       created_by: 'Finance Manager',
       updated_at: '2024-11-10T16:45:00',
-      journal_lines: []
+      journal_lines: [
+        {
+          line_id: '5-1',
+          journal_entry_id: '5',
+          account_id: '4010',
+          account: mockAccounts.find(a => a.account_id === '4010'),
+          line_number: 1,
+          description: 'Close fare revenue to retained earnings',
+          debit_amount: 250000.00,
+          credit_amount: 0
+        },
+        {
+          line_id: '5-2',
+          journal_entry_id: '5',
+          account_id: '3020',
+          account: mockAccounts.find(a => a.account_id === '3020'),
+          line_number: 2,
+          description: 'Transfer to retained earnings',
+          debit_amount: 0,
+          credit_amount: 250000.00
+        }
+      ]
     }
   ];
 
@@ -156,6 +332,7 @@ export default function JournalEntriesPage() {
       
       setEntries(mockEntries);
       setFilteredEntries(mockEntries);
+      setAccounts(mockAccounts);
     } catch (err) {
       console.error('Error fetching entries:', err);
       setError('Failed to load journal entries');
@@ -212,19 +389,56 @@ export default function JournalEntriesPage() {
     currentPage * pageSize
   );
 
+  // Handle save new entry
+  const handleSaveNewEntry = async (formData: JournalEntryFormData) => {
+    try {
+      // TODO: Replace with actual API call
+      console.log('Saving new entry:', formData);
+      await showSuccess('Journal entry created successfully', 'Success');
+      setIsModalOpen(false);
+      fetchEntries(); // Refresh the list
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      showError('Failed to create journal entry', 'Error');
+    }
+  };
+
+  // Handle update entry
+  const handleUpdateEntry = async (formData: JournalEntryFormData) => {
+    try {
+      // TODO: Replace with actual API call
+      console.log('Updating entry:', formData);
+      await showSuccess('Journal entry updated successfully', 'Success');
+      setIsModalOpen(false);
+      fetchEntries(); // Refresh the list
+    } catch (error) {
+      console.error('Error updating entry:', error);
+      showError('Failed to update journal entry', 'Error');
+    }
+  };
+
   // Handle view entry
   const handleViewEntry = (entry: JournalEntry) => {
     setSelectedEntry(entry);
-    // TODO: Import and use ViewJournalEntryModal
-    setModalContent(<div>View Modal - Coming Soon</div>);
-    setShowViewModal(true);
+    setModalContent(
+      <ViewJournalEntryModal
+        entry={entry}
+        onClose={() => setIsModalOpen(false)}
+      />
+    );
+    setIsModalOpen(true);
   };
 
   // Handle add entry
   const handleAddEntry = () => {
-    // TODO: Import and use AddJournalEntryModal
-    setModalContent(<div>Add Modal - Coming Soon</div>);
-    setShowAddModal(true);
+    setModalContent(
+      <AddJournalEntryModal
+        accounts={accounts}
+        onSubmit={handleSaveNewEntry}
+        onClose={() => setIsModalOpen(false)}
+      />
+    );
+    setIsModalOpen(true);
   };
 
   // Handle edit entry
@@ -234,9 +448,15 @@ export default function JournalEntriesPage() {
       return;
     }
     setSelectedEntry(entry);
-    // TODO: Import and use EditJournalEntryModal
-    setModalContent(<div>Edit Modal - Coming Soon</div>);
-    setShowEditModal(true);
+    setModalContent(
+      <EditJournalEntryModal
+        entry={entry}
+        accounts={accounts}
+        onSubmit={handleUpdateEntry}
+        onClose={() => setIsModalOpen(false)}
+      />
+    );
+    setIsModalOpen(true);
   };
 
   // Handle delete entry
@@ -270,9 +490,28 @@ export default function JournalEntriesPage() {
     }
 
     setSelectedEntry(entry);
-    // TODO: Import and use PostEntryModal
-    setModalContent(<div>Post Modal - Coming Soon</div>);
-    setShowPostModal(true);
+    setModalContent(
+      <PostEntryModal
+        entry={entry}
+        onPost={handleConfirmPost}
+        onClose={() => setIsModalOpen(false)}
+      />
+    );
+    setIsModalOpen(true);
+  };
+
+  // Handle confirm post
+  const handleConfirmPost = async (postingDate: string) => {
+    try {
+      // TODO: Replace with actual API call
+      console.log('Posting entry with date:', postingDate);
+      await showSuccess('Journal entry posted successfully', 'Success');
+      setIsModalOpen(false);
+      fetchEntries(); // Refresh the list
+    } catch (error) {
+      console.error('Error posting entry:', error);
+      showError('Failed to post journal entry', 'Error');
+    }
   };
 
   // Handle reverse entry
@@ -282,10 +521,22 @@ export default function JournalEntriesPage() {
       return;
     }
 
-    setSelectedEntry(entry);
-    // TODO: Import and use ReverseEntryModal
-    setModalContent(<div>Reverse Modal - Coming Soon</div>);
-    setShowReverseModal(true);
+    const result = await showConfirmation(
+      `Are you sure you want to reverse journal entry <strong>${entry.journal_number}</strong>?<br/>This will create a reversing entry.`,
+      'Reverse Entry'
+    );
+
+    if (result.isConfirmed) {
+      try {
+        // TODO: Replace with actual API call
+        console.log('Reversing entry:', entry.journal_entry_id);
+        await showSuccess('Journal entry reversed successfully', 'Success');
+        fetchEntries(); // Refresh the list
+      } catch (error) {
+        console.error('Error reversing entry:', error);
+        showError('Failed to reverse journal entry', 'Error');
+      }
+    }
   };
 
   // Clear all filters
@@ -297,6 +548,53 @@ export default function JournalEntriesPage() {
     setStatusFilter('');
   };
 
+  // Filter sections for FilterDropdown
+  const filterSections: FilterSection[] = [
+    {
+      id: 'dateRange',
+      title: 'Transaction Date Range',
+      type: 'dateRange',
+      defaultValue: { from: '', to: '' }
+    },
+    {
+      id: 'entry_type',
+      title: 'Entry Type',
+      type: 'radio',
+      options: [
+        { id: '', label: 'All Entry Types' },
+        { id: EntryType.MANUAL, label: 'Manual' },
+        { id: EntryType.AUTO_REVENUE, label: 'Auto - Revenue' },
+        { id: EntryType.AUTO_EXPENSE, label: 'Auto - Expense' },
+        { id: EntryType.AUTO_PAYROLL, label: 'Auto - Payroll' },
+        { id: EntryType.AUTO_LOAN, label: 'Auto - Loan' },
+        { id: EntryType.AUTO_PURCHASE, label: 'Auto - Purchase' },
+        { id: EntryType.ADJUSTMENT, label: 'Adjustment' },
+        { id: EntryType.CLOSING, label: 'Closing' }
+      ],
+      defaultValue: ''
+    },
+    {
+      id: 'status',
+      title: 'Status',
+      type: 'radio',
+      options: [
+        { id: '', label: 'All Status' },
+        { id: JournalStatus.DRAFT, label: 'Draft' },
+        { id: JournalStatus.POSTED, label: 'Posted' },
+        { id: JournalStatus.REVERSED, label: 'Reversed' }
+      ],
+      defaultValue: ''
+    }
+  ];
+
+  // Handle filter apply
+  const handleFilterApply = (filterValues: any) => {
+    setDateFrom(filterValues.dateRange?.from || '');
+    setDateTo(filterValues.dateRange?.to || '');
+    setEntryTypeFilter(filterValues.entry_type || '');
+    setStatusFilter(filterValues.status || '');
+  };
+
   if (loading) return <Loading />;
   if (error) return <ErrorDisplay errorCode={errorCode} onRetry={fetchEntries} />;
 
@@ -304,92 +602,44 @@ export default function JournalEntriesPage() {
     <div className="card">
       <div className="card-header">
         <div className="top-header">
-          <h1 className="page-title">Journal Entry Management</h1>
-          <div className="header-actions">
+          <h1 className="title">Journal Entry Management</h1>
+        </div>
+
+        {/* Settings Bar with Search and Filters */}
+        <div className="settings">
+          <div className="search-filter-container">
+            <div className="searchBar">
+              <i className="ri-search-line"></i>
+              <input
+                type="text"
+                className="searchInput"
+                placeholder="Search by journal number, description, or reference..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Filter Dropdown */}
+            <FilterDropdown
+              sections={filterSections}
+              onApply={handleFilterApply}
+              initialValues={{
+                dateRange: { from: dateFrom, to: dateTo },
+                entry_type: entryTypeFilter,
+                status: statusFilter
+              }}
+            />
+          </div>
+
+          <div className="filters">
             <ExportButton
               data={filteredEntries}
               filename={`journal-entries-${new Date().toISOString().split('T')[0]}`}
               title="Journal Entries Report"
             />
-            <button className="add-btn" onClick={handleAddEntry}>
-              <i className="ri-add-line"></i>
-              Add Manual Entry
+            <button className="addButton" onClick={handleAddEntry}>
+              <i className="ri-add-line"></i> Add Manual Entry
             </button>
-          </div>
-        </div>
-
-        {/* Settings Bar with Search and Filters */}
-        <div className="settings">
-          <div className="searchBar">
-            <i className="ri-search-line"></i>
-            <input
-              type="text"
-              className="searchInput"
-              placeholder="Search by journal number, description, or reference..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="filters">
-            {/* Date From */}
-            <div className="filter-group">
-              <label>From:</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="filter-input"
-              />
-            </div>
-
-            {/* Date To */}
-            <div className="filter-group">
-              <label>To:</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="filter-input"
-              />
-            </div>
-
-            {/* Entry Type Filter */}
-            <select
-              value={entryTypeFilter}
-              onChange={(e) => setEntryTypeFilter(e.target.value as EntryType | '')}
-              className="filter-select"
-            >
-              <option value="">All Entry Types</option>
-              <option value={EntryType.MANUAL}>Manual</option>
-              <option value={EntryType.AUTO_REVENUE}>Auto - Revenue</option>
-              <option value={EntryType.AUTO_EXPENSE}>Auto - Expense</option>
-              <option value={EntryType.AUTO_PAYROLL}>Auto - Payroll</option>
-              <option value={EntryType.AUTO_LOAN}>Auto - Loan</option>
-              <option value={EntryType.AUTO_PURCHASE}>Auto - Purchase</option>
-              <option value={EntryType.ADJUSTMENT}>Adjustment</option>
-              <option value={EntryType.CLOSING}>Closing</option>
-            </select>
-
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as JournalStatus | '')}
-              className="filter-select"
-            >
-              <option value="">All Status</option>
-              <option value={JournalStatus.DRAFT}>Draft</option>
-              <option value={JournalStatus.POSTED}>Posted</option>
-              <option value={JournalStatus.REVERSED}>Reversed</option>
-            </select>
-
-            {/* Clear Filters */}
-            {(searchQuery || dateFrom || dateTo || entryTypeFilter || statusFilter) && (
-              <button className="clear-filters-btn" onClick={handleClearFilters}>
-                <i className="ri-close-line"></i>
-                Clear
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -403,10 +653,8 @@ export default function JournalEntriesPage() {
                 <th>Journal Number</th>
                 <th>Date</th>
                 <th>Description</th>
-                <th>Entry Type</th>
-                <th>Reference</th>
-                <th>Debit</th>
-                <th>Credit</th>
+                <th style={{ width: '150px' }}>Debit</th>
+                <th style={{ width: '150px' }}>Credit</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -418,14 +666,8 @@ export default function JournalEntriesPage() {
                     <td><strong>{entry.journal_number}</strong></td>
                     <td>{formatDate(entry.transaction_date)}</td>
                     <td>{entry.description}</td>
-                    <td>
-                      <span className={`chip ${getEntryTypeClass(entry.entry_type)}`}>
-                        {formatDisplayText(entry.entry_type)}
-                      </span>
-                    </td>
-                    <td>{entry.reference_number || '-'}</td>
-                    <td style={{ textAlign: 'right' }}>{formatMoney(entry.total_debit)}</td>
-                    <td style={{ textAlign: 'right' }}>{formatMoney(entry.total_credit)}</td>
+                    <td>{formatMoney(entry.total_debit)}</td>
+                    <td>{formatMoney(entry.total_credit)}</td>
                     <td>
                       <span className={`chip ${getStatusClass(entry.status)}`}>
                         {entry.status}
@@ -448,13 +690,6 @@ export default function JournalEntriesPage() {
                               title="Edit"
                             >
                               <i className="ri-edit-line"></i>
-                            </button>
-                            <button
-                              className="deleteBtn"
-                              onClick={() => handleDeleteEntry(entry)}
-                              title="Delete"
-                            >
-                              <i className="ri-delete-bin-line"></i>
                             </button>
                             <button
                               className="submitBtn"
@@ -480,7 +715,7 @@ export default function JournalEntriesPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px' }}>
                     <i className="ri-file-list-line" style={{ fontSize: '48px', color: 'var(--secondary-text-color)' }}></i>
                     <p style={{ color: 'var(--secondary-text-color)', marginTop: '10px' }}>
                       No journal entries found
@@ -504,42 +739,12 @@ export default function JournalEntriesPage() {
         />
       )}
 
-      {/* Modals */}
-      {showViewModal && (
-        <ModalManager
-          isOpen={showViewModal}
-          onClose={() => setShowViewModal(false)}
-          modalContent={modalContent}
-        />
-      )}
-      {showAddModal && (
-        <ModalManager
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          modalContent={modalContent}
-        />
-      )}
-      {showEditModal && (
-        <ModalManager
-          isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          modalContent={modalContent}
-        />
-      )}
-      {showPostModal && (
-        <ModalManager
-          isOpen={showPostModal}
-          onClose={() => setShowPostModal(false)}
-          modalContent={modalContent}
-        />
-      )}
-      {showReverseModal && (
-        <ModalManager
-          isOpen={showReverseModal}
-          onClose={() => setShowReverseModal(false)}
-          modalContent={modalContent}
-        />
-      )}
+      {/* Unified Modal Manager */}
+      <ModalManager
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        modalContent={modalContent}
+      />
     </div>
   );
 }

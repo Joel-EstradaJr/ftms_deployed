@@ -58,15 +58,15 @@
 
 /* Dropdown Menu */
 .dropdown-menu {
-  position: absolute !important;
-  top: calc(100% + 4px) !important;
-  left: 0 !important;
-  right: 0 !important;
+  position: absolute;
   background-color: var(--foreground-color) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: var(--modal-border-radius) !important;
   box-shadow: var(--box-shadow) !important;
   z-index: 1000 !important;
+  min-width: 280px;
+  width: max-content;
+  max-width: 520px;
   max-height: 320px !important;
   display: flex !important;
   flex-direction: column !important;

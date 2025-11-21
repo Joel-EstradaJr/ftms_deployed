@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { formatDate, formatMoney } from '@/app/utils/formatting';
+import { formatDate, formatMoney, formatDateTime } from '@/app/utils/formatting';
 import { JournalEntry, EntryType, JournalStatus } from '@/app/types/jev';
-import '@/app/styles/general/forms.css';
-import '@/app/styles/JEV/journal-entries.css';
+import JournalLinesTable, { JournalLine as JLTableLine } from '@/app/Components/JournalLinesTable';
+import '@/app/styles/components/forms.css';
+import '@/app/styles/JEV/journal-modals.css';
 
 interface ViewJournalEntryModalProps {
   entry: JournalEntry;
@@ -15,6 +16,28 @@ const ViewJournalEntryModal: React.FC<ViewJournalEntryModalProps> = ({
   entry,
   onClose,
 }) => {
+  // Map entry lines to JournalLinesTable format
+  const journalLines: JLTableLine[] = entry.journal_lines.map((line) => ({
+    line_id: line.line_id,
+    account_id: line.account_id,
+    line_description: line.description || '',
+    debit_amount: line.debit_amount || 0,
+    credit_amount: line.credit_amount || 0,
+  }));
+
+  // Extract chart of accounts from journal lines
+  const accounts = entry.journal_lines
+    .map((line) => line.account)
+    .filter((acc) => acc !== undefined && acc !== null)
+    .map((acc) => ({
+      account_id: acc!.account_id,
+      account_code: acc!.account_code,
+      account_name: acc!.account_name,
+      account_type: acc!.account_type as 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE',
+      normal_balance: (acc!.normal_balance || 'DEBIT') as 'DEBIT' | 'CREDIT',
+      is_active: acc!.is_active ?? true,
+    }));
+
   const getEntryTypeLabel = (type: EntryType): string => {
     const labels: Record<EntryType, string> = {
       [EntryType.MANUAL]: 'Manual Entry',
@@ -30,11 +53,22 @@ const ViewJournalEntryModal: React.FC<ViewJournalEntryModalProps> = ({
     return labels[type] || type;
   };
 
+  const getEntryTypeClass = (type: EntryType): string => {
+    if (type === EntryType.MANUAL) return 'manual';
+    if (type === EntryType.ADJUSTMENT) return 'adjustment';
+    if (type === EntryType.CLOSING) return 'closing';
+    return 'auto';
+  };
+
+  const getStatusClass = (status: JournalStatus): string => {
+    return status.toLowerCase();
+  };
+
   const getStatusBadge = (status: JournalStatus) => {
     const badges = {
-      [JournalStatus.DRAFT]: <span className="chip draft">Draft</span>,
-      [JournalStatus.POSTED]: <span className="chip posted">Posted</span>,
-      [JournalStatus.REVERSED]: <span className="chip reversed">Reversed</span>,
+      [JournalStatus.DRAFT]: <span className={`chip ${getStatusClass(status)}`}>Draft</span>,
+      [JournalStatus.POSTED]: <span className={`chip ${getStatusClass(status)}`}>Posted</span>,
+      [JournalStatus.REVERSED]: <span className={`chip ${getStatusClass(status)}`}>Reversed</span>,
     };
     return badges[status];
   };
@@ -42,209 +76,168 @@ const ViewJournalEntryModal: React.FC<ViewJournalEntryModalProps> = ({
   return (
     <>
       <div className="modal-heading">
-        <h2>Journal Entry Details</h2>
-        <button onClick={onClose} className="closeBtn">
+        <h2 className="modal-title">Journal Entry Details</h2>
+        <button onClick={onClose} className="close-modal-btn">
           <i className="ri-close-line"></i>
         </button>
       </div>
 
-      <div className="modal-content view">
-        {/* Header Information */}
+      <div className="modal-content view-form">
+        {/* Entry Information */}
         <div className="form-section">
-          <h3>Entry Information</h3>
-          
-          <div className="form-row">
-            <div className="form-group">
-              <label>Journal Number</label>
-              <div className="value-display">{entry.journal_number}</div>
+          <h3 className="details-title">Entry Information</h3>
+          <div className="mainDetails">
+            <div className="detailRow">
+              <span className="label">Journal Number:</span>
+              <span className="value">{entry.journal_number}</span>
             </div>
 
-            <div className="form-group">
-              <label>Status</label>
-              <div className="value-display">{getStatusBadge(entry.status)}</div>
+            <div className="detailRow">
+              <span className="label">Status:</span>
+              <span className="value">{getStatusBadge(entry.status)}</span>
             </div>
 
-            <div className="form-group">
-              <label>Entry Type</label>
-              <div className="value-display">{getEntryTypeLabel(entry.entry_type)}</div>
+            <div className="detailRow">
+              <span className="label">Entry Type:</span>
+              <span className="value">
+                <span className={`chip ${getEntryTypeClass(entry.entry_type)}`}>
+                  {getEntryTypeLabel(entry.entry_type)}
+                </span>
+              </span>
             </div>
-          </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Transaction Date</label>
-              <div className="value-display">{formatDate(entry.transaction_date)}</div>
+            <div className="detailRow">
+              <span className="label">Transaction Date:</span>
+              <span className="value">{formatDate(entry.transaction_date)}</span>
             </div>
 
             {entry.posting_date && (
-              <div className="form-group">
-                <label>Posting Date</label>
-                <div className="value-display">{formatDate(entry.posting_date)}</div>
+              <div className="detailRow">
+                <span className="label">Posting Date:</span>
+                <span className="value">{formatDate(entry.posting_date)}</span>
               </div>
             )}
 
             {entry.reference_number && (
-              <div className="form-group">
-                <label>Reference Number</label>
-                <div className="value-display">{entry.reference_number}</div>
+              <div className="detailRow">
+                <span className="label">Reference Number:</span>
+                <span className="value">{entry.reference_number}</span>
               </div>
             )}
-          </div>
 
-          <div className="form-group">
-            <label>Description</label>
-            <div className="value-display description-box">{entry.description}</div>
-          </div>
-
-          {entry.source_module && (
-            <div className="form-row">
-              <div className="form-group">
-                <label>Source Module</label>
-                <div className="value-display">{entry.source_module}</div>
-              </div>
-
-              {entry.source_id && (
-                <div className="form-group">
-                  <label>Source ID</label>
-                  <div className="value-display">{entry.source_id}</div>
-                </div>
-              )}
+            <div className="detailRow">
+              <span className="label">Description:</span>
+              <span className="value">{entry.description}</span>
             </div>
-          )}
+
+            {entry.source_module && (
+              <>
+                <div className="detailRow">
+                  <span className="label">Source Module:</span>
+                  <span className="value">{entry.source_module}</span>
+                </div>
+
+                {entry.source_id && (
+                  <div className="detailRow">
+                    <span className="label">Source ID:</span>
+                    <span className="value">{entry.source_id}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Journal Lines */}
         <div className="form-section">
-          <h3>Journal Lines</h3>
-          
-          <div className="journal-lines-table">
-            <table>
-              <thead>
-                <tr>
-                  <th style={{ width: '5%' }}>#</th>
-                  <th style={{ width: '15%' }}>Account Code</th>
-                  <th style={{ width: '25%' }}>Account Name</th>
-                  <th style={{ width: '30%' }}>Description</th>
-                  <th style={{ width: '12.5%' }}>Debit</th>
-                  <th style={{ width: '12.5%' }}>Credit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entry.journal_lines.map((line, index) => (
-                  <tr key={line.line_id || index}>
-                    <td className="line-number">{line.line_number}</td>
-                    <td>{line.account?.account_code}</td>
-                    <td>{line.account?.account_name}</td>
-                    <td>{line.description || '-'}</td>
-                    <td className="amount-cell debit">
-                      {line.debit_amount ? formatMoney(line.debit_amount) : '-'}
-                    </td>
-                    <td className="amount-cell credit">
-                      {line.credit_amount ? formatMoney(line.credit_amount) : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="totals-row">
-                  <td colSpan={4} className="totals-label">Totals:</td>
-                  <td className="total-debit">{formatMoney(entry.total_debit)}</td>
-                  <td className="total-credit">{formatMoney(entry.total_credit)}</td>
-                </tr>
-                <tr className={`balance-row ${entry.is_balanced ? 'balanced' : 'unbalanced'}`}>
-                  <td colSpan={4} className="balance-label">
-                    {entry.is_balanced ? (
-                      <><i className="ri-checkbox-circle-fill"></i> Balanced</>
-                    ) : (
-                      <><i className="ri-error-warning-fill"></i> Out of Balance</>
-                    )}
-                  </td>
-                  <td colSpan={2} className="balance-amount">
-                    {!entry.is_balanced && `Difference: ${formatMoney(Math.abs(entry.total_debit - entry.total_credit))}`}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <h3 className="details-title">Journal Lines</h3>
+          <JournalLinesTable
+            lines={journalLines}
+            accounts={accounts}
+            onChange={() => {}}
+            onBlur={() => {}}
+            onAddLine={() => {}}
+            onRemoveLine={() => {}}
+            errors={{}}
+            readonly={true}
+          />
         </div>
 
-        {/* Metadata Section */}
+        {/* Audit Trail */}
         <div className="form-section">
-          <h3>Metadata</h3>
-          
-          <div className="form-row">
-            <div className="form-group">
-              <label>Created By</label>
-              <div className="value-display">{entry.created_by}</div>
+          <h3 className="details-title">Audit Trail</h3>
+          <div className="mainDetails">
+            <div className="detailRow">
+              <span className="label">Created By:</span>
+              <span className="value">{entry.created_by}</span>
             </div>
 
-            <div className="form-group">
-              <label>Created At</label>
-              <div className="value-display">{formatDate(entry.created_at)}</div>
+            <div className="detailRow">
+              <span className="label">Created At:</span>
+              <span className="value">{formatDateTime(entry.created_at)}</span>
             </div>
+
+            {entry.posted_by && (
+              <>
+                <div className="detailRow">
+                  <span className="label">Posted By:</span>
+                  <span className="value">{entry.posted_by}</span>
+                </div>
+
+                {entry.posted_at && (
+                  <div className="detailRow">
+                    <span className="label">Posted At:</span>
+                    <span className="value">{formatDateTime(entry.posted_at)}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {entry.updated_at && (
+              <>
+                <div className="detailRow">
+                  <span className="label">Last Updated:</span>
+                  <span className="value">{formatDateTime(entry.updated_at)}</span>
+                </div>
+
+                {entry.updated_by && (
+                  <div className="detailRow">
+                    <span className="label">Updated By:</span>
+                    <span className="value">{entry.updated_by}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {entry.reversed_by_id && (
+              <div className="detailRow">
+                <span className="label">Reversed By:</span>
+                <span className="value reversed-info">
+                  <i className="ri-arrow-go-back-line"></i>
+                  This entry was reversed by JE #{entry.reversed_by_id}
+                </span>
+              </div>
+            )}
+
+            {entry.attachments && entry.attachments.length > 0 && (
+              <div className="detailRow">
+                <span className="label">Attachments:</span>
+                <span className="value">
+                  {entry.attachments.map((attachment, index) => (
+                    <div key={index} className="attachment-item">
+                      <i className="ri-attachment-line"></i>
+                      <span>{attachment}</span>
+                    </div>
+                  ))}
+                </span>
+              </div>
+            )}
           </div>
-
-          {entry.posted_by && (
-            <div className="form-row">
-              <div className="form-group">
-                <label>Posted By</label>
-                <div className="value-display">{entry.posted_by}</div>
-              </div>
-
-              {entry.posted_at && (
-                <div className="form-group">
-                  <label>Posted At</label>
-                  <div className="value-display">{formatDate(entry.posted_at)}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {entry.updated_at && (
-            <div className="form-row">
-              <div className="form-group">
-                <label>Last Updated</label>
-                <div className="value-display">{formatDate(entry.updated_at)}</div>
-              </div>
-
-              {entry.updated_by && (
-                <div className="form-group">
-                  <label>Updated By</label>
-                  <div className="value-display">{entry.updated_by}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {entry.reversed_by_id && (
-            <div className="form-group">
-              <label>Reversed By Entry</label>
-              <div className="value-display reversed-info">
-                <i className="ri-arrow-go-back-line"></i>
-                This entry was reversed by JE #{entry.reversed_by_id}
-              </div>
-            </div>
-          )}
         </div>
-
-        {/* Attachments Section (if any) */}
-        {entry.attachments && entry.attachments.length > 0 && (
-          <div className="form-section">
-            <h3>Attachments</h3>
-            <div className="attachments-list">
-              {entry.attachments.map((attachment, index) => (
-                <div key={index} className="attachment-item">
-                  <i className="ri-attachment-line"></i>
-                  <span>{attachment}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="modal-actions">
-        <button onClick={onClose} className="cancelBtn">
+        <button onClick={onClose} className="cancel-btn">
           Close
         </button>
       </div>
