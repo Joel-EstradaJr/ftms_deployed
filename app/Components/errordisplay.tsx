@@ -30,23 +30,50 @@ const shortDescription = (code?: number | string | null) => {
       return 'Service Unavailable';
     case 'network':
       return 'Network Error';
+    case 'construction':
+      return 'Under Construction';
     default:
       return 'Something went wrong';
   }
 };
 
+const getIconForError = (code?: number | string | null) => {
+  if (code === 'construction') {
+    return '🚧';
+  }
+  return '⚠️';
+};
+
 const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ errorCode, onRetry, onClose }) => {
   if (!errorCode) return null;
 
+  const isConstruction = errorCode === 'construction';
+
   return (
     <div className="errorDisplay" role="alert" aria-live="assertive">
+      {isConstruction && (
+        <div className="error-bus-animation">
+          <div className="error-bus">
+            <div className="wheel"></div>
+            <div className="wheel"></div>
+          </div>
+        </div>
+      )}
+      
       <div className="errorInner">
         <div className="errorIcon" aria-hidden>
-          ⚠️
+          {getIconForError(errorCode)}
         </div>
         <div className="errorText">
-          <div className="errorTitle">Error {errorCode}</div>
-          <div className="errorSubtitle">{shortDescription(errorCode)}</div>
+          <div className="errorTitle">
+            {isConstruction ? 'Under Construction' : `Error ${errorCode}`}
+          </div>
+          <div className="errorSubtitle">
+            {isConstruction 
+              ? 'This page is currently being built. Please check back soon!' 
+              : shortDescription(errorCode)
+            }
+          </div>
         </div>
         <div className="errorActions">
           {onRetry && (
