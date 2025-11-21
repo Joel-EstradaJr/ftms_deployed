@@ -68,6 +68,22 @@ const MOCK_CHART_OF_ACCOUNTS = [
   { id: 10, accountCode: '5012', accountName: 'Miscellaneous Expense' }
 ];
 
+// Mock Data - Employees
+const MOCK_EMPLOYEES = [
+  { employee_id: '1', name: 'Juan Dela Cruz', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0001' },
+  { employee_id: '2', name: 'Maria Santos', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0002' },
+  { employee_id: '3', name: 'Pedro Reyes', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0003' },
+  { employee_id: '4', name: 'Rosa Garcia', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0004' },
+  { employee_id: '5', name: 'Antonio Lopez', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0005' },
+  { employee_id: '6', name: 'Linda Cruz', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0006' },
+  { employee_id: '7', name: 'Carlos Mendoza', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0007' },
+  { employee_id: '8', name: 'Miguel Torres', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0008' },
+  { employee_id: '9', name: 'Ana Villanueva', job_title: 'Conductor', department: 'Operations', employee_number: 'EMP-0009' },
+  { employee_id: '10', name: 'Roberto Cruz', job_title: 'Mechanic', department: 'Maintenance', employee_number: 'EMP-0010' },
+  { employee_id: '11', name: 'Elena Martinez', job_title: 'Accountant', department: 'Finance', employee_number: 'EMP-0011' },
+  { employee_id: '12', name: 'Jose Fernandez', job_title: 'HR Officer', department: 'Human Resources', employee_number: 'EMP-0012' }
+];
+
 // Transform backend record to form data
 const transformRecordToFormData = (record: OperationalExpense): OperationalExpenseData => {
   return {
@@ -535,6 +551,7 @@ const OperationalExpensePage = () => {
           departments={MOCK_DEPARTMENTS}
           cachedTrips={MOCK_CACHED_TRIPS}
           chartOfAccounts={MOCK_CHART_OF_ACCOUNTS}
+          employees={MOCK_EMPLOYEES}
           currentUser={currentUser}
         />
       );

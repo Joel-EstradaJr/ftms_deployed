@@ -215,41 +215,6 @@ const Sidebar: React.FC = () => {
             </div>
           )}
 
-          {/* Loan Submenu - Both roles */}
-          <div
-            className={`nav-item module ${
-              ["loan-request", "loan-payment"].includes(activeItem!) ? "active" : ""
-            }`}
-            onClick={() => toggleSubMenu("loan-management")}
-          >
-            <i className="ri-hand-heart-line"></i>
-            <span>Loans</span>
-            <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "loan-management" ? "rotate" : ""
-              }`}
-            />
-          </div>
-
-          {openSubMenu === "loan-management" && (
-            <div className="sub-menu active">
-              <Link
-                href={getUrl("/loan-management/loanRequest")}
-                className={`sub-item ${activeItem === "loan-request" ? "active" : ""}`}
-                onClick={() => setActiveItem("loan-request")}
-              >
-                Loan Requests
-              </Link>
-              <Link
-                href={getUrl("/loan-management/loanPayment")}
-                className={`sub-item ${activeItem === "loan-payment" ? "active" : ""}`}
-                onClick={() => setActiveItem("loan-payment")}
-              >
-                Loan Payment
-              </Link>
-            </div>
-          )}
-
           {/* Payroll - Both roles */}
           <Link
             href={getUrl("/financial-management/payroll")}
@@ -311,34 +276,7 @@ const Sidebar: React.FC = () => {
             </div>
           )}
 
-          {/* Purchase Management Submenu - Both roles */}
-          <div
-            className={`nav-item module ${
-              ["purchase-request"].includes(activeItem!) ? "active" : ""
-            }`}
-            onClick={() => toggleSubMenu("purchase-management")}
-          >
-            <i className="ri-store-2-line" />
-            <span>Purchase Management</span>
-            <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "purchase-management" ? "rotate" : ""
-              }`}
-            />
-          </div>
-
-          {openSubMenu === "purchase-management" && (
-            <div className="sub-menu active">
-              <Link
-                href={getUrl("/microservice/purchase-request/purchase-request")}
-                className={`sub-item ${activeItem === "purchase-request" ? "active" : ""}`}
-                onClick={() => setActiveItem("purchase-request")}
-              >
-                Purchase Request
-              </Link>
-            </div>
-          )}
-
+          
           {/* Financial Reports - Both roles */}
           <Link
             href={getUrl("/report")}
