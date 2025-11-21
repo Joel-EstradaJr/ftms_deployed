@@ -122,7 +122,9 @@ export const ModernDoughnutChart = ({ revenueData, expenseData }: {
           data: dataValues,
           backgroundColor: colors,
           borderWidth: 0,
-          hoverOffset: 15
+          hoverOffset: 15,
+          spacing: 8,
+          borderRadius: 8,
         }]
       },
       options: {
