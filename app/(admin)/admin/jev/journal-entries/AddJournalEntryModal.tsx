@@ -289,13 +289,13 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
       </div>
 
       <div className="modal-content add-form">
-        {/* Entry Information Section */}
+        <div className="form-section">
           <h3 className="details-title">Basic Information</h3>
-          
+
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="transaction_date">
-                Transaction Date <span className="requiredTags">*</span>
+                Transaction Date <span className="required">*</span>
               </label>
               <input
                 type="date"
@@ -323,30 +323,8 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
               />
             </div>
           </div>
-
-          <div className="form-group">
-            <label htmlFor="description">
-              Description <span className="requiredTags">*</span>
-              <br/><span className="char-counter">{formData.description.length}/500</span>
-            </label>
-            <textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              onBlur={() => handleInputBlur('description')}
-              className={errors.description && touchedFields.has('description') ? 'input-error' : ''}
-              placeholder="Describe this journal entry..."
-              rows={3}
-              maxLength={500}
-            />
-            {errors.description && touchedFields.has('description') && (
-              <span className="error-message">{errors.description}</span>
-            )}
-          </div>
         </div>
 
-      <div className="modal-content add-form">
-        {/* Journal Lines Section */}
         <div className="form-section">
           <h3 className="details-title">Journal Lines</h3>
           <JournalLinesTable
@@ -362,6 +340,29 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
           {errors.balance && (
             <div className="error-message" style={{ marginTop: '10px' }}>{errors.balance}</div>
           )}
+        </div>
+
+        <div className="form-section">
+          <h3 className="details-title">Remarks</h3>
+          <div className="form-group">
+            <label htmlFor="description">
+              Description <span className="required">*</span>
+              <span className="char-counter">{formData.description.length}/500</span>
+            </label>
+            <textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              onBlur={() => handleInputBlur('description')}
+              className={errors.description && touchedFields.has('description') ? 'input-error' : ''}
+              placeholder="Describe this journal entry..."
+              rows={3}
+              maxLength={500}
+            />
+            {errors.description && touchedFields.has('description') && (
+              <span className="error-message">{errors.description}</span>
+            )}
+          </div>
         </div>
       </div>
 

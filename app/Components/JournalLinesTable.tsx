@@ -114,7 +114,6 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
             <tr>
               <th>#</th>
               <th className="account-header">Account</th>
-              <th className="description-header">Description</th>
               <th className="amount-header">Debit</th>
               <th className="amount-header">Credit</th>
               {!readonly && <th className="actions-header">Actions</th>}
@@ -123,7 +122,7 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
           <tbody>
             {lines.length === 0 ? (
               <tr>
-                <td colSpan={readonly ? 5 : 6} style={{ textAlign: 'center', padding: '20px' }}>
+                <td colSpan={readonly ? 4 : 5} style={{ textAlign: 'center', padding: '20px' }}>
                   No journal lines added yet. Click "Add Line" to start.
                 </td>
               </tr>
@@ -148,25 +147,6 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
                         />
                         {errors[index]?.account_id && (
                           <div className="error-message">{errors[index].account_id}</div>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td className="description-cell">
-                    {readonly ? (
-                      <span>{line.line_description || '—'}</span>
-                    ) : (
-                      <div>
-                        <input
-                          type="text"
-                          value={line.line_description}
-                          onChange={(e) => onChange(index, 'line_description', e.target.value)}
-                          onBlur={() => onBlur(index, 'line_description')}
-                          placeholder="Line description"
-                          maxLength={200}
-                        />
-                        {errors[index]?.line_description && (
-                          <div className="error-message">{errors[index].line_description}</div>
                         )}
                       </div>
                     )}
@@ -230,7 +210,7 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
           </tbody>
           <tfoot>
             <tr className="totals-row">
-              <td colSpan={3} style={{ textAlign: 'right', fontWeight: 600 }}>
+              <td colSpan={2} style={{ textAlign: 'right', fontWeight: 600 }}>
                 Totals:
               </td>
               <td className="amount-cell">{formatMoney(totalDebit)}</td>
@@ -238,7 +218,7 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
               {!readonly && <td></td>}
             </tr>
             <tr className={`balance-row ${isBalanced ? 'balanced' : 'unbalanced'}`}>
-              <td colSpan={readonly ? 5 : 6} style={{ textAlign: 'center', padding: '12px' }}>
+              <td colSpan={readonly ? 4 : 5} style={{ textAlign: 'center', padding: '12px' }}>
                 <i className={isBalanced ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill'}></i>
                 {isBalanced ? (
                   <span>Entry is balanced</span>
