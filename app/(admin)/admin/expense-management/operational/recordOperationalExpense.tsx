@@ -22,6 +22,13 @@ interface RecordOperationalExpenseModalProps {
     departmentName: string;
   }>;
   chartOfAccounts: Array<{ id: number; accountCode: string; accountName: string }>;
+  employees: Array<{ 
+    employee_id: string; 
+    name: string; 
+    job_title: string; 
+    department: string;
+    employee_number: string;
+  }>;
   currentUser: string;
 }
 
@@ -43,6 +50,12 @@ export interface OperationalExpenseData {
   isReimbursable: boolean;
   remarks?: string;
   
+  // Reimbursement fields
+  reimbursementEmployeeId?: string;
+  reimbursementPurpose?: string;
+  reimbursementReceiptFile?: File | null;
+  reimbursementReceiptUrl?: string;
+  
   // View-only fields
   status?: string;
   createdBy: string;
@@ -61,6 +74,9 @@ interface FormErrors {
   accountCodeId: string;
   paymentMethodId: string;
   remarks: string;
+  reimbursementEmployeeId: string;
+  reimbursementPurpose: string;
+  reimbursementReceiptFile: string;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -82,6 +98,7 @@ export default function RecordOperationalExpenseModal({
   departments,
   cachedTrips,
   chartOfAccounts,
+  employees = [],
   currentUser 
 }: RecordOperationalExpenseModalProps) {
   
@@ -109,6 +126,10 @@ export default function RecordOperationalExpenseModal({
     paymentMethodId: existingData?.paymentMethodId || 0,
     isReimbursable: existingData?.isReimbursable || false,
     remarks: existingData?.remarks || '',
+    reimbursementEmployeeId: existingData?.reimbursementEmployeeId || '',
+    reimbursementPurpose: existingData?.reimbursementPurpose || '',
+    reimbursementReceiptFile: null,
+    reimbursementReceiptUrl: existingData?.reimbursementReceiptUrl || '',
     createdBy: existingData?.createdBy || currentUser,
   });
 
@@ -122,6 +143,9 @@ export default function RecordOperationalExpenseModal({
     accountCodeId: '',
     paymentMethodId: '',
     remarks: '',
+    reimbursementEmployeeId: '',
+    reimbursementPurpose: '',
+    reimbursementReceiptFile: '',
   });
 
   const [touched, setTouched] = useState<Set<keyof FormErrors>>(new Set());
@@ -174,6 +198,15 @@ export default function RecordOperationalExpenseModal({
         if (value && value.length > 500) return 'Remarks must not exceed 500 characters';
         return '';
       
+      case 'reimbursementEmployeeId':
+        if (formData.isReimbursable && !value) return 'Employee is required for reimbursable expenses';
+        return '';
+      
+      case 'reimbursementPurpose':
+        if (formData.isReimbursable && !value) return 'Purpose is required for reimbursable expenses';
+        if (value && value.length > 500) return 'Purpose must not exceed 500 characters';
+        return '';
+      
       default:
         return '';
     }
@@ -190,6 +223,9 @@ export default function RecordOperationalExpenseModal({
       accountCodeId: '',
       paymentMethodId: validateFormField('paymentMethodId', formData.paymentMethodId),
       remarks: validateFormField('remarks', formData.remarks),
+      reimbursementEmployeeId: validateFormField('reimbursementEmployeeId', formData.reimbursementEmployeeId),
+      reimbursementPurpose: validateFormField('reimbursementPurpose', formData.reimbursementPurpose),
+      reimbursementReceiptFile: '',
     };
 
     setErrors(newErrors);
@@ -238,6 +274,8 @@ export default function RecordOperationalExpenseModal({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    const fieldName = e.target.name;
+    
     if (file) {
       // Validate file type and size
       const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
@@ -246,7 +284,7 @@ export default function RecordOperationalExpenseModal({
       if (!validTypes.includes(file.type)) {
         setErrors(prev => ({
           ...prev,
-          receiptFile: 'Only JPG, PNG, and PDF files are allowed'
+          [fieldName]: 'Only JPG, PNG, and PDF files are allowed'
         }));
         return;
       }
@@ -254,19 +292,19 @@ export default function RecordOperationalExpenseModal({
       if (file.size > maxSize) {
         setErrors(prev => ({
           ...prev,
-          receiptFile: 'File size must not exceed 5MB'
+          [fieldName]: 'File size must not exceed 5MB'
         }));
         return;
       }
 
       setFormData(prev => ({
         ...prev,
-        receiptFile: file
+        [fieldName]: file
       }));
 
       setErrors(prev => ({
         ...prev,
-        receiptFile: ''
+        [fieldName]: ''
       }));
     }
   };
@@ -558,6 +596,103 @@ export default function RecordOperationalExpenseModal({
               </div>
             </div>
           </div>
+
+          {/* Conditional Section: Reimbursement Details */}
+          {formData.isReimbursable && (
+            <div className="modal-content">
+              <div className="form-section reimbursement-section">
+                <h3 className="section-title">III-A. Reimbursement Details</h3>
+                <small className="section-note">Specify who will be reimbursed for this expense</small>
+                <br/>
+                <br/>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="reimbursementEmployeeId" className="required">Employee to Reimburse</label>
+                    <select
+                      id="reimbursementEmployeeId"
+                      name="reimbursementEmployeeId"
+                      value={formData.reimbursementEmployeeId || ''}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className={errors.reimbursementEmployeeId && touched.has('reimbursementEmployeeId') ? 'input-error' : ''}
+                      required
+                    >
+                      <option value="">Select Employee</option>
+                      {employees && employees.length > 0 ? (
+                        employees.map(emp => (
+                          <option key={emp.employee_id} value={emp.employee_id}>
+                            {emp.employee_number} - {emp.name} ({emp.job_title})
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No employees available</option>
+                      )}
+                    </select>
+                    {errors.reimbursementEmployeeId && touched.has('reimbursementEmployeeId') && (
+                      <span className="error-message">{errors.reimbursementEmployeeId}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group full-width">
+                    <label htmlFor="reimbursementPurpose" className="required">Purpose of Reimbursement</label>
+                    <textarea
+                      id="reimbursementPurpose"
+                      name="reimbursementPurpose"
+                      value={formData.reimbursementPurpose || ''}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      placeholder="Describe the purpose and reason for this reimbursement"
+                      rows={3}
+                      maxLength={500}
+                      className={errors.reimbursementPurpose && touched.has('reimbursementPurpose') ? 'input-error' : ''}
+                      required
+                    />
+                    <div className="textarea-footer">
+                      <span className="hint-message">
+                        {formData.reimbursementPurpose?.length || 0}/500 characters
+                      </span>
+                      {errors.reimbursementPurpose && touched.has('reimbursementPurpose') && (
+                        <span className="error-message"><br/>{errors.reimbursementPurpose}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group full-width">
+                    <label htmlFor="reimbursementReceiptFile">Upload Supporting Document</label>
+                    <input
+                      type="file"
+                      id="reimbursementReceiptFile"
+                      name="reimbursementReceiptFile"
+                      onChange={handleFileChange}
+                      accept="image/jpeg,image/png,image/jpg,application/pdf"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <small className="hint-message">Upload proof of payment or supporting document (JPG, PNG, PDF - Max 5MB)</small>
+                    {errors.reimbursementReceiptFile && (
+                      <span className="error-message">{errors.reimbursementReceiptFile}</span>
+                    )}
+                    {formData.reimbursementReceiptUrl && (
+                      <div className="file-preview">
+                        <i className="ri-file-text-line"></i>
+                        <a href={formData.reimbursementReceiptUrl} target="_blank" rel="noopener noreferrer">
+                          View Current Document
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="info-box">
+                  <i className="ri-information-line"></i>
+                  <span>The reimbursement amount will be automatically set to match the expense amount (₱{formatMoney(formData.amount)})</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="modal-content">
             {/* Section IV: Supporting Documents */}

@@ -28,6 +28,7 @@ import { PaymentRecordData } from '@/app/types/payments';
 
 const AdministrativeExpensePage: React.FC = () => {
   const [expenses, setExpenses] = useState<AdministrativeExpense[]>([]);
+  const [allExpenses, setAllExpenses] = useState<AdministrativeExpense[]>([]); // Store all expenses separately
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | number | null>(null);
 
@@ -330,8 +331,15 @@ const AdministrativeExpensePage: React.FC = () => {
       // const response = await fetch(`/api/admin/expenses/administrative?page=${currentPage}&pageSize=${pageSize}&search=${searchTerm}&filters=${JSON.stringify(filters)}`);
       // const data = await response.json();
 
-      // Simulate filtering on sample data
-      let filtered = sampleAdministrativeExpenses;
+      // Simulate filtering on sample data from allExpenses (or initialize if empty)
+      let baseData = allExpenses.length > 0 ? allExpenses : sampleAdministrativeExpenses;
+      
+      // Update allExpenses if this is first load
+      if (allExpenses.length === 0) {
+        setAllExpenses(sampleAdministrativeExpenses);
+      }
+
+      let filtered = [...baseData];
 
       if (searchTerm) {
         filtered = filtered.filter(
@@ -577,7 +585,13 @@ const AdministrativeExpensePage: React.FC = () => {
         // TODO: Replace with actual API call
         // await fetch(`/api/admin/expenses/administrative/${expense.id}/post-to-jev`, { method: 'POST' });
         
-        // Update local state to mark as POSTED
+        // Update both allExpenses and expenses state to mark as POSTED
+        setAllExpenses(prev => prev.map(exp => 
+          exp.id === expense.id 
+            ? { ...exp, status: 'POSTED' } 
+            : exp
+        ));
+        
         setExpenses(prev => prev.map(exp => 
           exp.id === expense.id 
             ? { ...exp, status: 'POSTED' } 
