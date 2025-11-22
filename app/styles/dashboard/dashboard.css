@@ -98,7 +98,7 @@ button {
 }
 
 .dashboard_exportButton button {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  background: linear-gradient(135deg, #961C1E 0%, #be7609 100%) !important;
   color: white !important;
   border: none !important;
   padding: 0.75rem 1.5rem !important;
@@ -141,12 +141,12 @@ button {
 .metricCard {
   background: white !important;
   border-radius: 20px !important;
-  padding: 2rem !important;
+  padding: 1.5rem !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative !important;
   overflow: hidden !important;
   border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .metricCard::before {
@@ -187,8 +187,17 @@ button {
   flex: 1 !important;
 }
 
+.metricCard-subtitle {
+  flex: 1 !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem ;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
 .metricCard-title h3 {
-  font-size: 0.875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   color: #6b7280 !important;
   margin: 0 0 0.25rem 0 !important;
@@ -197,17 +206,30 @@ button {
 }
 
 .metricCard-title .categoryCount {
-  font-size: 0.8rem !important;
+  font-size: 0.7rem !important;
   color: #9ca3af !important;
-  font-weight: 500 !important;
 }
 
 .metricCard-value {
-  font-size: 2.5rem !important;
+  font-size: 2rem !important;
   font-weight: 700 !important;
   color: var(--card-color) !important;
-  line-height: 1 !important;
-  margin-bottom: 1rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.metricCard-change {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  font-size: 0.85rem !important;
+}
+
+.metricCard-change .arrow {
+  color: #10b981 !important;
+}
+
+.metricCard-change span:last-child {
+  color: #9ca3af !important;
 }
 
 .metricCard-details {
