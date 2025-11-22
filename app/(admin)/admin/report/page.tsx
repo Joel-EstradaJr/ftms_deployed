@@ -46,7 +46,7 @@ const ReportPage = () => {
   const [expenseData, setExpenseData] = useState<ExpenseData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<number | string | null>(null);
+  const [errorCode, setErrorCode] = useState<number | string | null>('construction');
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -441,15 +441,10 @@ const ReportPage = () => {
   if (errorCode) {
     return (
       <div className="card">
-        <h1 className="title">Finance Tracking Management</h1>
         <ErrorDisplay
           errorCode={errorCode}
           onRetry={async () => {
-            setLoading(true);
-            setError(null);
-            setErrorCode(null);
-            await Promise.all([fetchExpenses(), fetchAssignments()]);
-            setLoading(false);
+            setError(true);
           }}
         />
       </div>

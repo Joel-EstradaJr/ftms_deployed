@@ -595,7 +595,14 @@ export default function JournalEntriesPage() {
     setStatusFilter(filterValues.status || '');
   };
 
-  if (loading) return <Loading />;
+  if (loading) {
+    return (
+      <div className="card">
+        <h1 className="title">Journal Entry Management</h1>
+        <Loading />
+      </div>
+    );
+  }
   if (error) return <ErrorDisplay errorCode={errorCode} onRetry={fetchEntries} />;
 
   return (
