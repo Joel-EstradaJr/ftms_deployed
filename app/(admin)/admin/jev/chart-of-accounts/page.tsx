@@ -9,11 +9,12 @@ import ErrorDisplay from '@/app/Components/errordisplay';
 import ModalManager from '@/app/Components/modalManager';
 import AccountFilter from '@/app/Components/AccountFilter';
 import RecordChartOfAccount from './recordChartOfAccount';
+import AddAccountModal from './AddAccountModal';
 import AddChildAccountModal from './AddChildAccountModal';
 import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
 import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
-import { fetchChartOfAccounts } from '@/app/services/chartOfAccountsService';
+import { fetchChartOfAccounts, createChartOfAccount } from '@/app/services/chartOfAccountsService';
 import { ApiError } from '@/app/lib/api';
 import {getAccountTypeClass, 
         getAccountStatusInfo, 
@@ -136,11 +137,9 @@ const ChartOfAccountsPage = () => {
 
   const openAddModal = () => {
     setModalContent(
-      <RecordChartOfAccount
-        mode="add"
-        accounts={allAccounts}
+      <AddAccountModal
         onClose={closeModal}
-        onSave={handleAddAccount}
+        onSubmit={handleAddAccount}
       />
     );
     setIsModalOpen(true);
@@ -217,45 +216,21 @@ const ChartOfAccountsPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleAddAccount = async (formData: Partial<ChartOfAccount>) => {
+  const handleAddAccount = async (formData: any) => {
     try {
-      // Find parent account details if parent_account_id is provided
-      let parentAccount = undefined;
-      if (formData.parent_account_id) {
-        parentAccount = allAccounts.find((acc: ChartOfAccount) => acc.account_id === formData.parent_account_id);
-      }
-
-      const newAccount: ChartOfAccount = {
-        account_id: `temp_${Date.now()}`,
-        account_code: formData.account_code!,
-        account_name: formData.account_name!,
-        account_type: formData.account_type!,
-        category: formData.category,
-        normal_balance: formData.normal_balance,
-        is_contra_account: formData.is_contra_account,
-        contra_to_code: formData.contra_to_code,
-        expense_category: formData.expense_category,
-        statement_section: formData.statement_section,
-        display_order: formData.display_order || 0,
-        description: formData.description,
-        notes: formData.notes,
-        parent_account_id: formData.parent_account_id,
-        parent_account_code: parentAccount?.account_code,
-        parent_account_name: parentAccount?.account_name,
-        level: parentAccount ? 2 : 1,
-        is_active: formData.is_active ?? true,
-        is_system_account: false,
-      };
-
-      // TODO: Call API to create account
-      // await createChartOfAccount(newAccount);
+      // Call API to create account with backend format
+      await createChartOfAccount(formData);
       
       await showSuccess('Account created successfully!', 'Success');
       closeModal();
       loadAccountsFromApi(); // Refresh the table
     } catch (error) {
       console.error('Error adding account:', error);
-      await showError('Failed to create account', 'Error');
+      if (error instanceof ApiError) {
+        await showError(error.message, 'Error');
+      } else {
+        await showError('Failed to create account', 'Error');
+      }
     }
   };
 

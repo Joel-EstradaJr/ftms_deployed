@@ -187,6 +187,26 @@ export async function restoreChartOfAccount(id: string): Promise<ChartOfAccount>
   }
 }
 
+/**
+ * Fetch all account types from the backend
+ */
+export async function fetchAccountTypes(): Promise<any[]> {
+  try {
+    const response = await api.get<{
+      success: boolean;
+      data: any[];
+      message?: string;
+    }>('/api/v1/admin/account-types');
+    return response.data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      console.error('API Error fetching account types:', error.message);
+      throw error;
+    }
+    throw new ApiError(0, 'Failed to fetch account types');
+  }
+}
+
 export default {
   fetchChartOfAccounts,
   fetchChartOfAccountById,
@@ -194,4 +214,5 @@ export default {
   updateChartOfAccount,
   archiveChartOfAccount,
   restoreChartOfAccount,
+  fetchAccountTypes,
 };
