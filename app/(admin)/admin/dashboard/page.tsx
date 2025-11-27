@@ -5,6 +5,7 @@ import ExportConfirmationModal from "../../../Components/ExportConfirmationModal
 import ErrorDisplay from '../../../Components/errordisplay';
 import "../../../styles/dashboard/dashboard.css";
 import Loading from '../../../Components/loading';
+import { ModernLineChart, ModernDoughnutChart } from "../../../Components/ModernCharts";
 import EmotionSettingsModal from "../../../Components/dashboardEmotion";
 
 interface DashboardData {
@@ -302,6 +303,7 @@ const DashboardPage = () => {
     <>
       <div className="dashboardPage">
         <div className="accounting">
+          {/* Settings Bar */}
           <div className="dashboard_settings">
             <div className="filterDate">
               <div className="dashboard_filter">
@@ -317,17 +319,17 @@ const DashboardPage = () => {
                     }
                   }}
                 >
-                  <option value="">All</option>
+                  <option value="">All Time</option>
                   <option value="Day">Today</option>
                   <option value="Month">This Month</option>
                   <option value="Year">This Year</option>
-                  <option value="Custom">Custom</option>
+                  <option value="Custom">Custom Range</option>
                 </select>
               </div>
               {dateFilter === "Custom" && (
                 <div className="dateRangePicker">
                   <div className="date">
-                    <label htmlFor="startDate">Start Date:</label>
+                    <label htmlFor="startDate">From:</label>
                     <input
                       type="date"
                       id="startDate"
@@ -338,7 +340,7 @@ const DashboardPage = () => {
                     />
                   </div>
                   <div className="date">
-                    <label htmlFor="endDate">End Date:</label>
+                    <label htmlFor="endDate">To:</label>
                     <input
                       type="date"
                       id="endDate"
@@ -353,106 +355,162 @@ const DashboardPage = () => {
             </div>
             <div className="dashboard_exportButton">
               <button onClick={() => setIsExportModalOpen(true)}>
-                <i className="ri-receipt-line" /> Export
+                <i className="ri-download-line" /> Export Report
               </button>
             </div>
           </div>
+
+          {/* Main Data Container */}
           <div className="dataContainer">
-            <div className="data">
-              {/* Revenue Card */}
-              <div className="dataGrid" id="revenue">
-                <div className="cardHeader">
-                  <div className="cardIcon">💰</div>
-                  <div className="cardInfo">
-                    <h3>Revenue</h3>
-                    <span className="categoryCount">{Object.keys(dashboardData.revenue.byCategory).length} Categories</span>
-                  </div>
-                </div>
-                <div className="categoryBreakdown">
-                  {Object.values(dashboardData.revenue.byCategory).map((categoryData) => (
-                    <div key={categoryData.name} className="categoryItem">
-                      <span>{categoryData.name}</span>
-                      <span>₱{categoryData.amount.toLocaleString()}</span>
+            {/* Left Column - Metrics */}
+            <div className="metricsSection">
+              <div className="metricsGrid">
+                {/* Revenue Card */}
+                <div className="metricCard revenue">
+                  <div className="metricCard-header">
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Revenue</h3>
+                        <span className="categoryCount">
+                          {Object.keys(dashboardData.revenue.byCategory).length} revenue streams
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                  <div className="categoryItem" style={{ fontWeight: 'bold', borderTop: '1px solid #ddd', paddingTop: '8px', marginTop: '8px' }}>
-                    <span>Total</span>
-                    <span>₱{dashboardData.revenue.total.toLocaleString()}</span>
                   </div>
-                </div>
-              </div>
-              
-              {/* Expenses Card */}
-              <div className="dataGrid" id="expenses">
-                <div className="cardHeader">
-                  <div className="cardIcon">💸</div>
-                  <div className="cardInfo">
-                    <h3>Expenses</h3>
-                    <span className="categoryCount">{Object.keys(dashboardData.expense.byCategory).length} Categories</span>
-                  </div>
-                </div>
-                <div className="categoryBreakdown">
-                  {Object.values(dashboardData.expense.byCategory).map((categoryData) => (
-                    <div key={categoryData.name} className="categoryItem">
-                      <span>{categoryData.name}</span>
-                      <span>₱{categoryData.amount.toLocaleString()}</span>
+                  <div className="metricCard-mainContent">
+                    <div className="metricCard-value">
+                      ₱{(dashboardData.revenue.total / 1000).toFixed(1)}k
                     </div>
-                  ))}
-                  <div className="categoryItem" style={{ fontWeight: 'bold', borderTop: '1px solid #ddd', paddingTop: '8px', marginTop: '8px' }}>
-                    <span>Total</span>
-                    <span>₱{dashboardData.expense.total.toLocaleString()}</span>
+                    <div className="metricCard-change">
+                      <span className="arrow">↑</span>
+                      <span>3.48%</span>
+                    </div>
+                  </div>
+                  <div className="metricCard-subtitle">Since last month</div>
+                  <div className="metricCard-details">
+                    {Object.values(dashboardData.revenue.byCategory).map((cat) => (
+                      <div key={cat.name} className="detailItem">
+                        <span className="detailItem-label">{cat.name}</span>
+                        <span className="detailItem-value">₱{cat.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div className="detailItem total">
+                      <span className="detailItem-label">Total</span>
+                      <span className="detailItem-value">₱{dashboardData.revenue.total.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Profit Card */}
-              <div className="dataGrid" id="profit">
-                <div className="cardHeader">
-                  <div className="cardIcon">📈</div>
-                  <div className="cardInfo">
-                    <h3>Profit</h3>
+
+                {/* Expenses Card */}
+                <div className="metricCard expenses">
+                  <div className="metricCard-header">
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Expenses</h3>
+                        <span className="categoryCount">
+                          {Object.keys(dashboardData.expense.byCategory).length} expense categories
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="metricCard-mainContent">
+                    <div className="metricCard-value">
+                      ₱{(dashboardData.expense.total / 1000).toFixed(1)}k
+                    </div>
+                    <div className="metricCard-change">
+                      <span className="arrow">↓</span>
+                      <span>1.10%</span>
+                    </div>
+                  </div>
+                  <div className="metricCard-subtitle">Since yesterday</div>
+                  <div className="metricCard-details">
+                    {Object.values(dashboardData.expense.byCategory).map((cat) => (
+                      <div key={cat.name} className="detailItem">
+                        <span className="detailItem-label">{cat.name}</span>
+                        <span className="detailItem-value">₱{cat.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div className="detailItem total">
+                      <span className="detailItem-label">Total</span>
+                      <span className="detailItem-value">₱{dashboardData.expense.total.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="profitAmount">
-                  ₱{dashboardData.profit.toLocaleString()}
-                </div>
-              </div>
-              
-              {/* Emotion Card */}
-              <div className="dataGrid" id="emoji">
-                <div className="cardHeader">
-                  <div className="cardIcon">😊</div>
-                  <div className="cardInfo">
-                    <h3>Emotion</h3>
-                    <span className="categoryCount">{getEmotionStatus(dashboardData.profit)}</span>
+
+                {/* Profit Card */}
+                <div className="metricCard profit">
+                  <div className="metricCard-header">
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Net Profit</h3>
+                        <span className="categoryCount">
+                          {((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(1)}% profit margin
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <button 
-                    className="three-dots-btn"
-                    onClick={() => setIsEmotionModalOpen(true)}
-                    aria-label="Emotion settings"
-                  >
-                    ⋯
-                  </button>
+                  <div className="metricCard-mainContent">
+                    <div className="metricCard-value">
+                      ₱{dashboardData.profit.toLocaleString()}
+                    </div>
+                    <div className="metricCard-change">
+                      <span className="arrow">↑</span>
+                      <span>1.2%</span>
+                    </div>
+                  </div>
+                  <div className="metricCard-subtitle">Since last month</div>
                 </div>
-                <div className="emoji">
-                  <img
-                    src={getProfitEmoji(dashboardData.profit)}
-                    alt="Emotion indicator"
-                    style={{ 
-                      width: '80px', 
-                      height: '60px', 
-                      objectFit: 'contain' 
-                    }}
-                  />
+
+                {/* Emotion Card */}
+                <div className="metricCard emotion">
+                  <div className="metricCard-header">
+                    <div className="metricCard-titleGroup">
+                      <div className="metricCard-title">
+                        <h3>Performance Status</h3>
+                      </div>
+                    </div>
+                    <button 
+                      className="three-dots-btn"
+                      onClick={() => setIsEmotionModalOpen(true)}
+                      aria-label="Configure thresholds"
+                    >
+                      ⋯
+                    </button>
+                  </div>
+                  <div className="emotion-content">
+                    <div className="emotion-status">
+                      <h2>{getEmotionStatus(dashboardData.profit)}</h2>
+                      <p>Based on current profit margins</p>
+                    </div>
+                    <div className="emotion-emoji">
+                      <img
+                        src={getProfitEmoji(dashboardData.profit)}
+                        alt={getEmotionStatus(dashboardData.profit)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <div className="graphContainer-wrapper">
+
+            <div className="graphSection">
+              {/* Revenue Trend Chart */}
               <div className="graphContainer">
-                <div className="title"><h2>Financial Overview</h2></div>
+                <div className="title">
+                  <h2>Revenue Trend</h2>
+                </div>
+                <div className="chartWrapper">
+                  <ModernLineChart />
+                </div>
+              </div>
+
+              {/* Financial Breakdown */}
+              <div className="graphContainer">
+                <div className="title">
+                  <h2>Financial Breakdown</h2>
+                </div>
                 <div className="pieChartContainer">
-                  <PieChart 
+                  <ModernDoughnutChart 
                     revenueData={Object.fromEntries(
                       Object.entries(dashboardData.revenue.byCategory).map(([key, value]) => [key, value.amount])
                     )}
