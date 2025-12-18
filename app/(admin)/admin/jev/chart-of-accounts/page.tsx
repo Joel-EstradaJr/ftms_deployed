@@ -24,7 +24,8 @@ import {getAccountTypeClass,
         canArchiveAccount,
         getChildCount,
         canHaveChildren,
-        isParentAccount} from '@/app/lib/jev/accountHelpers';
+        isParentAccount,
+        getNormalBalance} from '@/app/lib/jev/accountHelpers';
 
 import '@/app/styles/JEV/chart-of-accounts.css';
 import '@/app/styles/components/table.css'; 
@@ -77,16 +78,225 @@ const ChartOfAccountsPage = () => {
     }
   ];
 
-  // Fetch accounts from API
+  // Sample dummy data for Chart of Accounts
+  const dummyAccounts: ChartOfAccount[] = [
+    // ASSETS
+    {
+      account_id: '1',
+      account_code: '1000',
+      account_name: 'Cash',
+      account_type: AccountType.ASSET,
+      description: 'Cash on hand and in bank accounts',
+      is_active: true,
+      is_system_account: true
+    },
+    {
+      account_id: '2',
+      account_code: '1010',
+      account_name: 'Petty Cash',
+      account_type: AccountType.ASSET,
+      description: 'Small cash fund for minor expenses',
+      is_active: true,
+      is_system_account: false,
+      parent_account_id: '1',
+      parent_account_code: '1000',
+      parent_account_name: 'Cash'
+    },
+    {
+      account_id: '3',
+      account_code: '1100',
+      account_name: 'Accounts Receivable',
+      account_type: AccountType.ASSET,
+      description: 'Amounts owed by customers for services rendered',
+      is_active: true,
+      is_system_account: true
+    },
+    {
+      account_id: '4',
+      account_code: '1500',
+      account_name: 'Buses and Fleet Vehicles',
+      account_type: AccountType.ASSET,
+      description: 'Transportation fleet assets - buses and service vehicles',
+      is_active: true,
+      is_system_account: false
+    },
+    {
+      account_id: '5',
+      account_code: '1510',
+      account_name: 'Accumulated Depreciation - Vehicles',
+      account_type: AccountType.ASSET,
+      description: 'Contra asset account for vehicle depreciation',
+      is_active: true,
+      is_system_account: false,
+      parent_account_id: '4',
+      parent_account_code: '1500',
+      parent_account_name: 'Buses and Fleet Vehicles'
+    },
+    // LIABILITIES
+    {
+      account_id: '6',
+      account_code: '2000',
+      account_name: 'Accounts Payable',
+      account_type: AccountType.LIABILITY,
+      description: 'Amounts owed to suppliers and vendors',
+      is_active: true,
+      is_system_account: true
+    },
+    {
+      account_id: '7',
+      account_code: '2100',
+      account_name: 'Salaries Payable',
+      account_type: AccountType.LIABILITY,
+      description: 'Accrued salaries and wages owed to employees',
+      is_active: true,
+      is_system_account: false
+    },
+    {
+      account_id: '8',
+      account_code: '2500',
+      account_name: 'Long-term Loans',
+      account_type: AccountType.LIABILITY,
+      description: 'Bank loans and long-term financing obligations',
+      is_active: true,
+      is_system_account: false
+    },
+    // EQUITY
+    {
+      account_id: '9',
+      account_code: '3000',
+      account_name: 'Capital',
+      account_type: AccountType.EQUITY,
+      description: 'Initial capital investment and owner contributions',
+      is_active: true,
+      is_system_account: true
+    },
+    {
+      account_id: '10',
+      account_code: '3100',
+      account_name: 'Retained Earnings',
+      account_type: AccountType.EQUITY,
+      description: 'Accumulated profits retained in the business',
+      is_active: true,
+      is_system_account: true
+    },
+    // REVENUE
+    {
+      account_id: '11',
+      account_code: '4000',
+      account_name: 'Fare Revenue',
+      account_type: AccountType.REVENUE,
+      description: 'Income from passenger fares and ticket sales',
+      is_active: true,
+      is_system_account: true
+    },
+    {
+      account_id: '12',
+      account_code: '4010',
+      account_name: 'Regular Route Fares',
+      account_type: AccountType.REVENUE,
+      description: 'Revenue from standard scheduled bus routes',
+      is_active: true,
+      is_system_account: false,
+      parent_account_id: '11',
+      parent_account_code: '4000',
+      parent_account_name: 'Fare Revenue'
+    },
+    {
+      account_id: '13',
+      account_code: '4020',
+      account_name: 'Charter Service Revenue',
+      account_type: AccountType.REVENUE,
+      description: 'Income from private charter bookings',
+      is_active: true,
+      is_system_account: false,
+      parent_account_id: '11',
+      parent_account_code: '4000',
+      parent_account_name: 'Fare Revenue'
+    },
+    {
+      account_id: '14',
+      account_code: '4100',
+      account_name: 'Other Operating Revenue',
+      account_type: AccountType.REVENUE,
+      description: 'Miscellaneous operating income',
+      is_active: true,
+      is_system_account: false
+    },
+    // EXPENSES
+    {
+      account_id: '15',
+      account_code: '5000',
+      account_name: 'Fuel and Oil Expenses',
+      account_type: AccountType.EXPENSE,
+      description: 'Diesel fuel and lubricants for fleet operations',
+      is_active: true,
+      is_system_account: false
+    },
+    {
+      account_id: '16',
+      account_code: '5100',
+      account_name: 'Salaries and Wages',
+      account_type: AccountType.EXPENSE,
+      description: 'Employee compensation including drivers and staff',
+      is_active: true,
+      is_system_account: false
+    },
+    {
+      account_id: '17',
+      account_code: '5200',
+      account_name: 'Maintenance and Repairs',
+      account_type: AccountType.EXPENSE,
+      description: 'Vehicle maintenance, repairs, and spare parts',
+      is_active: true,
+      is_system_account: false
+    },
+    {
+      account_id: '18',
+      account_code: '5300',
+      account_name: 'Office Supplies',
+      account_type: AccountType.EXPENSE,
+      description: 'Administrative supplies and office materials',
+      is_active: true,
+      is_system_account: false
+    },
+    {
+      account_id: '19',
+      account_code: '5400',
+      account_name: 'Depreciation Expense',
+      account_type: AccountType.EXPENSE,
+      description: 'Periodic depreciation of fixed assets',
+      is_active: true,
+      is_system_account: false
+    },
+    {
+      account_id: '20',
+      account_code: '5500',
+      account_name: 'Utilities Expense',
+      account_type: AccountType.EXPENSE,
+      description: 'Electricity, water, and utility costs - archived account',
+      is_active: false,
+      is_system_account: false
+    }
+  ];
+
+  // Fetch accounts from API (currently using dummy data)
   const loadAccountsFromApi = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       setErrorCode(null);
 
-      const data = await fetchChartOfAccounts();
-      setAllAccounts(data);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Use dummy data instead of API call
+      setAllAccounts(dummyAccounts);
       setLoading(false);
+
+      // Real API call (commented out)
+      // const data = await fetchChartOfAccounts();
+      // setAllAccounts(data);
+      // setLoading(false);
     } catch (err) {
       setLoading(false);
       if (err instanceof ApiError) {
@@ -444,9 +654,11 @@ const ChartOfAccountsPage = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
+                  <th>Account Code</th>
                   <th className="account-name">Account Name</th>
-                  <th>Type</th>
+                  <th>Account Type</th>
+                  <th>Normal Balance</th>
+                  <th>Description</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -472,16 +684,27 @@ const ChartOfAccountsPage = () => {
                             Parent: {account.parent_account_code} - {account.parent_account_name}
                           </div>
                         )}
-                        {account.description && (
-                          <div className="parent-account">{account.description}</div>
-                        )}
                       </td>
 
-                      {/* Type */}
+                      {/* Account Type */}
                       <td>
                         <span className={`chip ${getAccountTypeClass(account.account_type)}`}>
                           {account.account_type}
                         </span>
+                      </td>
+
+                      {/* Normal Balance */}
+                      <td>{getNormalBalance(account.account_type)}</td>
+
+                      {/* Description */}
+                      <td>
+                        {account.description ? (
+                          <span title={account.description}>
+                            {account.description.length > 50 
+                              ? `${account.description.substring(0, 50)}...` 
+                              : account.description}
+                          </span>
+                        ) : '-'}
                       </td>
 
                       {/* Status with child count */}

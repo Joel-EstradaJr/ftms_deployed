@@ -39,26 +39,21 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({ onClose, onSubmit }) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [accountCodePreview, setAccountCodePreview] = useState<string>('');
 
-  // Fetch account types from backend
+  // Dummy account types data
+  const dummyAccountTypes: AccountType[] = [
+    { id: 1, code: '1', name: 'Assets', description: 'Resources owned by the company' },
+    { id: 2, code: '2', name: 'Liabilities', description: 'Obligations owed to others' },
+    { id: 3, code: '3', name: 'Equity', description: 'Owner\'s stake in the business' },
+    { id: 4, code: '4', name: 'Revenue', description: 'Income from operations' },
+    { id: 5, code: '5', name: 'Expenses', description: 'Costs of doing business' }
+  ];
+
+  // Load dummy account types on mount
   useEffect(() => {
-    const fetchAccountTypes = async () => {
-      try {
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
-        const response = await fetch(`${API_BASE_URL}/api/v1/admin/account-types`);
-        if (!response.ok) throw new Error('Failed to fetch account types');
-        const data = await response.json();
-        if (data.success && Array.isArray(data.data)) {
-          setAccountTypes(data.data);
-          if (data.data.length > 0) {
-            setFormData(prev => ({ ...prev, account_type_id: data.data[0].id }));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching account types:', error);
-        await showError('Failed to load account types', 'Error');
-      }
-    };
-    fetchAccountTypes();
+    setAccountTypes(dummyAccountTypes);
+    if (dummyAccountTypes.length > 0) {
+      setFormData(prev => ({ ...prev, account_type_id: dummyAccountTypes[0].id }));
+    }
   }, []);
 
   // Update account code preview when account type changes
