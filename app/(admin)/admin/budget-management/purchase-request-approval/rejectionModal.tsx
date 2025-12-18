@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ModalHeader from "../../../../Components/ModalHeader";
 import { showSuccess, showError } from "../../../../utils/Alerts";
+import { isValidRejectionReason, sanitizeTextInput } from "../../../../utils/purchaseRequestValidation";
 //@ts-ignore
 import "../../../../styles/purchase-approval/rejectionModal.css";
 //@ts-ignore
@@ -40,11 +41,19 @@ const RejectionModal: React.FC<RejectionModalProps> = ({ request, onReject, onCl
     setRejectionReason(reason);
   };
 
+  const handleReasonChange = (value: string) => {
+    // Sanitize input to prevent XSS
+    const sanitized = sanitizeTextInput(value);
+    setRejectionReason(sanitized);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!rejectionReason.trim()) {
-      showError("Please provide a rejection reason", "Error");
+    // Validate rejection reason
+    const validation = isValidRejectionReason(rejectionReason);
+    if (!validation.isValid) {
+      showError(validation.errors[0], "Validation Error");
       return;
     }
     
@@ -145,15 +154,16 @@ const RejectionModal: React.FC<RejectionModalProps> = ({ request, onReject, onCl
                     id="rejectionReason"
                     name="rejectionReason"
                     value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Please provide a detailed reason for rejecting this request..."
+                    onChange={(e) => handleReasonChange(e.target.value)}
+                    placeholder="Please provide a detailed reason for rejecting this request (minimum 10 characters)..."
                     className="formInput"
                     rows={4}
                     required
+                    maxLength={500}
                     style={{ resize: 'vertical', minHeight: '100px' }}
                   />
                   <small style={{ color: '#6c757d', fontSize: '12px' }}>
-                    This reason will be sent to the requester and recorded in the audit trail.
+                    This reason will be sent to the requester and recorded in the audit trail. (10-500 characters)
                   </small>
                 </div>
 

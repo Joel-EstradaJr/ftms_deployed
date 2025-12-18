@@ -339,12 +339,13 @@ const PayrollPage = () => {
       );
       
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      
-      // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/payroll', {
+      /*
+      await fetch('/api/payroll', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(recordsToRelease),
       });
+      */
       await fetchPayrollData(false);
       showSuccess('Payroll periods released!', 'Success');
     } catch {

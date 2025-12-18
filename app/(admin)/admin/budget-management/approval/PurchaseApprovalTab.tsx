@@ -9,8 +9,7 @@ import { showConfirmation, showSuccess, showError } from "../../../../utils/Aler
 // Import types for purchase request approval
 import {
   ApprovalStatus,
-  RequestPriority,
-  Department,
+  RequestType,
   ApprovalAction,
   RollbackAction,
   RefundAction,
@@ -19,17 +18,19 @@ import {
 import type { PurchaseRequestApproval } from "../../../../types/purchaseRequestApproval";
 
 // Import existing modal components
-import ViewPurchaseRequest from "../../budget-management/purchase-request-approval/viewPurchaseRequest";
+import ViewPurchaseRequest from "../../budget-management/purchase-request-approval/viewPurchaseRequestNew";
 import AuditTrailPurchaseRequest from "../../budget-management/purchase-request-approval/auditTrailPurchaseRequest";
 import ApprovalModal from "../../budget-management/purchase-request-approval/approvalModal";
 import RejectionModal from "../../budget-management/purchase-request-approval/rejectionModal";
 import ProcessRefundModal from "../../budget-management/purchase-request-approval/processRefundModal";
 import TrackStatusPurchaseRequest from "../../budget-management/purchase-request-approval/trackStatusPurchaseRequest";
 import PurchaseApprovalModal from "./PurchaseApprovalModal";
+import ModalManager from "../../../../Components/modalManager";
 
 // Import styles
 import "../../../../styles/purchase-approval/purchase-approval.css";
 import "../../../../styles/components/table.css";
+import "@/styles/components/forms.css"
 
 
 import { SharedApprovalFilters } from "../../../../types/approvals";
@@ -64,419 +65,623 @@ export default function PurchaseApprovalTab({
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
 
-  // Mock data - replace with actual API call
+  // Sample data - using the same data structure as purchase-request-approval page
+  const sampleApprovalData: PurchaseRequestApproval[] = [
+    {
+      id: "1",
+      purchase_request_code: "PR-2024-001",
+      user_id: "user_001",
+      department_name: "Operations",
+      request_type: RequestType.URGENT,
+      reason: "Critical vehicle maintenance needed for fleet safety and reliability",
+      purchase_request_status: ApprovalStatus.PENDING,
+      total_amount: 25000.00,
+      created_at: "2024-01-15T08:00:00Z",
+      requestor: {
+        user_id: "user_001",
+        employee_id: "EMP-001",
+        employee_name: "Juan Dela Cruz",
+        first_name: "Juan",
+        last_name: "Dela Cruz",
+        position: "Fleet Manager",
+        contact_no: "09171234567",
+        email_address: "juan.delacruz@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-OPS",
+        department_name: "Operations",
+        date_joined: "2020-03-15",
+        monthly_rate: 35000
+      },
+      items: [
+        {
+          purchase_request_item_code: "PRI-2024-001-01",
+          purchase_request_id: "1",
+          status: "PENDING",
+          remarks: "",
+          quantity: 4,
+          unit_cost: 3500.00,
+          total_amount: 14000.00,
+          is_deleted: false,
+          created_at: "2024-01-15T08:00:00Z",
+          item_code: "ITM-TIRE-001",
+          supplier_code: "SUP-AUTO-001",
+          item: {
+            id: "item_001",
+            item_code: "ITM-TIRE-001",
+            item_name: "Heavy Duty Bus Tire 295/80R22.5",
+            description: "All-season heavy duty tire for buses",
+            unit: {
+              unit_id: "unit_001",
+              unit_code: "PCS",
+              unit_name: "Pieces",
+              abbreviation: "pcs"
+            },
+            category: {
+              category_id: "cat_001",
+              category_code: "AUTO-PARTS",
+              category_name: "Automotive Parts"
+            }
+          },
+          supplier: {
+            supplier_id: "sup_001",
+            supplier_code: "SUP-AUTO-001",
+            supplier_name: "AutoParts Express Inc.",
+            contact_number: "02-8123-4567",
+            email: "sales@autoparts-express.ph"
+          },
+          supplier_item: {
+            unit_price: 3500.00,
+            supplier_unit: {
+              unit_id: "unit_001",
+              unit_code: "PCS",
+              unit_name: "Pieces",
+              abbreviation: "pcs"
+            },
+            conversion_amount: 1
+          }
+        },
+        {
+          purchase_request_item_code: "PRI-2024-001-02",
+          purchase_request_id: "1",
+          status: "PENDING",
+          remarks: "",
+          quantity: 8,
+          unit_cost: 450.00,
+          total_amount: 3600.00,
+          is_deleted: false,
+          created_at: "2024-01-15T08:00:00Z",
+          item_code: "ITM-OIL-002",
+          supplier_code: "SUP-AUTO-001",
+          item: {
+            id: "item_002",
+            item_code: "ITM-OIL-002",
+            item_name: "Engine Oil 15W-40 (4 Liters)",
+            description: "Premium diesel engine oil for heavy vehicles",
+            unit: {
+              unit_id: "unit_002",
+              unit_code: "BTL",
+              unit_name: "Bottle",
+              abbreviation: "btl"
+            },
+            category: {
+              category_id: "cat_001",
+              category_code: "AUTO-PARTS",
+              category_name: "Automotive Parts"
+            }
+          },
+          supplier: {
+            supplier_id: "sup_001",
+            supplier_code: "SUP-AUTO-001",
+            supplier_name: "AutoParts Express Inc.",
+            contact_number: "02-8123-4567",
+            email: "sales@autoparts-express.ph"
+          },
+          supplier_item: {
+            unit_price: 450.00,
+            supplier_unit: {
+              unit_id: "unit_003",
+              unit_code: "BOX",
+              unit_name: "Box",
+              abbreviation: "box"
+            },
+            conversion_amount: 4
+          }
+        },
+        {
+          purchase_request_item_code: "PRI-2024-001-03",
+          purchase_request_id: "1",
+          status: "PENDING",
+          remarks: "",
+          quantity: 10,
+          unit_cost: 740.00,
+          total_amount: 7400.00,
+          is_deleted: false,
+          created_at: "2024-01-15T08:00:00Z",
+          item_code: "",
+          supplier_code: "",
+          new_item: "Brake Pads - Heavy Duty Front Set",
+          new_supplier: "Metro Auto Supplies",
+          new_unit: "set",
+          new_unit_price: 740.00
+        }
+      ]
+    },
+    {
+      id: "2",
+      purchase_request_code: "PR-2024-002",
+      user_id: "user_002",
+      department_name: "Administration",
+      request_type: RequestType.REGULAR,
+      reason: "Office equipment upgrade for productivity improvement - computers are 5+ years old",
+      purchase_request_status: ApprovalStatus.APPROVED,
+      total_amount: 45000.00,
+      approved_by: "Admin Director",
+      approved_date: "2024-01-12",
+      created_at: "2024-01-10T09:30:00Z",
+      finance_remarks: "Approved within Q1 budget allocation for IT upgrades",
+      requestor: {
+        user_id: "user_002",
+        employee_id: "EMP-002",
+        employee_name: "Maria Clara Reyes",
+        first_name: "Maria Clara",
+        last_name: "Reyes",
+        position: "Admin Officer III",
+        contact_no: "09171234568",
+        email_address: "maria.reyes@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-ADMIN",
+        department_name: "Administration",
+        date_joined: "2019-06-01",
+        monthly_rate: 32000
+      },
+      items: [
+        {
+          purchase_request_item_code: "PRI-2024-002-01",
+          purchase_request_id: "2",
+          status: "APPROVED",
+          remarks: "Approved for immediate procurement",
+          quantity: 5,
+          unit_cost: 35000.00,
+          total_amount: 175000.00,
+          is_deleted: false,
+          created_at: "2024-01-10T09:30:00Z",
+          item_code: "ITM-COMP-001",
+          supplier_code: "SUP-TECH-001",
+          item: {
+            id: "item_003",
+            item_code: "ITM-COMP-001",
+            item_name: "Dell OptiPlex 7090 Desktop Computer",
+            description: "Intel Core i7, 16GB RAM, 512GB SSD, Windows 11 Pro",
+            unit: {
+              unit_id: "unit_004",
+              unit_code: "UNIT",
+              unit_name: "Unit",
+              abbreviation: "unit"
+            },
+            category: {
+              category_id: "cat_002",
+              category_code: "IT-EQUIP",
+              category_name: "IT Equipment"
+            }
+          },
+          supplier: {
+            supplier_id: "sup_002",
+            supplier_code: "SUP-TECH-001",
+            supplier_name: "TechWorld Philippines Inc.",
+            contact_number: "02-8765-4321",
+            email: "orders@techworld.ph"
+          },
+          supplier_item: {
+            unit_price: 35000.00,
+            supplier_unit: {
+              unit_id: "unit_004",
+              unit_code: "UNIT",
+              unit_name: "Unit",
+              abbreviation: "unit"
+            },
+            conversion_amount: 1
+          }
+        },
+        {
+          purchase_request_item_code: "PRI-2024-002-02",
+          purchase_request_id: "2",
+          status: "APPROVED",
+          remarks: "Standard office monitors",
+          quantity: 5,
+          unit_cost: 8500.00,
+          total_amount: 42500.00,
+          is_deleted: false,
+          created_at: "2024-01-10T09:30:00Z",
+          item_code: "ITM-MON-001",
+          supplier_code: "SUP-TECH-001",
+          item: {
+            id: "item_004",
+            item_code: "ITM-MON-001",
+            item_name: "Dell 24-inch LED Monitor P2422H",
+            description: "Full HD 1920x1080, IPS Panel, HDMI/DP",
+            unit: {
+              unit_id: "unit_004",
+              unit_code: "UNIT",
+              unit_name: "Unit",
+              abbreviation: "unit"
+            },
+            category: {
+              category_id: "cat_002",
+              category_code: "IT-EQUIP",
+              category_name: "IT Equipment"
+            }
+          },
+          supplier: {
+            supplier_id: "sup_002",
+            supplier_code: "SUP-TECH-001",
+            supplier_name: "TechWorld Philippines Inc.",
+            contact_number: "02-8765-4321",
+            email: "orders@techworld.ph"
+          },
+          supplier_item: {
+            unit_price: 8500.00,
+            supplier_unit: {
+              unit_id: "unit_004",
+              unit_code: "UNIT",
+              unit_name: "Unit",
+              abbreviation: "unit"
+            },
+            conversion_amount: 1
+          }
+        }
+      ]
+    },
+    {
+      id: "3",
+      purchase_request_code: "PR-2024-003",
+      user_id: "user_003",
+      department_name: "Operations",
+      request_type: RequestType.PROJECT_BASED,
+      reason: "Safety equipment for new compliance project - replacement due to wear",
+      purchase_request_status: ApprovalStatus.REJECTED,
+      total_amount: 18000.00,
+      rejected_by: "Finance Manager",
+      rejected_date: "2024-01-14",
+      rejection_reason: "Budget allocation exceeded for safety equipment this quarter",
+      created_at: "2024-01-08T14:20:00Z",
+      requestor: {
+        user_id: "user_003",
+        employee_id: "EMP-003",
+        employee_name: "Pedro Santos",
+        first_name: "Pedro",
+        last_name: "Santos",
+        position: "Safety Officer II",
+        contact_no: "09171234569",
+        email_address: "pedro.santos@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-OPS",
+        department_name: "Operations",
+        date_joined: "2021-01-10",
+        monthly_rate: 30000
+      }
+    },
+    {
+      id: "4",
+      purchase_request_code: "PR-2024-004",
+      user_id: "user_004",
+      department_name: "Maintenance",
+      request_type: RequestType.REGULAR,
+      reason: "Monthly cleaning supplies replenishment for facility cleanliness",
+      purchase_request_status: ApprovalStatus.CLOSED,
+      total_amount: 12000.00,
+      approved_by: "Operations Manager",
+      approved_date: "2024-01-06",
+      created_at: "2024-01-05T11:15:00Z",
+      finance_remarks: "Regular monthly procurement - within budget",
+      requestor: {
+        user_id: "user_004",
+        employee_id: "EMP-004",
+        employee_name: "Rosa Martinez",
+        first_name: "Rosa",
+        last_name: "Martinez",
+        position: "Maintenance Supervisor",
+        contact_no: "09171234570",
+        email_address: "rosa.martinez@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-MAINT",
+        department_name: "Maintenance",
+        date_joined: "2018-08-20",
+        monthly_rate: 28000
+      }
+    },
+    {
+      id: "5",
+      purchase_request_code: "PR-2024-005",
+      user_id: "user_005",
+      department_name: "Administration",
+      request_type: RequestType.EMERGENCY,
+      reason: "Network infrastructure upgrade - current system cannot handle increased load",
+      purchase_request_status: ApprovalStatus.ADJUSTED,
+      total_amount: 35000.00,
+      approved_by: "IT Director",
+      approved_date: "2024-01-13",
+      created_at: "2024-01-12T16:45:00Z",
+      updated_at: "2024-01-14T10:30:00Z",
+      finance_remarks: "Approved with reduced quantity due to emergency budget constraints",
+      requestor: {
+        user_id: "user_005",
+        employee_id: "EMP-005",
+        employee_name: "Carlos Villanueva",
+        first_name: "Carlos",
+        last_name: "Villanueva",
+        position: "IT Officer II",
+        contact_no: "09171234571",
+        email_address: "carlos.villanueva@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-ADMIN",
+        department_name: "Administration",
+        date_joined: "2020-11-05",
+        monthly_rate: 33000
+      },
+      items: [
+        {
+          purchase_request_item_code: "PRI-2024-005-01",
+          purchase_request_id: "5",
+          status: "ADJUSTED",
+          remarks: "Quantity reduced from 8 to 5 units",
+          quantity: 8,
+          adjusted_quantity: 5,
+          adjustment_reason: "Emergency budget constraints - remaining 3 units deferred to Q2",
+          unit_cost: 4500.00,
+          total_amount: 22500.00,
+          is_deleted: false,
+          created_at: "2024-01-12T16:45:00Z",
+          item_code: "ITM-SWITCH-001",
+          supplier_code: "SUP-TECH-002",
+          item: {
+            id: "item_005",
+            item_code: "ITM-SWITCH-001",
+            item_name: "Cisco Catalyst 2960 48-Port Switch",
+            description: "Managed Gigabit Ethernet Switch, 48 ports",
+            unit: {
+              unit_id: "unit_004",
+              unit_code: "UNIT",
+              unit_name: "Unit",
+              abbreviation: "unit"
+            },
+            category: {
+              category_id: "cat_003",
+              category_code: "NET-EQUIP",
+              category_name: "Network Equipment"
+            }
+          },
+          supplier: {
+            supplier_id: "sup_003",
+            supplier_code: "SUP-TECH-002",
+            supplier_name: "Network Solutions Corp.",
+            contact_number: "02-8555-1234",
+            email: "sales@netsolutions.ph"
+          },
+          supplier_item: {
+            unit_price: 4500.00,
+            supplier_unit: {
+              unit_id: "unit_004",
+              unit_code: "UNIT",
+              unit_name: "Unit",
+              abbreviation: "unit"
+            },
+            conversion_amount: 1
+          }
+        },
+        {
+          purchase_request_item_code: "PRI-2024-005-02",
+          purchase_request_id: "5",
+          status: "ADJUSTED",
+          remarks: "Quantity reduced from 200 to 150 meters",
+          quantity: 200,
+          adjusted_quantity: 150,
+          adjustment_reason: "Budget limitation - 50 meters will be purchased next month",
+          unit_cost: 85.00,
+          total_amount: 12750.00,
+          is_deleted: false,
+          created_at: "2024-01-12T16:45:00Z",
+          item_code: "ITM-CABLE-001",
+          supplier_code: "SUP-TECH-002",
+          item: {
+            id: "item_006",
+            item_code: "ITM-CABLE-001",
+            item_name: "Cat6 Network Cable - per meter",
+            description: "Category 6 UTP Cable, 23AWG, Blue",
+            unit: {
+              unit_id: "unit_005",
+              unit_code: "MTR",
+              unit_name: "Meter",
+              abbreviation: "m"
+            },
+            category: {
+              category_id: "cat_003",
+              category_code: "NET-EQUIP",
+              category_name: "Network Equipment"
+            }
+          },
+          supplier: {
+            supplier_id: "sup_003",
+            supplier_code: "SUP-TECH-002",
+            supplier_name: "Network Solutions Corp.",
+            contact_number: "02-8555-1234",
+            email: "sales@netsolutions.ph"
+          },
+          supplier_item: {
+            unit_price: 42.50,
+            supplier_unit: {
+              unit_id: "unit_006",
+              unit_code: "ROLL",
+              unit_name: "Roll",
+              abbreviation: "roll"
+            },
+            conversion_amount: 2
+          }
+        }
+      ]
+    },
+    {
+      id: "6",
+      purchase_request_code: "PR-2024-006",
+      user_id: "user_006",
+      department_name: "Finance",
+      request_type: RequestType.URGENT,
+      reason: "Financial software licenses renewal - expiring at end of month",
+      purchase_request_status: ApprovalStatus.PENDING,
+      total_amount: 28500.00,
+      created_at: "2024-01-16T14:20:00Z",
+      requestor: {
+        user_id: "user_006",
+        employee_id: "EMP-006",
+        employee_name: "Angela Fernandez",
+        first_name: "Angela",
+        last_name: "Fernandez",
+        position: "Finance Officer III",
+        contact_no: "09171234572",
+        email_address: "angela.fernandez@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-FIN",
+        department_name: "Finance",
+        date_joined: "2019-02-14",
+        monthly_rate: 36000
+      }
+    },
+    {
+      id: "7",
+      purchase_request_code: "PR-2024-007",
+      user_id: "user_007",
+      department_name: "Operations",
+      request_type: RequestType.EMERGENCY,
+      reason: "Emergency tire replacement for 5 buses due to safety inspection failure",
+      purchase_request_status: ApprovalStatus.APPROVED,
+      total_amount: 180000.00,
+      approved_by: "Operations Director",
+      approved_date: "2024-01-17",
+      created_at: "2024-01-17T06:30:00Z",
+      finance_remarks: "Emergency approval granted - safety critical",
+      requestor: {
+        user_id: "user_007",
+        employee_id: "EMP-007",
+        employee_name: "Ricardo Mercado",
+        first_name: "Ricardo",
+        last_name: "Mercado",
+        position: "Fleet Coordinator",
+        contact_no: "09171234573",
+        email_address: "ricardo.mercado@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-OPS",
+        department_name: "Operations",
+        date_joined: "2021-05-12",
+        monthly_rate: 31000
+      }
+    },
+    {
+      id: "8",
+      purchase_request_code: "PR-2024-008",
+      user_id: "user_008",
+      department_name: "HR",
+      request_type: RequestType.REGULAR,
+      reason: "Employee uniforms for new hires (January-March 2024 batch)",
+      purchase_request_status: ApprovalStatus.PENDING,
+      total_amount: 48000.00,
+      created_at: "2024-01-16T10:15:00Z",
+      requestor: {
+        user_id: "user_008",
+        employee_id: "EMP-008",
+        employee_name: "Lisa Villanueva",
+        first_name: "Lisa",
+        last_name: "Villanueva",
+        position: "HR Officer II",
+        contact_no: "09171234574",
+        email_address: "lisa.villanueva@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-HR",
+        department_name: "HR",
+        date_joined: "2020-07-01",
+        monthly_rate: 29000
+      }
+    },
+    {
+      id: "9",
+      purchase_request_code: "PR-2024-009",
+      user_id: "user_009",
+      department_name: "Accounting",
+      request_type: RequestType.URGENT,
+      reason: "Printer and scanner replacement - current equipment beyond repair",
+      purchase_request_status: ApprovalStatus.ADJUSTED,
+      total_amount: 65000.00,
+      approved_by: "Finance Director",
+      approved_date: "2024-01-15",
+      created_at: "2024-01-14T14:00:00Z",
+      updated_at: "2024-01-16T09:15:00Z",
+      finance_remarks: "Approved with adjusted quantities - defer remaining units to Q2",
+      requestor: {
+        user_id: "user_009",
+        employee_id: "EMP-009",
+        employee_name: "Emmanuel Torres",
+        first_name: "Emmanuel",
+        last_name: "Torres",
+        position: "Senior Accountant",
+        contact_no: "09171234575",
+        email_address: "emmanuel.torres@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-ACCT",
+        department_name: "Accounting",
+        date_joined: "2018-03-20",
+        monthly_rate: 38000
+      }
+    },
+    {
+      id: "10",
+      purchase_request_code: "PR-2024-010",
+      user_id: "user_010",
+      department_name: "Maintenance",
+      request_type: RequestType.PROJECT_BASED,
+      reason: "Terminal building renovation - painting and electrical supplies for Q1 2024 project",
+      purchase_request_status: ApprovalStatus.PENDING,
+      total_amount: 125000.00,
+      created_at: "2024-01-18T08:45:00Z",
+      requestor: {
+        user_id: "user_010",
+        employee_id: "EMP-010",
+        employee_name: "Roberto Castro",
+        first_name: "Roberto",
+        last_name: "Castro",
+        position: "Maintenance Head",
+        contact_no: "09171234576",
+        email_address: "roberto.castro@transport.gov.ph",
+        employment_status: "REGULAR",
+        user_type: "STAFF",
+        department_id: "DEPT-MAINT",
+        department_name: "Maintenance",
+        date_joined: "2017-09-10",
+        monthly_rate: 42000
+      }
+    }
+  ];
+
   useEffect(() => {
     const fetchData = async () => {
+      console.log('PurchaseApprovalTab: Loading data');
       onLoadingChange(true);
       try {
         // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const mockData: PurchaseRequestApproval[] = [
-          {
-            id: "1",
-            request_id: "PR-2024-001",
-            title: "Vehicle Maintenance Supplies",
-            department: Department.OPERATIONS,
-            requester_name: "Juan Dela Cruz",
-            requester_position: "Fleet Supervisor",
-            supplier_name: "AutoParts Inc.",
-            total_amount: 25000.00,
-            request_date: "2024-01-15",
-            status: ApprovalStatus.PENDING_APPROVAL,
-            priority: RequestPriority.URGENT,
-            submitted_by: "Juan Dela Cruz",
-            submitted_date: "2024-01-15",
-            items: [
-              {
-                item_name: "Brake Pads",
-                quantity: 10,
-                unit_measure: "sets",
-                unit_cost: 1500.00,
-                total_cost: 15000.00,
-                supplier: "AutoParts Inc.",
-                category: "Maintenance"
-              },
-              {
-                item_name: "Engine Oil",
-                quantity: 20,
-                unit_measure: "liters",
-                unit_cost: 500.00,
-                total_cost: 10000.00,
-                supplier: "AutoParts Inc.",
-                category: "Maintenance"
-              }
-            ],
-            purpose: "Regular maintenance for bus fleet",
-            justification: "Critical maintenance items needed to ensure fleet safety and reliability",
-            created_at: "2024-01-15T08:00:00Z",
-            created_by: "Juan Dela Cruz",
-            is_deleted: false
-          },
-          {
-            id: "2",
-            request_id: "PR-2024-002",
-            title: "Office Equipment Upgrade",
-            department: Department.ACCOUNTING,
-            requester_name: "Maria Santos",
-            requester_position: "Admin Manager",
-            supplier_name: "TechMax Supply",
-            total_amount: 45000.00,
-            request_date: "2024-01-20",
-            status: ApprovalStatus.APPROVED,
-            priority: RequestPriority.NORMAL,
-            submitted_by: "Maria Santos",
-            submitted_date: "2024-01-20",
-            approved_by: "Finance Director",
-            approved_date: "2024-01-22",
-            items: [
-              {
-                item_name: "Laptops",
-                quantity: 5,
-                unit_measure: "units",
-                unit_cost: 25000.00,
-                total_cost: 125000.00,
-                supplier: "TechMax Supply",
-                category: "Equipment"
-              }
-            ],
-            purpose: "Upgrade office equipment for better productivity",
-            justification: "Current equipment is outdated and affecting work efficiency",
-            created_at: "2024-01-20T10:30:00Z",
-            created_by: "Maria Santos",
-            is_deleted: false
-          },
-          {
-            id: "3",
-            request_id: "PR-2024-003",
-            title: "Safety Equipment",
-            department: Department.HR,
-            requester_name: "Ana Reyes",
-            requester_position: "HR Manager",
-            supplier_name: "SafetyFirst Corp",
-            total_amount: 35000.00,
-            request_date: "2024-01-25",
-            status: ApprovalStatus.REJECTED,
-            priority: RequestPriority.URGENT,
-            submitted_by: "Ana Reyes",
-            submitted_date: "2024-01-25",
-            rejected_by: "Finance Manager",
-            rejected_date: "2024-01-26",
-            rejection_reason: "Budget allocation exceeded for safety equipment this quarter",
-            items: [
-              {
-                item_name: "Fire Extinguishers",
-                quantity: 20,
-                unit_measure: "units",
-                unit_cost: 1750.00,
-                total_cost: 35000.00,
-                supplier: "SafetyFirst Corp",
-                category: "Safety"
-              }
-            ],
-            purpose: "Essential safety equipment for all departments",
-            justification: "Compliance with safety regulations and employee protection",
-            created_at: "2024-01-25T14:00:00Z",
-            created_by: "Ana Reyes",
-            is_deleted: false
-          },
-          {
-            id: "4",
-            request_id: "PR-2024-004",
-            title: "IT Software Licenses",
-            department: Department.ACCOUNTING,
-            requester_name: "Carlos Mendoza",
-            requester_position: "IT Manager",
-            supplier_name: "Software Solutions Ltd",
-            total_amount: 75000.00,
-            request_date: "2024-02-01",
-            status: ApprovalStatus.PENDING_APPROVAL,
-            priority: RequestPriority.NORMAL,
-            submitted_by: "Carlos Mendoza",
-            submitted_date: "2024-02-01",
-            items: [
-              {
-                item_name: "Microsoft Office Licenses",
-                quantity: 50,
-                unit_measure: "licenses",
-                unit_cost: 1500.00,
-                total_cost: 75000.00,
-                supplier: "Software Solutions Ltd",
-                category: "Software"
-              }
-            ],
-            purpose: "Annual software license renewal",
-            justification: "Required for daily operations and productivity",
-            created_at: "2024-02-01T09:00:00Z",
-            created_by: "Carlos Mendoza",
-            is_deleted: false
-          },
-          {
-            id: "5",
-            request_id: "PR-2024-005",
-            title: "Facility Cleaning Supplies",
-            department: Department.OPERATIONS,
-            requester_name: "Rosa Garcia",
-            requester_position: "Facilities Manager",
-            supplier_name: "CleanCorp Supplies",
-            total_amount: 15000.00,
-            request_date: "2024-02-05",
-            status: ApprovalStatus.APPROVED,
-            priority: RequestPriority.NORMAL,
-            submitted_by: "Rosa Garcia",
-            submitted_date: "2024-02-05",
-            approved_by: "Operations Director",
-            approved_date: "2024-02-07",
-            items: [
-              {
-                item_name: "Cleaning Supplies",
-                quantity: 100,
-                unit_measure: "kits",
-                unit_cost: 150.00,
-                total_cost: 15000.00,
-                supplier: "CleanCorp Supplies",
-                category: "Facilities"
-              }
-            ],
-            purpose: "Monthly cleaning supplies for all facilities",
-            justification: "Maintaining clean and hygienic work environment",
-            created_at: "2024-02-05T11:30:00Z",
-            created_by: "Rosa Garcia",
-            is_deleted: false
-          },
-          {
-            id: "6",
-            request_id: "PR-2024-006",
-            title: "Training Materials",
-            department: Department.HR,
-            requester_name: "Luis Torres",
-            requester_position: "HR Coordinator",
-            supplier_name: "EduMaterials Inc",
-            total_amount: 25000.00,
-            request_date: "2024-02-10",
-            status: ApprovalStatus.PENDING_APPROVAL,
-            priority: RequestPriority.NORMAL,
-            submitted_by: "Luis Torres",
-            submitted_date: "2024-02-10",
-            items: [
-              {
-                item_name: "Training Manuals",
-                quantity: 200,
-                unit_measure: "sets",
-                unit_cost: 125.00,
-                total_cost: 25000.00,
-                supplier: "EduMaterials Inc",
-                category: "Training"
-              }
-            ],
-            purpose: "Employee training and development materials",
-            justification: "Supporting continuous learning and skill development",
-            created_at: "2024-02-10T13:15:00Z",
-            created_by: "Luis Torres",
-            is_deleted: false
-          },
-          {
-            id: "7",
-            request_id: "PR-2024-007",
-            title: "Vehicle Fuel Cards",
-            department: Department.OPERATIONS,
-            requester_name: "Pedro Santos",
-            requester_position: "Fleet Manager",
-            supplier_name: "FuelCard Services",
-            total_amount: 30000.00,
-            request_date: "2024-02-15",
-            status: ApprovalStatus.REJECTED,
-            priority: RequestPriority.URGENT,
-            submitted_by: "Pedro Santos",
-            submitted_date: "2024-02-15",
-            rejected_by: "Finance Manager",
-            rejected_date: "2024-02-16",
-            rejection_reason: "Alternative fuel management solution already in place",
-            items: [
-              {
-                item_name: "Fuel Cards",
-                quantity: 25,
-                unit_measure: "cards",
-                unit_cost: 1200.00,
-                total_cost: 30000.00,
-                supplier: "FuelCard Services",
-                category: "Fuel"
-              }
-            ],
-            purpose: "Fuel management for company vehicles",
-            justification: "Streamlining fuel expenses and tracking",
-            created_at: "2024-02-15T10:45:00Z",
-            created_by: "Pedro Santos",
-            is_deleted: false
-          },
-          {
-            id: "8",
-            request_id: "PR-2024-008",
-            title: "Marketing Materials",
-            department: Department.OPERATIONS,
-            requester_name: "Sofia Cruz",
-            requester_position: "Marketing Manager",
-            supplier_name: "PrintPro Services",
-            total_amount: 40000.00,
-            request_date: "2024-02-20",
-            status: ApprovalStatus.APPROVED,
-            priority: RequestPriority.NORMAL,
-            submitted_by: "Sofia Cruz",
-            submitted_date: "2024-02-20",
-            approved_by: "Marketing Director",
-            approved_date: "2024-02-22",
-            items: [
-              {
-                item_name: "Promotional Materials",
-                quantity: 5000,
-                unit_measure: "pieces",
-                unit_cost: 8.00,
-                total_cost: 40000.00,
-                supplier: "PrintPro Services",
-                category: "Marketing"
-              }
-            ],
-            purpose: "Promotional materials for new service launch",
-            justification: "Supporting marketing campaigns and customer acquisition",
-            created_at: "2024-02-20T14:20:00Z",
-            created_by: "Sofia Cruz",
-            is_deleted: false
-          },
-          {
-            id: "9",
-            request_id: "PR-2024-009",
-            title: "Security System Upgrade",
-            department: Department.OPERATIONS,
-            requester_name: "Miguel Reyes",
-            requester_position: "Security Chief",
-            supplier_name: "SecureTech Systems",
-            total_amount: 85000.00,
-            request_date: "2024-02-25",
-            status: ApprovalStatus.PENDING_APPROVAL,
-            priority: RequestPriority.URGENT,
-            submitted_by: "Miguel Reyes",
-            submitted_date: "2024-02-25",
-            items: [
-              {
-                item_name: "Security Cameras",
-                quantity: 30,
-                unit_measure: "units",
-                unit_cost: 2833.33,
-                total_cost: 85000.00,
-                supplier: "SecureTech Systems",
-                category: "Security"
-              }
-            ],
-            purpose: "Enhanced security monitoring system",
-            justification: "Improving facility security and surveillance",
-            created_at: "2024-02-25T16:00:00Z",
-            created_by: "Miguel Reyes",
-            is_deleted: false
-          },
-          {
-            id: "10",
-            request_id: "PR-2024-010",
-            title: "Office Furniture",
-            department: Department.ACCOUNTING,
-            requester_name: "Elena Morales",
-            requester_position: "Admin Assistant",
-            supplier_name: "OfficeFurnish Co",
-            total_amount: 55000.00,
-            request_date: "2024-03-01",
-            status: ApprovalStatus.APPROVED,
-            priority: RequestPriority.NORMAL,
-            submitted_by: "Elena Morales",
-            submitted_date: "2024-03-01",
-            approved_by: "Facilities Manager",
-            approved_date: "2024-03-03",
-            items: [
-              {
-                item_name: "Office Desks",
-                quantity: 25,
-                unit_measure: "units",
-                unit_cost: 2200.00,
-                total_cost: 55000.00,
-                supplier: "OfficeFurnish Co",
-                category: "Furniture"
-              }
-            ],
-            purpose: "New office furniture for expanded workspace",
-            justification: "Accommodating growing team and improving workspace ergonomics",
-            created_at: "2024-03-01T09:30:00Z",
-            created_by: "Elena Morales",
-            is_deleted: false
-          },
-          {
-            id: "11",
-            request_id: "PR-2024-011",
-            title: "Medical Supplies",
-            department: Department.HR,
-            requester_name: "Dr. Ana Lopez",
-            requester_position: "Company Nurse",
-            supplier_name: "MediSupply Corp",
-            total_amount: 20000.00,
-            request_date: "2024-03-05",
-            status: ApprovalStatus.PENDING_APPROVAL,
-            priority: RequestPriority.URGENT,
-            submitted_by: "Dr. Ana Lopez",
-            submitted_date: "2024-03-05",
-            items: [
-              {
-                item_name: "First Aid Kits",
-                quantity: 50,
-                unit_measure: "kits",
-                unit_cost: 400.00,
-                total_cost: 20000.00,
-                supplier: "MediSupply Corp",
-                category: "Medical"
-              }
-            ],
-            purpose: "Emergency medical supplies for all locations",
-            justification: "Ensuring employee health and safety preparedness",
-            created_at: "2024-03-05T11:00:00Z",
-            created_by: "Dr. Ana Lopez",
-            is_deleted: false
-          },
-          {
-            id: "12",
-            request_id: "PR-2024-012",
-            title: "Network Equipment",
-            department: Department.ACCOUNTING,
-            requester_name: "Roberto Diaz",
-            requester_position: "Network Administrator",
-            supplier_name: "NetTech Solutions",
-            total_amount: 65000.00,
-            request_date: "2024-03-10",
-            status: ApprovalStatus.REJECTED,
-            priority: RequestPriority.URGENT,
-            submitted_by: "Roberto Diaz",
-            submitted_date: "2024-03-10",
-            rejected_by: "IT Director",
-            rejected_date: "2024-03-11",
-            rejection_reason: "Network upgrade scheduled for next quarter",
-            items: [
-              {
-                item_name: "Network Switches",
-                quantity: 10,
-                unit_measure: "units",
-                unit_cost: 6500.00,
-                total_cost: 65000.00,
-                supplier: "NetTech Solutions",
-                category: "Networking"
-              }
-            ],
-            purpose: "Network infrastructure upgrade",
-            justification: "Improving network performance and reliability",
-            created_at: "2024-03-10T15:45:00Z",
-            created_by: "Roberto Diaz",
-            is_deleted: false
-          }
-        ];
-
-        setData(mockData);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setData(sampleApprovalData);
+        console.log('PurchaseApprovalTab: Loaded', sampleApprovalData.length, 'records');
         onError(null);
-      } catch (err) {
-        onError('Failed to load purchase requests');
+      } catch (err: any) {
+        console.error('PurchaseApprovalTab: Error loading data', err);
+        onError(err?.message || 'Failed to load purchase requests');
+        setData([]); // Set empty data on error
       } finally {
         onLoadingChange(false);
       }
@@ -498,11 +703,10 @@ export default function PurchaseApprovalTab({
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       result = result.filter(item =>
-        item.request_id.toLowerCase().includes(searchLower) ||
-        item.title.toLowerCase().includes(searchLower) ||
-        item.requester_name.toLowerCase().includes(searchLower) ||
-        item.supplier_name.toLowerCase().includes(searchLower) ||
-        item.department.toLowerCase().includes(searchLower) ||
+        item.purchase_request_code.toLowerCase().includes(searchLower) ||
+        (item.reason && item.reason.toLowerCase().includes(searchLower)) ||
+        (item.requestor?.employee_name && item.requestor.employee_name.toLowerCase().includes(searchLower)) ||
+        (item.department_name && item.department_name.toLowerCase().includes(searchLower)) ||
         item.total_amount.toString().includes(searchLower)
       );
     }
@@ -510,20 +714,20 @@ export default function PurchaseApprovalTab({
     // Status filter from shared filters
     if (filters.status?.length) {
       result = result.filter(item => {
-        const statusMap: { [key: string]: ApprovalStatus } = {
-          'pending': ApprovalStatus.PENDING_APPROVAL,
+        const statusMap: { [key: string]: ApprovalStatus} = {
+          'pending': ApprovalStatus.PENDING,
           'approved': ApprovalStatus.APPROVED,
           'rejected': ApprovalStatus.REJECTED,
-          'completed': ApprovalStatus.COMPLETED
+          'completed': ApprovalStatus.CLOSED
         };
-        return filters.status!.some(status => statusMap[status] === item.status);
+        return filters.status!.some(status => statusMap[status] === item.purchase_request_status);
       });
     }
 
     // Date range filter
     if (filters.dateRange) {
       result = result.filter(item => {
-        const itemDate = new Date(item.request_date);
+        const itemDate = new Date(item.created_at);
         const fromDate = filters.dateRange!.from ? new Date(filters.dateRange!.from) : null;
         const toDate = filters.dateRange!.to ? new Date(filters.dateRange!.to) : null;
 
@@ -650,20 +854,21 @@ export default function PurchaseApprovalTab({
   };
 
   // Utility functions
-  const formatDepartment = (dept: Department) => {
-    return dept.replace('_', ' ').toUpperCase();
+  const formatDepartment = (dept: string | undefined) => {
+    return dept || 'N/A';
   };
 
-  const formatPriority = (priority: RequestPriority) => {
-    return priority === RequestPriority.URGENT ? 'High' : 'Normal';
+  const formatRequestType = (type: RequestType) => {
+    return type.replace(/_/g, ' ');
   };
 
   const getStatusClass = (status: ApprovalStatus) => {
     switch (status) {
       case ApprovalStatus.APPROVED: return 'approved';
       case ApprovalStatus.REJECTED: return 'rejected';
-      case ApprovalStatus.PENDING_APPROVAL: return 'pending-approval';
-      case ApprovalStatus.COMPLETED: return 'completed';
+      case ApprovalStatus.PENDING: return 'pending';
+      case ApprovalStatus.ADJUSTED: return 'adjusted';
+      case ApprovalStatus.CLOSED: return 'closed';
       default: return 'pending';
     }
   };
@@ -698,69 +903,84 @@ export default function PurchaseApprovalTab({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Department</th>
-                <th>Requester</th>
-                <th>Supplier</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Actions</th>
+                <th>CODE</th>
+                <th>DEPARTMENT</th>
+                <th>TYPE</th>
+                <th>REASON</th>
+                <th>STATUS</th>
+                <th>TOTAL AMOUNT</th>
+                <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {paginatedData.map(request => (
-                <tr key={request.id} onClick={() => openApproveModal(request)} title="Approve">
-                  <td>{request.title}</td>
-                  <td>{formatDepartment(request.department)}</td>
-                  <td>{request.requester_name}</td>
-                  <td>{request.supplier_name}</td>
-                  <td>₱{request.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td>{new Date(request.request_date).toLocaleDateString()}</td>
-                  <td className="table-status">
-                    <span className={`chip ${getStatusClass(request.status)}`}>
-                      {formatStatus(request.status)}
-                    </span>
-                  </td>
+                <tr key={request.id}>
+                  <td>{request.purchase_request_code}</td>
+                  <td>{formatDepartment(request.department_name)}</td>
                   <td>
-                    <span className={`chip ${request.priority === RequestPriority.URGENT ? 'urgent' : 'normal'}`}>
-                      {formatPriority(request.priority)}
+                    <span className={`chip ${request.request_type === RequestType.URGENT || request.request_type === RequestType.EMERGENCY ? 'urgent' : 'normal'}`}>
+                      {request.request_type ? formatRequestType(request.request_type) : 'REGULAR'}
                     </span>
                   </td>
+                  <td title={request.reason}>
+                    {request.reason && request.reason.length > 50 
+                      ? `${request.reason.substring(0, 50)}...` 
+                      : request.reason || 'N/A'}
+                  </td>
+                  <td className="table-status">
+                    <span className={`chip ${getStatusClass(request.purchase_request_status || ApprovalStatus.PENDING)}`}>
+                      {request.purchase_request_status || ApprovalStatus.PENDING}
+                    </span>
+                  </td>
+                  <td>₱{request.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   <td className="actionButtons">
                     <div className="actionButtonsContainer">
                       <button
-                        className="auditBtn"
-                        onClick={() => handleAuditTrail(request)}
-                        title="Audit Trail"
+                        className="viewBtn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleView(request);
+                        }}
+                        title="View"
                       >
-                        <i className="ri-history-line" />
+                        <i className="ri-eye-line" />
                       </button>
-                      <button
-                        className="auditBtn"
-                        onClick={() => handleTrackStatus(request)}
-                        title="Track Status"
-                      >
-                        <i className="ri-route-line" />
-                      </button>
-                      {request.status === ApprovalStatus.PENDING_APPROVAL && (
+                      {request.purchase_request_status === ApprovalStatus.PENDING && (
                         <>
                           <button
                             className="approveBtn"
-                            onClick={() => openApproveModal(request)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openApproveModal(request);
+                            }}
                             title="Approve"
                           >
                             <i className="ri-check-line" />
                           </button>
                           <button
                             className="rejectBtn"
-                            onClick={() => openRejectModal(request)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openRejectModal(request);
+                            }}
                             title="Reject"
                           >
                             <i className="ri-close-line" />
                           </button>
                         </>
+                      )}
+                      {(request.purchase_request_status === ApprovalStatus.APPROVED || 
+                        request.purchase_request_status === ApprovalStatus.ADJUSTED) && (
+                        <button
+                          className="editBtn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleView(request);
+                          }}
+                          title="Edit"
+                        >
+                          <i className="ri-edit-line" />
+                        </button>
                       )}
                     </div>
                   </td>
@@ -786,39 +1006,43 @@ export default function PurchaseApprovalTab({
       )}
 
       {/* Modals */}
-      {showViewModal && selectedRequest && (
-        <ViewPurchaseRequest
-          purchaseRequest={selectedRequest}
-          onClose={closeAllModals}
-        />
-      )}
+      <ModalManager
+        isOpen={showViewModal}
+        onClose={closeAllModals}
+        modalContent={
+          selectedRequest ? (
+            <ViewPurchaseRequest
+              purchaseRequest={selectedRequest}
+              onClose={closeAllModals}
+            />
+          ) : null
+        }
+      />
 
       {showAuditModal && selectedRequest && (
         <AuditTrailPurchaseRequest
-          requestId={selectedRequest.request_id}
-          requestTitle={selectedRequest.title}
+          requestId={selectedRequest.purchase_request_code}
+          requestTitle={selectedRequest.reason}
           onClose={closeAllModals}
         />
       )}
 
       {showTrackModal && selectedRequest && (
         <TrackStatusPurchaseRequest
-          requestId={selectedRequest.request_id}
-          requestTitle={selectedRequest.title}
+          requestId={selectedRequest.purchase_request_code}
+          requestTitle={selectedRequest.reason}
           onClose={closeAllModals}
         />
       )}
 
       {showApproveModal && selectedRequest && (
         <ApprovalModal
-          request={{
-            request_id: selectedRequest.request_id,
-            title: selectedRequest.title,
-            requester_name: selectedRequest.requester_name,
-            total_amount: selectedRequest.total_amount,
-            department: formatDepartment(selectedRequest.department)
+          purchaseRequest={selectedRequest}
+          onApprove={async (updatedRequest, comments) => {
+            // Handle approval logic here
+            console.log('Approved:', updatedRequest, comments);
+            closeAllModals();
           }}
-          onApprove={handleApproveRequest}
           onClose={closeAllModals}
         />
       )}
@@ -826,11 +1050,11 @@ export default function PurchaseApprovalTab({
       {showRejectModal && selectedRequest && (
         <RejectionModal
           request={{
-            request_id: selectedRequest.request_id,
-            title: selectedRequest.title,
-            requester_name: selectedRequest.requester_name,
+            request_id: selectedRequest.purchase_request_code,
+            title: selectedRequest.reason,
+            requester_name: selectedRequest.requestor?.employee_name || 'N/A',
             total_amount: selectedRequest.total_amount,
-            department: formatDepartment(selectedRequest.department)
+            department: formatDepartment(selectedRequest.department_name)
           }}
           onReject={handleRejectRequest}
           onClose={closeAllModals}

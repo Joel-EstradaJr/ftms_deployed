@@ -237,6 +237,127 @@
     margin-top: 32px;
 }
 
+/* ----- PURCHASE REQUEST MODAL SECTIONS ----- */
+.purchase-request-section,
+.purchase-items-section {
+    background-color: var(--table-row-hover-color);
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 8px;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary-text-color);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title i {
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+/* Item cards in expandable sections */
+.item-card {
+    background-color: var(--foreground-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin: 10px 0;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+}
+
+.item-card-header {
+    padding: 12px 16px;
+    background-color: var(--table-header-color);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.item-card-header:hover {
+    background-color: var(--border-color);
+}
+
+.item-card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.item-number {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 14px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: var(--primary-text-color);
+    font-size: 14px;
+}
+
+.item-expand-icon {
+    font-size: 18px;
+    color: var(--secondary-text-color);
+    transition: transform 0.3s ease-in-out;
+}
+
+.item-expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.item-card-body {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.item-detail-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.item-detail-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--secondary-text-color);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* New item badge */
+.new-item-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: var(--warning-chip-bg-color);
+    color: var(--warning-chip-text-color);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Grid layouts for purchase request details */
+.pr-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
 
 /* ----- MODAL FORMS STYLING: INPUT VALIDATION ----- */
 .form-group input.invalid-input,

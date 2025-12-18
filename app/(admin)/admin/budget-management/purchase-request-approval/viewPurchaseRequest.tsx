@@ -1,17 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 //@ts-ignore
 import "../../../../styles/budget-management/addBudgetRequest.css";
 //@ts-ignore
 import "../../../../styles/components/modal.css";
 import { formatDate } from '../../../../utils/formatting';
 import ModalHeader from '../../../../Components/ModalHeader';
-import ItemsTable, { Item } from '../../../../Components/itemTable';
+import type { PurchaseRequestApproval } from '../../../../types/purchaseRequestApproval';
 
 // Types
 interface ViewPurchaseRequestProps {
-  purchaseRequest: any; // The purchase request data from the table
+  purchaseRequest: PurchaseRequestApproval;
   onClose: () => void;
 }
 
@@ -19,279 +19,419 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
   purchaseRequest,
   onClose
 }) => {
-  // Helper function to format status
-  const formatStatus = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Pending Approval";
-      case "approved":
-        return "Approved";
-      case "rejected":
-        return "Rejected";
-      case "completed":
-        return "Completed";
-      case "partially-completed":
-        return "Partially Completed";
-      case "cancelled":
-        return "Cancelled";
-      default:
-        return status;
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleItemExpand = (itemId: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
+    } else {
+      newExpanded.add(itemId);
     }
-  };
-
-  // Helper function to format request type
-  const formatRequestType = (type: string) => {
-    switch (type) {
-      case "normal":
-        return "Normal Request";
-      case "urgent":
-        return "Urgent Request";
-      default:
-        return type;
-    }
-  };
-
-  // Mock form data based on purchase request
-  const formData = {
-    title: purchaseRequest.itemName || 'Purchase Request',
-    description: purchaseRequest.requestPurpose || 'No description provided',
-    department: 'Operations',
-    requester_name: 'Admin User',
-    requester_position: 'Administrator',
-    request_date: '2024-03-22',
-    budget_period: purchaseRequest.requestType || 'normal',
-    total_amount: (purchaseRequest.quantity * purchaseRequest.unitPrice) || 0,
-    start_date: '2024-03-22',
-    end_date: '2024-03-30',
-    created_by: 'Admin User'
-  };
-
-  // Mock items array based on purchase request data
-  const items: Item[] = [
-    {
-      item_name: purchaseRequest.itemName || 'Sample Item',
-      quantity: purchaseRequest.quantity || 1,
-      unit_measure: purchaseRequest.unitMeasure || 'pcs',
-      unit_cost: purchaseRequest.unitPrice || 0,
-      supplier: purchaseRequest.vendor || 'Unknown Supplier',
-      subtotal: (purchaseRequest.quantity * purchaseRequest.unitPrice) || 0,
-      type: 'supply' // Required property for Item interface
-    }
-  ];
-
-  // Mock supporting documents
-  const supportingDocuments = [
-    { name: 'purchase-justification.pdf', size: 245760 },
-    { name: 'vendor-quotation.xlsx', size: 129024 }
-  ];
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    setExpandedItems(newExpanded);
   };
 
   const formatCurrency = (amount: number) => {
     return `₱${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const formatRequestType = (type: string) => {
+    return type.replace(/_/g, ' ');
+  };
+
   return (
     <div className="modalOverlay">
-      <div className="addBudgetRequestModal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+      <div className="addBudgetRequestModal" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', minWidth: '900px' }}>
         <ModalHeader 
-          title="View Purchase Request" 
+          title={`View Purchase Request - ${purchaseRequest.purchase_request_code}`}
           onClose={onClose} 
           showDateTime={true} 
         />
 
-        <div className="modalContent">
-          <div className="formInputs">
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {/* SECTION I: REQUEST INFORMATION */}
+          <div className="modalContent">
+            <div className="sectionHeader">
+              <i className="ri-file-text-line"></i> Section I: Request Information
+            </div>
+            
+            {/* Requestor Information */}
             <div className="formRow">
               <div className="formField formFieldHalf">
-                <label htmlFor="department">Department</label>
-                <div className="viewOnlyField">{formData.department}</div>
-                <span className="autofill-note">Auto-filled based on current user</span>
+                <label>Request Code</label>
+                <div className="viewOnlyField">{purchaseRequest.purchase_request_code}</div>
               </div>
-              
               <div className="formField formFieldHalf">
-                <label htmlFor="requester_name">Requester Name</label>
-                <div className="viewOnlyField">{formData.requester_name}</div>
-                <span className="autofill-note">Auto-filled based on current user</span>
+                <label>Request Status</label>
+                <div className="viewOnlyField">
+                  <span className={`chip ${(purchaseRequest.purchase_request_status || 'PENDING').toLowerCase()}`}>
+                    {purchaseRequest.purchase_request_status || 'PENDING'}
+                  </span>
+                </div>
               </div>
             </div>
 
             <div className="formRow">
               <div className="formField formFieldHalf">
-                <label htmlFor="requester_position">Requester Position</label>
-                <div className="viewOnlyField">{formData.requester_position}</div>
-                <span className="autofill-note">Auto-filled based on current user</span>
+                <label>Requestor Name</label>
+                <div className="viewOnlyField">
+                  {purchaseRequest.requestor?.employee_name || 'N/A'}
+                </div>
               </div>
-              
               <div className="formField formFieldHalf">
-                <label htmlFor="request_date">Date of Request</label>
-                <div className="viewOnlyField">{formatDate(formData.request_date)}</div>
-                <span className="autofill-note">Auto-filled with current date</span>
+                <label>Employee ID</label>
+                <div className="viewOnlyField">
+                  {purchaseRequest.requestor?.employee_id || 'N/A'}
+                </div>
               </div>
             </div>
+
+            <div className="formRow">
+              <div className="formField formFieldHalf">
+                <label>Position</label>
+                <div className="viewOnlyField">
+                  {purchaseRequest.requestor?.position || 'N/A'}
+                </div>
+              </div>
+              <div className="formField formFieldHalf">
+                <label>Department</label>
+                <div className="viewOnlyField">
+                  {purchaseRequest.department_name || purchaseRequest.requestor?.department_name || 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            <div className="formRow">
+              <div className="formField formFieldHalf">
+                <label>Contact Number</label>
+                <div className="viewOnlyField">
+                  {purchaseRequest.requestor?.contact_no || 'N/A'}
+                </div>
+              </div>
+              <div className="formField formFieldHalf">
+                <label>Email Address</label>
+                <div className="viewOnlyField">
+                  {purchaseRequest.requestor?.email_address || 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            {/* Request Details */}
+            <div className="formRow" style={{ marginTop: '20px' }}>
+              <div className="formField formFieldHalf">
+                <label>Request Type</label>
+                <div className="viewOnlyField">
+                  <span className={`chip ${(purchaseRequest.request_type || 'REGULAR').toLowerCase()}`}>
+                    {formatRequestType(purchaseRequest.request_type || 'REGULAR')}
+                  </span>
+                </div>
+              </div>
+              <div className="formField formFieldHalf">
+                <label>Request Date</label>
+                <div className="viewOnlyField">
+                  {formatDate(purchaseRequest.created_at)}
+                </div>
+              </div>
+            </div>
+
+            <div className="formField">
+              <label>Reason for Request</label>
+              <div className="viewOnlyField multiline">{purchaseRequest.reason}</div>
+            </div>
+
+            <div className="formRow">
+              <div className="formField formFieldHalf">
+                <label>Total Amount</label>
+                <div className="viewOnlyField" style={{ fontSize: '1.2em', fontWeight: 'bold', color: '#2563eb' }}>
+                  {formatCurrency(purchaseRequest.total_amount)}
+                </div>
+              </div>
+              <div className="formField formFieldHalf">
+                <label>Total Items</label>
+                <div className="viewOnlyField">
+                  {purchaseRequest.items?.length || 0} item(s)
+                </div>
+              </div>
+            </div>
+
+            {/* Approval Information (if applicable) */}
+            {(purchaseRequest.approved_by || purchaseRequest.rejected_by) && (
+              <>
+                <div className="formRow" style={{ marginTop: '20px' }}>
+                  {purchaseRequest.approved_by && (
+                    <>
+                      <div className="formField formFieldHalf">
+                        <label>Approved By</label>
+                        <div className="viewOnlyField">{purchaseRequest.approved_by}</div>
+                      </div>
+                      <div className="formField formFieldHalf">
+                        <label>Approved Date</label>
+                        <div className="viewOnlyField">
+                          {purchaseRequest.approved_date ? formatDate(purchaseRequest.approved_date) : 'N/A'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {purchaseRequest.rejected_by && (
+                    <>
+                      <div className="formField formFieldHalf">
+                        <label>Rejected By</label>
+                        <div className="viewOnlyField">{purchaseRequest.rejected_by}</div>
+                      </div>
+                      <div className="formField formFieldHalf">
+                        <label>Rejected Date</label>
+                        <div className="viewOnlyField">
+                          {purchaseRequest.rejected_date ? formatDate(purchaseRequest.rejected_date) : 'N/A'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {purchaseRequest.rejection_reason && (
+                  <div className="formField">
+                    <label>Rejection Reason</label>
+                    <div className="viewOnlyField multiline" style={{ color: '#dc2626' }}>
+                      {purchaseRequest.rejection_reason}
+                    </div>
+                  </div>
+                )}
+                {purchaseRequest.finance_remarks && (
+                  <div className="formField">
+                    <label>Finance Remarks</label>
+                    <div className="viewOnlyField multiline" style={{ color: '#16a34a' }}>
+                      {purchaseRequest.finance_remarks}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* SECTION II: ITEMS */}
+          <div className="modalContent">
+            <div className="sectionHeader">
+              <i className="ri-shopping-cart-line"></i> Section II: Requested Items
+            </div>
+            
+            {purchaseRequest.items && purchaseRequest.items.length > 0 ? (
+              <div className="itemsList">
+                {purchaseRequest.items.map((item, index) => {
+                  const itemId = item.purchase_request_item_id || `item-${index}`;
+                  const isExpanded = expandedItems.has(itemId);
+                  const isNewItem = !!item.new_item_name;
+                  
+                  return (
+                    <div key={itemId} className="itemCard" style={{ 
+                      border: '1px solid #e5e7eb', 
+                      borderRadius: '8px', 
+                      padding: '15px', 
+                      marginBottom: '15px',
+                      backgroundColor: '#f9fafb'
+                    }}>
+                      <div 
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          marginBottom: isExpanded ? '15px' : '0'
+                        }}
+                        onClick={() => toggleItemExpand(itemId)}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                              Item #{index + 1}
+                            </span>
+                            {isNewItem && (
+                              <span className="chip" style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                                NEW ITEM
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '5px' }}>
+                            {isNewItem ? item.new_item_name : item.item?.item_name || 'N/A'}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', marginRight: '15px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb' }}>
+                            {formatCurrency(item.total_amount || 0)}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {item.quantity} × {formatCurrency(item.unit_cost || 0)}
+                          </div>
+                        </div>
+                        <i className={isExpanded ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"} 
+                           style={{ fontSize: '24px', color: '#6b7280' }}></i>
+                      </div>
+
+                      {isExpanded && (
+                        <div style={{ 
+                          paddingTop: '15px', 
+                          borderTop: '1px solid #e5e7eb',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '15px'
+                        }}>
+                          {/* Item Details */}
+                          <div>
+                            <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: '#374151' }}>
+                              <i className="ri-information-line"></i> Item Details
+                            </h4>
+                            <div className="formField">
+                              <label>Item Name</label>
+                              <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                {isNewItem ? item.new_item_name : item.item?.item_name || 'N/A'}
+                              </div>
+                            </div>
+                            {!isNewItem && item.item?.item_code && (
+                              <div className="formField">
+                                <label>Item Code</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {item.item.item_code}
+                                </div>
+                              </div>
+                            )}
+                            {!isNewItem && item.item?.description && (
+                              <div className="formField">
+                                <label>Description</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {item.item.description}
+                                </div>
+                              </div>
+                            )}
+                            {!isNewItem && item.item?.category && (
+                              <div className="formField">
+                                <label>Category</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {item.item.category.category_name}
+                                </div>
+                              </div>
+                            )}
+                            {!isNewItem && item.item?.unit && (
+                              <div className="formField">
+                                <label>Unit of Measure</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {item.item.unit.unit_name}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Supplier Details */}
+                          <div>
+                            <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: '#374151' }}>
+                              <i className="ri-building-line"></i> Supplier Details
+                            </h4>
+                            <div className="formField">
+                              <label>Supplier Name</label>
+                              <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                {isNewItem ? item.new_supplier_name : item.supplier?.supplier_name || 'N/A'}
+                              </div>
+                            </div>
+                            {!isNewItem && item.supplier?.supplier_code && (
+                              <div className="formField">
+                                <label>Supplier Code</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {item.supplier.supplier_code}
+                                </div>
+                              </div>
+                            )}
+                            <div className="formField">
+                              <label>Contact Person</label>
+                              <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                {isNewItem ? item.new_supplier_contact_person : item.supplier?.contact_person || 'N/A'}
+                              </div>
+                            </div>
+                            <div className="formField">
+                              <label>Contact Number</label>
+                              <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                {isNewItem ? item.new_supplier_contact : item.supplier?.contact_number || 'N/A'}
+                              </div>
+                            </div>
+                            {(isNewItem ? item.new_supplier_email : item.supplier?.email) && (
+                              <div className="formField">
+                                <label>Email</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {isNewItem ? item.new_supplier_email : item.supplier?.email || 'N/A'}
+                                </div>
+                              </div>
+                            )}
+                            {(isNewItem ? item.new_supplier_address : item.supplier?.address) && (
+                              <div className="formField">
+                                <label>Address</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {isNewItem ? item.new_supplier_address : item.supplier?.address || 'N/A'}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Quantity and Pricing - Full Width */}
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: '#374151' }}>
+                              <i className="ri-money-dollar-circle-line"></i> Quantity & Pricing
+                            </h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                              <div className="formField">
+                                <label>Requested Quantity</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px', fontWeight: 'bold' }}>
+                                  {item.quantity}
+                                </div>
+                              </div>
+                              <div className="formField">
+                                <label>Unit Cost</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px' }}>
+                                  {formatCurrency(item.unit_cost || 0)}
+                                </div>
+                              </div>
+                              <div className="formField">
+                                <label>Total Amount</label>
+                                <div className="viewOnlyField" style={{ fontSize: '13px', fontWeight: 'bold', color: '#2563eb' }}>
+                                  {formatCurrency(item.total_amount || 0)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Adjustment Information (if exists) */}
+                          {(item.adjusted_quantity || item.adjustment_reason) && (
+                            <div style={{ gridColumn: '1 / -1', backgroundColor: '#fef3c7', padding: '10px', borderRadius: '6px' }}>
+                              <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: '#92400e' }}>
+                                <i className="ri-edit-line"></i> Adjustment Information
+                              </h4>
+                              {item.adjusted_quantity && (
+                                <div className="formField">
+                                  <label>Adjusted Quantity</label>
+                                  <div className="viewOnlyField" style={{ fontSize: '13px', fontWeight: 'bold', color: '#92400e' }}>
+                                    {item.adjusted_quantity} (Original: {item.quantity})
+                                  </div>
+                                </div>
+                              )}
+                              {item.adjustment_reason && (
+                                <div className="formField">
+                                  <label>Adjustment Reason</label>
+                                  <div className="viewOnlyField" style={{ fontSize: '13px', color: '#92400e' }}>
+                                    {item.adjustment_reason}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
+                <i className="ri-shopping-cart-line" style={{ fontSize: '48px' }}></i>
+                <p>No items in this purchase request</p>
+              </div>
+            )}
           </div>
         </div>
-
-            {/* Purchase Details Section */}
-          <div className="modalContent">
-            <div className="sectionHeader">Purchase Details</div>
-            
-            <div className="formRow">
-              <div className="formField formFieldHalf">
-                <label htmlFor="budget_period">Request Type</label>
-                <div className="viewOnlyField">
-                  <span className={`chip ${formData.budget_period}`}>
-                    {formatRequestType(formData.budget_period)}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="formField formFieldHalf">
-                <label htmlFor="total_amount">Total Amount</label>
-                <div className="viewOnlyField">{formatCurrency(formData.total_amount)}</div>
-                <span className="autofill-note">Auto-calculated from items below</span>
-              </div>
-            </div>
-
-            <div className="formField">
-              <label htmlFor="title">Purchase Request Title</label>
-              <div className="viewOnlyField">{formData.title}</div>
-            </div>
-
-            <div className="formField">
-              <label htmlFor="description">Request Purpose</label>
-              <div className="viewOnlyField multiline">{formData.description}</div>
-            </div>
-
-            <div className="formRow">
-              <div className="formField formFieldHalf">
-                <label htmlFor="start_date">Request Date</label>
-                <div className="viewOnlyField">{formatDate(formData.start_date)}</div>
-                <span className="autofill-note">Auto-filled with today's date</span>
-              </div>
-              
-              <div className="formField formFieldHalf">
-                <label htmlFor="end_date">Needed By Date</label>
-                <div className="viewOnlyField">{formatDate(formData.end_date)}</div>
-              </div>
-            </div>
-
-            {/* Items Section - Using ItemsTable component in read-only mode */}
-            <ItemsTable
-              items={items}
-              onItemsChange={() => {}} // No-op function since it's read-only
-              showItems={true}
-              onToggleItems={() => {}} // No-op function since it's read-only
-              readOnly={true}
-              title="Purchase Items"
-            />
-          </div>
-
-          <div className="modalContent">
-            {/* Supporting Documents Section */}
-            <div className="sectionHeader">Supporting Documents</div>
-            
-            <div className="documentsViewSection">
-              {supportingDocuments.length > 0 ? (
-                <div className="documentsList">
-                  {supportingDocuments.map((doc, index) => (
-                    <div key={index} className="documentItem">
-                      <div className="documentIcon">
-                        <i className="ri-file-text-line" />
-                      </div>
-                      <div className="documentInfo">
-                        <div className="documentName">{doc.name}</div>
-                        <div className="documentSize">{formatFileSize(doc.size)}</div>
-                      </div>
-                      <button className="downloadBtn" type="button">
-                        <i className="ri-download-line" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="noDocuments">
-                  <i className="ri-file-line" />
-                  <span>No supporting documents uploaded</span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="modalContent">
-            {/* Request Status Section */}
-            <div className="sectionHeader">Request Status</div>
-            
-            <div className="formRow">
-              <div className="formField formFieldHalf">
-                <label htmlFor="current_status">Current Status</label>
-                <div className="viewOnlyField">
-                  <span className={`chip ${purchaseRequest.requestStatus}`}>
-                    {formatStatus(purchaseRequest.requestStatus)}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="formField formFieldHalf">
-                <label htmlFor="created_by">Created By</label>
-                <div className="viewOnlyField">{formData.created_by}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="modalContent">
-            {/* Additional Information */}
-            <div className="sectionHeader">Additional Information</div>
-            
-            <div className="formRow">
-              <div className="formField formFieldHalf">
-                <label>Request ID</label>
-                <div className="viewOnlyField">PR-{String(purchaseRequest.id).padStart(4, '0')}</div>
-              </div>
-              
-              <div className="formField formFieldHalf">
-                <label>Priority Level</label>
-                <div className="viewOnlyField">
-                  <span className={`chip ${formData.budget_period}`}>
-                    {formData.budget_period === 'urgent' ? 'High Priority' : 'Normal Priority'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="modalContent">
-            {/* Vendor Information */}
-            <div className="sectionHeader">Vendor Information</div>
-            
-            <div className="formRow">
-              <div className="formField formFieldHalf">
-                <label>Primary Vendor</label>
-                <div className="viewOnlyField">{purchaseRequest.vendor || 'Not specified'}</div>
-              </div>
-              
-              <div className="formField formFieldHalf">
-                <label>Estimated Delivery</label>
-                <div className="viewOnlyField">2-5 business days</div>
-              </div>
-            </div>
-
-            <div className="formField">
-              <label>Vendor Notes</label>
-              <div className="viewOnlyField multiline">
-                This vendor has been verified and approved for procurement. 
-                Standard delivery terms apply. Quality assurance completed.
-              </div>
-            </div>
-          </div>
-        
-        
 
         <div className="modalButtons">
           <button type="button" className="secondaryButton" onClick={onClose}>
