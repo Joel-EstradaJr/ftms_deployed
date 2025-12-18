@@ -634,14 +634,6 @@ const ChartOfAccountsPage = () => {
               <i className="ri-file-download-line" /> Generate CSV
             </button>
 
-            <button 
-              onClick={openValidateModal} 
-              className="validateBtn"
-              title="Validate account balances"
-            >
-              <i className="ri-checkbox-circle-line" /> Validate
-            </button>
-
             <button onClick={openAddModal} id="addAccount">
               <i className="ri-add-line" /> Add Account
             </button>
