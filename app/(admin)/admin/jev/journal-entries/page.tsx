@@ -89,101 +89,92 @@ export default function JournalEntriesPage() {
   const mockEntries: JournalEntry[] = [
     {
       journal_entry_id: '1',
-      journal_number: 'JE-2024-11-0001',
-      transaction_date: '2024-11-15',
+      code: 'JE-2024-11-0001',
+      date: '2024-11-15',
       posting_date: '2024-11-15',
-      reference_number: 'REV-001',
+      reference: 'REV-001',
       description: 'Revenue collection from Bus 101',
       entry_type: EntryType.AUTO_REVENUE,
-      source_module: 'Revenue',
-      source_id: 'REV-001',
       status: JournalStatus.POSTED,
       total_debit: 50000.00,
       total_credit: 50000.00,
       is_balanced: true,
-      created_at: '2024-11-15T08:30:00',
-      created_by: 'System',
-      posted_at: '2024-11-15T08:30:00',
-      posted_by: 'System',
-      updated_at: '2024-11-15T08:30:00',
       journal_lines: [
         {
           line_id: '1-1',
           journal_entry_id: '1',
           account_id: '1020',
+          account_code: '1020',
+          account_name: 'Cash in Bank - BPI',
           account: mockAccounts.find(a => a.account_id === '1020'),
           line_number: 1,
           description: 'Cash collection from fare revenue',
-          debit_amount: 50000.00,
-          credit_amount: 0
+          debit: 50000.00,
+          credit: 0
         },
         {
           line_id: '1-2',
           journal_entry_id: '1',
           account_id: '4010',
+          account_code: '4010',
+          account_name: 'Fare Revenue',
           account: mockAccounts.find(a => a.account_id === '4010'),
           line_number: 2,
           description: 'Fare revenue - Bus 101',
-          debit_amount: 0,
-          credit_amount: 50000.00
+          debit: 0,
+          credit: 50000.00
         }
       ]
     },
     {
       journal_entry_id: '2',
-      journal_number: 'JE-2024-11-0002',
-      transaction_date: '2024-11-14',
+      code: 'JE-2024-11-0002',
+      date: '2024-11-14',
       description: 'Manual adjustment for fuel expense',
       entry_type: EntryType.MANUAL,
       status: JournalStatus.DRAFT,
       total_debit: 15000.00,
       total_credit: 15000.00,
       is_balanced: true,
-      created_at: '2024-11-14T14:20:00',
-      created_by: 'Admin User',
-      updated_at: '2024-11-14T14:20:00',
       journal_lines: [
         {
           line_id: '2-1',
           journal_entry_id: '2',
           account_id: '5010',
+          account_code: '5010',
+          account_name: 'Fuel Expense',
           account: mockAccounts.find(a => a.account_id === '5010'),
           line_number: 1,
           description: 'Fuel expense adjustment',
-          debit_amount: 15000.00,
-          credit_amount: 0
+          debit: 15000.00,
+          credit: 0
         },
         {
           line_id: '2-2',
           journal_entry_id: '2',
-          account_id: '1040',
-          account: mockAccounts.find(a => a.account_id === '1040'),
+          account_id: '1020',
+          account_code: '1020',
+          account_name: 'Cash in Bank - BPI',
+          account: mockAccounts.find(a => a.account_id === '1020'),
           line_number: 2,
-          description: 'Inventory reduction',
-          debit_amount: 0,
-          credit_amount: 15000.00
+          description: 'Cash payment',
+          debit: 0,
+          credit: 15000.00
         }
       ]
     },
     {
       journal_entry_id: '3',
-      journal_number: 'JE-2024-11-0003',
-      transaction_date: '2024-11-13',
+      code: 'JE-2024-11-0003',
+      date: '2024-11-13',
       posting_date: '2024-11-13',
-      reference_number: 'PAY-100',
-      description: 'Payroll disbursement for October 2024',
+      reference: 'PAY-110',
+      description: 'Monthly payroll processing',
       entry_type: EntryType.AUTO_PAYROLL,
-      source_module: 'Payroll',
-      source_id: 'PAY-100',
       status: JournalStatus.POSTED,
-      total_debit: 120000.00,
-      total_credit: 120000.00,
+      total_debit: 110000.00,
+      total_credit: 110000.00,
       is_balanced: true,
-      created_at: '2024-11-13T10:00:00',
-      created_by: 'System',
-      posted_at: '2024-11-13T10:00:00',
-      posted_by: 'System',
-      updated_at: '2024-11-13T10:00:00',
       journal_lines: [
         {
           line_id: '3-1',
@@ -229,89 +220,89 @@ export default function JournalEntriesPage() {
     },
     {
       journal_entry_id: '4',
-      journal_number: 'JE-2024-11-0004',
-      transaction_date: '2024-11-12',
+      code: 'JE-2024-11-0004',
+      date: '2024-11-12',
       posting_date: '2024-11-12',
-      reference_number: 'EXP-250',
+      reference: 'EXP-250',
       description: 'Fuel and maintenance expense',
       entry_type: EntryType.AUTO_EXPENSE,
-      source_module: 'Expense',
-      source_id: 'EXP-250',
       status: JournalStatus.POSTED,
       total_debit: 32000.00,
       total_credit: 32000.00,
       is_balanced: true,
-      created_at: '2024-11-12T11:15:00',
-      created_by: 'System',
-      posted_at: '2024-11-12T11:15:00',
-      posted_by: 'System',
-      updated_at: '2024-11-12T11:15:00',
       journal_lines: [
         {
           line_id: '4-1',
           journal_entry_id: '4',
           account_id: '5010',
+          account_code: '5010',
+          account_name: 'Fuel Expense',
           account: mockAccounts.find(a => a.account_id === '5010'),
           line_number: 1,
           description: 'Fuel expense',
-          debit_amount: 20000.00,
-          credit_amount: 0
+          debit: 20000.00,
+          credit: 0
         },
         {
           line_id: '4-2',
           journal_entry_id: '4',
           account_id: '5020',
+          account_code: '5020',
+          account_name: 'Maintenance Expense',
           account: mockAccounts.find(a => a.account_id === '5020'),
           line_number: 2,
           description: 'Maintenance and repairs',
-          debit_amount: 12000.00,
-          credit_amount: 0
+          debit: 12000.00,
+          credit: 0
         },
         {
           line_id: '4-3',
           journal_entry_id: '4',
           account_id: '2010',
+          account_code: '2010',
+          account_name: 'Accounts Payable',
           account: mockAccounts.find(a => a.account_id === '2010'),
           line_number: 3,
           description: 'Accounts payable',
-          debit_amount: 0,
-          credit_amount: 32000.00
+          debit: 0,
+          credit: 32000.00
         }
       ]
     },
     {
       journal_entry_id: '5',
-      journal_number: 'JE-2024-11-0005',
-      transaction_date: '2024-11-10',
+      code: 'JE-2024-11-0005',
+      date: '2024-11-10',
       description: 'Year-end closing adjustment',
       entry_type: EntryType.CLOSING,
       status: JournalStatus.DRAFT,
       total_debit: 250000.00,
       total_credit: 250000.00,
       is_balanced: true,
-      created_at: '2024-11-10T16:45:00',
-      created_by: 'Finance Manager',
-      updated_at: '2024-11-10T16:45:00',
       journal_lines: [
         {
           line_id: '5-1',
           journal_entry_id: '5',
           account_id: '4010',
+          account_code: '4010',
+          account_name: 'Fare Revenue',
           account: mockAccounts.find(a => a.account_id === '4010'),
           line_number: 1,
           description: 'Close fare revenue to retained earnings',
-          debit_amount: 250000.00,
-          credit_amount: 0
+          debit: 250000.00,
+          credit: 0
         },
         {
           line_id: '5-2',
           journal_entry_id: '5',
           account_id: '3020',
+          account_code: '3020',
+          account_name: 'Retained Earnings',
           account: mockAccounts.find(a => a.account_id === '3020'),
           line_number: 2,
           description: 'Transfer to retained earnings',
-          debit_amount: 0,
-          credit_amount: 250000.00
+          debit: 0,
+          credit: 250000.00
         }
       ]
     }
@@ -354,18 +345,18 @@ export default function JournalEntriesPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(entry =>
-        entry.journal_number.toLowerCase().includes(query) ||
+        entry.code.toLowerCase().includes(query) ||
         entry.description.toLowerCase().includes(query) ||
-        entry.reference_number?.toLowerCase().includes(query)
+        entry.reference?.toLowerCase().includes(query)
       );
     }
 
     // Date range filter
     if (dateFrom) {
-      filtered = filtered.filter(entry => entry.transaction_date >= dateFrom);
+      filtered = filtered.filter(entry => entry.date >= dateFrom);
     }
     if (dateTo) {
-      filtered = filtered.filter(entry => entry.transaction_date <= dateTo);
+      filtered = filtered.filter(entry => entry.date <= dateTo);
     }
 
     // Entry type filter
@@ -657,11 +648,12 @@ export default function JournalEntriesPage() {
           <table>
             <thead>
               <tr>
-                <th>Journal Number</th>
+                <th>JE Code</th>
                 <th>Date</th>
+                <th>Reference</th>
                 <th>Description</th>
-                <th style={{ width: '150px' }}>Debit</th>
-                <th style={{ width: '150px' }}>Credit</th>
+                <th style={{ width: '200px' }}>Total Debit</th>
+                <th style={{ width: '200px' }}>Total Credit</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -670,9 +662,14 @@ export default function JournalEntriesPage() {
               {paginatedEntries.length > 0 ? (
                 paginatedEntries.map((entry) => (
                   <tr key={entry.journal_entry_id}>
-                    <td><strong>{entry.journal_number}</strong></td>
-                    <td>{formatDate(entry.transaction_date)}</td>
-                    <td>{entry.description}</td>
+                    <td><strong>{entry.code}</strong></td>
+                    <td>{formatDate(entry.date)}</td>
+                    <td>{entry.reference || '-'}</td>
+                    <td>
+                      <div style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={entry.description}>
+                        {entry.description}
+                      </div>
+                    </td>
                     <td>{formatMoney(entry.total_debit)}</td>
                     <td>{formatMoney(entry.total_credit)}</td>
                     <td>

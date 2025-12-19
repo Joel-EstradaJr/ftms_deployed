@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { showError, showConfirmation } from '@/app/utils/Alerts';
-import { ChartOfAccount, EntryType, JournalEntryFormData, JournalEntryLine } from '@/app/types/jev';
+import { ChartOfAccount, EntryType, JournalStatus, JournalEntryFormData, JournalEntryLine } from '@/app/types/jev';
 import JournalLinesTable, { JournalLine as JLTableLine } from '@/app/Components/JournalLinesTable';
 import '@/app/styles/components/forms.css';
 import '@/app/styles/JEV/journal-modals.css';
@@ -19,34 +19,33 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
   accounts,
 }) => {
   const [formData, setFormData] = useState<JournalEntryFormData>({
-    transaction_date: new Date().toISOString().split('T')[0],
-    reference_number: '',
+    date: new Date().toISOString().split('T')[0],
+    reference: '',
     description: '',
     entry_type: EntryType.MANUAL,
-    source_module: '',
-    source_id: '',
+    status: JournalStatus.DRAFT,
     journal_lines: [
-      { account_id: '', line_number: 1, description: '', debit_amount: 0, credit_amount: 0 },
-      { account_id: '', line_number: 2, description: '', debit_amount: 0, credit_amount: 0 },
+      { account_id: '', line_number: 1, description: '', debit: 0, credit: 0 },
+      { account_id: '', line_number: 2, description: '', debit: 0, credit: 0 },
     ],
   });
 
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<{
-    transaction_date?: string;
+    date?: string;
     description?: string;
     balance?: string;
     lines: { [lineIndex: number]: { 
       account_id?: string; 
       line_description?: string; 
-      debit_amount?: string; 
-      credit_amount?: string; 
+      debit?: string; 
+      credit?: string; 
     }};
   }>({ lines: {} });
 
   // Calculate totals
-  const totalDebit = formData.journal_lines.reduce((sum, line) => sum + (line.debit_amount || 0), 0);
-  const totalCredit = formData.journal_lines.reduce((sum, line) => sum + (line.credit_amount || 0), 0);
+  const totalDebit = formData.journal_lines.reduce((sum, line) => sum + (line.debit || 0), 0);
+  const totalCredit = formData.journal_lines.reduce((sum, line) => sum + (line.credit || 0), 0);
   const difference = Math.abs(totalDebit - totalCredit);
   const isBalanced = difference < 0.01 && totalDebit > 0;
 
@@ -54,8 +53,8 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
   const tableLines: JLTableLine[] = formData.journal_lines.map((line) => ({
     account_id: line.account_id,
     line_description: line.description || '',
-    debit_amount: line.debit_amount || 0,
-    credit_amount: line.credit_amount || 0,
+    debit_amount: line.debit || 0,
+    credit_amount: line.credit || 0,
   }));
 
   // Map accounts to JournalLinesTable format
@@ -72,8 +71,8 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
 
   // Validation helpers
   const validateField = (field: string, value: any): string | undefined => {
-    if (field === 'transaction_date' && !value) {
-      return 'Transaction date is required';
+    if (field === 'date' && !value) {
+      return 'Date is required';
     }
     if (field === 'description' && !value?.trim()) {
       return 'Description is required';
@@ -93,7 +92,7 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
     if (field === 'line_description' && line.line_description.length > 200) {
       return 'Description cannot exceed 200 characters';
     }
-    if ((field === 'debit_amount' || field === 'credit_amount') && 
+    if ((field === 'debit' || field === 'credit') && 
         line.debit_amount === 0 && line.credit_amount === 0) {
       return 'Either debit or credit amount is required';
     }
@@ -104,7 +103,7 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
     setFormData({ ...formData, [field]: value });
     
     // Clear error for this field
-    if (field === 'transaction_date' || field === 'description') {
+    if (field === 'date' || field === 'description') {
       setErrors({ ...errors, [field]: undefined });
     }
   };
@@ -112,17 +111,30 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
   const handleInputBlur = (field: string) => {
     setTouchedFields(new Set(touchedFields).add(field));
     
-    const error = validateField(field, formData[field as keyof JournalEntryFormData]);
-    if (error) {
-      setErrors({ ...errors, [field]: error });
+    // Clear error for this field
+    if (field === 'date' || field === 'description') {
+      const error = validateField(field, formData[field as keyof JournalEntryFormData]);
+      if (error) {
+        setErrors({ ...errors, [field]: error });
+      }
     }
   };
 
   const handleLineChange = (index: number, field: string, value: string | number | null) => {
     const updatedLines = [...formData.journal_lines];
+    
+    // Map table field names to formData field names
+    const fieldMap: { [key: string]: string } = {
+      'debit_amount': 'debit',
+      'credit_amount': 'credit',
+      'line_description': 'description',
+    };
+    
+    const actualField = fieldMap[field] || field;
+    
     updatedLines[index] = { 
       ...updatedLines[index], 
-      [field]: value 
+      [actualField]: value 
     };
     setFormData({ ...formData, journal_lines: updatedLines });
 
@@ -156,8 +168,8 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
       account_id: '',
       line_number: formData.journal_lines.length + 1,
       description: '',
-      debit_amount: 0,
-      credit_amount: 0,
+      debit: 0,
+      credit: 0,
     };
     setFormData({ ...formData, journal_lines: [...formData.journal_lines, newLine] });
   };
@@ -185,12 +197,12 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
   const validate = (): boolean => {
     // Mark all fields as touched
     const allFields = new Set([
-      'transaction_date',
+      'date',
       'description',
       ...formData.journal_lines.flatMap((_, idx) => [
         `line_${idx}_account_id`,
-        `line_${idx}_debit_amount`,
-        `line_${idx}_credit_amount`,
+        `line_${idx}_debit`,
+        `line_${idx}_credit`,
       ]),
     ]);
     setTouchedFields(allFields);
@@ -198,8 +210,8 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
     const newErrors: typeof errors = { lines: {} };
 
     // Validate header fields
-    const dateError = validateField('transaction_date', formData.transaction_date);
-    if (dateError) newErrors.transaction_date = dateError;
+    const dateError = validateField('date', formData.date);
+    if (dateError) newErrors.date = dateError;
 
     const descError = validateField('description', formData.description);
     if (descError) newErrors.description = descError;
@@ -212,12 +224,12 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
         newErrors.lines[index].account_id = 'Account is required';
       }
       
-      const debitAmt = line.debit_amount || 0;
-      const creditAmt = line.credit_amount || 0;
+      const debitAmt = line.debit || 0;
+      const creditAmt = line.credit || 0;
       
       if (debitAmt === 0 && creditAmt === 0) {
         if (!newErrors.lines[index]) newErrors.lines[index] = {};
-        newErrors.lines[index].debit_amount = 'Either debit or credit is required';
+        newErrors.lines[index].debit = 'Either debit or credit is required';
       } else {
         hasValidLine = true;
       }
@@ -234,7 +246,7 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
 
     setErrors(newErrors);
     return (
-      !newErrors.transaction_date &&
+      !newErrors.date &&
       !newErrors.description &&
       !newErrors.balance &&
       Object.keys(newErrors.lines).length === 0
@@ -263,7 +275,7 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
 
   const handleCancel = async () => {
     const hasData = formData.description || formData.journal_lines.some(
-      line => line.account_id || line.debit_amount || line.credit_amount
+      line => line.account_id || line.debit || line.credit
     );
 
     if (hasData) {
@@ -294,32 +306,59 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="transaction_date">
-                Transaction Date <span className="required">*</span>
+              <label htmlFor="je_code">
+                JE Code
               </label>
               <input
-                type="date"
-                id="transaction_date"
-                value={formData.transaction_date}
-                onChange={(e) => handleInputChange('transaction_date', e.target.value)}
-                onBlur={() => handleInputBlur('transaction_date')}
-                className={errors.transaction_date && touchedFields.has('transaction_date') ? 'input-error' : ''}
-                max={new Date().toISOString().split('T')[0]}
+                type="text"
+                id="je_code"
+                value="Auto-generated"
+                disabled
+                className="disabled-input"
               />
-              {errors.transaction_date && touchedFields.has('transaction_date') && (
-                <span className="error-message">{errors.transaction_date}</span>
-              )}
+              <small className="field-note">Will be auto-generated upon saving</small>
             </div>
 
             <div className="form-group">
-              <label htmlFor="reference_number">Reference Number</label>
+              <label htmlFor="date">
+                Date <span className="requiredTags">*</span>
+              </label>
+              <input
+                type="date"
+                id="date"
+                value={formData.date}
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                onBlur={() => handleInputBlur('date')}
+                className={errors.date && touchedFields.has('date') ? 'input-error' : ''}
+                max={new Date().toISOString().split('T')[0]}
+              />
+              {errors.date && touchedFields.has('date') && (
+                <span className="error-message">{errors.date}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="reference">Reference</label>
               <input
                 type="text"
-                id="reference_number"
-                value={formData.reference_number}
-                onChange={(e) => handleInputChange('reference_number', e.target.value)}
+                id="reference"
+                value={formData.reference}
+                onChange={(e) => handleInputChange('reference', e.target.value)}
                 placeholder="Optional reference"
                 maxLength={50}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="entry_type">Entry Type</label>
+              <input
+                type="text"
+                id="entry_type"
+                value={formData.entry_type}
+                disabled
+                className="disabled-input"
               />
             </div>
           </div>
@@ -346,8 +385,8 @@ const AddJournalEntryModal: React.FC<AddJournalEntryModalProps> = ({
           <h3 className="details-title">Remarks</h3>
           <div className="form-group">
             <label htmlFor="description">
-              Description <span className="required">*</span>
-              <span className="char-counter">{formData.description.length}/500</span>
+              Description <span className="requiredTags">*</span>
+              <span className="char-counter">  {formData.description.length}/500</span>
             </label>
             <textarea
               id="description"

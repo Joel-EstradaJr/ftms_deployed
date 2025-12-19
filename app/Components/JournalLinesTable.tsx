@@ -82,6 +82,13 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
     return account ? `${account.account_code} - ${account.account_name}` : '—';
   };
 
+  // Get account normal balance
+  const getAccountNormalBalance = (accountId: string | null): 'DEBIT' | 'CREDIT' | null => {
+    if (!accountId) return null;
+    const account = accounts.find((acc) => acc.account_id === accountId);
+    return account?.normal_balance || null;
+  };
+
   // Handle debit input change
   const handleDebitChange = (index: number, value: string) => {
     const numValue = value === '' ? 0 : parseFloat(value);
@@ -164,6 +171,7 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
                           onChange={(e) => handleDebitChange(index, e.target.value)}
                           onBlur={() => onBlur(index, 'debit_amount')}
                           placeholder="0.00"
+                          disabled={line.credit_amount > 0 || getAccountNormalBalance(line.account_id) === 'CREDIT'}
                         />
                         {errors[index]?.debit_amount && (
                           <div className="error-message">{errors[index].debit_amount}</div>
@@ -184,6 +192,7 @@ const JournalLinesTable: React.FC<JournalLinesTableProps> = ({
                           onChange={(e) => handleCreditChange(index, e.target.value)}
                           onBlur={() => onBlur(index, 'credit_amount')}
                           placeholder="0.00"
+                          disabled={line.debit_amount > 0 || getAccountNormalBalance(line.account_id) === 'DEBIT'}
                         />
                         {errors[index]?.credit_amount && (
                           <div className="error-message">{errors[index].credit_amount}</div>

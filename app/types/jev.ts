@@ -95,37 +95,45 @@ export interface JournalEntryLine {
   line_id?: string;
   journal_entry_id?: string;
   account_id: string;
+  account_code?: string;
+  account_name?: string;
   account?: ChartOfAccount;
   line_number: number;
   description?: string;
+  debit?: number;
+  credit?: number;
+  // Legacy field names for backward compatibility
   debit_amount?: number;
   credit_amount?: number;
-  department?: string;
-  responsibility_center?: string;
 }
 
 export interface JournalEntry {
   journal_entry_id: string;
-  journal_number: string;
-  transaction_date: string;
+  code: string; // DB: journal_entry.code (was journal_number)
+  date: string; // DB: journal_entry.date (was transaction_date)
   posting_date?: string;
+  reference?: string; // DB: journal_entry.reference (was reference_number)
+  description: string; // DB: journal_entry.description
+  entry_type: EntryType; // DB: journal_entry.entry_type
+  status: JournalStatus; // DB: journal_entry.status
+  total_debit: number; // DB: journal_entry.total_debit
+  total_credit: number; // DB: journal_entry.total_credit
+  reversal_of_code?: string; // DB: reversal_of_code - for reversal entries
+  is_balanced: boolean;
+  // Legacy fields for backward compatibility
+  journal_number?: string;
+  transaction_date?: string;
   reference_number?: string;
-  description: string;
-  entry_type: EntryType;
   source_module?: string;
   source_id?: string;
-  status: JournalStatus;
-  total_debit: number;
-  total_credit: number;
-  is_balanced: boolean;
   reversed_by_id?: string;
   reversed_entry?: JournalEntry;
   reverses_entry?: JournalEntry[];
-  created_at: string;
-  created_by: string;
+  created_at?: string;
+  created_by?: string;
   posted_at?: string;
   posted_by?: string;
-  updated_at: string;
+  updated_at?: string;
   updated_by?: string;
   attachments?: string[];
   journal_lines: JournalEntryLine[];
@@ -150,13 +158,19 @@ export interface AccountFormData {
 }
 
 export interface JournalEntryFormData {
-  transaction_date: string;
+  code?: string; // DB: journal_entry.code (auto-generated)
+  date: string; // DB: journal_entry.date
+  reference?: string; // DB: journal_entry.reference
+  description: string; // DB: journal_entry.description
+  entry_type: EntryType; // DB: journal_entry.entry_type
+  status?: JournalStatus; // DB: journal_entry.status
+  reversal_of_code?: string; // DB: reversal_of_code
+  journal_lines: JournalEntryLine[];
+  // Legacy fields for backward compatibility
+  transaction_date?: string;
   reference_number?: string;
-  description: string;
-  entry_type: EntryType;
   source_module?: string;
   source_id?: string;
-  journal_lines: JournalEntryLine[];
 }
 
 // Validation Types
