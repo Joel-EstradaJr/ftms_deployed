@@ -667,15 +667,7 @@ const ChartOfAccountsPage = () => {
 
                       {/* Account Name with hierarchy indicator */}
                       <td className="account-name">
-                        {account.parent_account_id && (
-                          <span className="child-indicator">└─ </span>
-                        )}
                         {account.account_name}
-                        {account.parent_account_name && (
-                          <div className="parent-account">
-                            Parent: {account.parent_account_code} - {account.parent_account_name}
-                          </div>
-                        )}
                       </td>
 
                       {/* Account Type */}
