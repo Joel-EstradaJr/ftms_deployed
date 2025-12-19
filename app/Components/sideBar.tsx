@@ -48,6 +48,7 @@ const Sidebar: React.FC = () => {
     "/jev/journal-entries": "journal-entries",
     "/records-reports/JEV": "JEV-records",
     "/asset-management": "asset-management",
+    "/admin/disposal-approval": "disposal-approval",
   };
 
   // Function to normalize pathname for comparison (remove role prefix)
@@ -74,7 +75,7 @@ const Sidebar: React.FC = () => {
         setOpenSubMenu("loan-management");
       } else if (["chart-of-accounts", "journal-entries"].includes(staticMatch)) {
         setOpenSubMenu("jev-management");
-      } else if (["JEV-records", "asset-management"].includes(staticMatch)) {
+      } else if (["JEV-records", "asset-management", "disposal-approval"].includes(staticMatch)) {
         setOpenSubMenu("records-reports");
       } else if (["tripRevenue", "busRental", "otherRevenue"].includes(staticMatch)) {
         setOpenSubMenu("revenue-management");
@@ -287,14 +288,13 @@ const Sidebar: React.FC = () => {
             <span>Financial Reports</span>
           </Link>
 
-
-
+        
           {/* Records & Reports - Admin only */}
           {userRole === 'admin' && (
             <>
               <div
                 className={`nav-item module ${
-                  ["journal-entries","chart-of-accounts", "asset-management"].includes(activeItem!) ? "active" : ""
+                  ["journal-entries","chart-of-accounts", "asset-management", "disposal-approval"].includes(activeItem!) ? "active" : ""
                 }`}
                 onClick={() => toggleSubMenu("records-reports")}
               >
@@ -331,6 +331,14 @@ const Sidebar: React.FC = () => {
                     onClick={() => setActiveItem("asset-management")}
                   >
                     Asset Management
+                  </Link>
+
+                  <Link
+                    href={getUrl("/disposal-approval")}
+                    className={`sub-item ${activeItem === "disposal-approval" ? "active" : ""}`}
+                    onClick={() => setActiveItem("disposal-approval")}
+                  >
+                    Disposal Approval
                   </Link>
                 </div>
               )}
