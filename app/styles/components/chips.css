@@ -94,11 +94,13 @@
 }
 
 /* ============================================================
-   NEUTRAL - Gray (Closed, Completed, Expired)
+   NEUTRAL - Gray (Closed, Completed, Expired, Disposed, Fully Depreciated)
    ============================================================ */
 .chip.Closed,
 .chip.closed,
-.chip.expired {
+.chip.expired,
+.chip.disposed,
+.chip.fully-depreciated {
     background-color: #F5F5F5;
     color: #616161;
 }

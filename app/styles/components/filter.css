@@ -12,16 +12,16 @@
     align-items: center;
     gap: 8px;
     border-radius: 8px;
-    background-color: var(--table-row-hover-color);
-    border: 1px solid var(--border-color);
-    color: var(--secondary-text-color);
+    background-color: var(--primary-color);
+    border: none;
+    color: var(--foreground-color);
     font-size: 14px;
     transition: all 0.3s ease-in-out;
     cursor: pointer;
 }
 
 .filter-btn:hover {
-    background-color: var(--table-row-color);
+    background-color: var(--primary-hover-color);
 }
 
 

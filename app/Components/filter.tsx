@@ -8,7 +8,7 @@ export interface FilterOption {
 }
 
 // Types of filter fields we support
-export type FilterFieldType = 'dateRange' | 'checkbox' | 'radio';
+export type FilterFieldType = 'dateRange' | 'numberRange' | 'checkbox' | 'radio';
 
 // Definition for a single filter section
 export interface FilterSection {
@@ -50,6 +50,7 @@ export default function FilterDropdown({
                 // Set appropriate default based on filter type
                 switch (section.type) {
                     case 'dateRange':
+                    case 'numberRange':
                         defaults[section.id] = { from: '', to: '' };
                         break;
                     case 'checkbox':
@@ -156,6 +157,34 @@ export default function FilterDropdown({
                                 value={filterValues[section.id]?.to || ''}
                                 onChange={(e) => handleDateRangeChange(section.id, "to", e.target.value)}
                                 placeholder={section.placeholder || "mm/dd/yyyy"}
+                            />
+                        </div>
+                    </div>
+                );
+
+            case 'numberRange':
+                return (
+                    <div className="date-range-inputs">
+                        <div className="date-field">
+                            <label>From:</label>
+                            <input
+                                type="number"
+                                value={filterValues[section.id]?.from || ''}
+                                onChange={(e) => handleDateRangeChange(section.id, "from", e.target.value)}
+                                placeholder={section.placeholder || "Minimum"}
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                        <div className="date-field">
+                            <label>To:</label>
+                            <input
+                                type="number"
+                                value={filterValues[section.id]?.to || ''}
+                                onChange={(e) => handleDateRangeChange(section.id, "to", e.target.value)}
+                                placeholder={section.placeholder || "Maximum"}
+                                step="0.01"
+                                min="0"
                             />
                         </div>
                     </div>

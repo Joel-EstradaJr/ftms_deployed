@@ -179,12 +179,14 @@ td.actionButtons {
 /* View, Release, Pay buttons (Success/Green) */
 .releaseBtn,
 .viewBtn,
-.payBtn {
+.payBtn,
+.selectBtn {
   background-color: var(--success-color) !important;
 }
 .releaseBtn:hover,
 .viewBtn:hover,
-.payBtn:hover {
+.payBtn:hover,
+.selectBtn {
   background-color: var(--success-hover-color) !important;
 }
 
