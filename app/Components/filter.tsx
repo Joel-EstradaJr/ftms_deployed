@@ -66,6 +66,11 @@ export default function FilterDropdown({
 
     const [filterValues, setFilterValues] = useState<Record<string, any>>(getInitialFilterValues);
 
+    // Sync filterValues when initialValues prop changes
+    useEffect(() => {
+        setFilterValues(getInitialFilterValues());
+    }, [initialValues]);
+
     // Handle clicks outside the dropdown to close it
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -124,9 +129,32 @@ export default function FilterDropdown({
         setIsOpen(false);
     };
 
-    // Clear all filters
+    // Clear all filters - reset to section defaults, NOT initialValues
     const handleClearAll = () => {
-        setFilterValues(getInitialFilterValues());
+        const clearedValues: Record<string, any> = {};
+        
+        sections.forEach(section => {
+            if (section.defaultValue !== undefined) {
+                clearedValues[section.id] = section.defaultValue;
+            } else {
+                // Set appropriate default based on filter type
+                switch (section.type) {
+                    case 'dateRange':
+                    case 'numberRange':
+                        clearedValues[section.id] = { from: '', to: '' };
+                        break;
+                    case 'checkbox':
+                        clearedValues[section.id] = [];
+                        break;
+                    case 'radio':
+                        clearedValues[section.id] = '';
+                        break;
+                }
+            }
+        });
+        
+        setFilterValues(clearedValues);
+        onApply(clearedValues);
     };
 
     // Check if a checkbox option is selected

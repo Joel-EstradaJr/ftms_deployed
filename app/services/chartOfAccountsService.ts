@@ -71,19 +71,70 @@ function mapApiResponseToChartOfAccount(apiAccount: ChartOfAccountApiResponse): 
 }
 
 /**
- * Fetch all chart of accounts from the backend
+ * Query parameters for fetching chart of accounts
  */
-export async function fetchChartOfAccounts(): Promise<ChartOfAccount[]> {
+export interface ChartOfAccountsQueryParams {
+  includeArchived?: boolean;
+  accountTypeId?: number;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Backend pagination response
+ */
+export interface PaginationResponse {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/**
+ * Fetch all chart of accounts from the backend with filtering and pagination
+ */
+export async function fetchChartOfAccounts(
+  params?: ChartOfAccountsQueryParams
+): Promise<{
+  data: ChartOfAccount[];
+  pagination: PaginationResponse;
+}> {
   try {
+    // Build query string from parameters
+    const queryParams = new URLSearchParams();
+    
+    if (params?.includeArchived !== undefined) {
+      queryParams.append('includeArchived', String(params.includeArchived));
+    }
+    if (params?.accountTypeId !== undefined) {
+      queryParams.append('accountTypeId', String(params.accountTypeId));
+    }
+    if (params?.search) {
+      queryParams.append('search', params.search);
+    }
+    if (params?.page !== undefined) {
+      queryParams.append('page', String(params.page));
+    }
+    if (params?.limit !== undefined) {
+      queryParams.append('limit', String(params.limit));
+    }
+
+    const queryString = queryParams.toString();
+    const url = `/api/v1/admin/chart-of-accounts${queryString ? `?${queryString}` : ''}`;
+
     const response = await api.get<{
       success: boolean;
       data: ChartOfAccountApiResponse[];
-      pagination?: any;
+      pagination: PaginationResponse;
       message?: string;
-    }>('/api/v1/admin/chart-of-accounts');
+    }>(url);
     
     // Map the API response to frontend type
-    return response.data.map(mapApiResponseToChartOfAccount);
+    return {
+      data: response.data.map(mapApiResponseToChartOfAccount),
+      pagination: response.pagination,
+    };
   } catch (error) {
     if (error instanceof ApiError) {
       console.error('API Error fetching chart of accounts:', error.message);
