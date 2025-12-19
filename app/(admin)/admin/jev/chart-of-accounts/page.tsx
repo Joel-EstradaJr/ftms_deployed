@@ -294,7 +294,108 @@ const ChartOfAccountsPage = () => {
   };
 
   const handleExport = async () => {
-    await showSuccess('Chart of Accounts exported successfully', 'Success');
+    try {
+      // Fetch ALL records matching current filters (no pagination)
+      const params: ChartOfAccountsQueryParams = {
+        page: 1,
+        limit: 10000, // High limit to get all records
+        includeArchived: statusFilter === 'archived' || statusFilter === 'all',
+      };
+
+      // Add search parameter if present
+      if (debouncedSearch && debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const result = await fetchChartOfAccounts(params);
+      
+      // Apply frontend filters (same as display logic)
+      let exportData = result.data;
+      
+      // Apply account type filter
+      if (accountTypeFilters && accountTypeFilters.length > 0) {
+        exportData = exportData.filter(acc => 
+          accountTypeFilters.includes(acc.account_type)
+        );
+      }
+      
+      // Apply status filter
+      if (statusFilter === 'active') {
+        exportData = exportData.filter(acc => acc.is_active === true);
+      } else if (statusFilter === 'archived') {
+        exportData = exportData.filter(acc => acc.is_active === false);
+      }
+
+      if (exportData.length === 0) {
+        await showError('No records to export', 'Export Failed');
+        return;
+      }
+
+      // Generate CSV content
+      const headers = ['No.', 'Account Code', 'Account Name', 'Account Type', 'Normal Balance', 'Description', 'Status'];
+      const csvRows = [headers.join(',')];
+
+      exportData.forEach((account, index) => {
+        const row = [
+          (index + 1).toString(),
+          `"${account.account_code}"`,
+          `"${account.account_name}"`,
+          `"${account.account_type}"`,
+          `"${getNormalBalance(account.account_type)}"`,
+          `"${account.description?.replace(/"/g, '""') || '-'}"`, // Escape quotes in description
+          `"${account.is_active ? 'Active' : 'Archived'}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+
+      // Generate filename with filter information
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      let filenameParts = ['Accounts'];
+      
+      // Add status to filename if not showing all
+      if (statusFilter !== 'all') {
+        filenameParts.push(statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1));
+      }
+      
+      // Add account types to filename if filtered
+      if (accountTypeFilters.length > 0 && accountTypeFilters.length < 4) {
+        const types = accountTypeFilters.map(t => 
+          t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
+        ).join('-');
+        filenameParts.push(types);
+      }
+      
+      // Add search term if present (sanitized)
+      if (debouncedSearch && debouncedSearch.trim()) {
+        const sanitizedSearch = debouncedSearch.trim().replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+        if (sanitizedSearch) {
+          filenameParts.push(sanitizedSearch);
+        }
+      }
+      
+      filenameParts.push(today);
+      const filename = filenameParts.join('_') + '.csv';
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      await showSuccess(`Exported ${exportData.length} record(s) to ${filename}`, 'Export Successful');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      await showError('Failed to export data', 'Export Failed');
+    }
   };
 
   const handleArchive = async (account: ChartOfAccount) => {
