@@ -15,6 +15,7 @@ import { PayrollBatch, PayrollBatchFormData } from './types';
 import RecordPayrollBatch from './recordPayrollBatch';
 import ViewPayrollBatch from './viewPayrollBatch';
 import ModalManager from '../../../../Components/modalManager';
+import ExportButton from '../../../../Components/ExportButton';
 
 const PayrollPage = () => {
   // State for payroll batches
@@ -182,6 +183,30 @@ const PayrollPage = () => {
       defaultValue: []
     },
     {
+      id: 'periodStart',
+      title: 'Period Start',
+      type: 'date',
+      defaultValue: ''
+    },
+    {
+      id: 'periodEnd',
+      title: 'Period End',
+      type: 'date',
+      defaultValue: ''
+    },
+    {
+      id: 'totalEmployees',
+      title: 'Total Employees Range',
+      type: 'numberRange',
+      defaultValue: { min: '', max: '' }
+    },
+    {
+      id: 'totalNet',
+      title: 'Total Net Range',
+      type: 'numberRange',
+      defaultValue: { min: '', max: '' }
+    },
+    {
       id: 'dateRange',
       title: 'Period Date Range',
       type: 'dateRange',
@@ -197,11 +222,13 @@ const PayrollPage = () => {
 
   // Filter logic for client-side filtering
   const filteredData = batches.filter(batch => {
-    // Search filter
+    // Search filter - enhanced to include numeric fields
     const matchesSearch = !search || (
       batch.batchCode.toLowerCase().includes(search.toLowerCase()) ||
       formatDate(batch.periodStart).toLowerCase().includes(search.toLowerCase()) ||
-      formatDate(batch.periodEnd).toLowerCase().includes(search.toLowerCase())
+      formatDate(batch.periodEnd).toLowerCase().includes(search.toLowerCase()) ||
+      batch.totalEmployees.toString().includes(search) ||
+      batch.totalNet.toString().includes(search)
     );
 
     // Status filter (from FilterDropdown)
@@ -209,7 +236,31 @@ const PayrollPage = () => {
     const matchesStatus = statusValues.length === 0 || 
       statusValues.includes(batch.status.toLowerCase());
 
-    // Date range filter
+    // Individual Period Start filter
+    const periodStartFilter = filterValues.periodStart;
+    const matchesPeriodStart = !periodStartFilter || 
+      new Date(batch.periodStart) >= new Date(periodStartFilter);
+
+    // Individual Period End filter
+    const periodEndFilter = filterValues.periodEnd;
+    const matchesPeriodEnd = !periodEndFilter || 
+      new Date(batch.periodEnd) <= new Date(periodEndFilter);
+
+    // Total Employees range filter
+    const totalEmployeesRange = filterValues.totalEmployees || { min: '', max: '' };
+    const matchesTotalEmployees = (
+      (!totalEmployeesRange.min || batch.totalEmployees >= Number(totalEmployeesRange.min)) &&
+      (!totalEmployeesRange.max || batch.totalEmployees <= Number(totalEmployeesRange.max))
+    );
+
+    // Total Net range filter
+    const totalNetRange = filterValues.totalNet || { min: '', max: '' };
+    const matchesTotalNet = (
+      (!totalNetRange.min || batch.totalNet >= Number(totalNetRange.min)) &&
+      (!totalNetRange.max || batch.totalNet <= Number(totalNetRange.max))
+    );
+
+    // Date range filter (keep existing for backward compatibility)
     const dateRange = filterValues.dateRange || { from: '', to: '' };
     let matchesDateRange = true;
     if (dateRange.from || dateRange.to) {
@@ -227,7 +278,8 @@ const PayrollPage = () => {
       }
     }
 
-    return matchesSearch && matchesStatus && matchesDateRange;
+    return matchesSearch && matchesStatus && matchesPeriodStart && matchesPeriodEnd && 
+           matchesTotalEmployees && matchesTotalNet && matchesDateRange;
   });
 
   // Handle save (add/edit) payroll batch
@@ -331,6 +383,25 @@ const PayrollPage = () => {
     setViewModalOpen(true);
   };
 
+  // Prepare export data
+  const exportData = filteredData.map(batch => ({
+    'Batch Code': batch.batchCode,
+    'Period Start': formatDate(batch.periodStart),
+    'Period End': formatDate(batch.periodEnd),
+    'Total Employees': batch.totalEmployees,
+    'Total Net': formatMoney(batch.totalNet),
+    'Status': batch.status
+  }));
+
+  const exportColumns = [
+    { header: 'Batch Code', key: 'Batch Code' },
+    { header: 'Period Start', key: 'Period Start' },
+    { header: 'Period End', key: 'Period End' },
+    { header: 'Total Employees', key: 'Total Employees' },
+    { header: 'Total Net', key: 'Total Net' },
+    { header: 'Status', key: 'Status' }
+  ];
+
   if (loading) {
     return (
       <div className="card">
@@ -372,7 +443,7 @@ const PayrollPage = () => {
                 <i className="ri-search-line" />
                 <input
                   type="text"
-                  placeholder="Search batch code, period..."
+                  placeholder="Search batch code, period, employees, net pay..."
                   value={search}
                   onChange={handleSearchChange}
                   onKeyDown={handleSearchKeyPress}
@@ -404,6 +475,13 @@ const PayrollPage = () => {
             >
               <i className="ri-check-double-line" /> Release All Pending
             </button>
+
+            <ExportButton
+              data={exportData}
+              filename="Payroll_Report"
+              columns={exportColumns}
+              title="Payroll Management Report"
+            />
           </div>
         </div>
 
