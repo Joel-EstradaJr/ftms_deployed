@@ -465,12 +465,11 @@ const AdminTripRevenuePage = () => {
 
   // Configuration state
   const [config, setConfig] = useState<ConfigData>({
-    minimumWage: 600,
-    durationToLate: 72,
-    durationToLoan: 168,
-    defaultConductorShare: 50,
-    defaultDriverShare: 50,
-    defaultLoanDueDays: 30,
+    minimum_wage: 600,
+    duration_to_late: 72,
+    loan_due_date: 30,
+    conductor_share: 50,
+    driver_share: 50,
   });
 
   // Filter options state
@@ -708,7 +707,7 @@ const AdminTripRevenuePage = () => {
 
   // Check and update status based on time duration
   const checkAndUpdateStatus = (record: BusTripRecord): BusTripRecord => {
-    if (record.status === 'remitted' || record.status === 'loaned') {
+    if (record.status === 'remitted' || record.status === 'receivable') {
       console.log(`[${record.body_number}] Already finalized: ${record.status}`);
       return record; // Don't change already finalized records
     }
@@ -722,16 +721,16 @@ const AdminTripRevenuePage = () => {
       assignedDate: assignedDate.toISOString(),
       now: now.toISOString(),
       hoursDiff: hoursDiff.toFixed(2),
-      durationToLoan: config.durationToLoan,
-      shouldConvert: hoursDiff > config.durationToLoan,
+      duration_to_late: config.duration_to_late,
+      shouldConvert: hoursDiff > config.duration_to_late,
       currentStatus: record.status
     });
 
     // Check if deadline exceeded (converted to loan)
-    if (hoursDiff > config.durationToLoan) {
+    if (hoursDiff > config.duration_to_late) {
       const dateRecorded = now.toISOString().split('T')[0];
       const dueDate = new Date(now);
-      dueDate.setDate(dueDate.getDate() + config.defaultLoanDueDays);
+      dueDate.setDate(dueDate.getDate() + config.loan_due_date);
       const dueDateStr = dueDate.toISOString().split('T')[0];
       
       // Calculate loan shares based on conductor presence
@@ -743,14 +742,14 @@ const AdminTripRevenuePage = () => {
       
       if (hasConductor) {
         // Split based on configured shares
-        driverShare = totalAmount * (config.defaultDriverShare / 100);
-        conductorShare = totalAmount * (config.defaultConductorShare / 100);
+        driverShare = totalAmount * (config.driver_share / 100);
+        conductorShare = totalAmount * (config.conductor_share / 100);
       }
       
       // Determine if already overdue
       const isOverdue = now > dueDate;
       
-      console.log(`[${record.body_number}] ✓ Converting to loaned (trip deficit) - Setting dateRecorded=${dateRecorded}, dueDate=${dueDateStr} (${config.defaultLoanDueDays} days)`);
+      console.log(`[${record.body_number}] ✓ Converting to loaned (trip deficit) - Setting dateRecorded=${dateRecorded}, dueDate=${dueDateStr} (${config.loan_due_date} days)`);
       return {
         ...record,
         status: 'loaned', // Deadline exceeded, converted to loan
@@ -850,7 +849,7 @@ const AdminTripRevenuePage = () => {
       if (activeFilters.statuses.length > 0) {
         filteredData = filteredData.filter(item => {
           const itemStatus = item.status === 'remitted' ? 'Remitted' :
-                            item.status === 'loaned' ? 'Receivable' :
+                            item.status === 'receivable' ? 'Receivable' :
                             item.status === 'closed' ? 'Closed' : 'Pending';
           return activeFilters.statuses.includes(itemStatus);
         });
@@ -930,7 +929,7 @@ const AdminTripRevenuePage = () => {
   const getLoanDueDate = (dateRecorded: string | null): string => {
     if (!dateRecorded) return 'N/A';
     const dueDate = new Date(dateRecorded);
-    dueDate.setDate(dueDate.getDate() + config.defaultLoanDueDays);
+    dueDate.setDate(dueDate.getDate() + config.loan_due_date);
     return formatDate(dueDate.toISOString().split('T')[0]);
   };
 
@@ -1076,20 +1075,20 @@ const AdminTripRevenuePage = () => {
                       <td>
                         <span className={`chip ${
                           item.status === 'remitted' ? 'completed' : 
-                          item.status === 'loaned' ? (
+                          item.status === 'receivable' ? (
                             item.loanDetails?.overallStatus === 'Partial' ? 'partially-paid' :
                             item.loanDetails?.overallStatus === 'Paid' ? 'paid' :
                             item.loanDetails?.overallStatus === 'Closed' ? 'closed' :
-                            'loan'
+                            'receivable'
                           ) : 
                           'pending'
                         }`}>
                           {item.status === 'remitted' ? 'Remitted' : 
-                           item.status === 'loaned' ? (
+                           item.status === 'receivable' ? (
                              item.loanDetails?.overallStatus === 'Partial' ? 'Partially Paid' :
                              item.loanDetails?.overallStatus === 'Paid' ? 'Paid' :
                              item.loanDetails?.overallStatus === 'Closed' ? 'Closed' :
-                             'Loaned'
+                             'Receivable'
                            ) : 
                            'Pending'}
                         </span>
@@ -1117,12 +1116,12 @@ const AdminTripRevenuePage = () => {
                             </button>
                           )}
 
-                          {item.status === 'loaned' && (
+                          {item.status === 'receivable' && (
                             <>
                               <button
                                 className="editBtn"
                                 onClick={() => openModal("payLoan", item)}
-                                title={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed' ? 'Loan already paid/closed' : 'Pay Loan'}
+                                title={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Loan'}
                                 disabled={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed'}
                               >
                                 <i className="ri-hand-coin-line" />
@@ -1138,6 +1137,16 @@ const AdminTripRevenuePage = () => {
                           )}
 
                           {item.status === 'remitted' && (
+                            <>
+                            <button
+                                className="editBtn"
+                                onClick={() => openModal("payLoan", item)}
+                                title={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Receivable'}
+                                disabled={true}
+                              >
+                                <i className="ri-hand-coin-line" />
+                              </button>
+
                             <button
                               className="editBtn"
                               onClick={() => openModal("edit", item)}
@@ -1146,6 +1155,8 @@ const AdminTripRevenuePage = () => {
                             >
                               <i className="ri-edit-line" />
                             </button>
+                            </>
+                            
                           )}
                         </div>
                       </td>

@@ -7,8 +7,8 @@
  * 
  * This component manages configuration settings for trip revenue management:
  * - Minimum wage per employee
- * - Duration before remittance is considered late (in hours)
- * - Duration before remittance is converted to loan (in hours)
+ * - Duration before remittance is converted to receivable/loan (in hours)
+ * - Loan due date (in days)
  * - Default loan share split between conductor and driver
  * 
  * CONFIGURATION STORAGE:
@@ -24,8 +24,8 @@
  * 
  * VALIDATION RULES:
  * - Minimum wage must be > 0
- * - Duration to late must be > 0
- * - Duration to loan must be > duration to late (at least 1 hour difference)
+ * - Duration to receivable must be > 0
+ * - Loan due date must be > 0
  * - Conductor and driver shares must add up to 100%
  * 
  * NOTE: When configuration is updated, it should apply to:
@@ -49,31 +49,28 @@ interface ConfigModalProps {
 }
 
 export interface ConfigData {
-  minimumWage: number; // Minimum wage for driver & conductor
-  durationToLate: number; // Hours until considered late
-  durationToLoan: number; // Hours until converted to loan
-  defaultConductorShare: number; // Percentage share for conductor (0-100)
-  defaultDriverShare: number; // Percentage share for driver (0-100)
-  defaultLoanDueDays: number; // Days until loan is due (default 30)
+  minimum_wage: number; // Minimum wage for driver & conductor
+  duration_to_late: number; // Hours until converted to receivable/loan
+  loan_due_date: number; // Days until loan is due
+  driver_share: number; // Percentage share for driver (0-100)
+  conductor_share: number; // Percentage share for conductor (0-100)
 }
 
 interface FormErrors {
-  minimumWage: string;
-  durationToLate: string;
-  durationToLoan: string;
-  defaultConductorShare: string;
-  defaultDriverShare: string;
-  defaultLoanDueDays: string;
+  minimum_wage: string;
+  duration_to_late: string;
+  loan_due_date: string;
+  driver_share: string;
+  conductor_share: string;
 }
 
 export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigModalProps) {
   const [formData, setFormData] = useState<ConfigData>({
-    minimumWage: currentConfig?.minimumWage || 600,
-    durationToLate: currentConfig?.durationToLate || 72,
-    durationToLoan: currentConfig?.durationToLoan || 168,
-    defaultConductorShare: currentConfig?.defaultConductorShare || 50,
-    defaultDriverShare: currentConfig?.defaultDriverShare || 50,
-    defaultLoanDueDays: currentConfig?.defaultLoanDueDays || 30,
+    minimum_wage: currentConfig?.minimum_wage || 600,
+    duration_to_late: currentConfig?.duration_to_late || 168,
+    loan_due_date: currentConfig?.loan_due_date || 30,
+    driver_share: currentConfig?.driver_share || 50,
+    conductor_share: currentConfig?.conductor_share || 50,
   });
 
   // Update formData when currentConfig changes (modal reopens)
@@ -81,23 +78,21 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     if (currentConfig) {
       console.log('ConfigModal: Loading current config:', currentConfig);
       setFormData({
-        minimumWage: currentConfig.minimumWage,
-        durationToLate: currentConfig.durationToLate,
-        durationToLoan: currentConfig.durationToLoan,
-        defaultConductorShare: currentConfig.defaultConductorShare,
-        defaultDriverShare: currentConfig.defaultDriverShare,
-        defaultLoanDueDays: currentConfig.defaultLoanDueDays,
+        minimum_wage: currentConfig.minimum_wage,
+        duration_to_late: currentConfig.duration_to_late,
+        loan_due_date: currentConfig.loan_due_date,
+        driver_share: currentConfig.driver_share,
+        conductor_share: currentConfig.conductor_share,
       });
     }
   }, [currentConfig]);
 
   const [formErrors, setFormErrors] = useState<FormErrors>({
-    minimumWage: '',
-    durationToLate: '',
-    durationToLoan: '',
-    defaultConductorShare: '',
-    defaultDriverShare: '',
-    defaultLoanDueDays: '',
+    minimum_wage: '',
+    duration_to_late: '',
+    loan_due_date: '',
+    driver_share: '',
+    conductor_share: '',
   });
 
   const [isFormValid, setIsFormValid] = useState(false);
@@ -107,37 +102,27 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     let errorMessage = '';
 
     switch (fieldName) {
-      case 'minimumWage':
+      case 'minimum_wage':
         if (!value || value <= 0) {
           errorMessage = 'Minimum wage must be greater than 0';
         }
         break;
       
-      case 'durationToLate':
+      case 'duration_to_late':
         if (!value || value <= 0) {
-          errorMessage = 'Duration to late must be greater than 0';
-        } else if (formData.durationToLoan && value >= formData.durationToLoan) {
-          errorMessage = 'Duration to late must be less than duration to loan';
+          errorMessage = 'Duration to receivable must be greater than 0';
         }
         break;
       
-      case 'durationToLoan':
+      case 'loan_due_date':
         if (!value || value <= 0) {
-          errorMessage = 'Duration to loan must be greater than 0';
-        } else if (formData.durationToLate && value <= formData.durationToLate) {
-          errorMessage = 'Duration to loan must be at least 1 hour greater than duration to late';
+          errorMessage = 'Loan due date must be greater than 0';
+        } else if (value > 365) {
+          errorMessage = 'Loan due date cannot exceed 365 days (1 year)';
         }
         break;
       
-      case 'defaultConductorShare':
-        if (value === null || value === undefined || value < 0) {
-          errorMessage = 'Conductor share must be 0 or greater';
-        } else if (value > 100) {
-          errorMessage = 'Conductor share cannot exceed 100%';
-        }
-        break;
-      
-      case 'defaultDriverShare':
+      case 'driver_share':
         if (value === null || value === undefined || value < 0) {
           errorMessage = 'Driver share must be 0 or greater';
         } else if (value > 100) {
@@ -145,11 +130,11 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
         }
         break;
       
-      case 'defaultLoanDueDays':
-        if (!value || value <= 0) {
-          errorMessage = 'Loan due days must be greater than 0';
-        } else if (value > 365) {
-          errorMessage = 'Loan due days cannot exceed 365 days (1 year)';
+      case 'conductor_share':
+        if (value === null || value === undefined || value < 0) {
+          errorMessage = 'Conductor share must be 0 or greater';
+        } else if (value > 100) {
+          errorMessage = 'Conductor share cannot exceed 100%';
         }
         break;
     }
@@ -164,39 +149,35 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
 
   // Validate entire form
   const validateForm = (): boolean => {
-    const minimumWageValid = validateFormField('minimumWage', formData.minimumWage);
-    const durationToLateValid = validateFormField('durationToLate', formData.durationToLate);
-    const durationToLoanValid = validateFormField('durationToLoan', formData.durationToLoan);
-    const conductorShareValid = validateFormField('defaultConductorShare', formData.defaultConductorShare);
-    const driverShareValid = validateFormField('defaultDriverShare', formData.defaultDriverShare);
-    const loanDueDaysValid = validateFormField('defaultLoanDueDays', formData.defaultLoanDueDays);
+    const minimumWageValid = validateFormField('minimum_wage', formData.minimum_wage);
+    const durationToLateValid = validateFormField('duration_to_late', formData.duration_to_late);
+    const loanDueDateValid = validateFormField('loan_due_date', formData.loan_due_date);
+    const driverShareValid = validateFormField('driver_share', formData.driver_share);
+    const conductorShareValid = validateFormField('conductor_share', formData.conductor_share);
 
     // Check if shares add up to 100%
-    if (formData.defaultConductorShare + formData.defaultDriverShare !== 100) {
+    if (formData.conductor_share + formData.driver_share !== 100) {
       showError('Conductor and Driver shares must add up to 100%', 'Validation Error');
       return false;
     }
 
-    return minimumWageValid && durationToLateValid && durationToLoanValid && conductorShareValid && driverShareValid && loanDueDaysValid;
+    return minimumWageValid && durationToLateValid && loanDueDateValid && driverShareValid && conductorShareValid;
   };
 
   // Check form validity on data changes
   useEffect(() => {
     const isValid = 
-      formData.minimumWage > 0 &&
-      formData.durationToLate > 0 &&
-      formData.durationToLoan > 0 &&
-      formData.durationToLoan > formData.durationToLate &&
-      formData.defaultConductorShare >= 0 &&
-      formData.defaultDriverShare >= 0 &&
-      formData.defaultConductorShare + formData.defaultDriverShare === 100 &&
-      formData.defaultLoanDueDays > 0 &&
-      formErrors.minimumWage === '' &&
-      formErrors.durationToLate === '' &&
-      formErrors.durationToLoan === '' &&
-      formErrors.defaultConductorShare === '' &&
-      formErrors.defaultDriverShare === '' &&
-      formErrors.defaultLoanDueDays === '';
+      formData.minimum_wage > 0 &&
+      formData.duration_to_late > 0 &&
+      formData.loan_due_date > 0 &&
+      formData.driver_share >= 0 &&
+      formData.conductor_share >= 0 &&
+      formData.conductor_share + formData.driver_share === 100 &&
+      formErrors.minimum_wage === '' &&
+      formErrors.duration_to_late === '' &&
+      formErrors.loan_due_date === '' &&
+      formErrors.driver_share === '' &&
+      formErrors.conductor_share === '';
     
     setIsFormValid(isValid);
   }, [formData, formErrors]);
@@ -206,40 +187,40 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     const numValue = parseFloat(value) || 0;
 
     // Special handling for conductor/driver share - auto-adjust the other share
-    if (field === 'defaultConductorShare') {
+    if (field === 'conductor_share') {
       const newConductorShare = Math.min(100, Math.max(0, numValue));
       const newDriverShare = 100 - newConductorShare;
       
       setFormData(prev => ({
         ...prev,
-        defaultConductorShare: newConductorShare,
-        defaultDriverShare: newDriverShare
+        conductor_share: newConductorShare,
+        driver_share: newDriverShare
       }));
       
       // Clear errors for both fields
       setFormErrors(prev => ({
         ...prev,
-        defaultConductorShare: '',
-        defaultDriverShare: ''
+        conductor_share: '',
+        driver_share: ''
       }));
       return;
     }
     
-    if (field === 'defaultDriverShare') {
+    if (field === 'driver_share') {
       const newDriverShare = Math.min(100, Math.max(0, numValue));
       const newConductorShare = 100 - newDriverShare;
       
       setFormData(prev => ({
         ...prev,
-        defaultDriverShare: newDriverShare,
-        defaultConductorShare: newConductorShare
+        driver_share: newDriverShare,
+        conductor_share: newConductorShare
       }));
       
       // Clear errors for both fields
       setFormErrors(prev => ({
         ...prev,
-        defaultConductorShare: '',
-        defaultDriverShare: ''
+        conductor_share: '',
+        driver_share: ''
       }));
       return;
     }
@@ -276,8 +257,8 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     // Ensure shares are properly set before saving
     const finalData = {
       ...formData,
-      defaultConductorShare: formData.defaultConductorShare,
-      defaultDriverShare: 100 - formData.defaultConductorShare // Recalculate to ensure consistency
+      conductor_share: formData.conductor_share,
+      driver_share: 100 - formData.conductor_share // Recalculate to ensure consistency
     };
 
     console.log('ConfigModal: Submitting final data:', finalData);
@@ -299,10 +280,10 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
         </button>
       </div>
 
-      {/* Minimum Wage Configuration */}
-      <p className="details-title">Minimum Wage (Driver & Conductor)</p>
+      {/* Configuration Form */}
       <div className="modal-content add">
         <form className="add-form" onSubmit={handleSubmit}>
+          {/* Minimum Wage */}
           <div className="form-row">
             <div className="form-group">
               <label>
@@ -310,69 +291,46 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
               </label>
               <input
                 type="number"
-                value={formData.minimumWage}
-                onChange={(e) => handleInputChange('minimumWage', e.target.value)}
-                onBlur={() => handleInputBlur('minimumWage')}
+                value={formData.minimum_wage}
+                onChange={(e) => handleInputChange('minimum_wage', e.target.value)}
+                onBlur={() => handleInputBlur('minimum_wage')}
                 min="1"
-                className={formErrors.minimumWage ? 'invalid-input' : ''}
+                className={formErrors.minimum_wage ? 'invalid-input' : ''}
                 placeholder="600"
                 required
               />
               <small className="hint-message">
                 Minimum wage per employee (Driver & Conductor)
               </small>
-              <p className="add-error-message">{formErrors.minimumWage}</p>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      {/* Bus Trip Rules Configuration */}
-      <p className="details-title">Bus Trip Rules</p>
-      <div className="modal-content add">
-        <form className="add-form" onSubmit={handleSubmit}>
-          <div className="form-row">
-            <div className="form-group">
-              <label>
-                Duration to Late (Hours)<span className="requiredTags"> *</span>
-              </label>
-              <input
-                type="number"
-                value={formData.durationToLate}
-                onChange={(e) => handleInputChange('durationToLate', e.target.value)}
-                onBlur={() => handleInputBlur('durationToLate')}
-                min="1"
-                className={formErrors.durationToLate ? 'invalid-input' : ''}
-                placeholder="72"
-                required
-              />
-              <small className="hint-message">
-                Hours after assignment before remittance is considered late
-              </small>
-              <p className="add-error-message">{formErrors.durationToLate}</p>
+              {formErrors.minimum_wage && (
+                <p className="add-error-message">{formErrors.minimum_wage}</p>
+              )}
             </div>
 
             <div className="form-group">
               <label>
-                Duration to Loan (Hours)<span className="requiredTags"> *</span>
+                Duration to Receivable (Hours)<span className="requiredTags"> *</span>
               </label>
               <input
                 type="number"
-                value={formData.durationToLoan}
-                onChange={(e) => handleInputChange('durationToLoan', e.target.value)}
-                onBlur={() => handleInputBlur('durationToLoan')}
+                value={formData.duration_to_late}
+                onChange={(e) => handleInputChange('duration_to_late', e.target.value)}
+                onBlur={() => handleInputBlur('duration_to_late')}
                 min="1"
-                className={formErrors.durationToLoan ? 'invalid-input' : ''}
+                className={formErrors.duration_to_late ? 'invalid-input' : ''}
                 placeholder="168"
                 required
               />
               <small className="hint-message">
-                Hours after assignment before remittance is converted to loan (must be at least 1hr higher than Duration to Late)
+                Hours after assignment before remittance is converted to receivable/loan
               </small>
-              <p className="add-error-message">{formErrors.durationToLoan}</p>
+              {formErrors.duration_to_late && (
+                <p className="add-error-message">{formErrors.duration_to_late}</p>
+              )}
             </div>
           </div>
 
+          {/* Loan Due Date */}
           <div className="form-row">
             <div className="form-group">
               <label>
@@ -380,69 +338,70 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
               </label>
               <input
                 type="number"
-                value={formData.defaultLoanDueDays}
-                onChange={(e) => handleInputChange('defaultLoanDueDays', e.target.value)}
-                onBlur={() => handleInputBlur('defaultLoanDueDays')}
-                onKeyPress={(e) => {
-                  // Only allow digits 0-9
-                  if (!/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
+                value={formData.loan_due_date}
+                onChange={(e) => handleInputChange('loan_due_date', e.target.value)}
+                onBlur={() => handleInputBlur('loan_due_date')}
                 min="1"
                 max="365"
-                className={formErrors.defaultLoanDueDays ? 'invalid-input' : ''}
+                className={formErrors.loan_due_date ? 'invalid-input' : ''}
                 placeholder="30"
                 required
               />
               <small className="hint-message">
                 Days from loan creation until payment is due (maximum 365 days)
               </small>
-              <p className="add-error-message">{formErrors.defaultLoanDueDays}</p>
+              {formErrors.loan_due_date && (
+                <p className="add-error-message">{formErrors.loan_due_date}</p>
+              )}
             </div>
           </div>
 
+          {/* Share Distribution */}
           <div className="form-row">
-            <div className="form-group">
-              <label>
-                Default Conductor Share (%)<span className="requiredTags"> *</span>
-              </label>
-              <input
-                type="number"
-                value={formData.defaultConductorShare}
-                onChange={(e) => handleInputChange('defaultConductorShare', e.target.value)}
-                onBlur={() => handleInputBlur('defaultConductorShare')}
-                min="0"
-                max="100"
-                className={formErrors.defaultConductorShare ? 'invalid-input' : ''}
-                placeholder="50"
-                required
-              />
-              <small className="hint-message">
-                Conductor's share of loan for trip deficit (auto-adjusts driver share to equal 100%)
-              </small>
-              <p className="add-error-message">{formErrors.defaultConductorShare}</p>
-            </div>
-
             <div className="form-group">
               <label>
                 Default Driver Share (%)<span className="requiredTags"> *</span>
               </label>
               <input
                 type="number"
-                value={formData.defaultDriverShare}
-                onChange={(e) => handleInputChange('defaultDriverShare', e.target.value)}
-                onBlur={() => handleInputBlur('defaultDriverShare')}
+                value={formData.driver_share}
+                onChange={(e) => handleInputChange('driver_share', e.target.value)}
+                onBlur={() => handleInputBlur('driver_share')}
                 min="0"
                 max="100"
-                className={formErrors.defaultDriverShare ? 'invalid-input' : ''}
+                className={formErrors.driver_share ? 'invalid-input' : ''}
                 placeholder="50"
                 required
               />
               <small className="hint-message">
                 Driver's share of loan for trip deficit (auto-adjusts conductor share to equal 100%)
               </small>
-              <p className="add-error-message">{formErrors.defaultDriverShare}</p>
+              {formErrors.driver_share && (
+                <p className="add-error-message">{formErrors.driver_share}</p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>
+                Default Conductor Share (%)<span className="requiredTags"> *</span>
+              </label>
+              <input
+                type="number"
+                value={formData.conductor_share}
+                onChange={(e) => handleInputChange('conductor_share', e.target.value)}
+                onBlur={() => handleInputBlur('conductor_share')}
+                min="0"
+                max="100"
+                className={formErrors.conductor_share ? 'invalid-input' : ''}
+                placeholder="50"
+                required
+              />
+              <small className="hint-message">
+                Conductor's share of loan for trip deficit (auto-adjusts driver share to equal 100%)
+              </small>
+              {formErrors.conductor_share && (
+                <p className="add-error-message">{formErrors.conductor_share}</p>
+              )}
             </div>
           </div>
 
@@ -452,18 +411,18 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
               <label>Total Share</label>
               <input
                 type="text"
-                value={`${formData.defaultConductorShare + formData.defaultDriverShare}%`}
+                value={`${formData.conductor_share + formData.driver_share}%`}
                 disabled
                 className="disabled-field"
                 style={{
-                  color: formData.defaultConductorShare + formData.defaultDriverShare === 100 
+                  color: formData.conductor_share + formData.driver_share === 100 
                     ? 'var(--success-color)' 
                     : 'var(--error-color)',
                   fontWeight: 600
                 }}
               />
               <small className="hint-message">
-                {formData.defaultConductorShare + formData.defaultDriverShare === 100 
+                {formData.conductor_share + formData.driver_share === 100 
                   ? '✓ Shares add up to 100%' 
                   : '⚠️ Shares must add up to 100%'
                 }
