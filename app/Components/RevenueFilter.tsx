@@ -12,70 +12,67 @@ import FilterDropdown, { FilterSection, FilterOption } from "./filter";
 
 // Revenue-specific filter structure
 interface RevenueFilterValues {
-    sources: string[];
-    paymentMethods: string[];
-    paymentStatuses: string[];
-    dateRange: { from: string; to: string };
-    amountRange: { from: string; to: string };
+    types: string[];
+    statuses: string[];
+    dateAssignedRange: { from: string; to: string };
+    dueDateRange: { from: string; to: string };
+    tripRevenueRange: { from: string; to: string };
 }
 
 interface RevenueFilterProps {
-    sources: FilterOption[];
-    paymentMethods: FilterOption[];
-    paymentStatuses?: FilterOption[];
+    types: FilterOption[];
+    statuses: FilterOption[];
     onApply: (filterValues: RevenueFilterValues) => void;
     initialValues?: Partial<RevenueFilterValues>;
 }
 
 export default function RevenueFilter({
-    sources,
-    paymentMethods,
-    paymentStatuses = [],
+    types,
+    statuses,
     onApply,
     initialValues = {}
 }: RevenueFilterProps) {
     
     // Define Revenue-specific filter sections
     const filterSections: FilterSection[] = [
-        // Revenue Source filter
+        // Assignment Type filter
         {
-            id: 'sources',
-            title: 'Revenue Source',
+            id: 'types',
+            title: 'Assignment Type',
             type: 'checkbox',
-            icon: 'ri-money-dollar-circle-line',
-            options: sources,
-            defaultValue: []
-        },
-        // Payment Method filter
-        {
-            id: 'paymentMethods',
-            title: 'Payment Method',
-            type: 'checkbox',
-            icon: 'ri-bank-card-line',
-            options: paymentMethods,
-            defaultValue: []
-        },
-        // Payment Status filter (only if provided)
-        ...(paymentStatuses.length > 0 ? [{
-            id: 'paymentStatuses',
-            title: 'Payment Status',
-            type: 'checkbox' as const,
             icon: 'ri-file-list-3-line',
-            options: paymentStatuses,
+            options: types,
             defaultValue: []
-        }] : []),
-        // Transaction Date Range filter
+        },
+        // Status filter
         {
-            id: 'dateRange',
-            title: 'Transaction Date',
+            id: 'statuses',
+            title: 'Status',
+            type: 'checkbox',
+            icon: 'ri-checkbox-circle-line',
+            options: statuses,
+            defaultValue: []
+        },
+        // Date Assigned Range filter
+        {
+            id: 'dateAssignedRange',
+            title: 'Date Assigned',
             type: 'dateRange',
             icon: 'ri-calendar-line',
             defaultValue: { from: '', to: '' }
         },
-        // Amount Range filter
+        // Due Date Range filter
         {
-            id: 'amountRange',
-            title: 'Amount Range',
+            id: 'dueDateRange',
+            title: 'Due Date',
+            type: 'dateRange',
+            icon: 'ri-calendar-check-line',
+            defaultValue: { from: '', to: '' }
+        },
+        // Trip Revenue Range filter
+        {
+            id: 'tripRevenueRange',
+            title: 'Trip Revenue',
             type: 'numberRange',
             icon: 'ri-price-tag-3-line',
             defaultValue: { from: '', to: '' },
@@ -89,22 +86,22 @@ export default function RevenueFilter({
 
     // Convert initial values to the format expected by base component
     const convertedInitialValues = {
-        sources: initialValues.sources || [],
-        paymentMethods: initialValues.paymentMethods || [],
-        paymentStatuses: initialValues.paymentStatuses || [],
-        dateRange: initialValues.dateRange || { from: '', to: '' },
-        amountRange: initialValues.amountRange || { from: '', to: '' }
+        types: initialValues.types || [],
+        statuses: initialValues.statuses || [],
+        dateAssignedRange: initialValues.dateAssignedRange || { from: '', to: '' },
+        dueDateRange: initialValues.dueDateRange || { from: '', to: '' },
+        tripRevenueRange: initialValues.tripRevenueRange || { from: '', to: '' }
     };
 
     // Handle apply from base component
     const handleApply = (filterValues: Record<string, string | string[] | { from: string; to: string }>) => {
         // Convert back to Revenue-specific format and call the parent handler
         onApply({
-            sources: (filterValues.sources as string[]) || [],
-            paymentMethods: (filterValues.paymentMethods as string[]) || [],
-            paymentStatuses: (filterValues.paymentStatuses as string[]) || [],
-            dateRange: (filterValues.dateRange as { from: string; to: string }) || { from: '', to: '' },
-            amountRange: (filterValues.amountRange as { from: string; to: string }) || { from: '', to: '' }
+            types: (filterValues.types as string[]) || [],
+            statuses: (filterValues.statuses as string[]) || [],
+            dateAssignedRange: (filterValues.dateAssignedRange as { from: string; to: string }) || { from: '', to: '' },
+            dueDateRange: (filterValues.dueDateRange as { from: string; to: string }) || { from: '', to: '' },
+            tripRevenueRange: (filterValues.tripRevenueRange as { from: string; to: string }) || { from: '', to: '' }
         });
     };
 
@@ -114,7 +111,7 @@ export default function RevenueFilter({
             sections={filterSections}
             onApply={handleApply}
             initialValues={convertedInitialValues}
-            title="Filter Revenue"
+            title="Filter Trip Revenue"
             showBadge={true}
         />
     );

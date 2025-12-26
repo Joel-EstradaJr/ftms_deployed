@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { formatDate } from '../../../../utils/formatting';;
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { formatDate } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '@/app/utils/Alerts';
 
 import PaginationComponent from '@/app/Components/pagination';
@@ -12,7 +12,6 @@ import FilterDropdown, { FilterSection } from '@/app/Components/filter';
 
 import RecordChartOfAccount from './recordChartOfAccount';
 import AddAccountModal from './AddAccountModal';
-import AddChildAccountModal from './AddChildAccountModal';
 import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
 
@@ -20,11 +19,7 @@ import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
 import { fetchChartOfAccounts, createChartOfAccount, ChartOfAccountsQueryParams, PaginationResponse } from '@/app/services/chartOfAccountsService';
 import { ApiError } from '@/app/lib/api';
 import {getAccountTypeClass, 
-        getAccountStatusInfo, 
         canArchiveAccount,
-        getChildCount,
-        canHaveChildren,
-        isParentAccount,
         getNormalBalance} from '@/app/lib/jev/accountHelpers';
 
 import '@/app/styles/JEV/chart-of-accounts.css';
@@ -46,6 +41,8 @@ const ChartOfAccountsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const isInitialLoadRef = useRef(true);
+  const lastReqIdRef = useRef(0);
 
   // Modal states - Unified approach like tripRevenue
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,7 +58,6 @@ const ChartOfAccountsPage = () => {
       options: [
         { id: AccountType.ASSET, label: 'Asset' },
         { id: AccountType.LIABILITY, label: 'Liability' },
-        // { id: AccountType.EQUITY, label: 'Equity' },
         { id: AccountType.REVENUE, label: 'Revenue' },
         { id: AccountType.EXPENSE, label: 'Expense' },
       ],
@@ -79,65 +75,69 @@ const ChartOfAccountsPage = () => {
       defaultValue: 'active'
     }
   ];
+  // --- Dummy data (adjust as needed) ---
+const MOCK_ACCOUNTS: ChartOfAccount[] = [
+  { account_id: "1", account_code: "1000", account_name: "Cash on Hand", account_type: AccountType.ASSET,     is_active: true,  is_system_account: false, description: "Physical cash"},
+  { account_id: "2", account_code: "1100", account_name: "Accounts Receivable", account_type: AccountType.ASSET, is_active: true,  is_system_account: false, description: "Customer receivables"},
+  { account_id: "3", account_code: "2000", account_name: "Accounts Payable",   account_type: AccountType.LIABILITY, is_active: true, is_system_account: false, description: "Supplier payables"},
+  { account_id: "4", account_code: "4000", account_name: "Service Revenue",    account_type: AccountType.REVENUE, is_active: true,  is_system_account: false, description: "Service income"},
+  { account_id: "5", account_code: "5000", account_name: "Salaries Expense",   account_type: AccountType.EXPENSE, is_active: true,  is_system_account: false, description: "Payroll"},
+];
 
   // Fetch accounts from backend API with filters and pagination
   const loadAccountsFromApi = useCallback(async () => {
+    const reqId = ++lastReqIdRef.current;
     try {
-      // Only show loading spinner on initial load, not on subsequent searches
-      if (isInitialLoad) {
+      // Show spinner only on first load
+      if (isInitialLoadRef.current) {
         setLoading(true);
       }
       setError(null);
       setErrorCode(null);
 
-      // Build query parameters based on filters
-      // When account type filters are applied, we need to fetch ALL records
-      // and paginate on the frontend since backend doesn't support multiple accountTypeId filtering
-      const hasAccountTypeFilter = accountTypeFilters && accountTypeFilters.length > 0;
-      
+      const hasAccountTypeFilter = accountTypeFilters.length > 0;
+      const trimmedSearch = debouncedSearch.trim();
+
       const params: ChartOfAccountsQueryParams = {
         page: hasAccountTypeFilter ? 1 : currentPage,
-        limit: hasAccountTypeFilter ? 1000 : pageSize, // Fetch all when filtering by account type
-        includeArchived: statusFilter === 'archived' || statusFilter === 'all',
+        // fetch more when we need to paginate client-side to avoid truncation
+        limit: hasAccountTypeFilter ? 10000 : pageSize,
+        includeArchived: statusFilter !== 'active', // true for archived/all, false for active
       };
 
-      // Add search parameter if present
-      if (debouncedSearch && debouncedSearch.trim()) {
-        params.search = debouncedSearch.trim();
+      if (trimmedSearch) {
+        params.search = trimmedSearch;
       }
 
       const result = await fetchChartOfAccounts(params);
-      
-      // Apply frontend filters
-      let filteredData = result.data;
-      
-      // Apply account type filter if types selected
-      if (accountTypeFilters && accountTypeFilters.length > 0) {
-        filteredData = filteredData.filter(acc => 
-          accountTypeFilters.includes(acc.account_type)
-        );
-      }
-      
-      // Apply status filter on frontend (since backend includeArchived shows all)
-      if (statusFilter === 'active') {
-        filteredData = filteredData.filter(acc => acc.is_active === true);
-      } else if (statusFilter === 'archived') {
-        filteredData = filteredData.filter(acc => acc.is_active === false);
-      }
-      // If statusFilter === 'all', show everything (no filtering)
 
-      // Apply client-side pagination when account type filter is active
+      // Ignore stale responses (out of order)
+      if (reqId !== lastReqIdRef.current) return;
+
+      // Frontend filters
+      let filteredData = result.data;
+
+      if (hasAccountTypeFilter) {
+        const typeSet = new Set(accountTypeFilters.map(String));
+        filteredData = filteredData.filter(acc => typeSet.has(String(acc.account_type)));
+      }
+
+      if (statusFilter === 'active') {
+        filteredData = filteredData.filter(acc => acc.is_active);
+      } else if (statusFilter === 'archived') {
+        filteredData = filteredData.filter(acc => !acc.is_active);
+      }
+      // statusFilter === 'all' -> no extra filtering
+
+      // Pagination
       let paginatedData = filteredData;
       let total = filteredData.length;
       let calculatedTotalPages = Math.ceil(total / pageSize);
-      
+
       if (hasAccountTypeFilter) {
-        // Client-side pagination
         const startIndex = (currentPage - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        paginatedData = filteredData.slice(startIndex, endIndex);
+        paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
       } else {
-        // Backend already paginated
         total = result.pagination.total;
         calculatedTotalPages = result.pagination.totalPages;
       }
@@ -145,10 +145,6 @@ const ChartOfAccountsPage = () => {
       setAccounts(paginatedData);
       setTotalPages(Math.max(1, calculatedTotalPages));
       setTotalItems(total);
-      if (isInitialLoad) {
-        setLoading(false);
-        setIsInitialLoad(false);
-      }
     } catch (err) {
       setLoading(false);
       setIsInitialLoad(false);
@@ -236,21 +232,6 @@ const ChartOfAccountsPage = () => {
     setIsModalOpen(true);
   };
 
-  const openAddChildModal = (account: ChartOfAccount) => {
-    setSelectedAccount(account);
-    setModalContent(
-      <AddChildAccountModal
-        parentAccount={account}
-        onClose={closeModal}
-        onSubmit={async (data) => {
-          await showSuccess('Child account created successfully', 'Success');
-          closeModal();
-          loadAccountsFromApi();
-        }}
-      />
-    );
-    setIsModalOpen(true);
-  };
 
   const openValidateModal = () => {
     setModalContent(
@@ -573,9 +554,6 @@ const ChartOfAccountsPage = () => {
               </thead>
               <tbody>
                 {accounts.map((account, index) => {
-                  // Note: Child count calculation removed as we only have current page data
-                  // Backend should provide this information if needed
-                  
                   // Calculate row number based on current page
                   const rowNumber = (currentPage - 1) * pageSize + index + 1;
                   

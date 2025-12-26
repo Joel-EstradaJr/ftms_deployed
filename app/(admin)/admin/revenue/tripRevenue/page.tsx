@@ -1,60 +1,3 @@
-/**
- * Admin Trip Revenue Page - Backend Integrated
- *
- * Displays bus trip records with revenue recording capability:
- * - Fetches data from /api/admin/revenue/bus-trips
- * - Server-side pagination, search, and sorting
- * - Database-optimized queries with indexes
- *
- * Columns: Body Number, Date Assigned, Trip Revenue, Assignment Type, Payment Method, Status, Actions
- * 
- * ============================================================================
- * BACKEND INTEGRATION GUIDE
- * ============================================================================
- * 
- * This page requires the following backend endpoints:
- * 
- * 1. GET /api/admin/revenue/bus-trips
- *    - Returns paginated list of bus trip records
- *    - Supports filtering, sorting, and search
- *    - See fetchData() function for details
- * 
- * 2. GET /api/admin/revenue/filter-options
- *    - Returns revenue sources and payment methods for filtering
- *    - See fetchFilterOptions() function for details
- * 
- * 3. POST /api/admin/revenue/remittance
- *    - Creates new remittance record
- *    - May include loan creation if shortfall exists
- *    - See handleSaveTripRevenue() function for details
- * 
- * 4. PUT /api/admin/revenue/remittance/:assignment_id
- *    - Updates existing remittance record
- *    - See handleSaveTripRevenue() function for details
- * 
- * 5. POST /api/admin/revenue/config (optional)
- *    - Saves trip revenue configuration (minimum wage, durations, shares)
- *    - See handleSaveConfig() function for details
- * 
- * DATABASE TABLES INVOLVED:
- * - Operations (bus trip assignments)
- * - Human Resource (driver and conductor details)
- * - Bus (bus details)
- * - Model Revenue (remittance records)
- * - Loan Management (trip deficit loans)
- * 
- * KEY FIELDS TO RETURN:
- * - Conductor/Driver IDs and name components (firstName, middleName, lastName, suffix)
- * - These are essential for the loan distribution logic in recordTripRevenue.tsx
- * 
- * IMPORTANT NOTES:
- * - Status conversion logic (pending -> loaned) can be handled in backend
- * - Currently implemented in frontend for demonstration
- * - See checkAndUpdateStatus() function
- * 
- * ============================================================================
- */
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -88,6 +31,7 @@ interface BusTripRecord {
   assignment_type: string; // 'Percentage' or 'Boundary'
   assignment_value: number; // quota if Boundary, company share% if Percentage
   payment_method: string; // 'Company Cash'
+  date_expected: string | null;
   
   // Employee details (from Human Resource table)
   employee_id: string;
@@ -193,6 +137,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "001",
     bus_brand: "Hilltop",
     dateRecorded: "2025-11-11",
+    date_expected: "2025-11-14",
     amount: 15000.00,
     status: "remitted",
     remarks: "On-time remittance, no issues",
@@ -233,6 +178,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "002",
     bus_brand: "Agila",
     dateRecorded: null,
+    date_expected: null,
     amount: null,
     status: "pending",
     remarks: null,
@@ -273,6 +219,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "003",
     bus_brand: "DARJ",
     dateRecorded: "2025-11-10",
+    date_expected: "2025-11-13",
     amount: 18000.00,
     status: "remitted",
     remarks: "Complete remittance with fuel receipts",
@@ -314,6 +261,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "004",
     bus_brand: "Hilltop",
     dateRecorded: null,
+    date_expected: null,
     status: "pending",
     remarks: null,
     driverName: "Miguel Garcia Fernandez",
@@ -355,6 +303,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "005",
     bus_brand: "Agila",
     dateRecorded: "",
+    date_expected: "",
     status: "pending",
     remarks: "Remitted with complete documentation",
     driverName: "Carlos Mendoza Villanueva, III",
@@ -378,6 +327,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_route: "PITX to S. Palay",
     date_assigned: "2025-11-03",
     dateRecorded: "2025-11-03",
+    date_expected: "2025-11-07",
     trip_fuel_expense: 2100.00,
     trip_revenue: 11000.00,
     amount: 0,
@@ -435,6 +385,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "007",
     bus_brand: "Hilltop",
     dateRecorded: "2025-11-11",
+    date_expected: "2025-11-14",
     amount: 5000.00, // Less than expected (7000 + 2000 = 9000), so it's loaned
     status: "Trip Deficit",
     remarks: "Partial remittance - shortfall converted to loan",
@@ -477,6 +428,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "008",
     bus_brand: "Hilltop",
     dateRecorded: null,
+    date_expected: null,
     amount: null,
     status: "pending",
     remarks: null,
@@ -529,19 +481,21 @@ const AdminTripRevenuePage = () => {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState(""); // For debouncing
   const [activeFilters, setActiveFilters] = useState<{
-    sources: string[];
-    paymentMethods: string[];
-    dateRange: { from: string; to: string };
-    amountRange: { from: string; to: string };
+    types: string[];
+    statuses: string[];
+    dateAssignedRange: { from: string; to: string };
+    dueDateRange: { from: string; to: string };
+    tripRevenueRange: { from: string; to: string };
   }>({
-    sources: [],
-    paymentMethods: [],
-    dateRange: { from: '', to: '' },
-    amountRange: { from: '', to: '' }
+    types: [],
+    statuses: [],
+    dateAssignedRange: { from: '', to: '' },
+    dueDateRange: { from: '', to: '' },
+    tripRevenueRange: { from: '', to: '' }
   });
 
   // Sort states
-  const [sortBy, setSortBy] = useState<"body_number" | "date_assigned" | "trip_revenue">("date_assigned");
+  const [sortBy, setSortBy] = useState<"body_number" | "date_assigned" | "trip_revenue" | "bus_route" | "assignment_type" | "assignment_value" | "date_expected">("date_assigned");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
@@ -612,70 +566,17 @@ const AdminTripRevenuePage = () => {
 
   // Handle save configuration
   const handleSaveConfig = (configData: ConfigData) => {
-    // TODO: BACKEND CONNECTION
-    // Save configuration to database/backend
-    // Expected endpoint: POST /api/admin/revenue/config
-    // Request body: configData (ConfigData interface)
-    // Expected response: { success: boolean, message: string, data: ConfigData }
-    
     console.log('Page: Saving configuration:', configData);
-    
-    // TODO: Replace with actual API call
+
     setConfig(configData);
     console.log('Page: Config state updated to:', configData);
     
     // Show success message
     showSuccess('Configuration saved successfully', 'Success');
-    
-    /* BACKEND INTEGRATION EXAMPLE:
-    try {
-      const response = await fetch('/api/admin/revenue/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(configData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save configuration');
-      }
-      
-      const result = await response.json();
-      setConfig(result.data);
-      showSuccess(result.message || 'Configuration saved successfully', 'Success');
-    } catch (error) {
-      console.error('Error saving configuration:', error);
-      showError('Failed to save configuration', 'Error');
-    }
-    */
   };
 
   // Handle loan payment
   const handleLoanPayment = async (paymentData: any) => {
-    // TODO: BACKEND CONNECTION
-    // Expected endpoint: POST /api/admin/revenue/loan-payment
-    // Request body:
-    // {
-    //   assignment_id: string,
-    //   employeeType: 'driver' | 'conductor',
-    //   employeeId: string,
-    //   payment: {
-    //     date: string,
-    //     time: string,
-    //     amount: number,
-    //     method: string,
-    //     recordedBy: string
-    //   }
-    // }
-    // OR for closing loan:
-    // {
-    //   assignment_id: string,
-    //   action: 'closeLoan',
-    //   closedBy: string,
-    //   closedDate: string
-    // }
-    
     console.log('Recording loan payment:', paymentData);
     
     // Update persistent mock data
@@ -753,60 +654,10 @@ const AdminTripRevenuePage = () => {
     
     // Refresh displayed data
     fetchData();
-    
-    // Don't close modal automatically to allow multiple payments
-    // closeModal();
   };
 
   // Handle save trip revenue (both add and edit)
   const handleSaveTripRevenue = async (formData: any, mode: "add" | "edit") => {
-    // TODO: BACKEND CONNECTION
-    // Save or update trip revenue remittance
-    // Expected endpoint: 
-    // - POST /api/admin/revenue/remittance (for add mode)
-    // - PUT /api/admin/revenue/remittance/:assignment_id (for edit mode)
-    //
-    // Request body structure (formData):
-    // {
-    //   assignment_id: string,
-    //   dateRecorded: string (YYYY-MM-DD),
-    //   amount: number,
-    //   remarks: string,
-    //   remittanceDueDate: string (YYYY-MM-DD),
-    //   durationToLate: number (hours),
-    //   durationToLoan: number (hours),
-    //   remittanceStatus: 'PENDING' | 'ON_TIME' | 'LATE' | 'CONVERTED_TO_LOAN',
-    //   status: 'remitted' | 'loaned',
-    //   loan?: {  // Only included if shouldCreateLoan() is true
-    //     principalAmount: number,
-    //     interestRate: number,
-    //     interestRateType: 'percentage' | 'cash',
-    //     totalLoanAmount: number,
-    //     conductorId?: string,  // Only if conductor exists
-    //     conductorShare?: number,  // Only if conductor exists
-    //     driverId: string,
-    //     driverShare: number,
-    //     loanType: 'Trip Deficit',
-    //     dueDate: string (YYYY-MM-DD, optional)
-    //   }
-    // }
-    //
-    // Expected response format:
-    // {
-    //   success: boolean,
-    //   message: string,
-    //   data: {
-    //     remittance: { ... updated remittance record },
-    //     loan?: { ... created loan record if applicable }
-    //   }
-    // }
-    //
-    // IMPORTANT: Backend should:
-    // 1. Update the Model Revenue table with remittance details
-    // 2. If loan exists in formData, create entries in Loan Management table
-    // 3. Create separate loan records for conductor and driver with their respective shares
-    // 4. Handle transaction atomically (both remittance and loan creation should succeed or fail together)
-    
     console.log(`${mode === 'add' ? 'Recording' : 'Updating'} trip revenue:`, formData);
     
     // TODO: Replace with actual API call
@@ -843,86 +694,20 @@ const AdminTripRevenuePage = () => {
     fetchData();
     
     closeModal();
-    
-    /* BACKEND INTEGRATION EXAMPLE:
-    try {
-      const endpoint = mode === 'add' 
-        ? '/api/admin/revenue/remittance'
-        : `/api/admin/revenue/remittance/${formData.assignment_id}`;
-      
-      const method = mode === 'add' ? 'POST' : 'PUT';
-      
-      const response = await fetch(endpoint, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to ${mode === 'add' ? 'record' : 'update'} trip revenue`);
-      }
-      
-      const result = await response.json();
-      
-      showSuccess(
-        result.message || `Trip revenue ${mode === 'add' ? 'recorded' : 'updated'} successfully`,
-        'Success'
-      );
-      
-      // Refresh data to get updated records
-      fetchData();
-      
-      closeModal();
-    } catch (error) {
-      console.error(`Error ${mode === 'add' ? 'recording' : 'updating'} trip revenue:`, error);
-      showError(
-        `Failed to ${mode === 'add' ? 'record' : 'update'} trip revenue`,
-        'Error'
-      );
-    }
-    */
   };
 
   // Fetch filter options (revenue sources and payment methods)
-  const fetchFilterOptions = async () => {
-    // TODO: BACKEND CONNECTION
-    // Replace mock data with actual API call
-    // Expected endpoint: GET /api/admin/revenue/filter-options
-    // Expected response format:
-    // {
-    //   revenueSources: [{ id: number, name: string, sourceCode: string }],
-    //   paymentMethods: [{ id: number, methodName: string, methodCode: string }]
-    // }
-    
+  const fetchFilterOptions = async () => {  
     console.log('Loading mock filter options...');
     // Simulate API delay
     setTimeout(() => {
       setRevenueSources(MOCK_REVENUE_SOURCES);
       setPaymentMethods(MOCK_PAYMENT_METHODS);
     }, 300);
-    
-    /* BACKEND INTEGRATION EXAMPLE:
-    try {
-      const response = await fetch('/api/admin/revenue/filter-options');
-      if (!response.ok) throw new Error('Failed to fetch filter options');
-      const data = await response.json();
-      setRevenueSources(data.revenueSources);
-      setPaymentMethods(data.paymentMethods);
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
-      showError('Failed to load filter options', 'Error');
-    }
-    */
   };
 
   // Check and update status based on time duration
   const checkAndUpdateStatus = (record: BusTripRecord): BusTripRecord => {
-    // NOTE: This function handles automatic status conversion based on time elapsed
-    // In production, this logic should ideally be handled by the backend
-    // to ensure consistency across all users and sessions
-    
     if (record.status === 'remitted' || record.status === 'loaned') {
       console.log(`[${record.body_number}] Already finalized: ${record.status}`);
       return record; // Don't change already finalized records
@@ -998,37 +783,6 @@ const AdminTripRevenuePage = () => {
 
   // Fetch data from API (using mock data)
   const fetchData = async () => {
-    // TODO: BACKEND CONNECTION
-    // Replace mock data with actual API call
-    // Expected endpoint: GET /api/admin/revenue/bus-trips
-    // Query parameters to include:
-    // - page: currentPage
-    // - pageSize: pageSize
-    // - search: search (for filtering by body_number, route, assignment_id)
-    // - sortBy: sortBy (body_number | date_assigned | trip_revenue)
-    // - sortOrder: sortOrder (asc | desc)
-    // - paymentMethods: activeFilters.paymentMethods (array)
-    // - dateFrom: activeFilters.dateRange.from
-    // - dateTo: activeFilters.dateRange.to
-    // - amountFrom: activeFilters.amountRange.from
-    // - amountTo: activeFilters.amountRange.to
-    //
-    // Expected response format:
-    // {
-    //   data: BusTripRecord[],
-    //   pagination: {
-    //     currentPage: number,
-    //     pageSize: number,
-    //     totalPages: number,
-    //     totalCount: number
-    //   }
-    // }
-    //
-    // IMPORTANT: Backend should return records with:
-    // - All fields from BusTripRecord interface
-    // - Conductor/Driver details: conductorId, conductorFirstName, etc.
-    // - Pre-computed driverName and conductorName (optional, can be computed in frontend)
-    
     setLoading(true);
     setError(null);
     
@@ -1049,32 +803,69 @@ const AdminTripRevenuePage = () => {
           item.assignment_id.toLowerCase().includes(search.toLowerCase())
         );
       }
-      
-      // Apply payment method filter
-      if (activeFilters.paymentMethods.length > 0) {
+
+      if (activeFilters.dateAssignedRange.from) {
         filteredData = filteredData.filter(item => 
-          activeFilters.paymentMethods.includes(item.payment_method)
+          item.date_assigned >= activeFilters.dateAssignedRange.from
+        );
+      }
+      if (activeFilters.dateAssignedRange.to) {
+        filteredData = filteredData.filter(item => 
+          item.date_assigned <= activeFilters.dateAssignedRange.to
         );
       }
       
-      // Apply date range filter
-      if (activeFilters.dateRange.from) {
+      // Apply due date range filter
+      if (activeFilters.dueDateRange.from) {
         filteredData = filteredData.filter(item => 
-          item.date_assigned >= activeFilters.dateRange.from
+          item.date_expected && item.date_expected >= activeFilters.dueDateRange.from
         );
       }
-      if (activeFilters.dateRange.to) {
+      if (activeFilters.dueDateRange.to) {
         filteredData = filteredData.filter(item => 
-          item.date_assigned <= activeFilters.dateRange.to
+          item.date_expected && item.date_expected <= activeFilters.dueDateRange.to
         );
+      }
+
+      // Apply trip revenue range filter (NEW - replaces amountRange)
+      if (activeFilters.tripRevenueRange.from) {
+        filteredData = filteredData.filter(item => 
+          item.trip_revenue >= Number(activeFilters.tripRevenueRange.from)
+        );
+      }
+      if (activeFilters.tripRevenueRange.to) {
+        filteredData = filteredData.filter(item => 
+          item.trip_revenue <= Number(activeFilters.tripRevenueRange.to)
+        );
+      }
+
+      // Apply type filter (NEW)
+      if (activeFilters.types.length > 0) {
+        filteredData = filteredData.filter(item => 
+          activeFilters.types.includes(item.assignment_type)
+        );
+      }
+
+      // Apply status filter (NEW)
+      if (activeFilters.statuses.length > 0) {
+        filteredData = filteredData.filter(item => {
+          const itemStatus = item.status === 'remitted' ? 'Remitted' :
+                            item.status === 'loaned' ? 'Receivable' :
+                            item.status === 'closed' ? 'Closed' : 'Pending';
+          return activeFilters.statuses.includes(itemStatus);
+        });
       }
       
       // Apply sorting
       filteredData.sort((a, b) => {
-        let aValue = a[sortBy];
-        let bValue = b[sortBy];
+        let aValue: any = a[sortBy];
+        let bValue: any = b[sortBy];
         
-        if (sortBy === 'trip_revenue') {
+        // Handle null values - put them at the end
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        
+        if (sortBy === 'trip_revenue' || sortBy === 'assignment_value') {
           aValue = Number(aValue);
           bValue = Number(bValue);
         }
@@ -1096,46 +887,6 @@ const AdminTripRevenuePage = () => {
       setTotalCount(filteredData.length);
       setLoading(false);
     }, 500);
-    
-    /* BACKEND INTEGRATION EXAMPLE:
-    try {
-      const queryParams = new URLSearchParams({
-        page: currentPage.toString(),
-        pageSize: pageSize.toString(),
-        search: search,
-        sortBy: sortBy,
-        sortOrder: sortOrder,
-        ...(activeFilters.dateRange.from && { dateFrom: activeFilters.dateRange.from }),
-        ...(activeFilters.dateRange.to && { dateTo: activeFilters.dateRange.to }),
-        ...(activeFilters.amountRange.from && { amountFrom: activeFilters.amountRange.from }),
-        ...(activeFilters.amountRange.to && { amountTo: activeFilters.amountRange.to }),
-      });
-      
-      // Add payment methods as array
-      activeFilters.paymentMethods.forEach(method => {
-        queryParams.append('paymentMethods[]', method);
-      });
-      
-      const response = await fetch(`/api/admin/revenue/bus-trips?${queryParams}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      setData(result.data);
-      setTotalPages(result.pagination.totalPages);
-      setTotalCount(result.pagination.totalCount);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching bus trip data:', error);
-      setError(error.message);
-      setErrorCode(500);
-      setLoading(false);
-      showError('Failed to load trip revenue data', 'Error');
-    }
-    */
   };
 
   // Debounce search input
@@ -1159,7 +910,7 @@ const AdminTripRevenuePage = () => {
   }, [currentPage, pageSize, search, sortBy, sortOrder, activeFilters]);
 
   // Sort handler
-  const handleSort = (field: "body_number" | "date_assigned" | "trip_revenue") => {
+  const handleSort = (field: "body_number" | "date_assigned" | "trip_revenue" | "bus_route" | "assignment_type" | "assignment_value" | "date_expected") => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -1185,10 +936,11 @@ const AdminTripRevenuePage = () => {
 
   // Handle filter apply
   const handleFilterApply = (filterValues: {
-    sources: string[];
-    paymentMethods: string[];
-    dateRange: { from: string; to: string };
-    amountRange: { from: string; to: string };
+    types: string[];
+    statuses: string[];
+    dateAssignedRange: { from: string; to: string };
+    dueDateRange: { from: string; to: string };
+    tripRevenueRange: { from: string; to: string };
   }) => {
     setActiveFilters(filterValues);
     setCurrentPage(1);
@@ -1243,14 +995,16 @@ const AdminTripRevenuePage = () => {
             </div>
 
             <RevenueFilter
-              sources={revenueSources.map(source => ({
-                id: source.id.toString(),
-                label: source.name
-              }))}
-              paymentMethods={paymentMethods.map(method => ({
-                id: method.id.toString(),
-                label: method.methodName
-              }))}
+              types={[
+                { id: 'Boundary', label: 'Boundary' },
+                { id: 'Percentage', label: 'Percentage' }
+              ]}
+              statuses={[
+                { id: 'Remitted', label: 'Remitted' },
+                { id: 'Receivable', label: 'Receivable' },
+                { id: 'Closed', label: 'Closed' },
+                { id: 'Pending', label: 'Pending' }
+              ]}
               onApply={handleFilterApply}
               initialValues={activeFilters}
             />

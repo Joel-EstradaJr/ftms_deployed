@@ -36,11 +36,6 @@ export enum NormalBalance {
   CREDIT = 'CREDIT'
 }
 
-export interface ParentAccount {
-  account_code: string;
-  account_name: string;
-}
-
 export interface ChartOfAccount {
   // CORE FIELDS (Required)
   account_id: string;
@@ -51,8 +46,6 @@ export interface ChartOfAccount {
   // CLASSIFICATION FIELDS
   category?: AccountSubType;
   normal_balance?: NormalBalance;
-  is_contra_account?: boolean;
-  contra_to_code?: string;
   expense_category?: string;
   statement_section?: string;
   display_order?: number;
@@ -60,12 +53,6 @@ export interface ChartOfAccount {
   // OPTIONAL FIELDS
   description?: string;
   notes?: string;
-  
-  // HIERARCHY FIELDS (for parent-child relationships)
-  parent_account_id?: string;
-  parent_account_code?: string;
-  parent_account_name?: string;    
-  level?: number;                  
   
   // PRACTICAL FIELDS
   is_active: boolean;

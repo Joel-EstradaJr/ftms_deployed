@@ -898,7 +898,7 @@ export default function PurchaseApprovalTab({
 
   return (
     <>
-      <div className="approval-table-wrapper">
+      <div className="table-wrapper">
         <div className="tableContainer">
           <table className="data-table">
             <thead>
