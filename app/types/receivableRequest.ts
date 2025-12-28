@@ -1,5 +1,5 @@
-// Shared types for Loan Management
-export enum LoanStatus {
+// Shared types for Receivable Management
+export enum ReceivableStatus {
   DRAFT = 'draft',
   PENDING_APPROVAL = 'pending_approval',
   APPROVED = 'approved',
@@ -17,7 +17,7 @@ export enum Department {
   HR = 'hr'
 }
 
-export enum LoanType {
+export enum ReceivableType {
   EMERGENCY = 'emergency',
   EDUCATIONAL = 'educational',
   MEDICAL = 'medical',
@@ -49,18 +49,18 @@ export interface Employee {
   hire_date: string;
 }
 
-export interface LoanRequest {
+export interface ReceivableRequest {
   id: string;
-  loan_request_id: string;
+  receivable_request_id: string;
   employee_id?: string; // Made optional for modal compatibility
   employee: Employee;
-  loan_type: LoanType | string;
+  receivable_type: ReceivableType | string;
   requested_amount: number;
   purpose: string;
   justification: string;
   repayment_terms: number; // months
   monthly_deduction: number;
-  status: LoanStatus | string;
+  status: ReceivableStatus | string;
   
   // Application details
   application_date: string;
@@ -96,7 +96,7 @@ export interface LoanRequest {
   closure_type?: 'completed' | 'early_settlement' | 'write_off' | 'transfer';
   closure_notes?: string;
   
-  // Emergency contact (for emergency loans)
+  // Emergency contact (for emergency Receivables)
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
@@ -117,9 +117,9 @@ export interface LoanRequest {
   is_deleted?: boolean; // Made optional for modal compatibility
 }
 
-export interface LoanFilters {
-  status?: LoanStatus | '';
-  loan_type?: LoanType | '';
+export interface ReceivableFilters {
+  status?: ReceivableStatus | '';
+  receivable_type?: ReceivableType | '';
   department?: Department | '';
   date_range?: {
     start?: string;

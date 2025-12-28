@@ -1,5 +1,5 @@
 // ============================================================
-// Loan Payment Configuration Types
+// Receivable Payment Configuration Types
 // ============================================================
 
 export enum PaymentScheduleType {
@@ -37,7 +37,7 @@ export interface PaymentEntry {
 }
 
 export interface PaymentConfiguration {
-  loan_id?: string;
+  receivable_id?: string;
   schedule_type: PaymentScheduleType;
   amount_type: PaymentAmountType;
   payment_mode: PaymentMode;
@@ -55,9 +55,9 @@ export interface PaymentConfiguration {
   total_percentage?: number;
 }
 
-export interface LoanDetails {
-  loan_id: string;
-  loan_request_id: string;
+export interface ReceivableDetails {
+  receivable_id: string;
+  receivable_request_id: string;
   principal_amount: number;
   interest_rate: number;
   duration_months: number;

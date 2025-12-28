@@ -6,7 +6,7 @@
  * ============================================================================
  * 
  * This component displays detailed trip revenue and remittance information.
- * It calculates and displays loan details if the trip has been converted to a loan.
+ * It calculates and displays receivable details if the trip has been converted to a receivable.
  * 
  * DATA REQUIREMENTS FROM BACKEND:
  * The tripData prop should include all fields from BusTripRecord interface:
@@ -16,13 +16,13 @@
  * - Driver/Conductor names (driverName, conductorName) - can be pre-computed
  * - Remittance details (dateRecorded, amount, status, remarks)
  * 
- * LOAN CALCULATION:
- * If status is 'loaned' or deadline exceeded, the component automatically:
- * - Calculates the loan principal amount (shortfall from expected remittance)
+ * Receivable CALCULATION:
+ * If status is 'receivable' or deadline exceeded, the component automatically:
+ * - Calculates the receivable principal amount (shortfall from expected remittance)
  * - Applies 10% interest (can be made configurable)
- * - Distributes the total loan between conductor and driver
+ * - Distributes the total receivable between conductor and driver
  * 
- * NOTE: Loan calculation logic should match recordTripRevenue.tsx for consistency
+ * NOTE: receivable calculation logic should match recordTripRevenue.tsx for consistency
  * Consider moving calculation logic to a shared utility function or backend
  * 
  * ============================================================================
@@ -65,7 +65,7 @@ interface ViewTripRevenueModalProps {
     // Status tracking (from Model Revenue table)
     dateRecorded: string | null;
     amount: number | null;
-    status: string; // 'remitted', 'pending', or 'loaned'
+    status: string; // 'remitted', 'pending', or 'receivable'
     remarks: string | null;
     
     // Computed/display fields
@@ -87,7 +87,7 @@ interface ViewTripRevenueModalProps {
 interface ConfigData {
   minimumWage: number;
   durationToLate: 72;
-  durationToLoan: 168;
+  durationToReceivable: 168;
   defaultConductorShare: number;
   defaultDriverShare: number;
 }
@@ -97,7 +97,7 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
   const config: ConfigData = {
     minimumWage: 600,
     durationToLate: 72,
-    durationToLoan: 168,
+    durationToReceivable: 168,
     defaultConductorShare: 50,
     defaultDriverShare: 50,
   };
@@ -107,10 +107,10 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
     expectedRemittance: 0,
     maximumRemittance: 0,
     remittanceStatus: '',
-    showLoanSection: false,
-    loanAmount: 0,
-    loanInterest: 0,
-    totalLoanAmount: 0,
+    showReceivableSection: false,
+    receivableAmount: 0,
+    receivableInterest: 0,
+    totalReceivableAmount: 0,
     conductorShare: 0,
     driverShare: 0,
   });
@@ -156,44 +156,44 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
     let remittanceStatus = 'PENDING';
     if (tripData.status === 'remitted') {
       remittanceStatus = 'REMITTED';
-    } else if (tripData.status === 'loaned') {
-      remittanceStatus = 'LOANED';
-    } else if (hoursDiff > config.durationToLoan) {
-      remittanceStatus = 'CONVERTED TO LOAN';
+    } else if (tripData.status === 'receivable') {
+      remittanceStatus = 'RECEIVABLE';
+    } else if (hoursDiff > config.durationToReceivable) {
+      remittanceStatus = 'CONVERTED TO RECEIVABLE';
     } else if (hoursDiff > config.durationToLate) {
       remittanceStatus = 'LATE';
     } else {
       remittanceStatus = 'ON TIME';
     }
 
-    // Calculate loan details if applicable
+    // Calculate receivable details if applicable
     const amount = tripData.amount || 0;
-    const showLoanSection = tripData.status === 'loaned' || remittanceStatus === 'CONVERTED TO LOAN';
+    const showReceivableSection = tripData.status === 'receivable' || remittanceStatus === 'CONVERTED TO RECEIVABLE';
     
-    let loanAmount = 0;
-    let loanInterest = 0;
-    let totalLoanAmount = 0;
+    let receivableAmount = 0;
+    let receivableInterest = 0;
+    let totalReceivableAmount = 0;
     let conductorShare = 0;
     let driverShare = 0;
 
-    if (showLoanSection) {
+    if (showReceivableSection) {
       // If amount is 0 or null (deadline exceeded), use full expected remittance
       // Otherwise, calculate the shortfall
-      loanAmount = Math.abs(expectedRemittance - amount);
-      loanInterest = loanAmount * 0.10; // 10% interest
-      totalLoanAmount = loanAmount + loanInterest;
+      receivableAmount = Math.abs(expectedRemittance - amount);
+      receivableInterest = receivableAmount * 0.10; // 10% interest
+      totalReceivableAmount = receivableAmount + receivableInterest;
       
       // Check if conductor is assigned
       const hasConductor = tripData.conductorName && tripData.conductorName !== 'N/A';
       
       if (hasConductor) {
-        // Split loan according to configuration
-        conductorShare = totalLoanAmount * (config.defaultConductorShare / 100);
-        driverShare = totalLoanAmount * (config.defaultDriverShare / 100);
+        // Split receivable according to configuration
+        conductorShare = totalReceivableAmount * (config.defaultConductorShare / 100);
+        driverShare = totalReceivableAmount * (config.defaultDriverShare / 100);
       } else {
-        // No conductor - entire loan goes to driver
+        // No conductor - entire receivable goes to driver
         conductorShare = 0;
-        driverShare = totalLoanAmount;
+        driverShare = totalReceivableAmount;
       }
     }
 
@@ -201,10 +201,10 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
       expectedRemittance,
       maximumRemittance,
       remittanceStatus,
-      showLoanSection,
-      loanAmount,
-      loanInterest,
-      totalLoanAmount,
+      showReceivableSection,
+      receivableAmount,
+      receivableInterest,
+      totalReceivableAmount,
       conductorShare,
       driverShare,
     });
@@ -218,7 +218,7 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
 
   // Format status for display
   const formatStatus = (status: string) => {
-    if (status === 'loaned') return 'Loaned';
+    if (status === 'receivable') return 'receivable';
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
@@ -370,7 +370,7 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
                   ? 'completed' 
                   : calculatedData.remittanceStatus === 'LATE' 
                   ? 'pending' 
-                  : 'loan'
+                  : 'receivable'
               }`}>
                 {calculatedData.remittanceStatus}
               </p>
@@ -452,35 +452,35 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
         </form>
       </div>
 
-      {/* IV. Loan Details */}
-      {calculatedData.showLoanSection && (
+      {/* IV. Receivable Details */}
+      {calculatedData.showReceivableSection && (
         <>
-          <p className="details-title">IV. Loan Details</p>
+          <p className="details-title">IV. Receivable Details</p>
           <div className="modal-content view">
             <form className="view-form">
-              {/* Loan type (always Trip Deficit) */}
+              {/* Receivable type (always Trip Deficit) */}
               <div className="form-row">
                 <div className="form-group">
-                  <label>Loan Type</label>
+                  <label>Receivable Type</label>
                   <p>Trip Deficit</p>
                 </div>
               </div>
 
-              {/* Loan amount and interest */}
+              {/* receivable amount and interest */}
               <div className="form-row">
                 <div className="form-group">
-                  <label>Loan Amount (Principal)</label>
-                  <p>{formatMoney(calculatedData.loanAmount)}</p>
+                  <label>Receivable Amount (Principal)</label>
+                  <p>{formatMoney(calculatedData.receivableAmount)}</p>
                 </div>
 
                 <div className="form-group">
-                  <label>Loan Interest (10%)</label>
-                  <p>{formatMoney(calculatedData.loanInterest)}</p>
+                  <label>Receivable Interest (10%)</label>
+                  <p>{formatMoney(calculatedData.receivableInterest)}</p>
                 </div>
 
                 <div className="form-group">
-                  <label>Total Loan Amount</label>
-                  <p className="total-amount">{formatMoney(calculatedData.totalLoanAmount)}</p>
+                  <label>Total Receivable Amount</label>
+                  <p className="total-amount">{formatMoney(calculatedData.totalReceivableAmount)}</p>
                 </div>
               </div>
 
@@ -499,11 +499,11 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
                 </div>
               </div>
 
-              {/* Loan due date (if recorded) */}
+              {/* Receivable due date (if recorded) */}
               {tripData.dateRecorded && (
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Loan Due Date</label>
+                    <label>Receivable Due Date</label>
                     <p>
                       {(() => {
                         const dueDate = new Date(tripData.dateRecorded);

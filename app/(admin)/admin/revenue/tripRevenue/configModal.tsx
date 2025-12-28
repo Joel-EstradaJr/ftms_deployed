@@ -7,16 +7,16 @@
  * 
  * This component manages configuration settings for trip revenue management:
  * - Minimum wage per employee
- * - Duration before remittance is converted to receivable/loan (in hours)
- * - Loan due date (in days)
- * - Default loan share split between conductor and driver
+ * - Duration before remittance is converted to receivabl (in hours)
+ * - receivable due date (in days)
+ * - Default receivable share split between conductor and driver
  * 
  * CONFIGURATION STORAGE:
  * These settings should be stored in a configuration table in the database
  * and retrieved when the application loads. The configuration affects:
  * - Remittance validation rules
- * - Automatic loan conversion timing
- * - Default loan distribution
+ * - Automatic receivable conversion timing
+ * - Default receivable distribution
  * 
  * BACKEND ENDPOINT:
  * - GET /api/admin/revenue/config (to load current configuration)
@@ -25,13 +25,13 @@
  * VALIDATION RULES:
  * - Minimum wage must be > 0
  * - Duration to receivable must be > 0
- * - Loan due date must be > 0
+ * - receivable due date must be > 0
  * - Conductor and driver shares must add up to 100%
  * 
  * NOTE: When configuration is updated, it should apply to:
  * - New trip assignments going forward
  * - Pending remittances (not yet recorded)
- * - Should NOT affect already finalized remittances or loans
+ * - Should NOT affect already finalized remittances or receivables
  * 
  * ============================================================================
  */
@@ -50,8 +50,8 @@ interface ConfigModalProps {
 
 export interface ConfigData {
   minimum_wage: number; // Minimum wage for driver & conductor
-  duration_to_late: number; // Hours until converted to receivable/loan
-  loan_due_date: number; // Days until loan is due
+  duration_to_late: number; // Hours until converted to receivable/receivable
+  receivable_due_date: number; // Days until receivable is due
   driver_share: number; // Percentage share for driver (0-100)
   conductor_share: number; // Percentage share for conductor (0-100)
 }
@@ -59,7 +59,7 @@ export interface ConfigData {
 interface FormErrors {
   minimum_wage: string;
   duration_to_late: string;
-  loan_due_date: string;
+  receivable_due_date: string;
   driver_share: string;
   conductor_share: string;
 }
@@ -68,7 +68,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
   const [formData, setFormData] = useState<ConfigData>({
     minimum_wage: currentConfig?.minimum_wage || 600,
     duration_to_late: currentConfig?.duration_to_late || 168,
-    loan_due_date: currentConfig?.loan_due_date || 30,
+    receivable_due_date: currentConfig?.receivable_due_date || 30,
     driver_share: currentConfig?.driver_share || 50,
     conductor_share: currentConfig?.conductor_share || 50,
   });
@@ -80,7 +80,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       setFormData({
         minimum_wage: currentConfig.minimum_wage,
         duration_to_late: currentConfig.duration_to_late,
-        loan_due_date: currentConfig.loan_due_date,
+        receivable_due_date: currentConfig.receivable_due_date,
         driver_share: currentConfig.driver_share,
         conductor_share: currentConfig.conductor_share,
       });
@@ -90,7 +90,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
   const [formErrors, setFormErrors] = useState<FormErrors>({
     minimum_wage: '',
     duration_to_late: '',
-    loan_due_date: '',
+    receivable_due_date: '',
     driver_share: '',
     conductor_share: '',
   });
@@ -114,11 +114,11 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
         }
         break;
       
-      case 'loan_due_date':
+      case 'receivable_due_date':
         if (!value || value <= 0) {
-          errorMessage = 'Loan due date must be greater than 0';
+          errorMessage = 'Receivable due date must be greater than 0';
         } else if (value > 365) {
-          errorMessage = 'Loan due date cannot exceed 365 days (1 year)';
+          errorMessage = 'Receivable due date cannot exceed 365 days (1 year)';
         }
         break;
       
@@ -151,7 +151,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
   const validateForm = (): boolean => {
     const minimumWageValid = validateFormField('minimum_wage', formData.minimum_wage);
     const durationToLateValid = validateFormField('duration_to_late', formData.duration_to_late);
-    const loanDueDateValid = validateFormField('loan_due_date', formData.loan_due_date);
+    const receivableDueDateValid = validateFormField('receivable_due_date', formData.receivable_due_date);
     const driverShareValid = validateFormField('driver_share', formData.driver_share);
     const conductorShareValid = validateFormField('conductor_share', formData.conductor_share);
 
@@ -161,7 +161,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       return false;
     }
 
-    return minimumWageValid && durationToLateValid && loanDueDateValid && driverShareValid && conductorShareValid;
+    return minimumWageValid && durationToLateValid && receivableDueDateValid && driverShareValid && conductorShareValid;
   };
 
   // Check form validity on data changes
@@ -169,13 +169,13 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     const isValid = 
       formData.minimum_wage > 0 &&
       formData.duration_to_late > 0 &&
-      formData.loan_due_date > 0 &&
+      formData.receivable_due_date > 0 &&
       formData.driver_share >= 0 &&
       formData.conductor_share >= 0 &&
       formData.conductor_share + formData.driver_share === 100 &&
       formErrors.minimum_wage === '' &&
       formErrors.duration_to_late === '' &&
-      formErrors.loan_due_date === '' &&
+      formErrors.receivable_due_date === '' &&
       formErrors.driver_share === '' &&
       formErrors.conductor_share === '';
     
@@ -322,7 +322,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
                 required
               />
               <small className="hint-message">
-                Hours after assignment before remittance is converted to receivable/loan
+                Hours after assignment before remittance is converted to receivable.
               </small>
               {formErrors.duration_to_late && (
                 <p className="add-error-message">{formErrors.duration_to_late}</p>
@@ -330,28 +330,28 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
             </div>
           </div>
 
-          {/* Loan Due Date */}
+          {/* Receivable Due Date */}
           <div className="form-row">
             <div className="form-group">
               <label>
-                Loan Due Date (Days)<span className="requiredTags"> *</span>
+                Receivable Due Date (Days)<span className="requiredTags"> *</span>
               </label>
               <input
                 type="number"
-                value={formData.loan_due_date}
-                onChange={(e) => handleInputChange('loan_due_date', e.target.value)}
-                onBlur={() => handleInputBlur('loan_due_date')}
+                value={formData.receivable_due_date}
+                onChange={(e) => handleInputChange('receivable_due_date', e.target.value)}
+                onBlur={() => handleInputBlur('receivable_due_date')}
                 min="1"
                 max="365"
-                className={formErrors.loan_due_date ? 'invalid-input' : ''}
+                className={formErrors.receivable_due_date ? 'invalid-input' : ''}
                 placeholder="30"
                 required
               />
               <small className="hint-message">
-                Days from loan creation until payment is due (maximum 365 days)
+                Days from receivable creation until payment is due (maximum 365 days)
               </small>
-              {formErrors.loan_due_date && (
-                <p className="add-error-message">{formErrors.loan_due_date}</p>
+              {formErrors.receivable_due_date && (
+                <p className="add-error-message">{formErrors.receivable_due_date}</p>
               )}
             </div>
           </div>
@@ -374,7 +374,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
                 required
               />
               <small className="hint-message">
-                Driver's share of loan for trip deficit (auto-adjusts conductor share to equal 100%)
+                Driver's share of receivable for trip deficit (auto-adjusts conductor share to equal 100%)
               </small>
               {formErrors.driver_share && (
                 <p className="add-error-message">{formErrors.driver_share}</p>
@@ -397,7 +397,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
                 required
               />
               <small className="hint-message">
-                Conductor's share of loan for trip deficit (auto-adjusts driver share to equal 100%)
+                Conductor's share of receivable for trip deficit (auto-adjusts driver share to equal 100%)
               </small>
               {formErrors.conductor_share && (
                 <p className="add-error-message">{formErrors.conductor_share}</p>

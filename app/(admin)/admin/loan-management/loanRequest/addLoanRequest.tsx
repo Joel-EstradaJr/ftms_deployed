@@ -10,7 +10,7 @@ import {
   PaymentEntry,
   PaymentStatus,
   PaymentConfiguration
-} from '../../../../types/loanPaymentTypes';
+} from '../../../../types/receivablePaymentTypes';
 import {
   generatePaymentSchedule,
   calculateTotalPeso,

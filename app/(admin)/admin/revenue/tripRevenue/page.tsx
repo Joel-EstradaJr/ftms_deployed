@@ -13,7 +13,7 @@ import RevenueFilter from "@/Components/RevenueFilter";
 
 import ViewTripRevenueModal from "./viewTripRevenue";
 import RecordTripRevenueModal from "./recordTripRevenue"; // Combined add/edit modal
-import RecordLoanPaymentModal from "./recordLoanPayment"; // Loan payment modal
+import RecordReceivablePaymentModal from "./recordReceivablePayment"; // Receivable payment modal
 import ConfigModal, { ConfigData } from "./configModal"; // Configuration modal
 
 import { showSuccess, showError } from '@/utils/Alerts';
@@ -53,10 +53,10 @@ interface BusTripRecord {
   amount: number | null;
   status: string; // 'remitted' or 'pending'
   remarks: string | null;
-  dueDate?: string | null; // Loan due date (for loaned status)
+  dueDate?: string | null; // receivable due date (for receivable status)
   
-  // Loan payment details (for loaned status)
-  loanDetails?: {
+  // receivable payment details (for receivable status)
+  receivableDetails?: {
     totalAmount: number;
     dueDate: string;
     createdDate: string;
@@ -242,7 +242,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-004",
     bus_trip_id: "TRIP-004",
     bus_route: "Sta. Cruz to S. Palay",
-    date_assigned: "2025-11-02", // Old date - will be auto-converted to loaned (trip deficit)
+    date_assigned: "2025-11-02", // Old date - will be auto-converted to receivable (trip deficit)
     trip_fuel_expense: 1800.00,
     trip_revenue: 10000.00,
     amount: 0,
@@ -345,7 +345,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Ordinary",
     body_number: "006",
     bus_brand: "DARJ",
-    status: "pending", // Will be auto-converted to loaned by checkAndUpdateStatus
+    status: "pending", // Will be auto-converted to receivable by checkAndUpdateStatus
     remarks: null,
     driverName: "Jose Alvarez Reyes",
     conductorName: "Elena Cruz Bautista",
@@ -386,9 +386,9 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_brand: "Hilltop",
     dateRecorded: "2025-11-11",
     date_expected: "2025-11-14",
-    amount: 5000.00, // Less than expected (7000 + 2000 = 9000), so it's loaned
+    amount: 5000.00, // Less than expected (7000 + 2000 = 9000), so it's receivable
     status: "Trip Deficit",
-    remarks: "Partial remittance - shortfall converted to loan",
+    remarks: "Partial remittance - shortfall converted to receivable.",
     driverName: "Ricardo Alvarez Fernandez",
     conductorName: "Maria Santos Lopez",
     // Driver details
@@ -467,7 +467,7 @@ const AdminTripRevenuePage = () => {
   const [config, setConfig] = useState<ConfigData>({
     minimum_wage: 600,
     duration_to_late: 72,
-    loan_due_date: 30,
+    receivable_due_date: 30,
     conductor_share: 50,
     driver_share: 50,
   });
@@ -509,7 +509,7 @@ const AdminTripRevenuePage = () => {
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
 
   // Open modal with different modes
-  const openModal = (mode: "view" | "add" | "edit" | "config" | "payLoan", rowData?: BusTripRecord) => {
+  const openModal = (mode: "view" | "add" | "edit" | "config" | "payReceivable", rowData?: BusTripRecord) => {
     let content;
 
     switch (mode) {
@@ -521,7 +521,7 @@ const AdminTripRevenuePage = () => {
         break;
       case "add":
       case "edit":
-        // Check if editing a remitted record (but allow loan status to be edited)
+        // Check if editing a remitted record (but allow receivable status to be edited)
         if (mode === "edit" && rowData && rowData.status && rowData.status.toLowerCase() === "remitted") {
           showError(`This trip revenue cannot be edited because it has already been marked as "${rowData.status.toUpperCase()}".`, 'Cannot Edit');          
           return;
@@ -534,10 +534,10 @@ const AdminTripRevenuePage = () => {
           onClose={closeModal}
         />;
         break;
-      case "payLoan":
-        content = <RecordLoanPaymentModal
+      case "payReceivable":
+        content = <RecordReceivablePaymentModal
           tripData={rowData!}
-          onSave={handleLoanPayment}
+          onSave={handleReceivablePayment}
           onClose={closeModal}
         />;
         break;
@@ -574,39 +574,39 @@ const AdminTripRevenuePage = () => {
     showSuccess('Configuration saved successfully', 'Success');
   };
 
-  // Handle loan payment
-  const handleLoanPayment = async (paymentData: any) => {
-    console.log('Recording loan payment:', paymentData);
+  // Handle receivable payment
+  const handleReceivablePayment = async (paymentData: any) => {
+    console.log('Recording receivable payment:', paymentData);
     
     // Update persistent mock data
     setFullDataset(prevData => prevData.map(item => {
       if (item.assignment_id === paymentData.assignment_id) {
-        if (paymentData.action === 'closeLoan') {
-          // Close the loan
+        if (paymentData.action === 'closeReceivable') {
+          // Close the receivable
           return {
             ...item,
-            loanDetails: item.loanDetails ? {
-              ...item.loanDetails,
+            receivableDetails: item.receivableDetails ? {
+              ...item.receivableDetails,
               overallStatus: 'Closed' as const
-            } : item.loanDetails
+            } : item.receivableDetails
           };
         } else {
           // Record payment
-          const loanDetails = item.loanDetails;
-          if (!loanDetails) return item;
+          const receivableDetails = item.receivableDetails;
+          if (!receivableDetails) return item;
 
           if (paymentData.employeeType === 'driver') {
-            const newDriverPaid = loanDetails.driverPaid + paymentData.payment.amount;
+            const newDriverPaid = receivableDetails.driverPaid + paymentData.payment.amount;
             const newDriverStatus: 'Pending' | 'Paid' | 'Overdue' = 
-              Math.abs(newDriverPaid - loanDetails.driverShare) < 0.01 ? 'Paid' : 'Pending';
+              Math.abs(newDriverPaid - receivableDetails.driverShare) < 0.01 ? 'Paid' : 'Pending';
             
             const hasConductor = item.conductorId && item.conductorName && item.conductorName !== 'N/A';
-            let newOverallStatus = loanDetails.overallStatus;
+            let newOverallStatus = receivableDetails.overallStatus;
             
             if (hasConductor) {
-              if (newDriverStatus === 'Paid' && loanDetails.conductorStatus === 'Paid') {
+              if (newDriverStatus === 'Paid' && receivableDetails.conductorStatus === 'Paid') {
                 newOverallStatus = 'Paid';
-              } else if (newDriverStatus === 'Paid' || loanDetails.conductorStatus === 'Paid') {
+              } else if (newDriverStatus === 'Paid' || receivableDetails.conductorStatus === 'Paid') {
                 newOverallStatus = 'Partial';
               }
             } else {
@@ -615,33 +615,33 @@ const AdminTripRevenuePage = () => {
 
             return {
               ...item,
-              loanDetails: {
-                ...loanDetails,
+              receivableDetails: {
+                ...receivableDetails,
                 driverPaid: newDriverPaid,
                 driverStatus: newDriverStatus,
-                driverPayments: [...loanDetails.driverPayments, paymentData.payment],
+                driverPayments: [...receivableDetails.driverPayments, paymentData.payment],
                 overallStatus: newOverallStatus
               }
             };
           } else if (paymentData.employeeType === 'conductor') {
-            const newConductorPaid = (loanDetails.conductorPaid || 0) + paymentData.payment.amount;
+            const newConductorPaid = (receivableDetails.conductorPaid || 0) + paymentData.payment.amount;
             const newConductorStatus: 'Pending' | 'Paid' | 'Overdue' = 
-              Math.abs(newConductorPaid - (loanDetails.conductorShare || 0)) < 0.01 ? 'Paid' : 'Pending';
+              Math.abs(newConductorPaid - (receivableDetails.conductorShare || 0)) < 0.01 ? 'Paid' : 'Pending';
             
-            let newOverallStatus = loanDetails.overallStatus;
-            if (loanDetails.driverStatus === 'Paid' && newConductorStatus === 'Paid') {
+            let newOverallStatus = receivableDetails.overallStatus;
+            if (receivableDetails.driverStatus === 'Paid' && newConductorStatus === 'Paid') {
               newOverallStatus = 'Paid';
-            } else if (loanDetails.driverStatus === 'Paid' || newConductorStatus === 'Paid') {
+            } else if (receivableDetails.driverStatus === 'Paid' || newConductorStatus === 'Paid') {
               newOverallStatus = 'Partial';
             }
 
             return {
               ...item,
-              loanDetails: {
-                ...loanDetails,
+              receivableDetails: {
+                ...receivableDetails,
                 conductorPaid: newConductorPaid,
                 conductorStatus: newConductorStatus,
-                conductorPayments: [...(loanDetails.conductorPayments || []), paymentData.payment],
+                conductorPayments: [...(receivableDetails.conductorPayments || []), paymentData.payment],
                 overallStatus: newOverallStatus
               }
             };
@@ -726,14 +726,14 @@ const AdminTripRevenuePage = () => {
       currentStatus: record.status
     });
 
-    // Check if deadline exceeded (converted to loan)
+    // Check if deadline exceeded (converted to receivable)
     if (hoursDiff > config.duration_to_late) {
       const dateRecorded = now.toISOString().split('T')[0];
       const dueDate = new Date(now);
-      dueDate.setDate(dueDate.getDate() + config.loan_due_date);
+      dueDate.setDate(dueDate.getDate() + config.receivable_due_date);
       const dueDateStr = dueDate.toISOString().split('T')[0];
       
-      // Calculate loan shares based on conductor presence
+      // Calculate receivable shares based on conductor presence
       const hasConductor = record.conductorId && record.conductorName && record.conductorName !== 'N/A';
       const totalAmount = record.trip_revenue; // Total trip deficit is the unpaid revenue
       
@@ -749,15 +749,15 @@ const AdminTripRevenuePage = () => {
       // Determine if already overdue
       const isOverdue = now > dueDate;
       
-      console.log(`[${record.body_number}] ✓ Converting to loaned (trip deficit) - Setting dateRecorded=${dateRecorded}, dueDate=${dueDateStr} (${config.loan_due_date} days)`);
+      console.log(`[${record.body_number}] ✓ Converting to receivables (trip deficit) - Setting dateRecorded=${dateRecorded}, dueDate=${dueDateStr} (${config.receivable_due_date} days)`);
       return {
         ...record,
-        status: 'loaned', // Deadline exceeded, converted to loan
+        status: 'receivable', // Deadline exceeded, converted to receivable
         dateRecorded: dateRecorded, // Set current date as dateRecorded
         amount: 0, // No payment made, amount is 0
         dueDate: dueDateStr, // Calculate due date based on config
-        remarks: `Automatically converted to loan - Deadline exceeded with no remittance. Due: ${formatDate(dueDateStr)}`,
-        loanDetails: {
+        remarks: `Automatically converted to receivable - Deadline exceeded with no remittance. Due: ${formatDate(dueDateStr)}`,
+        receivableDetails: {
           totalAmount,
           dueDate: dueDateStr,
           createdDate: dateRecorded,
@@ -925,11 +925,11 @@ const AdminTripRevenuePage = () => {
     return sortOrder === "asc" ? " ↑" : " ↓";
   };
 
-  // Calculate loan due date (configurable days from dateRecorded)
-  const getLoanDueDate = (dateRecorded: string | null): string => {
+  // Calculate receivable due date (configurable days from dateRecorded)
+  const getReceivableDueDate = (dateRecorded: string | null): string => {
     if (!dateRecorded) return 'N/A';
     const dueDate = new Date(dateRecorded);
-    dueDate.setDate(dueDate.getDate() + config.loan_due_date);
+    dueDate.setDate(dueDate.getDate() + config.receivable_due_date);
     return formatDate(dueDate.toISOString().split('T')[0]);
   };
 
@@ -1076,25 +1076,25 @@ const AdminTripRevenuePage = () => {
                         <span className={`chip ${
                           item.status === 'remitted' ? 'completed' : 
                           item.status === 'receivable' ? (
-                            item.loanDetails?.overallStatus === 'Partial' ? 'partially-paid' :
-                            item.loanDetails?.overallStatus === 'Paid' ? 'paid' :
-                            item.loanDetails?.overallStatus === 'Closed' ? 'closed' :
+                            item.receivableDetails?.overallStatus === 'Partial' ? 'partially-paid' :
+                            item.receivableDetails?.overallStatus === 'Paid' ? 'paid' :
+                            item.receivableDetails?.overallStatus === 'Closed' ? 'closed' :
                             'receivable'
                           ) : 
                           'pending'
                         }`}>
                           {item.status === 'remitted' ? 'Remitted' : 
                            item.status === 'receivable' ? (
-                             item.loanDetails?.overallStatus === 'Partial' ? 'Partially Paid' :
-                             item.loanDetails?.overallStatus === 'Paid' ? 'Paid' :
-                             item.loanDetails?.overallStatus === 'Closed' ? 'Closed' :
+                             item.receivableDetails?.overallStatus === 'Partial' ? 'Partially Paid' :
+                             item.receivableDetails?.overallStatus === 'Paid' ? 'Paid' :
+                             item.receivableDetails?.overallStatus === 'Closed' ? 'Closed' :
                              'Receivable'
                            ) : 
                            'Pending'}
                         </span>
                       </td>
                       <td>
-                        {item.status === 'loaned' ? getLoanDueDate(item.dateRecorded) : '-'}
+                        {item.status === 'receivable' ? getReceivableDueDate(item.dateRecorded) : '-'}
                       </td>
                       <td className="actionButtons">
                         <div className="actionButtonsContainer">
@@ -1120,16 +1120,16 @@ const AdminTripRevenuePage = () => {
                             <>
                               <button
                                 className="editBtn"
-                                onClick={() => openModal("payLoan", item)}
-                                title={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Loan'}
-                                disabled={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed'}
+                                onClick={() => openModal("payReceivable", item)}
+                                title={item.receivableDetails?.overallStatus === 'Paid' || item.receivableDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Receivable'}
+                                disabled={item.receivableDetails?.overallStatus === 'Paid' || item.receivableDetails?.overallStatus === 'Closed'}
                               >
                                 <i className="ri-hand-coin-line" />
                               </button>
                               <button
                                 className="editBtn"
                                 onClick={() => openModal("edit", item)}
-                                title="Edit Loan Details"
+                                title="Edit Receivable Details"
                               >
                                 <i className="ri-edit-line" />
                               </button>
@@ -1140,8 +1140,8 @@ const AdminTripRevenuePage = () => {
                             <>
                             <button
                                 className="editBtn"
-                                onClick={() => openModal("payLoan", item)}
-                                title={item.loanDetails?.overallStatus === 'Paid' || item.loanDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Receivable'}
+                                onClick={() => openModal("payReceivable", item)}
+                                title={item.receivableDetails?.overallStatus === 'Paid' || item.receivableDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Receivable'}
                                 disabled={true}
                               >
                                 <i className="ri-hand-coin-line" />

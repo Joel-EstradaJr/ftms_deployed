@@ -1,13 +1,13 @@
 /**
- * Record Loan Payment Modal Component
+ * Record receivable Payment Modal Component
  * 
- * Handles individual trip deficit loan payments for driver and conductor.
+ * Handles individual trip deficit receivable payments for driver and conductor.
  * Features:
  * - Separate payment cards for driver and conductor (if exists)
  * - Payment method selection and timestamp tracking
  * - Strict validation (exact amount matching)
  * - Confirmation with typed input ("PAY" to confirm)
- * - Close loan functionality when all payments complete
+ * - Close receivable functionality when all payments complete
  * - Driver-only scenario support
  */
 
@@ -21,7 +21,7 @@ import { showSuccess, showError, showConfirmation } from "@/utils/Alerts";
 import { formatDate, formatMoney } from "@/utils/formatting";
 import Swal from "sweetalert2";
 
-interface RecordLoanPaymentModalProps {
+interface RecordReceivablePaymentModalProps {
   tripData: {
     assignment_id: string;
     body_number: string;
@@ -40,7 +40,7 @@ interface RecordLoanPaymentModalProps {
     conductorMiddleName?: string;
     conductorLastName?: string;
     conductorSuffix?: string;
-    loanDetails?: {
+    receivableDetails?: {
       totalAmount: number;
       dueDate: string;
       createdDate: string;
@@ -74,7 +74,7 @@ interface RecordLoanPaymentModalProps {
 const PAYMENT_METHODS = ['Cash', 'Payroll Deduction', 'Bank Transfer'] as const;
 type PaymentMethod = typeof PAYMENT_METHODS[number];
 
-export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: RecordLoanPaymentModalProps) {
+export default function RecordReceivablePaymentModal({ tripData, onSave, onClose }: RecordReceivablePaymentModalProps) {
   const hasConductor = () => {
     return tripData.conductorId && tripData.conductorName && tripData.conductorName !== 'N/A';
   };
@@ -87,17 +87,12 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
   const [conductorPaymentMethod, setConductorPaymentMethod] = useState<PaymentMethod | ''>('');
   const [conductorError, setConductorError] = useState<string>('');
 
-  const loanDetails = tripData.loanDetails;
+  const receivableDetails = tripData.receivableDetails;
 
-  // Debug logging
-  console.log('RecordLoanPaymentModal - tripData:', tripData);
-  console.log('RecordLoanPaymentModal - loanDetails:', loanDetails);
-
-  if (!loanDetails) {
-    console.error('Loan details missing for trip:', tripData.assignment_id);
+  if (!receivableDetails) {
     return (
       <div className="modal-content">
-        <p className="error-text">Loan details not found for this trip.</p>
+        <p className="error-text">Receivable details not found for this trip.</p>
         <p style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
           Assignment ID: {tripData.assignment_id}<br/>
           Status: {tripData.status}<br/>
@@ -108,16 +103,16 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
   }
 
   // Calculate remaining balances
-  const driverRemaining = loanDetails.driverShare - loanDetails.driverPaid;
-  const conductorRemaining = hasConductor() && loanDetails.conductorShare 
-    ? loanDetails.conductorShare - (loanDetails.conductorPaid || 0)
+  const driverRemaining = receivableDetails.driverShare - receivableDetails.driverPaid;
+  const conductorRemaining = hasConductor() && receivableDetails.conductorShare 
+    ? receivableDetails.conductorShare - (receivableDetails.conductorPaid || 0)
     : 0;
 
   // Check if overdue
   const isOverdue = () => {
     const today = new Date();
-    const dueDate = new Date(loanDetails.dueDate);
-    return today > dueDate && loanDetails.overallStatus !== 'Paid' && loanDetails.overallStatus !== 'Closed';
+    const dueDate = new Date(receivableDetails.dueDate);
+    return today > dueDate && receivableDetails.overallStatus !== 'Paid' && receivableDetails.overallStatus !== 'Closed';
   };
 
   // Validate driver payment
@@ -300,39 +295,39 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
     }
   };
 
-  // Handle close loan
-  const handleCloseLoan = async () => {
+  // Handle close receivable
+  const handleCloseReceivable = async () => {
     const hasUnpaidBalance = driverRemaining > 0 || conductorRemaining > 0;
     const totalUnpaid = driverRemaining + conductorRemaining;
     
     const result = await Swal.fire({
-      title: 'Close Trip Deficit Loan',
+      title: 'Close Trip Deficit Receivable',
       html: `
         <div style="text-align: left; margin: 20px 0;">
           <p><strong>Assignment ID:</strong> ${tripData.assignment_id}</p>
           <p><strong>Body Number:</strong> ${tripData.body_number}</p>
-          <p><strong>Total Loan Amount:</strong> ${formatMoney(loanDetails.totalAmount)}</p>
-          <p><strong>Total Paid:</strong> ${formatMoney(loanDetails.driverPaid + (loanDetails.conductorPaid || 0))}</p>
+          <p><strong>Total Receivable Amount:</strong> ${formatMoney(receivableDetails.totalAmount)}</p>
+          <p><strong>Total Paid:</strong> ${formatMoney(receivableDetails.driverPaid + (receivableDetails.conductorPaid || 0))}</p>
           ${hasUnpaidBalance ? `
             <p style="color: #FF4949; font-weight: 600; margin-top: 10px;">
               <strong>⚠️ Unpaid Balance:</strong> ${formatMoney(totalUnpaid)}
             </p>
             <p style="color: #666; font-size: 13px; margin-top: 8px;">
-              This loan has an outstanding balance. Closing it will write off the unpaid amount.
+              This receivable has an outstanding balance. Closing it will write off the unpaid amount.
             </p>
           ` : `
             <p style="color: #13CE66; font-weight: 600; margin-top: 10px;">
-              ✓ Loan is fully paid
+              ✓ Receivable is fully paid
             </p>
           `}
           <br/>
-          <p style="color: #666;">Type <strong>CLOSE</strong> below to confirm closing this loan:</p>
+          <p style="color: #666;">Type <strong>CLOSE</strong> below to confirm closing this receivable:</p>
         </div>
       `,
       input: 'text',
       inputPlaceholder: 'Type CLOSE to confirm',
       showCancelButton: true,
-      confirmButtonText: hasUnpaidBalance ? 'Close & Write Off' : 'Close Loan',
+      confirmButtonText: hasUnpaidBalance ? 'Close & Write Off' : 'Close Receivable',
       cancelButtonText: 'Cancel',
       confirmButtonColor: '#961C1E',
       cancelButtonColor: '#6c757d',
@@ -351,24 +346,24 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
     if (result.isConfirmed) {
       const closureData = {
         assignment_id: tripData.assignment_id,
-        action: 'closeLoan',
+        action: 'closeReceivable',
         closedBy: 'Admin', // TODO: Get from auth context
         closedDate: new Date().toISOString()
       };
 
       onSave(closureData);
-      showSuccess('Trip deficit loan closed successfully', 'Loan Closed');
+      showSuccess('Trip deficit receivable closed successfully', 'Receivable Closed');
       onClose();
     }
   };
 
-  // Close loan is always available for administrative write-off or closure
-  // No longer requires full payment - admin can close unpaid loans
+  // Close receivable is always available for administrative write-off or closure
+  // No longer requires full payment - admin can close unpaid receivable
 
   return (
     <>
       <div className="modal-heading">
-        <h1 className="modal-title">Trip Deficit Loan Payment</h1>
+        <h1 className="modal-title">Trip Deficit Receivable Payment</h1>
         <div className="modal-date-time">
           <p>{formatDate(new Date().toISOString())}</p>
           <p>{new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</p>
@@ -378,8 +373,8 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
         </button>
       </div>
 
-      {/* Loan Summary */}
-      <p className="details-title">Loan Summary</p>
+      {/* Receivable Summary */}
+      <p className="details-title">Receivable Summary</p>
       <div className="modal-content view">
         <div className="view-form">
           <div className="form-row">
@@ -394,19 +389,19 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Total Loan Amount</label>
-              <p>{formatMoney(loanDetails.totalAmount)}</p>
+              <label>Total Receivable Amount</label>
+              <p>{formatMoney(receivableDetails.totalAmount)}</p>
             </div>
             <div className="form-group">
               <label>Due Date</label>
-              <p>{formatDate(loanDetails.dueDate)}</p>
+              <p>{formatDate(receivableDetails.dueDate)}</p>
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>Overall Status</label>
-              <span className={`chip ${loanDetails.overallStatus.toLowerCase().replace(' ', '-')}`}>
-                {loanDetails.overallStatus}
+              <span className={`chip ${receivableDetails.overallStatus.toLowerCase().replace(' ', '-')}`}>
+                {receivableDetails.overallStatus}
               </span>
               {isOverdue() && (
                 <span className="chip overdue" style={{ marginLeft: '8px' }}>
@@ -444,11 +439,11 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
           <div className="form-row">
             <div className="form-group">
               <label>Share Amount</label>
-              <input type="text" value={formatMoney(loanDetails.driverShare)} disabled />
+              <input type="text" value={formatMoney(receivableDetails.driverShare)} disabled />
             </div>
             <div className="form-group">
               <label>Amount Paid</label>
-              <input type="text" value={formatMoney(loanDetails.driverPaid)} disabled />
+              <input type="text" value={formatMoney(receivableDetails.driverPaid)} disabled />
             </div>
             <div className="form-group">
               <label>Remaining Balance</label>
@@ -465,14 +460,14 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
           <div className="form-row">
             <div className="form-group">
               <label>Payment Status</label>
-              <span className={`chip ${loanDetails.driverStatus.toLowerCase()}`}>
-                {loanDetails.driverStatus}
+              <span className={`chip ${receivableDetails.driverStatus.toLowerCase()}`}>
+                {receivableDetails.driverStatus}
               </span>
             </div>
           </div>
 
           {/* Payment Form (only if not paid) */}
-          {loanDetails.driverStatus !== 'Paid' && (
+          {receivableDetails.driverStatus !== 'Paid' && (
             <>
               <div className="form-row">
                 <div className="form-group">
@@ -527,7 +522,7 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
       </div>
 
       {/* Conductor Payment Card (if exists) */}
-      {hasConductor() && loanDetails.conductorShare && (
+      {hasConductor() && receivableDetails.conductorShare && (
         <>
           <p className="details-title">Conductor Payment</p>
           <div className="modal-content add">
@@ -554,11 +549,11 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
               <div className="form-row">
                 <div className="form-group">
                   <label>Share Amount</label>
-                  <input type="text" value={formatMoney(loanDetails.conductorShare)} disabled />
+                  <input type="text" value={formatMoney(receivableDetails.conductorShare)} disabled />
                 </div>
                 <div className="form-group">
                   <label>Amount Paid</label>
-                  <input type="text" value={formatMoney(loanDetails.conductorPaid || 0)} disabled />
+                  <input type="text" value={formatMoney(receivableDetails.conductorPaid || 0)} disabled />
                 </div>
                 <div className="form-group">
                   <label>Remaining Balance</label>
@@ -575,14 +570,14 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
               <div className="form-row">
                 <div className="form-group">
                   <label>Payment Status</label>
-                  <span className={`chip ${loanDetails.conductorStatus?.toLowerCase() || 'pending'}`}>
-                    {loanDetails.conductorStatus || 'Pending'}
+                  <span className={`chip ${receivableDetails.conductorStatus?.toLowerCase() || 'pending'}`}>
+                    {receivableDetails.conductorStatus || 'Pending'}
                   </span>
                 </div>
               </div>
 
               {/* Payment Form (only if not paid) */}
-              {loanDetails.conductorStatus !== 'Paid' && (
+              {receivableDetails.conductorStatus !== 'Paid' && (
                 <>
                   <div className="form-row">
                     <div className="form-group">
@@ -650,11 +645,11 @@ export default function RecordLoanPaymentModal({ tripData, onSave, onClose }: Re
         <button
           type="button"
           className="submit-btn"
-          onClick={handleCloseLoan}
-          title="Close this loan (write off if unpaid)"
+          onClick={handleCloseReceivable}
+          title="Close this receivable (write off if unpaid)"
         >
           <i className="ri-checkbox-circle-line"></i>
-          Close Loan
+          Close Receivable
         </button>
       </div>
     </>

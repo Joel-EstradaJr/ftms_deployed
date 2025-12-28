@@ -7,7 +7,7 @@ import {
   PaymentEntry, 
   PaymentMode,
   PaymentStatus 
-} from '../types/loanPaymentTypes';
+} from '../types/receivablePaymentTypes';
 
 /**
  * Generate payment schedule based on frequency
