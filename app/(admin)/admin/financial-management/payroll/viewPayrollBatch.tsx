@@ -4,6 +4,17 @@ import React, { useState } from 'react';
 import { PayrollBatch, Payroll } from './types';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showConfirmation, showSuccess, showError } from '../../../../utils/Alerts';
+import ViewPayslipModal from './viewPayslip';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import JSZip from 'jszip';
+import {
+  calculateEarnings,
+  calculateDeductions,
+  formatRateType,
+  getEmployeeName,
+  RateType,
+} from '@/utils/payrollCalculations';
 import '@/styles/components/modal2.css';
 import '@/styles/components/forms.css';
 import '@/styles/components/table.css';
@@ -26,6 +37,9 @@ export default function ViewPayrollBatch({
   const [selectedPayrolls, setSelectedPayrolls] = useState<string[]>([]);
   const [disbursing, setDisbursing] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState<string | null>(null);
+  const [payslipModalOpen, setPayslipModalOpen] = useState(false);
+  const [selectedPayrollForPayslip, setSelectedPayrollForPayslip] = useState<Payroll | null>(null);
+  const [downloadingBatch, setDownloadingBatch] = useState(false);
 
   // Handle select all
   const handleSelectAll = (checked: boolean) => {
@@ -71,6 +85,107 @@ export default function ViewPayrollBatch({
       } finally {
         setDisbursing(false);
       }
+    }
+  };
+
+  // Handle view payslip
+  const handleViewPayslip = (payroll: Payroll) => {
+    setSelectedPayrollForPayslip(payroll);
+    setPayslipModalOpen(true);
+  };
+
+  // Handle download all payslips as ZIP
+  const handleDownloadAllPayslips = async () => {
+    if (!batch.payrolls || batch.payrolls.length === 0) return;
+
+    setDownloadingBatch(true);
+    try {
+      const zip = new JSZip();
+      const payslipsFolder = zip.folder('payslips');
+
+      if (!payslipsFolder) {
+        throw new Error('Failed to create ZIP folder');
+      }
+
+      // Generate PDF for each payroll
+      for (const payroll of batch.payrolls) {
+        if (!payroll.employee) continue;
+
+        // Create a temporary div for the payslip content
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.padding = '20px';
+        tempDiv.style.backgroundColor = '#ffffff';
+        tempDiv.style.width = '800px';
+        document.body.appendChild(tempDiv);
+
+        // Generate payslip HTML (simplified version)
+        const rateType: RateType = 'monthly';
+        const earnings = calculateEarnings(payroll.baseSalary, payroll.allowances, rateType);
+        const deductions = calculateDeductions(payroll.deductions);
+        const employeeName = getEmployeeName(payroll.employee);
+
+        tempDiv.innerHTML = `
+          <div style="font-family: Arial, sans-serif;">
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px;">
+              <h1 style="margin: 0; font-size: 24px;">ACME Solutions Inc.</h1>
+              <p style="margin: 5px 0; font-size: 14px;">Payslip Reference: #${payroll.id}</p>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <strong>Pay Period:</strong> ${formatDate(batch.period_start)} - ${formatDate(batch.period_end)}<br/>
+              <strong>Employee:</strong> ${employeeName}<br/>
+              <strong>ID:</strong> ${payroll.employee.employeeNumber}<br/>
+              <strong>Department:</strong> ${payroll.employee.department || 'N/A'}<br/>
+              <strong>Net Pay:</strong> ${formatMoney(payroll.netPay)}
+            </div>
+          </div>
+        `;
+
+        // Convert to canvas and PDF
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        const imgWidth = 210;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+        // Add PDF to ZIP
+        const pdfBlob = pdf.output('blob');
+        const filename = `Payslip_${payroll.employee.employeeNumber}_${payroll.employee.lastName}.pdf`;
+        payslipsFolder.file(filename, pdfBlob);
+
+        // Clean up
+        document.body.removeChild(tempDiv);
+      }
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Payroll_${batch.payroll_period_code}_Payslips.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showSuccess('All payslips downloaded successfully', 'Success');
+    } catch (error) {
+      console.error('Error generating payslips:', error);
+      showError('Failed to generate payslips. Please try again.', 'Error');
+    } finally {
+      setDownloadingBatch(false);
     }
   };
 
@@ -251,7 +366,7 @@ export default function ViewPayrollBatch({
                     <th>Deductions</th>
                     <th>Net Pay</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th style={{ width: '120px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,17 +403,25 @@ export default function ViewPayrollBatch({
                             <span className="chip pending">Pending</span>
                           )}
                         </td>
-                        <td>
-                          <button
-                            className="viewBtn"
-                            onClick={() => setExpandedDetails(
-                              expandedDetails === payroll.id ? null : payroll.id
-                            )}
-                            title="View Details"
-                            style={{ fontSize: '12px', padding: '4px 8px' }}
-                          >
-                            <i className={`ri-arrow-${expandedDetails === payroll.id ? 'up' : 'down'}-s-line`}></i>
-                          </button>
+                        <td className="actionButtons">
+                          <div className="actionButtonsContainer">
+                            <button
+                              className="viewBtn"
+                              onClick={() => setExpandedDetails(
+                                expandedDetails === payroll.id ? null : payroll.id
+                              )}
+                              title="View Details"
+                            >
+                              <i className={`ri-arrow-${expandedDetails === payroll.id ? 'up' : 'down'}-s-line`}></i>
+                            </button>
+                            <button
+                              className="exportBtn"
+                              onClick={() => handleViewPayslip(payroll)}
+                              title="View Payslip"
+                            >
+                              <i className="ri-file-text-line"></i>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -328,9 +451,18 @@ export default function ViewPayrollBatch({
 
                   return (
                     <>
-                      <h4 style={{ marginBottom: '10px', color: 'var(--primary-color)' }}>
-                        Payroll Details - {payroll.employee?.firstName} {payroll.employee?.lastName}
-                      </h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <h4 style={{ margin: 0, color: 'var(--primary-color)' }}>
+                          Payroll Details - {payroll.employee?.firstName} {payroll.employee?.lastName}
+                        </h4>
+                        <button
+                          className="submit-btn"
+                          onClick={() => handleViewPayslip(payroll)}
+                          style={{ padding: '6px 12px', fontSize: '13px' }}
+                        >
+                          <i className="ri-file-text-line"></i> View Full Payslip
+                        </button>
+                      </div>
                       <div className="form-row">
                         <div className="form-group">
                           <label>Employee ID</label>
@@ -347,15 +479,15 @@ export default function ViewPayrollBatch({
                       </div>
                       <div className="form-row">
                         <div className="form-group">
-                          <label>Base Salary</label>
+                          <label>Base Salary ({formatRateType('monthly')})</label>
                           <input type="text" value={formatMoney(payroll.baseSalary)} readOnly />
                         </div>
                         <div className="form-group">
-                          <label>Allowances</label>
+                          <label>Total Allowances</label>
                           <input type="text" value={formatMoney(payroll.allowances)} readOnly />
                         </div>
                         <div className="form-group">
-                          <label>Deductions</label>
+                          <label>Total Deductions</label>
                           <input type="text" value={formatMoney(payroll.deductions)} readOnly />
                         </div>
                         <div className="form-group">
@@ -365,6 +497,24 @@ export default function ViewPayrollBatch({
                             value={formatMoney(payroll.netPay)} 
                             readOnly 
                             style={{ fontWeight: 600, color: 'var(--primary-color)' }}
+                          />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Benefits Breakdown</label>
+                          <input 
+                            type="text" 
+                            value={`Rice: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).riceAllowance)}, Transport: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).transportationAllowance)}`} 
+                            readOnly 
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Deductions Breakdown</label>
+                          <input 
+                            type="text" 
+                            value={`Tax: ${formatMoney(calculateDeductions(payroll.deductions).withholdingTax)}, SSS: ${formatMoney(calculateDeductions(payroll.deductions).sssContribution)}`} 
+                            readOnly 
                           />
                         </div>
                       </div>
@@ -397,6 +547,17 @@ export default function ViewPayrollBatch({
             >
               <i className="ri-close-line" /> Close
             </button>
+            {batch.payrolls && batch.payrolls.length > 0 && (
+              <button
+                type="button"
+                className="submit-btn"
+                onClick={handleDownloadAllPayslips}
+                disabled={downloadingBatch}
+              >
+                <i className="ri-download-line"></i>
+                {downloadingBatch ? 'Generating...' : 'Download All Payslips (ZIP)'}
+              </button>
+            )}
 
             {undisbursedCount > 0 && selectedPayrolls.length > 0 && (
               <button 
@@ -415,6 +576,20 @@ export default function ViewPayrollBatch({
           </div>
         </div>
       </div>
+
+      {/* Payslip Modal */}
+      {payslipModalOpen && selectedPayrollForPayslip && (
+        <ViewPayslipModal
+          isOpen={payslipModalOpen}
+          onClose={() => {
+            setPayslipModalOpen(false);
+            setSelectedPayrollForPayslip(null);
+          }}
+          payroll={selectedPayrollForPayslip}
+          batchPeriodStart={batch.period_start}
+          batchPeriodEnd={batch.period_end}
+        />
+      )}
     </div>
   );
 }

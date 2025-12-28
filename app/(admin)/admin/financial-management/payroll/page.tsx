@@ -61,13 +61,13 @@ const PayrollPage = () => {
       const mockBatches: PayrollBatch[] = [
         {
           id: '1',
-          batchCode: 'PAY-202511-001',
-          periodStart: '2025-11-01',
-          periodEnd: '2025-11-30',
+          payroll_period_code: 'PAY-202511-001',
+          period_start: '2025-11-01',
+          period_end: '2025-11-30',
           totalGross: 150000,
           totalDeductions: 30000,
-          totalNet: 120000,
-          totalEmployees: 5,
+          total_net: 120000,
+          total_employees: 5,
           status: 'PENDING',
           createdBy: 'Admin User',
           createdAt: '2025-11-20T10:00:00Z',
@@ -183,25 +183,25 @@ const PayrollPage = () => {
       defaultValue: []
     },
     {
-      id: 'periodStart',
+      id: 'period_start',
       title: 'Period Start',
       type: 'date',
       defaultValue: ''
     },
     {
-      id: 'periodEnd',
+      id: 'period_end',
       title: 'Period End',
       type: 'date',
       defaultValue: ''
     },
     {
-      id: 'totalEmployees',
+      id: 'total_employees',
       title: 'Total Employees Range',
       type: 'numberRange',
       defaultValue: { min: '', max: '' }
     },
     {
-      id: 'totalNet',
+      id: 'total_net',
       title: 'Total Net Range',
       type: 'numberRange',
       defaultValue: { min: '', max: '' }
@@ -224,11 +224,11 @@ const PayrollPage = () => {
   const filteredData = batches.filter(batch => {
     // Search filter - enhanced to include numeric fields
     const matchesSearch = !search || (
-      batch.batchCode.toLowerCase().includes(search.toLowerCase()) ||
-      formatDate(batch.periodStart).toLowerCase().includes(search.toLowerCase()) ||
-      formatDate(batch.periodEnd).toLowerCase().includes(search.toLowerCase()) ||
-      batch.totalEmployees.toString().includes(search) ||
-      batch.totalNet.toString().includes(search)
+      batch.payroll_period_code.toLowerCase().includes(search.toLowerCase()) ||
+      formatDate(batch.period_start).toLowerCase().includes(search.toLowerCase()) ||
+      formatDate(batch.period_end).toLowerCase().includes(search.toLowerCase()) ||
+      batch.total_employees.toString().includes(search) ||
+      batch.total_net.toString().includes(search)
     );
 
     // Status filter (from FilterDropdown)
@@ -237,35 +237,35 @@ const PayrollPage = () => {
       statusValues.includes(batch.status.toLowerCase());
 
     // Individual Period Start filter
-    const periodStartFilter = filterValues.periodStart;
+    const periodStartFilter = filterValues.period_start;
     const matchesPeriodStart = !periodStartFilter || 
-      new Date(batch.periodStart) >= new Date(periodStartFilter);
+      new Date(batch.period_start) >= new Date(periodStartFilter);
 
     // Individual Period End filter
-    const periodEndFilter = filterValues.periodEnd;
+    const periodEndFilter = filterValues.period_end;
     const matchesPeriodEnd = !periodEndFilter || 
-      new Date(batch.periodEnd) <= new Date(periodEndFilter);
+      new Date(batch.period_end) <= new Date(periodEndFilter);
 
     // Total Employees range filter
-    const totalEmployeesRange = filterValues.totalEmployees || { min: '', max: '' };
+    const totalEmployeesRange = filterValues.total_employees || { min: '', max: '' };
     const matchesTotalEmployees = (
-      (!totalEmployeesRange.min || batch.totalEmployees >= Number(totalEmployeesRange.min)) &&
-      (!totalEmployeesRange.max || batch.totalEmployees <= Number(totalEmployeesRange.max))
+      (!totalEmployeesRange.min || batch.total_employees >= Number(totalEmployeesRange.min)) &&
+      (!totalEmployeesRange.max || batch.total_employees <= Number(totalEmployeesRange.max))
     );
 
     // Total Net range filter
-    const totalNetRange = filterValues.totalNet || { min: '', max: '' };
+    const totalNetRange = filterValues.total_net || { min: '', max: '' };
     const matchesTotalNet = (
-      (!totalNetRange.min || batch.totalNet >= Number(totalNetRange.min)) &&
-      (!totalNetRange.max || batch.totalNet <= Number(totalNetRange.max))
+      (!totalNetRange.min || batch.total_net >= Number(totalNetRange.min)) &&
+      (!totalNetRange.max || batch.total_net <= Number(totalNetRange.max))
     );
 
     // Date range filter (keep existing for backward compatibility)
     const dateRange = filterValues.dateRange || { from: '', to: '' };
     let matchesDateRange = true;
     if (dateRange.from || dateRange.to) {
-      const periodStart = new Date(batch.periodStart);
-      const periodEnd = new Date(batch.periodEnd);
+      const periodStart = new Date(batch.period_start);
+      const periodEnd = new Date(batch.period_end);
       
       if (dateRange.from) {
         const fromDate = new Date(dateRange.from);
@@ -385,11 +385,11 @@ const PayrollPage = () => {
 
   // Prepare export data
   const exportData = filteredData.map(batch => ({
-    'Batch Code': batch.batchCode,
-    'Period Start': formatDate(batch.periodStart),
-    'Period End': formatDate(batch.periodEnd),
-    'Total Employees': batch.totalEmployees,
-    'Total Net': formatMoney(batch.totalNet),
+    'Batch Code': batch.payroll_period_code,
+    'Period Start': formatDate(batch.period_start),
+    'Period End': formatDate(batch.period_end),
+    'Total Employees': batch.total_employees,
+    'Total Net': formatMoney(batch.total_net),
     'Status': batch.status
   }));
 
@@ -509,11 +509,11 @@ const PayrollPage = () => {
                     onClick={() => handleOpenViewModal(batch)}
                   >
                     <td>{(currentPage - 1) * pageSize + index + 1}</td>
-                    <td>{batch.batchCode}</td>
-                    <td>{formatDate(batch.periodStart)}</td>
-                    <td>{formatDate(batch.periodEnd)}</td>
-                    <td>{batch.totalEmployees}</td>
-                    <td>{formatMoney(batch.totalNet)}</td>
+                    <td>{batch.payroll_period_code}</td>
+                    <td>{formatDate(batch.period_start)}</td>
+                    <td>{formatDate(batch.period_end)}</td>
+                    <td>{batch.total_employees}</td>
+                    <td>{formatMoney(batch.total_net)}</td>
                     <td>
                       <span className={`chip ${batch.status.toLowerCase()}`}>
                         {batch.status}

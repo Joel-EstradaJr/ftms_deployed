@@ -5,14 +5,14 @@
 
 export interface PayrollBatch {
   id: string;
-  batchCode: string;
-  periodStart: string;
-  periodEnd: string;
+  payroll_period_code: string;
+  period_start: string;
+  period_end: string;
   totalGross: number;
   totalDeductions: number;
-  totalNet: number;
-  totalEmployees: number;
-  status: 'PENDING' | 'APPROVED' | 'DISBURSED' | 'CANCELLED';
+  total_net: number;
+  total_employees: number;
+  status: 'PENDING' | 'APPROVED' | 'DISBURSED' | 'CANCELLED'; // payroll_period_status
   createdBy?: string;
   createdAt: string;
   updatedBy?: string;
