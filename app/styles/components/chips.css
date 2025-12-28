@@ -47,7 +47,7 @@
 .chip.out-of-stock,
 .chip.not-returned,
 .chip.decommissioned,
-.chip.loan,
+.chip.receivable,
 .chip.trip_deficit {
     background-color: var(--error-chip-bg-color);
     color: var(--error-chip-text-color);
@@ -154,7 +154,7 @@
 .chip.auto_revenue,
 .chip.auto_expense,
 .chip.auto_payroll,
-.chip.auto_loan,
+.chip.auto_receivable,
 .chip.auto_purchase,
 .chip.auto_refund {
     background-color: var(--warning-chip-bg-color);
