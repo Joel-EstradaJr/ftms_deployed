@@ -789,10 +789,21 @@ const AdminTripRevenuePage = () => {
     
     // Simulate API delay
     setTimeout(() => {
-      let filteredData = [...fullDataset];
-
-      // Check and update status for all records
-      filteredData = filteredData.map(record => checkAndUpdateStatus(record));
+      // Check and update status for all records, and persist to fullDataset
+      const updatedDataset = fullDataset.map(record => checkAndUpdateStatus(record));
+      
+      // Check if any conversions occurred
+      const hasChanges = updatedDataset.some((record, index) => 
+        record.status !== fullDataset[index].status
+      );
+      
+      // If conversions occurred, update the fullDataset state
+      if (hasChanges) {
+        console.log('Status conversions detected - updating fullDataset');
+        setFullDataset(updatedDataset);
+      }
+      
+      let filteredData = [...updatedDataset];
       
       // Apply search filter
       if (search) {
@@ -907,6 +918,16 @@ const AdminTripRevenuePage = () => {
   useEffect(() => {
     fetchData();
   }, [currentPage, pageSize, search, sortBy, sortOrder, activeFilters]);
+
+  // Periodic check for status conversions (runs every 5 minutes)
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      console.log('Running periodic status check...');
+      fetchData(); // This will trigger checkAndUpdateStatus for all records
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(checkInterval);
+  }, [fullDataset, config]); // Re-create interval when dataset or config changes
 
   // Sort handler
   const handleSort = (field: "body_number" | "date_assigned" | "trip_revenue" | "bus_route" | "assignment_type" | "assignment_value" | "date_expected") => {

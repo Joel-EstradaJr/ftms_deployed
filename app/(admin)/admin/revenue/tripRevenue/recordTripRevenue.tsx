@@ -6,9 +6,9 @@
  * ============================================================================
  * 
  * This component handles the recording and editing of trip revenue remittances.
- * It automatically calculates loan requirements when:
- * 1. The remitted amount is less than the expected remittance (shortfall)
- * 2. The deadline for remittance has been exceeded (converted to loan)
+ * It automatically converts to receivables when:
+ * 1. The remittance is late (past the late deadline)
+ * 2. The deadline for remittance has been exceeded (converted to receivable)
  * 
  * DATA REQUIREMENTS FROM BACKEND:
  * The tripData prop must include:
@@ -17,7 +17,7 @@
  * 
  * These fields are CRITICAL for:
  * - hasConductor() function to detect driver-only scenarios
- * - Proper loan distribution (100% to driver if no conductor, 50/50 split otherwise)
+ * - Proper receivable distribution (100% to driver if no conductor, 50/50 split otherwise)
  * - Minimum wage calculation (1 * MINIMUM_WAGE for driver only, 2 * MINIMUM_WAGE for both)
  * 
  * DATA SUBMITTED TO BACKEND:
@@ -29,27 +29,23 @@
  *   remarks: string,
  *   remittanceDueDate: string,
  *   durationToLate: number,
- *   durationToLoan: number,
+ *   durationToReceivable: number,
  *   remittanceStatus: string,
- *   status: 'remitted' | 'loaned',
- *   loan?: {  // Only included when shouldCreateLoan() returns true
- *     principalAmount: number,
- *     interestRate: number,
- *     interestRateType: 'percentage' | 'cash',
- *     totalLoanAmount: number,
+ *   status: 'remitted' | 'receivable',
+ *   receivable?: {  // Only included when shouldCreateReceivable() returns true
+ *     totalAmount: number,
+ *     dueDate: string,
  *     conductorId?: string,  // Only when hasConductor() is true
  *     conductorShare?: number,  // Only when hasConductor() is true
  *     driverId: string,
- *     driverShare: number,
- *     loanType: 'Trip Deficit',
- *     dueDate: string
+ *     driverShare: number
  *   }
  * }
  * 
  * BACKEND RESPONSIBILITIES:
  * 1. Update Model Revenue table with remittance details
- * 2. If loan object exists, create loan records in Loan Management table
- * 3. Create separate loan entries for conductor (if exists) and driver
+ * 2. If receivable object exists, create receivable records
+ * 3. Create separate receivable entries for conductor (if exists) and driver
  * 4. Ensure atomic transaction (all-or-nothing)
  * 
  * ============================================================================
@@ -124,17 +120,14 @@ interface FormData {
   amount: number;
   remarks: string;
   remittanceDueDate: string;
-  durationToLate: number; // Days until considered late
-  durationToLoan: number; // Days until converted to loan
+  durationToLate: number; // Hours until considered late
+  durationToReceivable: number; // Hours until converted to receivable
   
-  // Loan fields (only shown when revenue doesn't meet condition)
-  loanPrincipalAmount: number;
+  // Receivable fields (only shown when late)
+  receivableAmount: number;
   conductorShare: number;
   driverShare: number;
-  loanType: string;
-  interestRate: number;
-  interestRateType: 'percentage' | 'cash';
-  loanDueDate: string;
+  receivableDueDate: string;
 }
 
 interface FormErrors {
@@ -143,21 +136,18 @@ interface FormErrors {
   remarks: string;
   remittanceDueDate: string;
   durationToLate: string;
-  durationToLoan: string;
-  loanPrincipalAmount: string;
+  durationToReceivable: string;
+  receivableAmount: string;
   conductorShare: string;
   driverShare: string;
-  loanType: string;
-  interestRate: string;
-  interestRateType: string;
-  loanDueDate: string;
+  receivableDueDate: string;
 }
 
 interface RemittanceCalculation {
   minimumRemittance: number;
-  needsLoan: boolean;
-  loanAmount: number;
-  status: 'PENDING' | 'ON_TIME' | 'LATE' | 'CONVERTED_TO_LOAN';
+  needsReceivable: boolean;
+  receivableAmount: number;
+  status: 'PENDING' | 'ON_TIME' | 'LATE' | 'CONVERTED_TO_RECEIVABLE';
   conductorMinimum: number;
   driverMinimum: number;
 }
@@ -222,19 +212,16 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     remarks: mode === 'edit' && tripData.remarks ? tripData.remarks : '',
     remittanceDueDate: '',
     durationToLate: 72, // Default: 72 hours (3 days) to late
-    durationToLoan: 168, // Default: 168 hours (7 days) to convert to loan
+    durationToReceivable: 72, // Default: 72 hours to convert to receivable (same as late)
     
-    // Loan fields
-    loanPrincipalAmount: 0,
+    // Receivable fields
+    receivableAmount: 0,
     conductorShare: 0,
     driverShare: 0,
-    loanType: 'Trip Deficit',
-    interestRate: 0,
-    interestRateType: 'percentage',
-    loanDueDate: ''
+    receivableDueDate: ''
   });
 
-  const [showLoanBreakdown, setShowLoanBreakdown] = useState(false);
+  const [showReceivableBreakdown, setShowReceivableBreakdown] = useState(false);
 
   const [formErrors, setFormErrors] = useState<FormErrors>({
     dateRecorded: '',
@@ -242,14 +229,11 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     remarks: '',
     remittanceDueDate: '',
     durationToLate: '',
-    durationToLoan: '',
-    loanPrincipalAmount: '',
+    durationToReceivable: '',
+    receivableAmount: '',
     conductorShare: '',
     driverShare: '',
-    loanType: '',
-    interestRate: '',
-    interestRateType: '',
-    loanDueDate: '',
+    receivableDueDate: '',
   });
 
   const [isFormValid, setIsFormValid] = useState(false);
@@ -290,52 +274,47 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     
     return {
       minimumRemittance,
-      needsLoan: revenueInsufficient, // Flag that revenue is insufficient (will show warning)
-      loanAmount,
+      needsReceivable: revenueInsufficient, // Flag that revenue is insufficient (will show warning)
+      receivableAmount: 0,
       status: 'PENDING', // Initial status is always PENDING, will be calculated based on time
       conductorMinimum: MINIMUM_WAGE,
       driverMinimum: MINIMUM_WAGE
     };
   };
 
-  // Calculate total loan amount (what driver and conductor owe together)
-  const calculateLoanAmount = (remittedAmount: number): number => {
+  // Calculate total receivable amount (what driver and conductor owe together)
+  const calculateReceivableAmount = (remittedAmount: number): number => {
     if (tripData.assignment_type === 'Boundary') {
       // Expected remittance = Boundary/Quota + Fuel
       const expectedRemittance = tripData.assignment_value + tripData.trip_fuel_expense;
       // Total shortfall = what should have been remitted - what was actually remitted
-      // When CONVERTED_TO_LOAN (amount = 0), the entire expected remittance becomes the loan
+      // When CONVERTED_TO_RECEIVABLE (amount = 0), the entire expected remittance becomes the receivable
       return Math.max(0, expectedRemittance - remittedAmount);
     } else { // Percentage
       // Expected remittance = Company Share + Fuel
       const company_share = tripData.trip_revenue * (tripData.assignment_value / 100);
       const expectedRemittance = company_share + tripData.trip_fuel_expense;
       // Total shortfall = what should have been remitted - what was actually remitted
-      // When CONVERTED_TO_LOAN (amount = 0), the entire expected remittance becomes the loan
+      // When CONVERTED_TO_RECEIVABLE (amount = 0), the entire expected remittance becomes the receivable
       return Math.max(0, expectedRemittance - remittedAmount);
     }
   };
 
   // Calculate remittance status based on duration from assigned date (in hours)
-  const calculateRemittanceStatus = (): 'PENDING' | 'ON_TIME' | 'LATE' | 'CONVERTED_TO_LOAN' => {
+  const calculateRemittanceStatus = (): 'PENDING' | 'ON_TIME' | 'LATE' | 'CONVERTED_TO_RECEIVABLE' => {
     const now = new Date();
     const assignedDate = new Date(tripData.date_assigned);
     
     // Use the remittanceDueDate if set, otherwise calculate from assigned date
     const dueDate = formData.remittanceDueDate 
       ? new Date(formData.remittanceDueDate + 'T23:59:59') // End of due date
-      : new Date(assignedDate.getTime() + formData.durationToLoan * 60 * 60 * 1000);
+      : new Date(assignedDate.getTime() + formData.durationToReceivable * 60 * 60 * 1000);
     
     const lateDate = new Date(assignedDate.getTime() + formData.durationToLate * 60 * 60 * 1000);
     
-    // Check if deadline has passed (now is after due date) - converted to loan
-    if (now > dueDate) {
-      return 'CONVERTED_TO_LOAN';
-    }
-    
-    // Check if late (past durationToLate but before due date)
-    if (now >= lateDate && now <= dueDate) {
-      return 'LATE';
+    // Check if late deadline has passed - converted to receivable
+    if (now >= lateDate) {
+      return 'CONVERTED_TO_RECEIVABLE';
     }
     
     // Otherwise it's on time or pending
@@ -356,75 +335,46 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     }));
   }, [tripData]);
 
-  // Auto-set amount to 0 when status becomes CONVERTED_TO_LOAN
+  // Auto-set amount to 0 when status becomes CONVERTED_TO_RECEIVABLE
   useEffect(() => {
     const status = calculateRemittanceStatus();
-    if (status === 'CONVERTED_TO_LOAN' && formData.amount !== 0) {
+    if (status === 'CONVERTED_TO_RECEIVABLE' && formData.amount !== 0) {
       setFormData(prev => ({
         ...prev,
         amount: 0
       }));
     }
-  }, [formData.durationToLoan, formData.remittanceDueDate, tripData.date_assigned]);
+  }, [formData.durationToReceivable, formData.remittanceDueDate, tripData.date_assigned]);
 
-  // Update loan amount when remitted amount changes or when conversion to loan detected
+  // Update receivable amount when remitted amount changes or when conversion to receivable detected
   useEffect(() => {
-    if (shouldCreateLoan()) {
-      const principalAmt = calculateLoanAmount(formData.amount);
+    if (shouldCreateReceivable()) {
+      const receivableAmt = calculateReceivableAmount(formData.amount);
       
-      // Calculate interest
-      let interest = 0;
-      if (formData.interestRate > 0) {
-        if (formData.interestRateType === 'percentage') {
-          interest = principalAmt * (formData.interestRate / 100);
-        } else {
-          interest = formData.interestRate;
-        }
-      }
-      
-      // Total loan = principal + interest
-      const totalLoanAmt = principalAmt + interest;
-      
-      // Distribute loan based on whether there's a conductor
+      // Distribute receivable based on whether there's a conductor
       if (hasConductor()) {
         setFormData(prev => ({
           ...prev,
-          loanPrincipalAmount: principalAmt,
-          conductorShare: totalLoanAmt * DEFAULT_CONDUCTOR_SHARE,
-          driverShare: totalLoanAmt * DEFAULT_DRIVER_SHARE
+          receivableAmount: receivableAmt,
+          conductorShare: receivableAmt * DEFAULT_CONDUCTOR_SHARE,
+          driverShare: receivableAmt * DEFAULT_DRIVER_SHARE
         }));
       } else {
         // Driver only - 100% to driver
         setFormData(prev => ({
           ...prev,
-          loanPrincipalAmount: principalAmt,
+          receivableAmount: receivableAmt,
           conductorShare: 0,
-          driverShare: totalLoanAmt
+          driverShare: receivableAmt
         }));
       }
     }
-  }, [formData.amount, formData.durationToLoan, formData.interestRate, formData.interestRateType, remittanceCalc, tripData.date_assigned]);
+  }, [formData.amount, formData.durationToReceivable, remittanceCalc, tripData.date_assigned]);
 
   // Format employee name with suffix
   const formatEmployeeName = (firstName: string, middleName: string, lastName: string, suffix: string) => {
     const name = `${firstName} ${middleName} ${lastName}`;
     return suffix ? `${name}, ${suffix}` : name;
-  };
-
-  // Calculate total loan amount including interest
-  const calculateTotalLoanAmount = (): number => {
-    const principal = formData.loanPrincipalAmount;
-    let interest = 0;
-    
-    if (formData.interestRate > 0) {
-      if (formData.interestRateType === 'percentage') {
-        interest = principal * (formData.interestRate / 100);
-      } else {
-        interest = formData.interestRate;
-      }
-    }
-    
-    return principal + interest;
   };
 
   // Calculate expected remittance amount
@@ -439,24 +389,12 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     }
   };
 
-  // Check if there's a shortfall in remittance
-  const hasRemittanceShortfall = (): boolean => {
-    return formData.amount > 0 && formData.amount < calculateExpectedRemittance();
-  };
-
-  // Check if loan should be created (either shortfall or deadline exceeded)
-  const shouldCreateLoan = (): boolean => {
+  // Check if receivable should be created (when late)
+  const shouldCreateReceivable = (): boolean => {
     const status = calculateRemittanceStatus();
     
-    // Create loan if:
-    // 1. There's a shortfall (amount > 0 but less than expected), OR
-    // 2. Status is CONVERTED_TO_LOAN (deadline completely exceeded)
-    // Note: LATE status alone does NOT create a loan - only shows warning
-    if (status === 'CONVERTED_TO_LOAN') {
-      return true; // Always create loan when converted to loan
-    }
-    
-    return hasRemittanceShortfall(); // Create loan when there's a shortfall
+    // Create receivable if status is CONVERTED_TO_RECEIVABLE (late)
+    return status === 'CONVERTED_TO_RECEIVABLE';
   };
 
   // Calculate maximum remittance amount (when condition isn't met)
@@ -484,18 +422,34 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
         break;
       
       case 'amount':
-        // When status is CONVERTED_TO_LOAN, amount can be 0 (it's automatically set)
-        if (calculateRemittanceStatus() === 'CONVERTED_TO_LOAN') {
-          // No validation needed - amount is auto-set to 0
+        const currentStatus = calculateRemittanceStatus();
+        
+        // When status is CONVERTED_TO_RECEIVABLE, amount can be 0 (optional)
+        if (currentStatus === 'CONVERTED_TO_RECEIVABLE') {
+          // No validation needed - amount is optional when late or converted
+          // Allow 0 or any valid positive amount
+          if (value && value > 0) {
+            // If they do enter an amount, validate it's not excessive
+            if (remittanceCalc && !remittanceCalc.needsReceivable && value > calculateExpectedRemittance()) {
+              errorMessage = `Amount cannot exceed expected remittance of ${formatMoney(calculateExpectedRemittance())}`;
+            } else if (remittanceCalc && remittanceCalc.needsReceivable) {
+              const maxRemittance = calculateMaximumRemittance();
+              if (value > maxRemittance) {
+                const employeeText = hasConductor() ? 'driver and conductor' : 'driver';
+                errorMessage = `Amount cannot exceed ${formatMoney(maxRemittance)} (must leave minimum wage for ${employeeText})`;
+              }
+            }
+          }
           break;
         }
         
+        // For ON_TIME or PENDING status, amount is required
         if (!value || value <= 0) {
           errorMessage = 'Amount remitted must be greater than 0';
-        } else if (remittanceCalc && !remittanceCalc.needsLoan && value > calculateExpectedRemittance()) {
+        } else if (remittanceCalc && !remittanceCalc.needsReceivable && value > calculateExpectedRemittance()) {
           // When condition is met, amount should not exceed expected remittance
           errorMessage = `Amount cannot exceed expected remittance of ${formatMoney(calculateExpectedRemittance())}`;
-        } else if (remittanceCalc && remittanceCalc.needsLoan) {
+        } else if (remittanceCalc && remittanceCalc.needsReceivable) {
           // When condition is not met, check maximum remittance
           const maxRemittance = calculateMaximumRemittance();
           if (value > maxRemittance) {
@@ -514,16 +468,12 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
       case 'durationToLate':
         if (!value || value <= 0) {
           errorMessage = 'Duration to late must be greater than 0';
-        } else if (formData.durationToLoan && value >= formData.durationToLoan) {
-          errorMessage = 'Duration to late must be less than duration to loan';
         }
         break;
       
-      case 'durationToLoan':
+      case 'durationToReceivable':
         if (!value || value <= 0) {
-          errorMessage = 'Duration to loan must be greater than 0';
-        } else if (formData.durationToLate && value <= formData.durationToLate) {
-          errorMessage = 'Duration to loan must be greater than duration to late';
+          errorMessage = 'Duration to receivable must be greater than 0';
         }
         break;
       
@@ -533,21 +483,21 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
         }
         break;
       
-      // Loan field validations (only when loan is needed)
+      // Receivable field validations (only when receivable is needed)
       case 'conductorShare':
-        if (shouldCreateLoan() && hasConductor() && (!value || value <= 0)) {
+        if (shouldCreateReceivable() && hasConductor() && (!value || value <= 0)) {
           errorMessage = 'Conductor share must be greater than 0';
         }
         break;
       
       case 'driverShare':
-        if (shouldCreateLoan() && (!value || value <= 0)) {
+        if (shouldCreateReceivable() && (!value || value <= 0)) {
           errorMessage = 'Driver share must be greater than 0';
         }
         break;
       
-      case 'loanDueDate':
-        // Loan due date is now optional - no validation needed
+      case 'receivableDueDate':
+        // Receivable due date is now optional - no validation needed
         break;
     }
 
@@ -565,11 +515,11 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     const amountValid = validateFormField('amount', formData.amount);
     const dueDateValid = validateFormField('remittanceDueDate', formData.remittanceDueDate);
     const durationToLateValid = validateFormField('durationToLate', formData.durationToLate);
-    const durationToLoanValid = validateFormField('durationToLoan', formData.durationToLoan);
+    const durationToReceivableValid = validateFormField('durationToReceivable', formData.durationToReceivable);
     const remarksValid = validateFormField('remarks', formData.remarks);
     
-    let loanFieldsValid = true;
-    if (shouldCreateLoan()) {
+    let receivableFieldsValid = true;
+    if (shouldCreateReceivable()) {
       const driverShareValid = validateFormField('driverShare', formData.driverShare);
       let conductorShareValid = true;
       
@@ -577,34 +527,42 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
       if (hasConductor()) {
         conductorShareValid = validateFormField('conductorShare', formData.conductorShare);
       }
-      // Loan due date is now optional, no validation needed
+      // Receivable due date is now optional, no validation needed
       
-      loanFieldsValid = conductorShareValid && driverShareValid;
+      receivableFieldsValid = conductorShareValid && driverShareValid;
     }
 
-    return dateValid && amountValid && dueDateValid && durationToLateValid && durationToLoanValid && remarksValid && loanFieldsValid;
+    return dateValid && amountValid && dueDateValid && durationToLateValid && durationToReceivableValid && remarksValid && receivableFieldsValid;
   };
 
   // Check form validity on data changes
   useEffect(() => {
-    const isConvertedToLoan = calculateRemittanceStatus() === 'CONVERTED_TO_LOAN';
+    const currentStatus = calculateRemittanceStatus();
+    const isConvertedToReceivable = currentStatus === 'CONVERTED_TO_RECEIVABLE';
+    
+    // Amount validation based on status
+    let amountValid = false;
+    if (isConvertedToReceivable) {
+      amountValid = formData.amount === 0; // Must be 0 when converted to receivable
+    } else {
+      amountValid = formData.amount >= 0; // Can be 0 or positive
+    }
     
     let isValid = 
       formData.dateRecorded !== '' &&
-      (isConvertedToLoan ? formData.amount === 0 : formData.amount > 0) && // Allow 0 when converted to loan
+      amountValid &&
       formData.remittanceDueDate !== '' &&
       formData.durationToLate > 0 &&
-      formData.durationToLoan > 0 &&
-      formData.durationToLoan > formData.durationToLate &&
+      formData.durationToReceivable > 0 &&
       formErrors.dateRecorded === '' &&
       formErrors.amount === '' &&
       formErrors.remittanceDueDate === '' &&
       formErrors.durationToLate === '' &&
-      formErrors.durationToLoan === '' &&
+      formErrors.durationToReceivable === '' &&
       formErrors.remarks === '';
     
-    // Add loan validation if loan should be created
-    if (shouldCreateLoan()) {
+    // Add receivable validation if receivable should be created
+    if (shouldCreateReceivable()) {
       isValid = isValid && 
         formData.driverShare > 0 &&
         formErrors.driverShare === '';
@@ -615,7 +573,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
           formData.conductorShare > 0 &&
           formErrors.conductorShare === '';
       }
-      // Loan due date is now optional, no validation needed
+      // Receivable due date is now optional, no validation needed
     }
     
     setIsFormValid(isValid);
@@ -624,10 +582,10 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
   // Handle input change
   const handleInputChange = (field: keyof FormData, value: any) => {
     // Special handling for conductor/driver share - auto-adjust the other share
-    if (field === 'conductorShare' && shouldCreateLoan()) {
-      const totalLoan = calculateTotalLoanAmount();
+    if (field === 'conductorShare' && shouldCreateReceivable()) {
+      const totalReceivable = formData.receivableAmount;
       const newConductorShare = parseFloat(value) || 0;
-      const newDriverShare = totalLoan - newConductorShare;
+      const newDriverShare = totalReceivable - newConductorShare;
       
       setFormData(prev => ({
         ...prev,
@@ -644,10 +602,10 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
       return;
     }
     
-    if (field === 'driverShare' && shouldCreateLoan()) {
-      const totalLoan = calculateTotalLoanAmount();
+    if (field === 'driverShare' && shouldCreateReceivable()) {
+      const totalReceivable = formData.receivableAmount;
       const newDriverShare = parseFloat(value) || 0;
-      const newConductorShare = totalLoan - newDriverShare;
+      const newConductorShare = totalReceivable - newDriverShare;
       
       setFormData(prev => ({
         ...prev,
@@ -702,8 +660,8 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
       assignmentValue: tripData.assignment_value,
       paymentMethod: tripData.payment_method,
       remittedAmount: formData.amount,
-      hasLoan: shouldCreateLoan(),
-      loanAmount: shouldCreateLoan() ? formData.loanPrincipalAmount : undefined
+      hasLoan: shouldCreateReceivable(),
+      loanAmount: shouldCreateReceivable() ? formData.receivableAmount : undefined
     });
 
     // If user cancels, stop submission
@@ -713,11 +671,11 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
 
     const remittanceStatus = calculateRemittanceStatus();
 
-    // Determine the final status based on loan type
+    // Determine the final status based on receivable conversion
     let finalStatus = 'remitted';
-    if (shouldCreateLoan()) {
-      // All loans (both trip deficit and shortfall) use 'loaned' status
-      finalStatus = 'loaned';
+    if (shouldCreateReceivable()) {
+      // Converted to receivable (late remittance)
+      finalStatus = 'receivable';
     }
 
     // Prepare data for submission
@@ -728,26 +686,22 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
       remarks: formData.remarks,
       remittanceDueDate: formData.remittanceDueDate,
       durationToLate: formData.durationToLate,
-      durationToLoan: formData.durationToLoan,
+      durationToReceivable: formData.durationToReceivable,
       remittanceStatus: remittanceStatus,
       status: finalStatus,
       
-      // Include loan data if applicable (when there's a shortfall OR deadline exceeded)
-      ...(shouldCreateLoan() && {
-        loan: {
-          principalAmount: formData.loanPrincipalAmount,
-          interestRate: formData.interestRate,
-          interestRateType: formData.interestRateType,
-          totalLoanAmount: calculateTotalLoanAmount(),
+      // Include receivable data if applicable (when late)
+      ...(shouldCreateReceivable() && {
+        receivable: {
+          totalAmount: formData.receivableAmount,
+          dueDate: formData.receivableDueDate,
           // Only include conductor data if there's a conductor
           ...(hasConductor() && {
             conductorId: tripData.conductorId,
             conductorShare: formData.conductorShare,
           }),
           driverId: tripData.driverId,
-          driverShare: formData.driverShare,
-          loanType: formData.loanType,
-          dueDate: formData.loanDueDate
+          driverShare: formData.driverShare
         }
       })
     };
@@ -951,38 +905,33 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                 {/* Amount Remitted */}
                 <div className="form-group">
                     <label>
-                        Amount Remitted{calculateRemittanceStatus() !== 'CONVERTED_TO_LOAN' && <span className="requiredTags"> *</span>}
+                        Amount Remitted{calculateRemittanceStatus() !== 'CONVERTED_TO_RECEIVABLE' && <span className="requiredTags"> *</span>}
                     </label>
                     <input
                         type="number"
                         value={formData.amount}
                         onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
                         onBlur={() => handleInputBlur('amount')}
-                        min="1"
-                        max={remittanceCalc.needsLoan ? calculateMaximumRemittance() : undefined}
-                        className={calculateRemittanceStatus() === 'CONVERTED_TO_LOAN' ? 'disabled-field' : (formErrors.amount ? 'invalid-input' : '')}
+                        min="0"
+                        max={remittanceCalc.needsReceivable ? calculateMaximumRemittance() : undefined}
+                        className={calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' ? 'disabled-field' : (formErrors.amount ? 'invalid-input' : '')}
                         placeholder="0"
-                        disabled={calculateRemittanceStatus() === 'CONVERTED_TO_LOAN'}
-                        required={calculateRemittanceStatus() !== 'CONVERTED_TO_LOAN'}
+                        disabled={calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE'}
+                        required={calculateRemittanceStatus() !== 'CONVERTED_TO_RECEIVABLE'}
                     />
-                    {remittanceCalc.minimumRemittance > 0 && calculateRemittanceStatus() !== 'CONVERTED_TO_LOAN' && (
+                    {remittanceCalc.minimumRemittance > 0 && calculateRemittanceStatus() !== 'CONVERTED_TO_RECEIVABLE' && (
                       <small className="hint-message">
                         Expected: {formatMoney(remittanceCalc.minimumRemittance)}
                       </small>
                     )}
-                    {remittanceCalc.needsLoan && calculateRemittanceStatus() !== 'CONVERTED_TO_LOAN' && (
+                    {remittanceCalc.needsReceivable && calculateRemittanceStatus() !== 'CONVERTED_TO_RECEIVABLE' && (
                       <small className="hint-message">
                         Maximum: {formatMoney(calculateMaximumRemittance())} (must leave ₱{MINIMUM_WAGE * getEmployeeCount()} for {hasConductor() ? 'driver and conductor' : 'driver'})
                       </small>
                     )}
-                    {formData.amount > 0 && formData.amount < calculateExpectedRemittance() && calculateRemittanceStatus() !== 'CONVERTED_TO_LOAN' && (
+                    {calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' && (
                       <small className="error-message">
-                        ⚠️ Amount is less than expected remittance. A loan will be created for the shortfall.
-                      </small>
-                    )}
-                    {calculateRemittanceStatus() === 'CONVERTED_TO_LOAN' && (
-                      <small className="error-message">
-                        ⚠️ Deadline exceeded. Amount set to 0. Full expected remittance will be converted to a loan.
+                        ⚠️ Deadline exceeded. Amount set to 0. Full expected remittance will be converted to a receivable.
                       </small>
                     )}
                     <p className="add-error-message">{formErrors.amount}</p>
@@ -998,19 +947,13 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                         value={calculateRemittanceStatus()}
                         disabled
                         className={`remittance-status-field ${
-                          calculateRemittanceStatus() === 'CONVERTED_TO_LOAN' ? 'status-converted-to-loan' : 
-                          calculateRemittanceStatus() === 'ON_TIME' ? 'status-on-time' : 
-                          calculateRemittanceStatus() === 'LATE' ? 'status-late' : 'status-pending'
+                          calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' ? 'status-converted-to-receivable' : 
+                          calculateRemittanceStatus() === 'ON_TIME' ? 'status-on-time' : 'status-pending'
                         }`}
                     />
-                    {calculateRemittanceStatus() === 'CONVERTED_TO_LOAN' && (
+                    {calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' && (
                       <small className="add-error-message">
-                        ⚠️ Deadline exceeded. This will be converted to a loan.
-                      </small>
-                    )}
-                    {calculateRemittanceStatus() === 'LATE' && (
-                      <small className="add-error-message">
-                        ⚠️ Submission is late. Please remit as soon as possible.
+                        ⚠️ Deadline exceeded. This will be converted to a receivable.
                       </small>
                     )}
                 </div>
@@ -1036,26 +979,26 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
         </form>
       </div>
         
-      {/* Loan Details - Only show if there's a shortfall in remittance OR deadline exceeded */}
-      {shouldCreateLoan() && (
+      {/* Receivable Details - Only show when late */}
+      {shouldCreateReceivable() && (
         <>
-          <p className="details-title">Loan Details</p>
+          <p className="details-title">Receivable Details</p>
           <div className="modal-content add">
               <form className="add-form">
-                  {/* Loan Breakdown - Collapsible */}
+                  {/* Receivable Breakdown - Collapsible */}
                   <div className="form-row">
                       <div className="form-group loan-breakdown-container">
                           <div 
                               className="loan-breakdown-header"
-                              onClick={() => setShowLoanBreakdown(!showLoanBreakdown)}
+                              onClick={() => setShowReceivableBreakdown(!showReceivableBreakdown)}
                           >
                               <label className="loan-breakdown-title">
-                                  Principal Amount Breakdown
+                                  Receivable Amount Breakdown
                               </label>
-                              <i className={`ri-arrow-${showLoanBreakdown ? 'up' : 'down'}-s-line`}></i>
+                              <i className={`ri-arrow-${showReceivableBreakdown ? 'up' : 'down'}-s-line`}></i>
                           </div>
                           
-                          {showLoanBreakdown && (
+                          {showReceivableBreakdown && (
                               <div className="loan-breakdown-content">
                                   <div className="breakdown-section-title">
                                       <strong>Calculation:</strong>
@@ -1080,8 +1023,8 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                                               <span>({formatMoney(formData.amount)})</span>
                                           </div>
                                           <div className="breakdown-row-total">
-                                              <span>Total Loan (Shortfall):</span>
-                                              <span>{formatMoney(formData.loanPrincipalAmount)}</span>
+                                              <span>Total Receivable:</span>
+                                              <span>{formatMoney(formData.receivableAmount)}</span>
                                           </div>
                                       </>
                                   ) : (
@@ -1107,34 +1050,15 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                                               <span>({formatMoney(formData.amount)})</span>
                                           </div>
                                           <div className="breakdown-row-total">
-                                              <span>Principal Amount (Shortfall):</span>
-                                              <span>{formatMoney(formData.loanPrincipalAmount)}</span>
+                                              <span>Total Receivable:</span>
+                                              <span>{formatMoney(formData.receivableAmount)}</span>
                                           </div>
                                       </>
                                   )}
                                   
-                                  {/* Interest Calculation */}
-                                  {formData.interestRate > 0 && (
-                                      <div className="breakdown-interest-section">
-                                          <div className="breakdown-row">
-                                              <span>Interest ({formData.interestRateType === 'percentage' ? `${formData.interestRate}%` : 'Fixed'}):</span>
-                                              <span>
-                                                  {formData.interestRateType === 'percentage' 
-                                                      ? formatMoney(formData.loanPrincipalAmount * (formData.interestRate / 100))
-                                                      : formatMoney(formData.interestRate)
-                                                  }
-                                              </span>
-                                          </div>
-                                          <div className="breakdown-row-grand-total">
-                                              <span>Total Loan Amount:</span>
-                                              <span>{formatMoney(calculateTotalLoanAmount())}</span>
-                                          </div>
-                                      </div>
-                                  )}
-                                  
                                   <div className="breakdown-distribution-section">
                                       <div className="breakdown-section-title">
-                                          <strong>Loan Distribution:</strong>
+                                          <strong>Receivable Distribution:</strong>
                                       </div>
                                       {hasConductor() ? (
                                         <>
@@ -1160,96 +1084,34 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                   </div>
 
                   <div className="form-row">
-                      {/* Principal Amount (Auto-calculated) */}
+                      {/* Total Receivable Amount (Auto-calculated) */}
                       <div className="form-group">
-                          <label>Principal Amount (Shortfall)</label>
+                          <label>Total Receivable Amount</label>
                           <input
                               type="text"
-                              value={formatMoney(formData.loanPrincipalAmount)}
+                              value={formatMoney(formData.receivableAmount)}
                               disabled
-                              className="principalAmount"
+                              className="receivableAmount"
                           />
                           <small className="hint-message">
                             The amount short from expected remittance
                           </small>
                       </div>
 
-                      {/* Total Loan Amount (Principal + Interest) */}
-                      <div className="form-group">
-                          <label>Total Loan Amount</label>
-                          <input
-                              type="text"
-                              value={formatMoney(calculateTotalLoanAmount())}
-                              disabled
-                              className="loanAmount"
-                          />
-                          <small className="hint-message">
-                            Principal + Interest (if applicable)
-                          </small>
-                      </div>
-                  </div>
-
-                  <div className="form-row">
-                      {/* Loan Type */}
+                      {/* Receivable Due Date */}
                       <div className="form-group">
                           <label>
-                              Loan Type
-                          </label>
-                          <select
-                              value={formData.loanType}
-                              disabled
-                              className="loanType"
-                          >
-                              <option value="Trip Deficit">Trip Deficit</option>
-                          </select>
-                          <small className="hint-message">
-                            Loan type is automatically set to Trip Deficit for remittance shortfalls
-                          </small>
-                      </div>
-
-                      {/* Loan Due Date */}
-                      <div className="form-group">
-                          <label>
-                              Loan Due Date
+                              Receivable Due Date
                           </label>
                           <input
                               type="date"
-                              value={formData.loanDueDate}
-                              onChange={(e) => handleInputChange('loanDueDate', e.target.value)}
-                              onBlur={() => handleInputBlur('loanDueDate')}
+                              value={formData.receivableDueDate}
+                              onChange={(e) => handleInputChange('receivableDueDate', e.target.value)}
+                              onBlur={() => handleInputBlur('receivableDueDate')}
                               min={new Date().toISOString().split('T')[0]}
-                              className={formErrors.loanDueDate ? 'invalid-input' : ''}
+                              className={formErrors.receivableDueDate ? 'invalid-input' : ''}
                           />
-                          <p className="add-error-message">{formErrors.loanDueDate}</p>
-                      </div>
-                  </div>
-
-                  <div className="form-row">
-                      {/* Interest Rate Type */}
-                      <div className="form-group">
-                          <label>Interest Rate Type</label>
-                          <select
-                              value={formData.interestRateType}
-                              onChange={(e) => handleInputChange('interestRateType', e.target.value as 'percentage' | 'cash')}
-                          >
-                              <option value="percentage">Percentage</option>
-                              <option value="cash">Cash</option>
-                          </select>
-                      </div>
-
-                      {/* Interest Rate */}
-                      <div className="form-group">
-                          <label>Interest Rate (Optional)</label>
-                          <input
-                              type="number"
-                              value={formData.interestRate}
-                              onChange={(e) => handleInputChange('interestRate', parseFloat(e.target.value) || 0)}
-                              min="0"
-                              placeholder={formData.interestRateType === 'percentage' ? '0.00%' : '0.00'}
-                          />
-                          <small className="hint-message">
-                            {formData.interestRateType === 'percentage' ? 'Enter as percentage (e.g., 5 for 5%)' : 'Enter fixed amount'}
-                          </small>
+                          <p className="add-error-message">{formErrors.receivableDueDate}</p>
                       </div>
                   </div>
 
@@ -1288,7 +1150,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                                 onChange={(e) => handleInputChange('conductorShare', parseFloat(e.target.value) || 0)}
                                 onBlur={() => handleInputBlur('conductorShare')}
                                 min="1"
-                                max={calculateTotalLoanAmount()}
+                                max={formData.receivableAmount}
                                 className={formErrors.conductorShare ? 'invalid-input' : ''}
                                 placeholder="0.00"
                                 required
@@ -1331,7 +1193,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                               onChange={(e) => handleInputChange('driverShare', parseFloat(e.target.value) || 0)}
                               onBlur={() => handleInputBlur('driverShare')}
                               min="1"
-                              max={calculateTotalLoanAmount()}
+                              max={formData.receivableAmount}
                               className={formErrors.driverShare ? 'invalid-input' : ''}
                               placeholder="0.00"
                               required
