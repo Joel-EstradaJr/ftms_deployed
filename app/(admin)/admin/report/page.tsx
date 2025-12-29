@@ -444,7 +444,7 @@ const ReportPage = () => {
         <ErrorDisplay
           errorCode={errorCode}
           onRetry={async () => {
-            setError(true);
+            setError(null);
           }}
         />
       </div>

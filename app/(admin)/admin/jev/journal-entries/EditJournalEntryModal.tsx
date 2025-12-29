@@ -53,7 +53,8 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
 
   // Store original data for reset functionality
   const [originalData] = useState<JournalEntryFormData>({
-    transaction_date: entry.transaction_date.split('T')[0],
+    date: entry.transaction_date?.split('T')[0] || '',
+    transaction_date: entry.transaction_date?.split('T')[0] || '',
     reference_number: entry.reference_number || '',
     description: entry.description,
     entry_type: entry.entry_type,

@@ -1,11 +1,32 @@
 // app/(pages)/expense/viewExpense.tsx
 'use client';
 import React from 'react';
-import { formatDateTime } from '../../../utility/dateFormatter';
+import { formatDateTime } from '../../../utils/formatting';
 import '../../../styles/expense/viewExpense.css';
 import { formatDisplayText } from '@/app/utils/formatting';
-import type { Assignment } from '@/lib/operations/assignments';
 import ModalHeader from '@/app/Components/ModalHeader';
+
+// Assignment type definition (matches operations API structure)
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
 
 type Reimbursement = {
   reimbursement_id: string;

@@ -140,7 +140,6 @@ export interface AccountFormData {
   display_order?: number;
   description?: string;
   notes?: string;
-  parent_account_id?: string;
   is_active?: boolean;
 }
 

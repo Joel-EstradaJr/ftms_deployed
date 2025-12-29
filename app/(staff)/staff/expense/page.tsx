@@ -18,15 +18,26 @@ import { showSuccess, showError, showConfirmation } from '../../../utils/Alerts'
 import { formatDisplayText } from '@/app/utils/formatting';
 import FilterDropdown, { FilterSection } from "../../../Components/filter";
 
-// Assignment type definition
+// Assignment type definition (matches operations API structure)
 interface Assignment {
   assignment_id: string;
-  bus_trip_id?: string;
-  bus_plate_number: string;
+  bus_trip_id: string;
   bus_route: string;
-  bus_type: string | null;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
   driver_name: string | null;
   conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
 }
 
 // Mock function to get all assignments

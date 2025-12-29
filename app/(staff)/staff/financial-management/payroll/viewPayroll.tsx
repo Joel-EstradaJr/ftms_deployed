@@ -141,12 +141,12 @@ const ViewPayrollModal: React.FC<ViewPayrollModalProps> = ({ period, onClose }) 
       }));
 
       // Send to API to update signatures
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/payroll', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedRecords),
-      });
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll
+      // await fetch('/api/payroll', {
+      //   method: 'PATCH',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(updatedRecords),
+      // });
 
       setIsEditing(false);
       // You might want to refresh the data here

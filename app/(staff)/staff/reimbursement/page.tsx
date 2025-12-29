@@ -4,7 +4,7 @@ import '../../../styles/components/table.css';
 import "../../../styles/reimbursement/reimbursement.css";
 import PaginationComponent from "../../../Components/pagination";
 import Loading from '../../../Components/loading';
-import ErrorDisplay from '../../../Components/ErrorDisplay';
+import ErrorDisplay from '../../../Components/errordisplay';
 import { showSuccess, showError, showConfirmation } from '../../../utils/Alerts';
 import ViewReimbursement from "./viewReimbursement";
 import styles from '../../../styles/components/ExportConfirmationModal.module.css';
@@ -162,14 +162,15 @@ const ReimbursementPage = () => {
   ) => {
     setLoading(true);
     try {
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement');
-      console.log('API response status:', res.status);
-      const text = await res.text();
-      console.log('API response text:', text);
-      if (!res.ok) throw new Error('Failed to fetch reimbursements');
-      const data: ApiReimbursement[] = JSON.parse(text);
-      console.log('Parsed API data:', data);
+      // TODO: Replace with ftms_backend API call
+      // const res = await fetch('/api/reimbursement');
+      // console.log('API response status:', res.status);
+      // const text = await res.text();
+      // console.log('API response text:', text);
+      // if (!res.ok) throw new Error('Failed to fetch reimbursements');
+      // const data: ApiReimbursement[] = JSON.parse(text);
+      // console.log('Parsed API data:', data);
+      const data: ApiReimbursement[] = [];
       setReimbursements(
         data.map((item) => {
           // Use the status name directly from the API response
@@ -244,20 +245,20 @@ const ReimbursementPage = () => {
     }
     
     try {
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reimbursement_id: reimbursementId,
-          action: 'PAY',
-          performed_by: 'ftms_user', // Replace with actual user
-          payment_reference: `PAY${Date.now()}`,
-          payment_method: 'CASH', // Or get from UI if needed
-          remarks: remarks,
-        })
-      });
-      if (!res.ok) throw new Error('Failed to process reimbursement');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/reimbursement
+      // const res = await fetch('/api/reimbursement', {
+      //   method: 'PATCH',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     reimbursement_id: reimbursementId,
+      //     action: 'PAY',
+      //     performed_by: 'ftms_user',
+      //     payment_reference: `PAY${Date.now()}`,
+      //     payment_method: 'CASH',
+      //     remarks: remarks,
+      //   })
+      // });
+      // if (!res.ok) throw new Error('Failed to process reimbursement');
       showSuccess('Reimbursement processed successfully!', 'Success');
       setReimburseModal({ open: false, id: null });
       setReimburseRemarks('');
@@ -347,17 +348,18 @@ const filteredReimbursements = reimbursements.filter(reimbursement => {
     
     if (result.isConfirmed) {
       try {
-        // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-        // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reimbursement_id: reimbursementId,
-            action: 'APPROVE',
-            performed_by: 'ftms_user', // Replace with actual user
-          })
-        });
-        if (!res.ok) throw new Error('Failed to approve reimbursement');
+        // TODO: Replace with ftms_backend API call - http://localhost:4000/api/reimbursement
+        // const res = await fetch('/api/reimbursement', {
+        //   method: 'PATCH',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     reimbursement_id: reimbursementId,
+        //     action: 'APPROVE',
+        //     performed_by: 'ftms_user',
+        //   })
+        // });
+        // if (!res.ok) throw new Error('Failed to approve reimbursement');
+        throw new Error('Backend API not connected - approval disabled');
         showSuccess('Reimbursement approved successfully!', 'Success');
         fetchReimbursements(setLoading, setReimbursements);
       } catch {
@@ -400,18 +402,19 @@ const filteredReimbursements = reimbursements.filter(reimbursement => {
       return;
     }
     try {
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/reimbursement', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reimbursement_id: reimbursementId,
-          action: 'REJECT',
-          performed_by: 'ftms_user', // Replace with actual user
-          rejection_reason: reason,
-        })
-      });
-      if (!res.ok) throw new Error('Failed to reject reimbursement');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/reimbursement
+      // const res = await fetch('/api/reimbursement', {
+      //   method: 'PATCH',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     reimbursement_id: reimbursementId,
+      //     action: 'REJECT',
+      //     performed_by: 'ftms_user',
+      //     rejection_reason: reason,
+      //   })
+      // });
+      // if (!res.ok) throw new Error('Failed to reject reimbursement');
+      throw new Error('Backend API not connected - rejection disabled');
       showSuccess('Reimbursement rejected successfully!', 'Success');
       setRejectModal({ open: false, id: null });
       setRejectionReason('');
@@ -426,8 +429,7 @@ const filteredReimbursements = reimbursements.filter(reimbursement => {
       <div className="card">
         <h1 className="title">Reimbursement Management</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to load reimbursement data."
+          errorCode="503"
           onRetry={() => {
             setError(null);
             setLoading(true);

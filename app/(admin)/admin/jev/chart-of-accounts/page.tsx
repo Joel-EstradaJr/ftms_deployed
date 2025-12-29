@@ -17,7 +17,6 @@ import AuditTrailModal from './AuditTrailModal';
 
 import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
 import { fetchChartOfAccounts, createChartOfAccount, ChartOfAccountsQueryParams, PaginationResponse } from '@/app/services/chartOfAccountsService';
-import { ApiError } from '@/app/lib/api';
 import {getAccountTypeClass, 
         canArchiveAccount,
         getNormalBalance} from '@/app/lib/jev/accountHelpers';
@@ -75,16 +74,8 @@ const ChartOfAccountsPage = () => {
       defaultValue: 'active'
     }
   ];
-  // --- Dummy data (adjust as needed) ---
-const MOCK_ACCOUNTS: ChartOfAccount[] = [
-  { account_id: "1", account_code: "1000", account_name: "Cash on Hand", account_type: AccountType.ASSET,     is_active: true,  is_system_account: false, description: "Physical cash"},
-  { account_id: "2", account_code: "1100", account_name: "Accounts Receivable", account_type: AccountType.ASSET, is_active: true,  is_system_account: false, description: "Customer receivables"},
-  { account_id: "3", account_code: "2000", account_name: "Accounts Payable",   account_type: AccountType.LIABILITY, is_active: true, is_system_account: false, description: "Supplier payables"},
-  { account_id: "4", account_code: "4000", account_name: "Service Revenue",    account_type: AccountType.REVENUE, is_active: true,  is_system_account: false, description: "Service income"},
-  { account_id: "5", account_code: "5000", account_name: "Salaries Expense",   account_type: AccountType.EXPENSE, is_active: true,  is_system_account: false, description: "Payroll"},
-];
 
-  // Fetch accounts from backend API with filters and pagination
+  // Fetch accounts from mock service with filters and pagination
   const loadAccountsFromApi = useCallback(async () => {
     const reqId = ++lastReqIdRef.current;
     try {
@@ -145,12 +136,20 @@ const MOCK_ACCOUNTS: ChartOfAccount[] = [
       setAccounts(paginatedData);
       setTotalPages(Math.max(1, calculatedTotalPages));
       setTotalItems(total);
+      
+      // Mark loading as complete
+      setLoading(false);
+      if (isInitialLoadRef.current) {
+        setIsInitialLoad(false);
+        isInitialLoadRef.current = false;
+      }
     } catch (err) {
       setLoading(false);
       setIsInitialLoad(false);
-      if (err instanceof ApiError) {
+      isInitialLoadRef.current = false;
+      if (err instanceof Error) {
         setError(err.message);
-        setErrorCode(err.status);
+        setErrorCode(500);
       } else {
         setError('An unexpected error occurred while fetching accounts');
         setErrorCode(500);
@@ -266,7 +265,7 @@ const MOCK_ACCOUNTS: ChartOfAccount[] = [
       loadAccountsFromApi(); // Refresh the table
     } catch (error) {
       console.error('Error adding account:', error);
-      if (error instanceof ApiError) {
+      if (error instanceof Error) {
         await showError(error.message, 'Error');
       } else {
         await showError('Failed to create account', 'Error');

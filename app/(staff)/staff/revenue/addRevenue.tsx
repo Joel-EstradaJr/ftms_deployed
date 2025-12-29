@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import '../../../styles/revenue/addRevenue.css';
 import {
   showEmptyFieldWarning,
   showAddConfirmation,
@@ -11,13 +10,33 @@ import {
   showError
 } from '../../../utils/Alerts';
 import { isValidAmount } from '../../../utils/validation';
-import { formatDate } from '../../../utility/dateFormatter';
+import { formatDate } from '../../../utils/formatting';
 import { computeAutoAmount, getBoundaryLossInfo, formatPeso } from '@/app/utils/revenueCalc';
 import { formatDisplayText } from '../../../utils/formatting';
-import { Assignment } from '@/lib/operations/assignments';
-import { getRevenueGlobalsCached } from '@/lib/clientStore';
 import RevenueSourceSelector from '../../../Components/revenueBusSelector';
 import ModalHeader from '@/app/Components/ModalHeader';
+
+// Assignment type definition (matches operations API structure)
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
 
 type GlobalCategory = {
   category_id: string; // server provides both id and category_id as same
@@ -150,10 +169,14 @@ const AddRevenue: React.FC<AddRevenueProps & { existingRevenues: ExistingRevenue
     console.log('[EFFECT] Loading globals (cached)');
     const load = async () => {
       try {
-        const batch = await getRevenueGlobalsCached();
-        const categoriesData = batch.categories || [];
-        const statusesData = batch.payment_statuses || [];
-        const methodsData = batch.payment_methods || [];
+        // TODO: Implement getRevenueGlobalsCached
+        // const batch = await getRevenueGlobalsCached();
+        // const categoriesData = batch.categories || [];
+        // const statusesData = batch.payment_statuses || [];
+        // const methodsData = batch.payment_methods || [];
+        const categoriesData: GlobalCategory[] = [];
+        const statusesData: { id: string; name: string }[] = [];
+        const methodsData: { id: string; name: string }[] = [];
 
         setCategories(categoriesData);
         // Prefer Boundary, then Percentage, then Bus Rental, else first

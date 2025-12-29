@@ -74,7 +74,7 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
       await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
 
       const refundData = {
-        request_id: request.request_id,
+        request_id: request.purchase_request_code,
         refund_amount: refundAmount,
         refund_reason: refundReason,
         payment_method: paymentMethod,
@@ -90,7 +90,7 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
         "Refund Processed"
       );
 
-      onRefundProcessed(request.request_id, refundAmount, refundReason);
+      onRefundProcessed(request.purchase_request_code, refundAmount, refundReason);
       onClose();
     } catch (error) {
       console.error("Error processing refund:", error);
@@ -121,13 +121,13 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
                     border: '1px solid #e9ecef'
                   }}>
                     <div style={{ marginBottom: '8px' }}>
-                      <strong>Request ID:</strong> {request.request_id}
+                      <strong>Request ID:</strong> {request.purchase_request_code}
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                      <strong>Title:</strong> {request.title}
+                      <strong>Reason:</strong> {request.reason}
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                      <strong>Order Number:</strong> {request.order_number || 'N/A'}
+                      <strong>Old Order Code:</strong> {request.old_order_code || 'N/A'}
                     </div>
                     <div style={{ marginBottom: '0' }}>
                       <strong>Total Paid:</strong> ₱{request.total_amount.toLocaleString()}

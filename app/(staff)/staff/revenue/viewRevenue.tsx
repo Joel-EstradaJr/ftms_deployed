@@ -2,13 +2,31 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import '../../../styles/revenue/viewRevenue.css';
-import { formatDateTime } from '../../../utility/dateFormatter';
+import { formatDateTime } from '../../../utils/formatting';
 import { formatDisplayText } from '@/app/utils/formatting';
 import { formatPeso } from '@/app/utils/revenueCalc';
-import type { Assignment } from '@/lib/operations/assignments';
 import ModalHeader from '@/app/Components/ModalHeader';
-import { getEmployeesCached, getRevenueGlobalsCached } from '@/lib/clientStore';
+
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
 
 type GlobalCategory = {
   category_id: string;
@@ -82,8 +100,10 @@ const ViewRevenue: React.FC<ViewRevenueProps> = ({ record, onClose }) => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const employeesData = await getEmployeesCached();
-        setAllEmployees(employeesData);
+        // const employeesData = await getEmployeesCached();
+        // setAllEmployees(employeesData);
+        // TODO: Implement getEmployeesCached API
+        setAllEmployees([]);
       } catch (error) {
         console.error('Error fetching employees:', error);
       }
@@ -97,9 +117,11 @@ const ViewRevenue: React.FC<ViewRevenueProps> = ({ record, onClose }) => {
 
       if (record.category_id) {
         try {
-          const g = await getRevenueGlobalsCached();
-          const cat = (g.categories || []).find(c => c.category_id === record.category_id);
-          setCategoryName(cat?.name || 'Unknown Category');
+          // const g = await getRevenueGlobalsCached();
+          // const cat = (g.categories || []).find(c => c.category_id === record.category_id);
+          // setCategoryName(cat?.name || 'Unknown Category');
+          // TODO: Implement getRevenueGlobalsCached API
+          setCategoryName('Unknown Category');
         } catch (error) {
           console.error('Error fetching category:', error);
           setCategoryName('Unknown Category');

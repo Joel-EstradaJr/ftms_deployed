@@ -30,7 +30,7 @@ export default function PurchaseApprovalModal({
 
   const handleApprove = async () => {
     const result = await showConfirmation(
-      `Are you sure you want to <b>APPROVE</b> the purchase request "${request.title}"?`,
+      `Are you sure you want to <b>APPROVE</b> the purchase request "${request.purchase_request_code}"?`,
       "Approve Purchase Request"
     );
 
@@ -55,7 +55,7 @@ export default function PurchaseApprovalModal({
     }
 
     const result = await showConfirmation(
-      `Are you sure you want to <b>REJECT</b> the purchase request "${request.title}"?`,
+      `Are you sure you want to <b>REJECT</b> the purchase request "${request.purchase_request_code}"?`,
       "Reject Purchase Request"
     );
 
@@ -82,13 +82,13 @@ export default function PurchaseApprovalModal({
   };
 
   // Convert purchase items to Item format for ItemTable
-  const itemTableItems = request.items.map(item => ({
-    item_name: item.item_name,
+  const itemTableItems = (request.items || []).map(item => ({
+    item_name: item.item?.item_name || item.new_item || item.new_item_name || 'N/A',
     quantity: item.quantity,
-    unit_measure: item.unit_measure,
-    unit_cost: item.unit_cost,
-    supplier: item.supplier || 'N/A', // Handle optional supplier
-    subtotal: item.total_cost,
+    unit_measure: item.item?.unit?.unit_name || item.new_unit || 'N/A',
+    unit_cost: item.unit_cost || item.supplier_item?.unit_price || item.new_unit_price || item.new_unit_cost || 0,
+    supplier: item.supplier?.supplier_name || item.new_supplier || item.new_supplier_name || 'N/A',
+    subtotal: item.total_amount || (item.quantity * (item.unit_cost || item.supplier_item?.unit_price || item.new_unit_price || item.new_unit_cost || 0)),
     type: 'supply' as const
   }));
 
@@ -109,22 +109,22 @@ export default function PurchaseApprovalModal({
               <div className="formFieldsHorizontal">
                 <div className="formField full-width">
                   <label>Request ID</label>
-                  <div className="viewField">{request.request_id}</div>
+                  <div className="viewField">{request.purchase_request_code}</div>
                 </div>
 
                 <div className="formField full-width">
-                  <label>Title</label>
-                  <div className="viewField">{request.title}</div>
+                  <label>Reason</label>
+                  <div className="viewField">{request.reason}</div>
                 </div>
 
                 <div className="formField">
                   <label>Department</label>
-                  <div className="viewField">{request.department.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}</div>
+                  <div className="viewField">{request.requestor?.department_name || request.department_name || 'N/A'}</div>
                 </div>
 
                 <div className="formField">
                   <label>Supplier</label>
-                  <div className="viewField">{request.supplier_name}</div>
+                  <div className="viewField">{request.items?.[0]?.supplier?.supplier_name || request.items?.[0]?.new_supplier || 'Multiple/N/A'}</div>
                 </div>
 
                 <div className="formField">
@@ -133,40 +133,33 @@ export default function PurchaseApprovalModal({
                 </div>
 
                 <div className="formField">
-                  <label>Priority</label>
+                  <label>Type</label>
                   <div className="viewField">
-                    <span className={`chip ${request.priority === 'urgent' ? 'error' : 'info'}`}>
-                      {request.priority === 'urgent' ? 'High' : 'Normal'}
+                    <span className={`chip ${request.request_type === 'EMERGENCY' || request.request_type === 'URGENT' || request.type === 'EMERGENCY' || request.type === 'URGENT' ? 'error' : 'info'}`}>
+                      {request.request_type || request.type || 'REGULAR'}
                     </span>
                   </div>
                 </div>
 
                 <div className="formField">
                   <label>Requester</label>
-                  <div className="viewField">{request.requester_name}</div>
+                  <div className="viewField">{request.requestor?.employee_name || `${request.requestor?.first_name || ''} ${request.requestor?.last_name || ''}`.trim() || 'N/A'}</div>
                 </div>
 
                 <div className="formField">
                   <label>Position</label>
-                  <div className="viewField">{request.requester_position}</div>
+                  <div className="viewField">{request.requestor?.position_name || request.requestor?.position || 'N/A'}</div>
                 </div>
 
                 <div className="formField">
                   <label>Request Date</label>
-                  <div className="viewField">{formatDate(request.request_date)}</div>
+                  <div className="viewField">{formatDate(request.created_at)}</div>
                 </div>
 
-                {request.purpose && (
+                {request.finance_remarks && (
                   <div className="formField full-width">
-                    <label>Purpose</label>
-                    <div className="viewField">{request.purpose}</div>
-                  </div>
-                )}
-
-                {request.justification && (
-                  <div className="formField full-width">
-                    <label>Justification</label>
-                    <div className="viewField">{request.justification}</div>
+                    <label>Finance Remarks</label>
+                    <div className="viewField">{request.finance_remarks}</div>
                   </div>
                 )}
               </div>

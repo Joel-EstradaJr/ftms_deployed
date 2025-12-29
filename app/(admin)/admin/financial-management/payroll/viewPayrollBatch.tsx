@@ -216,7 +216,7 @@ export default function ViewPayrollBatch({
             <div className="modal-title-section">
               <h2 className="modal-title">Payroll Batch Details</h2>
               <p className="modal-subtitle">
-                {batch.batchCode} • {formatDate(batch.periodStart)} to {formatDate(batch.periodEnd)}
+                {batch.payroll_period_code} • {formatDate(batch.period_start)} to {formatDate(batch.period_end)}
               </p>
             </div>
             <button className="close-modal-btn" onClick={onClose}>
@@ -232,7 +232,7 @@ export default function ViewPayrollBatch({
             <div className="form-row">
               <div className="form-group">
                 <label>Batch Code</label>
-                <input type="text" value={batch.batchCode} readOnly />
+                <input type="text" value={batch.payroll_period_code} readOnly />
               </div>
               <div className="form-group">
                 <label>Status</label>
@@ -247,18 +247,18 @@ export default function ViewPayrollBatch({
             <div className="form-row">
               <div className="form-group">
                 <label>Period Start</label>
-                <input type="text" value={formatDate(batch.periodStart)} readOnly />
+                <input type="text" value={formatDate(batch.period_start)} readOnly />
               </div>
               <div className="form-group">
                 <label>Period End</label>
-                <input type="text" value={formatDate(batch.periodEnd)} readOnly />
+                <input type="text" value={formatDate(batch.period_end)} readOnly />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
                 <label>Total Employees</label>
-                <input type="text" value={batch.totalEmployees} readOnly />
+                <input type="text" value={batch.total_employees} readOnly />
               </div>
               <div className="form-group">
                 <label>Undisbursed</label>
@@ -287,7 +287,7 @@ export default function ViewPayrollBatch({
                 <label>Total Net</label>
                 <input 
                   type="text" 
-                  value={formatMoney(batch.totalNet)} 
+                  value={formatMoney(batch.total_net)} 
                   readOnly 
                   style={{ fontWeight: 600, color: 'var(--primary-color)' }}
                 />

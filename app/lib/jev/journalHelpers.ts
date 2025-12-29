@@ -32,8 +32,6 @@ export const getEntryTypeClass = (type: EntryType): string => {
   switch (type) {
     case EntryType.MANUAL:
       return 'manual';
-    case EntryType.AUTO_MANUAL:
-      return 'auto_manual';
     case EntryType.AUTO_REVENUE:
       return 'auto_revenue';
     case EntryType.AUTO_EXPENSE:
@@ -97,9 +95,7 @@ export const createEmptyJournalLine = (lineNumber: number): JournalEntryLine => 
     line_number: lineNumber,
     description: '',
     debit_amount: undefined,
-    credit_amount: undefined,
-    department: '',
-    responsibility_center: ''
+    credit_amount: undefined
   };
 };
 
@@ -166,9 +162,7 @@ export const createReversalLines = (originalLines: JournalEntryLine[]): JournalE
     description: `Reversal: ${line.description || ''}`,
     // Swap debit and credit
     debit_amount: line.credit_amount,
-    credit_amount: line.debit_amount,
-    department: line.department,
-    responsibility_center: line.responsibility_center
+    credit_amount: line.debit_amount
   }));
 };
 
@@ -245,10 +239,10 @@ export const sortJournalEntries = (
 
     switch (sortBy) {
       case 'date':
-        comparison = new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime();
+        comparison = new Date(a.transaction_date || a.date).getTime() - new Date(b.transaction_date || b.date).getTime();
         break;
       case 'number':
-        comparison = a.journal_number.localeCompare(b.journal_number);
+        comparison = (a.journal_number || a.code).localeCompare(b.journal_number || b.code);
         break;
       case 'amount':
         comparison = a.total_debit - b.total_debit;
@@ -270,7 +264,7 @@ export const filterByDateRange = (
   endDate?: string
 ): JournalEntry[] => {
   return entries.filter(entry => {
-    const entryDate = new Date(entry.transaction_date);
+    const entryDate = new Date(entry.transaction_date || entry.date);
 
     if (startDate && entryDate < new Date(startDate)) {
       return false;

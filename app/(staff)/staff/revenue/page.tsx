@@ -2,24 +2,42 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import "../../../styles/revenue/revenue.css";
 import "../../../styles/components/table.css";
 import PaginationComponent from "../../../Components/pagination";
 import AddRevenue from "./addRevenue"; 
-import ErrorDisplay from '../../../Components/ErrorDisplay';
+import ErrorDisplay from '../../../Components/errordisplay';
 import Swal from 'sweetalert2';
 import EditRevenueModal from "./editRevenue";
 import ViewRevenueModal from "./viewRevenue";
 import AddPaymentModal from "./AddPaymentModal";
-// Assignments are loaded via client-side cache now
 import { formatDate } from '../../../utils/formatting';;
 import Loading from '../../../Components/loading';
 import { showSuccess, showError } from '../../../utils/Alerts';
 import { formatDateTime } from '../../../utils/formatting';
 import { formatDisplayText } from '@/app/utils/formatting';
-import type { Assignment } from '@/lib/operations/assignments';
 import FilterDropdown, { FilterSection } from "../../../Components/filter"
-import { getRevenueGlobalsCached, getAssignmentsCached } from '@/lib/clientStore';
+
+// Assignment type definition (matches operations API structure)
+interface Assignment {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+}
 
 interface GlobalCategory {
   category_id: string;
@@ -96,11 +114,12 @@ const CacheHealthIndicator: React.FC<{ refreshKey: number }> = ({ refreshKey }) 
   const fetchHealth = async () => {
     try {
       setError(null);
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/cache/health', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const j: CacheHealthResponse = await res.json();
-      setHealth(j);
+      // TODO: Replace with ftms_backend API call
+      // const res = await fetch('/api/cache/health', { cache: 'no-store' });
+      // if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // const j: CacheHealthResponse = await res.json();
+      // setHealth(j);
+      setHealth(null);
     } catch (e: any) {
       setError(e?.message || 'failed');
     } finally {
@@ -244,8 +263,10 @@ const RevenuePage = () => {
 
   const fetchCategories = async () => {
     try {
-      const g = await getRevenueGlobalsCached();
-      const categoriesData = g.categories || [];
+      // TODO: Implement getRevenueGlobalsCached
+      // const g = await getRevenueGlobalsCached();
+      // const categoriesData = g.categories || [];
+      const categoriesData: GlobalCategory[] = [];
       const revenueCategories = categoriesData.filter((cat: GlobalCategory) => 
         cat.applicable_modules.includes('revenue') && !cat.is_deleted
       );
@@ -259,8 +280,9 @@ const RevenuePage = () => {
   // Fetch assignments with periodic refresh and error handling
   const fetchAssignments = async () => {
     try {
-      // Fetch all assignments once and derive unrecorded locally
-      const allAssignmentsData = await getAssignmentsCached();
+      // TODO: Implement getAssignmentsCached
+      // const allAssignmentsData = await getAssignmentsCached();
+      const allAssignmentsData: Assignment[] = [];
       setAllAssignments(allAssignmentsData);
       const unrecorded = allAssignmentsData.filter((a: Assignment) => !a.is_revenue_recorded);
       setAssignments(unrecorded);
@@ -288,8 +310,9 @@ const RevenuePage = () => {
       // Fetch categories for the filter dropdown
       await fetchCategories();
 
-      // Fetch all assignments using the new Operations service
-      const assignmentsData = await getAssignmentsCached();
+      // TODO: Implement getAssignmentsCached
+      // const assignmentsData = await getAssignmentsCached();
+      const assignmentsData: Assignment[] = [];
       console.log('[FETCH] Assignments loaded from Operations API');
 
       // Filter out recorded assignments for the AddRevenue modal
@@ -301,11 +324,12 @@ const RevenuePage = () => {
 
       // Then fetch revenues
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const revenuesResponse = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/revenues');
-      console.log('[FETCH] /api/revenues status:', revenuesResponse.status);
-      if (!revenuesResponse.ok) throw new Error('Failed to fetch revenues');
+      // const revenuesResponse = await fetch('/api/revenues');
+      // console.log('[FETCH] /api/revenues status:', revenuesResponse.status);
+      // if (!revenuesResponse.ok) throw new Error('Failed to fetch revenues');
 
-      const revenues: RevenueRecord[] = await revenuesResponse.json();
+      // const revenues: RevenueRecord[] = await revenuesResponse.json();
+      const revenues: RevenueRecord[] = [];
 
       const transformedData: RevenueData[] = revenues.map(revenue => ({
         revenue_id: revenue.revenue_id,
@@ -399,17 +423,16 @@ const RevenuePage = () => {
   // Manual cache refresh (placeholder auth)
   const manualCacheRefresh = async () => {
     try {
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/cache/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // TODO: replace with real JWT or server action
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CACHE_REFRESH_TOKEN || ''}`,
-        },
-      });
-      if (!res.ok) throw new Error(`Refresh failed (${res.status})`);
-      showSuccess('Cache refresh started/completed.', 'Cache');
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/cache/refresh
+      // const res = await fetch('/api/cache/refresh', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CACHE_REFRESH_TOKEN || ''}`,
+      //   },
+      // });
+      // if (!res.ok) throw new Error(`Refresh failed (${res.status})`);
+      showSuccess('Cache refresh feature disabled - backend not connected.', 'Cache');
       // Optionally refetch assignments/categories quickly to reflect new data
       await Promise.all([fetchAssignments(), fetchCategories()]);
       // Nudge the health widget to refresh immediately
@@ -451,52 +474,53 @@ const RevenuePage = () => {
         }
       }
       
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/revenues
+      throw new Error('Backend API not connected - revenue creation disabled');
       
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/revenues', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category_id: newRevenue.category_id,
-          total_amount: Number(newRevenue.total_amount),
-          collection_date: newRevenue.collection_date, // ISO string
-          created_by: newRevenue.created_by,
-          assignment_id: newRevenue.assignment_id || null,
-          source_ref: newRevenue.source_ref || undefined,
-          payment_status_id: newRevenue.payment_status_id,
-          payment_method_id: newRevenue.payment_method_id || undefined,
-          remarks: newRevenue.remarks,
-          // include bus_trip_id when available so backend uses BusTrip flow
-          bus_trip_id: newRevenue.bus_trip_id || selectedAssignment?.bus_trip_id || undefined,
-          // AR support
-          ...(newRevenue.is_receivable ? {
-            is_receivable: true,
-            payer_name: newRevenue.payer_name,
-            due_date: newRevenue.due_date,
-            interest_rate: newRevenue.interest_rate,
-            installments: newRevenue.installments
-          } : {}),
-        })
-      });
-      
-      if (!response.ok) throw new Error('Create failed');
-      const result: RevenueRecord = await response.json();
+      // const response = await fetch('/api/revenues', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     category_id: newRevenue.category_id,
+      //     total_amount: Number(newRevenue.total_amount),
+      //     collection_date: newRevenue.collection_date,
+      //     created_by: newRevenue.created_by,
+      //     assignment_id: newRevenue.assignment_id || null,
+      //     source_ref: newRevenue.source_ref || undefined,
+      //     payment_status_id: newRevenue.payment_status_id,
+      //     payment_method_id: newRevenue.payment_method_id || undefined,
+      //     remarks: newRevenue.remarks,
+      //     bus_trip_id: newRevenue.bus_trip_id || selectedAssignment?.bus_trip_id || undefined,
+      //     ...(newRevenue.is_receivable ? {
+      //       is_receivable: true,
+      //       payer_name: newRevenue.payer_name,
+      //       due_date: newRevenue.due_date,
+      //       interest_rate: newRevenue.interest_rate,
+      //       installments: newRevenue.installments
+      //     } : {}),
+      //   })
+      // });
+      // 
+      // if (!response.ok) throw new Error('Create failed');
+      // const result: RevenueRecord = await response.json();
+      const result: RevenueRecord = {} as RevenueRecord; // TODO: Replace with actual API response
 
       let attachmentCountForNew = 0;
 
       // If attachments were selected, upload them (optional) using new API
-      if (newRevenue.attachments && newRevenue.attachments.length > 0) {
-        const form = new FormData();
-        newRevenue.attachments.forEach(f => form.append('files', f));
-        const upRes = await fetch(`/api/revenues/${encodeURIComponent(result.revenue_id)}/attachments`, { method: 'POST', body: form });
-        if (!upRes.ok) {
-          console.warn('Attachment upload failed');
-        } else {
-          const upJson = await upRes.json().catch(() => null);
-          const created = upJson?.attachments || [];
-          attachmentCountForNew = Array.isArray(created) ? created.length : 0;
-        }
-      }
+      // if (newRevenue.attachments && newRevenue.attachments.length > 0) {
+      //   const form = new FormData();
+      //   newRevenue.attachments.forEach(f => form.append('files', f));
+      //   const upRes = await fetch(`/api/revenues/${encodeURIComponent(result.revenue_id)}/attachments`, { method: 'POST', body: form });
+      //   if (!upRes.ok) {
+      //     console.warn('Attachment upload failed');
+      //   } else {
+      //     const upJson = await upRes.json().catch(() => null);
+      //     const created = upJson?.attachments || [];
+      //     attachmentCountForNew = Array.isArray(created) ? created.length : 0;
+      //   }
+      // }
+      // TODO: Implement attachment upload API
       
       // Refresh assignments data to get updated flags from Operations API BEFORE updating state
       await fetchAssignments();
@@ -690,34 +714,35 @@ const RevenuePage = () => {
     try {
       // First get the export ID from the API
       // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const idResponse = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/generate-export-id');
-      if (!idResponse.ok) {
-        throw new Error('Failed to generate export ID');
-      }
-      const { exportId } = await idResponse.json();
+      // const idResponse = await fetch('/api/generate-export-id');
+      // if (!idResponse.ok) {
+      //   throw new Error('Failed to generate export ID');
+      // }
+      // const { exportId } = await idResponse.json();
+      const exportId = 'temp-export-id'; // TODO: Get from API
 
       // Generate details without export ID
       const details = generateExportDetails();
 
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/auditlogs/export
 
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/auditlogs/export', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'EXPORT',
-          table_affected: 'RevenueRecord',
-          record_id: exportId,  // Export ID only appears here
-          performed_by: 'ftms_user', // Replace with actual user ID
-          details: details
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create audit log');
-      }
+      // const response = await fetch('/api/auditlogs/export', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({
+      //     action: 'EXPORT',
+      //     table_affected: 'RevenueRecord',
+      //     record_id: exportId,
+      //     performed_by: 'ftms_user',
+      //     details: details
+      //   })
+      // });
+      //
+      // if (!response.ok) {
+      //   throw new Error('Failed to create audit log');
+      // }
   
       return exportId;
     } catch (error) {
@@ -898,8 +923,7 @@ const RevenuePage = () => {
       <div className="card">
         <h1 className="title">Revenue Records</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to load revenue records."
+          errorCode="503"
           onRetry={fetchAllData}
         />
       </div>

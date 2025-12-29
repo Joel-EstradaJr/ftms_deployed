@@ -44,8 +44,8 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
 
     if (refundAmount <= 0) {
       newErrors.refundAmount = "Refund amount must be greater than 0";
-    } else if (refundAmount > request.total_amount) {
-      newErrors.refundAmount = `Refund amount cannot exceed ₱${request.total_amount.toLocaleString()}`;
+    } else if (refundAmount > (request as any).total_amount) {
+      newErrors.refundAmount = `Refund amount cannot exceed ₱${(request as any).total_amount.toLocaleString()}`;
     }
 
     if (!refundReason.trim()) {
@@ -72,7 +72,7 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
       await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
 
       const refundData = {
-        request_id: request.request_id,
+        request_id: (request as any).request_id,
         refund_amount: refundAmount,
         refund_reason: refundReason,
         payment_method: paymentMethod,
@@ -88,7 +88,7 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
         "Refund Processed"
       );
 
-      onRefundProcessed(request.request_id, refundAmount, refundReason);
+      onRefundProcessed((request as any).request_id, refundAmount, refundReason);
       onClose();
     } catch (error) {
       console.error("Error processing refund:", error);
@@ -119,16 +119,16 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
                     border: '1px solid #e9ecef'
                   }}>
                     <div style={{ marginBottom: '8px' }}>
-                      <strong>Request ID:</strong> {request.request_id}
+                      <strong>Request ID:</strong> {(request as any).request_id}
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                      <strong>Title:</strong> {request.title}
+                      <strong>Title:</strong> {(request as any).title}
                     </div>
                     <div style={{ marginBottom: '8px' }}>
-                      <strong>Order Number:</strong> {request.order_number || 'N/A'}
+                      <strong>Order Number:</strong> {(request as any).order_number || 'N/A'}
                     </div>
                     <div style={{ marginBottom: '0' }}>
-                      <strong>Total Paid:</strong> ₱{request.total_amount.toLocaleString()}
+                      <strong>Total Paid:</strong> ₱{(request as any).total_amount.toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -149,7 +149,7 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
                     <input
                       type="number"
                       min="0"
-                      max={request.total_amount}
+                      max={(request as any).total_amount}
                       step="0.01"
                       value={refundAmount}
                       onChange={(e) => handleAmountChange(parseFloat(e.target.value) || 0)}
@@ -159,7 +159,7 @@ const ProcessRefundModal: React.FC<ProcessRefundModalProps> = ({
                   </div>
                   {errors.refundAmount && <div className="error-message">{errors.refundAmount}</div>}
                   <small style={{ color: 'var(--secondary-text-color)', fontSize: '12px' }}>
-                    Maximum refundable: ₱{request.total_amount.toLocaleString()}
+                    Maximum refundable: ₱{(request as any).total_amount.toLocaleString()}
                   </small>
                 </div>
 

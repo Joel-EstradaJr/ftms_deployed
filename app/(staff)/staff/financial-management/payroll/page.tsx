@@ -7,7 +7,7 @@ import "../../../../styles/components/table.css";
 import "../../../../styles/components/chips.css";
 import PaginationComponent from "../../../../Components/pagination";
 import Loading from '../../../../Components/loading';
-import ErrorDisplay from '../../../../Components/ErrorDisplay';
+import ErrorDisplay from '../../../../Components/errordisplay';
 import Swal from 'sweetalert2';
 import { showSuccess } from '../../../../utils/Alerts';
 import ViewPayrollModal from "./viewPayroll";
@@ -400,17 +400,18 @@ const PayrollPage = () => {
     setGenLoading(true);
     setGenError(null);
     try {
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch("/api/payroll/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: genStart, end: genEnd, periodType: genPeriodType, employees: selectedEmployees }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Unknown error");
-      setResultsData(data as PayrollGenSummary);
-      setResultsModalOpen(true);
-      fetchPayrollData(false);
+      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll/generate
+      // const res = await fetch("/api/payroll/generate", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ start: genStart, end: genEnd, periodType: genPeriodType, employees: selectedEmployees }),
+      // });
+      // const data = await res.json();
+      // if (!data.success) throw new Error(data.error || "Unknown error");
+      // setResultsData(data as PayrollGenSummary);
+      // setResultsModalOpen(true);
+      // fetchPayrollData(false);
+      throw new Error("Backend API not yet connected - payroll generation disabled");
     } catch (err: unknown) {
       setGenError(err instanceof Error ? err.message : "Failed to generate payroll");
     } finally {
@@ -459,8 +460,7 @@ const PayrollPage = () => {
       <div className="card">
         <h1 className="title">Payroll Management</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to load payroll data."
+          errorCode="503"
           onRetry={handleRetry}
         />
       </div>
@@ -853,26 +853,27 @@ const PayrollPage = () => {
                 <button
                   className="releaseAllBtn"
                   onClick={async () => {
-                    const { start_date, end_date, payroll_type } = exportingPeriod;
-                    // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-                    // const res = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/payroll/export', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ start: start_date, end: end_date, payrollPeriod: payroll_type })
-                    });
-                    if (res.ok) {
-                      const blob = await res.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `payroll_export_${start_date}_to_${end_date}.xlsx`;
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                      window.URL.revokeObjectURL(url);
-                    } else {
-                      alert('Failed to export payroll.');
-                    }
+                    const { start_date, end_date, payroll_type} = exportingPeriod;
+                    alert('Payroll export disabled - backend API not connected');
+                    // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll/export
+                    // const res = await fetch('/api/payroll/export', {
+                    //   method: 'POST',
+                    //   headers: { 'Content-Type': 'application/json' },
+                    //   body: JSON.stringify({ start: start_date, end: end_date, payrollPeriod: payroll_type })
+                    // });
+                    // if (res.ok) {
+                    //   const blob = await res.blob();
+                    //   const url = window.URL.createObjectURL(blob);
+                    //   const a = document.createElement('a');
+                    //   a.href = url;
+                    //   a.download = `payroll_export_${start_date}_to_${end_date}.xlsx`;
+                    //   document.body.appendChild(a);
+                    //   a.click();
+                    //   a.remove();
+                    //   window.URL.revokeObjectURL(url);
+                    // } else {
+                    //   alert('Failed to export payroll.');
+                    // }
                     setExportingPeriod(null);
                   }}
                 >

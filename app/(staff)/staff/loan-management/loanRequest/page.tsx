@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import PaginationComponent from "../../../../Components/pagination";
 import Loading from "../../../../Components/loading";
-import ErrorDisplay from "../../../../Components/ErrorDisplay";
+import ErrorDisplay from "../../../../Components/errordisplay";
 import FilterDropdown, { FilterSection } from "../../../../Components/filter";
 import { showSuccess, showError, showConfirmation, showLoanRejectionDialog } from "../../../../utils/Alerts";
 import { formatDateTime, formatDate } from '../../../../utils/formatting';;
@@ -1482,8 +1482,7 @@ const LoanRequestPage = () => {
       <div className="card">
         <h1 className="title">Loan Request Management</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to load loan requests."
+          errorCode="503"
           onRetry={() => {
             setLoading(true);
             setError(null);

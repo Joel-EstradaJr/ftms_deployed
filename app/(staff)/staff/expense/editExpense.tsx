@@ -6,15 +6,34 @@
 
 import React, { useState, useEffect } from 'react';
 import '../../../styles/expense/editExpense.css';
-import { getAssignmentById } from '@/lib/operations/assignments';
-// import { formatDate } from '../../utility/dateFormatter';
 import { validateField, ValidationRule, isValidAmount } from "../../../utils/validation";
-import type { Assignment } from '@/lib/operations/assignments';
 import ModalHeader from '../../../Components/ModalHeader';
 import Swal from "sweetalert2";
 import ReimbursementBreakdownForm from '../../../Components/ReimbursementBreakdownForm';
 
 /* ───── types ──────────────────────────────────────────────── */
+// Assignment type definition (matches operations API structure)
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
+
 export type ExpenseData = {
   expense_id: string;
   date: string;
@@ -160,26 +179,28 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
       // Fallback: fetch assignment if not provided in record
       const fetchAssignment = async () => {
         try {
-          const assignmentData = await getAssignmentById(record.assignment_id!);
-          if (assignmentData) {
-            setAssignment(assignmentData);
-            setOriginalAutoFilledAmount(assignmentData.trip_fuel_expense);
-            
-            // Set original date to assignment date with current time
-            if (assignmentData.date_assigned) {
-              const assignmentDate = new Date(assignmentData.date_assigned);
-              const now = new Date();
-              assignmentDate.setHours(now.getHours(), now.getMinutes());
-              const year = assignmentDate.getFullYear();
-              const month = String(assignmentDate.getMonth() + 1).padStart(2, '0');
-              const day = String(assignmentDate.getDate()).padStart(2, '0');
-              const hours = String(assignmentDate.getHours()).padStart(2, '0');
-              const minutes = String(assignmentDate.getMinutes()).padStart(2, '0');
-              setOriginalAutoFilledDate(`${year}-${month}-${day}T${hours}:${minutes}`);
-            }
-          } else {
-            setAssignment(null);
-          }
+          // TODO: Implement getAssignmentById function or fetch from API
+          // const assignmentData = await getAssignmentById(record.assignment_id!);
+          // if (assignmentData) {
+          //   setAssignment(assignmentData);
+          //   setOriginalAutoFilledAmount(assignmentData.trip_fuel_expense);
+          //   
+          //   // Set original date to assignment date with current time
+          //   if (assignmentData.date_assigned) {
+          //     const assignmentDate = new Date(assignmentData.date_assigned);
+          //     const now = new Date();
+          //     assignmentDate.setHours(now.getHours(), now.getMinutes());
+          //     const year = assignmentDate.getFullYear();
+          //     const month = String(assignmentDate.getMonth() + 1).padStart(2, '0');
+          //     const day = String(assignmentDate.getDate()).padStart(2, '0');
+          //     const hours = String(assignmentDate.getHours()).padStart(2, '0');
+          //     const minutes = String(assignmentDate.getMinutes()).padStart(2, '0');
+          //     setOriginalAutoFilledDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+          //   }
+          // } else {
+          //   setAssignment(null);
+          // }
+          setAssignment(null);
         } catch {
           setAssignment(null);
         }
@@ -203,35 +224,34 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
   useEffect(() => {
     const fetchGlobals = async () => {
       try {
-        const [pmRes, psRes] = await Promise.all([
-          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-          // fetch('/api/globals/payment-methods'),
-          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-          // fetch('/api/globals/payment-statuses'),
-        ]);
-        if (!pmRes.ok) throw new Error('Failed loading payment methods');
-        if (!psRes.ok) throw new Error('Failed loading payment statuses');
-        const [pmData, psData] = await Promise.all([pmRes.json(), psRes.json()]);
-        const norm = (arr: any[]): NamedItem[] => (Array.isArray(arr) ? arr : [])
-          .map((x: any) => ({ id: x.id, name: x.name }))
-          .filter((x: any) => x && x.id && x.name);
-        const byName = (a: NamedItem, b: NamedItem) => a.name.localeCompare(b.name);
-        const pms = norm(pmData).sort(byName);
-        const pss = norm(psData).sort(byName);
-        setPaymentMethods(pms);
-        setPaymentStatuses(pss);
+        // TODO: Replace with ftms_backend API calls
+        // const [pmRes, psRes] = await Promise.all([
+        //   fetch('/api/globals/payment-methods'),
+        //   fetch('/api/globals/payment-statuses'),
+        // ]);
+        // if (!pmRes.ok) throw new Error('Failed loading payment methods');
+        // if (!psRes.ok) throw new Error('Failed loading payment statuses');
+        // const [pmData, psData] = await Promise.all([pmRes.json(), psRes.json()]);
+        // const norm = (arr: any[]): NamedItem[] => (Array.isArray(arr) ? arr : [])
+        //   .map((x: any) => ({ id: x.id, name: x.name }))
+        //   .filter((x: any) => x && x.id && x.name);
+        // const byName = (a: NamedItem, b: NamedItem) => a.name.localeCompare(b.name);
+        // const pms = norm(pmData).sort(byName);
+        // const pss = norm(psData).sort(byName);
+        // setPaymentMethods(pms);
+        // setPaymentStatuses(pss);
 
-        // Initialize selections
-        setPaymentMethodId(prev => prev || record.payment_method?.id || pms[0]?.id || '');
-        if (!paymentStatusId) {
-          const pending = pss.find(s => s.name.toLowerCase() === 'pending');
-          setPaymentStatusId(pending?.id || pss[0]?.id || '');
-        }
+        // // Initialize selections
+        // setPaymentMethodId(prev => prev || record.payment_method?.id || pms[0]?.id || '');
+        // if (!paymentStatusId) {
+        //   const pending = pss.find(s => s.name.toLowerCase() === 'pending');
+        //   setPaymentStatusId(pending?.id || pss[0]?.id || '');
+        // }
       } catch (err) {
         console.error('Failed fetching globals for edit expense', err);
       }
     };
-    fetchGlobals();
+    // fetchGlobals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

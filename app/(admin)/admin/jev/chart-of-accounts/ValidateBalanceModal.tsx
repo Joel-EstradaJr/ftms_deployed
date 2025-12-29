@@ -20,23 +20,11 @@ const ValidateBalanceModal: React.FC<ValidateBalanceModalProps> = ({ onClose, on
   const sampleResults = {
     balanced: false,
     issues: [
-      'Found 2 orphaned child accounts without valid parent',
-      'Account code 1025 is duplicated',
-      'Parent account 1020 balance (₱500,000) does not match sum of children (₱450,000)'
+      'Account code 1025 is duplicated'
     ],
-    orphaned_accounts: [
-      { code: '1099', name: 'Temporary Account' },
-      { code: '5099', name: 'Miscellaneous Expense' }
-    ],
+    orphaned_accounts: [],
     duplicate_codes: ['1025'],
-    balance_mismatches: [
-      {
-        account_code: '1020',
-        account_name: 'Cash in Bank',
-        expected: 450000,
-        actual: 500000
-      }
-    ]
+    balance_mismatches: []
   };
 
   const handleValidate = async () => {
@@ -72,9 +60,7 @@ const ValidateBalanceModal: React.FC<ValidateBalanceModalProps> = ({ onClose, on
         <div className="validation-info">
           <p>This validation will check for:</p>
           <ul>
-            <li>Orphaned child accounts (without valid parent)</li>
             <li>Duplicate account codes</li>
-            <li>Parent account balances matching sum of children</li>
             <li>Invalid account hierarchies</li>
           </ul>
         </div>

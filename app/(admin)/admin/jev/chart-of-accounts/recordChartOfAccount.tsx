@@ -30,10 +30,7 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
     account_name: account?.account_name || '',
     account_type: account?.account_type || AccountType.ASSET,
     category: account?.category || undefined,
-    parent_account_id: account?.parent_account_id || undefined,
     normal_balance: account?.normal_balance || NormalBalance.DEBIT,
-    is_contra_account: account?.is_contra_account || false,
-    contra_to_code: account?.contra_to_code || undefined,
     expense_category: account?.expense_category || undefined,
     statement_section: account?.statement_section || undefined,
     display_order: account?.display_order || 0,
@@ -125,21 +122,6 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
     }
   };
 
-  // Get available parent accounts (same type, not self, not children)
-  const availableParentAccounts = accounts.filter(acc => 
-    acc.account_type === formData.account_type && 
-    acc.account_id !== account?.account_id &&
-    acc.is_active
-  );
-
-  // Get available contra accounts (same type)
-  const availableContraAccounts = accounts.filter(acc =>
-    acc.account_type === formData.account_type &&
-    acc.account_id !== account?.account_id &&
-    !acc.is_contra_account &&
-    acc.is_active
-  );
-
   // Auto-set normal balance based on account type
   useEffect(() => {
     if (isAddMode || isEditMode) {
@@ -156,14 +138,9 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
           break;
       }
       
-      // Flip for contra accounts
-      if (formData.is_contra_account) {
-        defaultBalance = defaultBalance === NormalBalance.DEBIT ? NormalBalance.CREDIT : NormalBalance.DEBIT;
-      }
-      
       setFormData(prev => ({ ...prev, normal_balance: defaultBalance }));
     }
-  }, [formData.account_type, formData.is_contra_account, isAddMode, isEditMode]);
+  }, [formData.account_type, isAddMode, isEditMode]);
 
   const handleInputChange = (field: keyof ChartOfAccount, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -265,10 +242,6 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
 
     if (!formData.category) {
       newErrors.category = 'Category is required';
-    }
-
-    if (formData.is_contra_account && !formData.contra_to_code) {
-      newErrors.contra_to_code = 'Contra account must specify the account it offsets';
     }
 
     if (formData.account_type === AccountType.EXPENSE && !formData.expense_category) {
@@ -511,30 +484,6 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
         <form className="add-form">
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="parent_account_id">Parent Account</label>
-              {isViewMode ? (
-                <div className="value-display">
-                  {account?.parent_account_name ? 
-                    `${account.parent_account_code} - ${account.parent_account_name}` : 
-                    'Root Account'}
-                </div>
-              ) : (
-                <select
-                  id="parent_account_id"
-                  value={formData.parent_account_id || ''}
-                  onChange={(e) => handleInputChange('parent_account_id', e.target.value || undefined)}
-                >
-                  <option value="">None (Root Account)</option>
-                  {availableParentAccounts.map(acc => (
-                    <option key={acc.account_id} value={acc.account_id}>
-                      {acc.account_code} - {acc.account_name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div className="form-group">
               <label htmlFor="normal_balance">Normal Balance</label>
               {isViewMode ? (
                 <div className="value-display">
@@ -558,56 +507,6 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                 <small className="hint-message">Auto-determined based on account type</small>
               )}
             </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group checkbox-group">
-              <label>
-                {isViewMode ? (
-                  <div className="value-display">
-                    {formData.is_contra_account ? 'Yes' : 'No'}
-                  </div>
-                ) : (
-                  <input
-                    type="checkbox"
-                    checked={formData.is_contra_account}
-                    onChange={(e) => handleInputChange('is_contra_account', e.target.checked)}
-                  />
-                )}
-                <span>Is Contra Account</span>
-              </label>
-              {!isViewMode && (
-                <small className="hint-message">Reverses normal balance of account type</small>
-              )}
-            </div>
-
-            {formData.is_contra_account && (
-              <div className="form-group">
-                <label htmlFor="contra_to_code">
-                  Contra To Account<span className="requiredTags"> *</span>
-                </label>
-                {isViewMode ? (
-                  <div className="value-display">{formData.contra_to_code}</div>
-                ) : (
-                  <>
-                    <select
-                      id="contra_to_code"
-                      value={formData.contra_to_code || ''}
-                      onChange={(e) => handleInputChange('contra_to_code', e.target.value)}
-                      className={errors.contra_to_code ? 'invalid-input' : ''}
-                    >
-                      <option value="">Select account...</option>
-                      {availableContraAccounts.map(acc => (
-                        <option key={acc.account_id} value={acc.account_code}>
-                          {acc.account_code} - {acc.account_name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.contra_to_code && <p className="add-error-message">{errors.contra_to_code}</p>}
-                  </>
-                )}
-              </div>
-            )}
           </div>
 
           {formData.account_type === AccountType.EXPENSE && (

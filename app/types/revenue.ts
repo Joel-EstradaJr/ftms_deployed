@@ -182,8 +182,6 @@ export interface ChartOfAccount {
   accountType: AccountType;
   normalBalance: string;
   isActive: boolean;
-  parentAccountId: number | null;
-  level: number;
   description: string | null;
   createdAt: Date;
   updatedAt: Date;

@@ -14,6 +14,19 @@ export enum RequestType {
   REGULAR = 'REGULAR'
 }
 
+export enum Department {
+  OPERATIONS = 'OPERATIONS',
+  MAINTENANCE = 'MAINTENANCE',
+  ADMINISTRATION = 'ADMINISTRATION',
+  FINANCE = 'FINANCE',
+  HR = 'HR'
+}
+
+export enum RequestPriority {
+  URGENT = 'URGENT',
+  NORMAL = 'NORMAL'
+}
+
 // Nested interfaces for requestor (employee details) - Matches inventory payload
 export interface Requestor {
   user_id: string;

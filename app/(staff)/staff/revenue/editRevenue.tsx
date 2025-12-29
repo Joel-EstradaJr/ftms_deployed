@@ -1,12 +1,9 @@
 // app\Components\editRevenue.tsx
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
-import "../../../styles/revenue/editRevenue.css";
-import { getAssignmentById } from '@/lib/operations/assignments';
-import { formatDate } from '../../../utility/dateFormatter';
+import { formatDate } from '../../../utils/formatting';
 import { getBoundaryLossInfo, computeAutoAmount } from '@/app/utils/revenueCalc';
 import { validateField, ValidationRule, isValidAmount } from "../../../utils/validation";
-import { getRevenueGlobalsCached } from '@/lib/clientStore';
 import ModalHeader from '@/app/Components/ModalHeader';
 
 type EditProps = {
@@ -127,8 +124,10 @@ const EditRevenueModal: React.FC<EditProps> = ({ record, onClose, onSave, onAtta
   useEffect(() => {
     const load = async () => {
       try {
-        const g = await getRevenueGlobalsCached();
-        setCategories(g.categories || []);
+        // TODO: Implement getRevenueGlobalsCached
+        // const g = await getRevenueGlobalsCached();
+        // setCategories(g.categories || []);
+        setCategories([]);
       } catch {
         // ignore
       }
@@ -140,9 +139,12 @@ const EditRevenueModal: React.FC<EditProps> = ({ record, onClose, onSave, onAtta
   useEffect(() => {
     const load = async () => {
       try {
-        const g = await getRevenueGlobalsCached();
-        const statuses = g.payment_statuses || [];
-        const methods = g.payment_methods || [];
+        // TODO: Implement getRevenueGlobalsCached
+        // const g = await getRevenueGlobalsCached();
+        // const statuses = g.payment_statuses || [];
+        // const methods = g.payment_methods || [];
+        const statuses: { id: string; name: string }[] = [];
+        const methods: { id: string; name: string }[] = [];
         setPaymentStatuses(statuses);
         setPaymentMethods(methods);
         const byStatus = statuses.find((s: any) => s.name?.toLowerCase() === (record.payment_status_name || '').toLowerCase());
@@ -323,14 +325,16 @@ const EditRevenueModal: React.FC<EditProps> = ({ record, onClose, onSave, onAtta
     const fetchAssignmentData = async () => {
       if (record.assignment_id) {
         try {
-          const assignmentData = await getAssignmentById(record.assignment_id);
-          if (assignmentData?.trip_revenue) {
-            setOriginalTripRevenue(Number(assignmentData.trip_revenue));
-            // Calculate initial deviation
-            const deviation = Math.abs((record.amount - Number(assignmentData.trip_revenue)) / Number(assignmentData.trip_revenue) * 100);
-            setDeviationPercentage(deviation);
-            setShowDeviationWarning(deviation > 10);
-          }
+          // TODO: Implement getAssignmentById
+          // const assignmentData = await getAssignmentById(record.assignment_id);
+          // if (assignmentData?.trip_revenue) {
+          //   setOriginalTripRevenue(Number(assignmentData.trip_revenue));
+          //   // Calculate initial deviation
+          //   const deviation = Math.abs((record.amount - Number(assignmentData.trip_revenue)) / Number(assignmentData.trip_revenue) * 100);
+          //   setDeviationPercentage(deviation);
+          //   setShowDeviationWarning(deviation > 10);
+          // }
+          setOriginalTripRevenue(0);
         } catch {
           // handle error
         }

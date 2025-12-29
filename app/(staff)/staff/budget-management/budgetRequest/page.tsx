@@ -596,8 +596,7 @@ const BudgetRequestPage = () => {
       <div className="card">
         <h1 className="title">Budget Request Management</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to load budget requests."
+          errorCode="503"
           onRetry={() => {
             setError(null);
             setLoading(true);

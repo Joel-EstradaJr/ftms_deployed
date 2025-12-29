@@ -1,6 +1,5 @@
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
-import { getRevenueGlobalsCached } from '@/lib/clientStore';
 
 type PaymentLine = {
   amount: number;
@@ -30,9 +29,12 @@ const AddPaymentModal: React.FC<Props> = ({ revenue_id, outstanding_balance, ins
   useEffect(() => {
     (async () => {
       try {
-        const g = await getRevenueGlobalsCached();
-        setMethods(g.payment_methods || []);
-        setStatuses(g.payment_statuses || []);
+        // TODO: Implement getRevenueGlobalsCached function
+        // const g = await getRevenueGlobalsCached();
+        // setMethods(g.payment_methods || []);
+        // setStatuses(g.payment_statuses || []);
+        setMethods([]);
+        setStatuses([]);
       } catch {}
     })();
   }, []);

@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MICROSERVICES } from '../config/microservices';
 import { useNavigationUrl } from '../hooks/useRouteContext';
 // @ts-ignore
 import "../styles/components/sidebar.css";
@@ -15,12 +14,10 @@ const Sidebar: React.FC = () => {
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
   const { getUrl } = useNavigationUrl();
 
-  // --- Audit link helpers (derive from MICROSERVICES if available) ---
-  // Find audit microservice entry if configured
-  const auditService = MICROSERVICES.find(s => s.id === 'audit' || s.name?.toLowerCase() === 'audit');
-  const auditHref = auditService ? getUrl(`/microservice/${auditService.id}${auditService.routes?.[0]?.path || ''}`) : getUrl('/audit');
-  const auditActiveKey = auditService ? auditService.id : 'audit';
-  const auditIconClass = auditService?.icon || 'ri-booklet-line';
+  // Audit link (static, no longer using microservices)
+  const auditHref = getUrl('/audit');
+  const auditActiveKey = 'audit';
+  const auditIconClass = 'ri-booklet-line';
 
   // Detect user role from pathname
   const userRole = pathname.startsWith('/admin') ? 'admin' : 'staff';
@@ -93,18 +90,6 @@ const Sidebar: React.FC = () => {
       setActiveItem('purchase-request');
       setOpenSubMenu("purchase-management");
       return;
-    }
-
-    for (const service of MICROSERVICES) {
-      if (pathname.startsWith(`/microservice/${service.id}`)) {
-        setActiveItem(service.id);
-        if (service.category === 'Financial') {
-          setOpenSubMenu("budget-management");
-        } else if (service.category === 'Purchase') {
-          setOpenSubMenu("purchase-management");
-        }
-        return;
-      }
     }
 
     setActiveItem(null);

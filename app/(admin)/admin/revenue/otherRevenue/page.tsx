@@ -1073,15 +1073,10 @@ const AdminOtherRevenuePage = () => {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`/api/admin/revenue/${id}?userId=admin`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete revenue');
-        }
-
-        showSuccess('Revenue record deleted successfully', 'Deleted');
+        // MOCK: UI-only mode - simulate delete without API call
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        showSuccess('Revenue record deleted successfully (UI-only mode)', 'Deleted');
         fetchData(); // Refresh the data
       } catch (err) {
         console.error('Error deleting revenue:', err);

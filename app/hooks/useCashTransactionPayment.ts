@@ -20,46 +20,20 @@ export const useCashTransactionPayment = () => {
     setError(null);
 
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch(
-        `/api/cash-transactions/payment-status?expenseId=${expenseId}&expenseType=PURCHASE`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch payment information');
-      }
-
-      const data: PaymentInfo = await response.json();
-
-      // Compute payment status based on amounts and due date
-      let computedStatus = data.payment_status;
+      // MOCK DATA: UI-only mode - no API calls
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      if (data.balance === 0) {
-        computedStatus = PaymentStatus.PAID;
-      } else if (data.total_paid > 0 && data.balance > 0) {
-        computedStatus = PaymentStatus.PARTIALLY_PAID;
-      } else if (data.total_paid === 0) {
-        // Check if overdue
-        if (data.due_date) {
-          const dueDate = new Date(data.due_date);
-          const today = new Date();
-          if (dueDate < today) {
-            computedStatus = PaymentStatus.OVERDUE;
-          } else {
-            computedStatus = PaymentStatus.PENDING;
-          }
-        } else {
-          computedStatus = PaymentStatus.PENDING;
-        }
-      }
-
-      const updatedPaymentInfo = {
-        ...data,
-        payment_status: computedStatus
+      // Return mock payment info
+      const mockPaymentInfo: PaymentInfo = {
+        total_paid: 0,
+        balance: 0,
+        payment_status: PaymentStatus.PENDING,
+        due_date: undefined,
+        payment_history: []
       };
 
-      setPaymentInfo(updatedPaymentInfo);
-      return updatedPaymentInfo;
+      setPaymentInfo(mockPaymentInfo);
+      return mockPaymentInfo;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);

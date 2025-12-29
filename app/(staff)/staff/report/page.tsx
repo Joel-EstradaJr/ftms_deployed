@@ -6,11 +6,33 @@ import LineChart from '../../../Components/expenseRevenueLineChart';
 import ExpensesPieChart from '../../../Components/expensesPieChart';
 import RevenuePieChart from '../../../Components/revenuePieChart';
 import Pagination from '../../../Components/pagination';
-import ErrorDisplay from '../../../Components/ErrorDisplay';
+import ErrorDisplay from '../../../Components/errordisplay';
 import { formatDate } from '../../../utils/formatting';
 import Loading from '../../../Components/loading';
 import { showError } from '../../../utils/Alerts';
 import Swal from 'sweetalert2';
+
+// Assignment type definition (matches operations API structure)
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
 
 type ExpenseData = {
   expense_id: string;
@@ -64,11 +86,12 @@ const ReportPage = () => {
 
   const fetchExpenses = useCallback(async () => {
     try {
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-      // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/expenses');
-      if (!response.ok) throw new Error('Failed to fetch expenses');
-      const expensesData = await response.json();
-      setExpenseData(expensesData);
+      // TODO: Replace with ftms_backend API call
+      // const response = await fetch('/api/expenses');
+      // if (!response.ok) throw new Error('Failed to fetch expenses');
+      // const expensesData = await response.json();
+      // setExpenseData(expensesData);
+      setExpenseData([]);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       showError('Failed to load expenses', 'Error');
@@ -78,10 +101,13 @@ const ReportPage = () => {
   const fetchAssignments = useCallback(async () => {
     try {
       setAssignmentsLoading(true);
-      const unrecordedAssignments = await getUnrecordedExpenseAssignments();
-      setAssignments(unrecordedAssignments);
-      const allAssignmentsData = await getAllAssignmentsWithRecorded();
-      setAllAssignments(allAssignmentsData);
+      // TODO: Implement getUnrecordedExpenseAssignments and getAllAssignmentsWithRecorded
+      // const unrecordedAssignments = await getUnrecordedExpenseAssignments();
+      // setAssignments(unrecordedAssignments);
+      // const allAssignmentsData = await getAllAssignmentsWithRecorded();
+      // setAllAssignments(allAssignmentsData);
+      setAssignments([]);
+      setAllAssignments([]);
     } catch (error) {
       console.error('Error fetching assignments:', error);
       showError('Failed to load assignments', 'Error');
@@ -420,8 +446,7 @@ const ReportPage = () => {
       <div className="card">
         <h1 className="title">Report Generation</h1>
         <ErrorDisplay
-          type="503"
-          message="Unable to generate report."
+          errorCode="503"
           onRetry={() => {
             setError(null);
             setLoading(true);

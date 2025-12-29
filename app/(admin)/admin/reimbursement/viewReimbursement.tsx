@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import ViewExpenseModal from '../expense/viewExpense';
+import ViewExpenseModal from '../../../(staff)/staff/expense/viewExpense';
 import '../../../styles/reimbursement/viewReimbursement.css';
 import ModalHeader from '@/app/Components/ModalHeader';
 

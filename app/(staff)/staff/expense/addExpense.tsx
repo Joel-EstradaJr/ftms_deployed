@@ -5,17 +5,38 @@
 import React, { useState, useEffect, useMemo } from 'react';
 //@ts-ignore
 import '../../../styles/expense/addExpense.css';
-import { formatDate } from '../../../utility/dateFormatter';
+import { formatDate } from '../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../utils/Alerts';
 import { validateField, isValidAmount, ValidationRule } from "../../../utils/validation";
 import { formatDisplayText } from '../../../utils/formatting';
 import BusSelector from '../../../Components/busSelector';
 import ModalHeader from '../../../Components/ModalHeader';
 import ReimbursementBreakdownForm from '../../../Components/ReimbursementBreakdownForm';
-import type { Assignment } from '@/lib/operations/assignments';
 // Unified to use server-side `/api/employees` for all cases
 
 //---------------------DECLARATIONS HERE----------------------//
+// Assignment type from operations
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
+
 // Uncomment and use these types
 // type ExpenseData = {
 //   expense_id: string;
@@ -226,16 +247,16 @@ const AddExpense: React.FC<AddExpenseProps> = ({
         // For operations-based reimbursements, use the existing employee API
         // For receipt-based reimbursements, we'll fetch from HR API when needed
         // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-        // const response = // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // await // TODO: Replace with ftms_backend API call - http://localhost:4000/api/... // fetch('/api/employees');
-        if (!response.ok) throw new Error('Failed to fetch employees');
-        const data = await response.json();
-        setAllEmployees(data);
+        // const response = await fetch('/api/employees');
+        // if (!response.ok) throw new Error('Failed to fetch employees');
+        // const data = await response.json();
+        // setAllEmployees(data);
       } catch (error) {
         console.error('Error fetching employees:', error);
         showError('Error', 'Failed to load employees list');
       }
     };
-    fetchEmployees();
+    // fetchEmployees();
   }, []);
 
   // Removed: client-side HR fetch. We consistently use `/api/employees`.
@@ -244,62 +265,59 @@ const AddExpense: React.FC<AddExpenseProps> = ({
   useEffect(() => {
     const fetchGlobals = async () => {
       try {
-        const [catRes, srcRes, pmRes, psRes] = await Promise.all([
-          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-          // fetch('/api/globals/categories?module=expense'),
-          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-          // fetch('/api/globals/sources'),
-          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-          // fetch('/api/globals/payment-methods'),
-          // TODO: Replace with ftms_backend API call - http://localhost:4000/api/...
-          // fetch('/api/globals/payment-statuses'),
-        ]);
-        if (!catRes.ok) throw new Error('Failed loading categories');
-        if (!srcRes.ok) throw new Error('Failed loading sources');
-        if (!pmRes.ok) throw new Error('Failed loading payment methods');
-        if (!psRes.ok) throw new Error('Failed loading payment statuses');
-        const [catData, srcData, pmData, psData] = await Promise.all([
-          catRes.json(), srcRes.json(), pmRes.json(), psRes.json()
-        ]);
+        // TODO: Replace with ftms_backend API calls
+        // const [catRes, srcRes, pmRes, psRes] = await Promise.all([
+        //   fetch('/api/globals/categories?module=expense'),
+        //   fetch('/api/globals/sources'),
+        //   fetch('/api/globals/payment-methods'),
+        //   fetch('/api/globals/payment-statuses'),
+        // ]);
+        // if (!catRes.ok) throw new Error('Failed loading categories');
+        // if (!srcRes.ok) throw new Error('Failed loading sources');
+        // if (!pmRes.ok) throw new Error('Failed loading payment methods');
+        // if (!psRes.ok) throw new Error('Failed loading payment statuses');
+        // const [catData, srcData, pmData, psData] = await Promise.all([
+        //   catRes.json(), srcRes.json(), pmRes.json(), psRes.json()
+        // ]);
 
-        type AnyItem = { id?: string; name: string; category_id?: string };
-        const norm = (arr: AnyItem[], idKey: keyof AnyItem = 'id'): { id: string; name: string }[] =>
-          (Array.isArray(arr) ? arr : []).map((x: AnyItem) => ({ id: (x[idKey] as string) ?? (x.id as string), name: x.name }))
-            .filter((x) => x && x.id && x.name);
+        // type AnyItem = { id?: string; name: string; category_id?: string };
+        // const norm = (arr: AnyItem[], idKey: keyof AnyItem = 'id'): { id: string; name: string }[] =>
+        //   (Array.isArray(arr) ? arr : []).map((x: AnyItem) => ({ id: (x[idKey] as string) ?? (x.id as string), name: x.name }))
+        //     .filter((x) => x && x.id && x.name);
 
-        const cats = norm(catData as AnyItem[], 'category_id');
-        const srcs = norm(srcData as AnyItem[], 'id');
-        const pms = norm(pmData as AnyItem[], 'id');
-        const pss = norm(psData as AnyItem[], 'id');
+        // const cats = norm(catData as AnyItem[], 'category_id');
+        // const srcs = norm(srcData as AnyItem[], 'id');
+        // const pms = norm(pmData as AnyItem[], 'id');
+        // const pss = norm(psData as AnyItem[], 'id');
 
-        const byName = (a: { id: string; name: string }, b: { id: string; name: string }) => a.name.localeCompare(b.name);
-        setCategories(cats.sort(byName));
-        setSources(srcs.sort(byName));
-        setPaymentMethods(pms.sort(byName));
-        setPaymentStatuses(pss.sort(byName));
+        // const byName = (a: { id: string; name: string }, b: { id: string; name: string }) => a.name.localeCompare(b.name);
+        // setCategories(cats.sort(byName));
+        // setSources(srcs.sort(byName));
+        // setPaymentMethods(pms.sort(byName));
+        // setPaymentStatuses(pss.sort(byName));
 
-        setFormData(prev => {
-          const next = { ...prev } as any;
-          if (!prev.category_id) {
-            const fuel = cats.find(c => c.name.toLowerCase() === 'fuel');
-            if (fuel) { next.category_id = fuel.id; next.category = fuel.name; }
-            else if (cats[0]) { next.category_id = cats[0].id; next.category = cats[0].name; }
-          }
-          if (!prev.source_id && srcs[0]) { next.source_id = srcs[0].id; next.source = srcs[0].name; }
-          if (!prev.payment_method_id && pms[0]) { next.payment_method_id = pms[0].id; next.payment_method = pms[0].name; }
-          if (!prev.payment_status_id) {
-            const pending = pss.find(s => s.name.toLowerCase() === 'pending');
-            next.payment_status_id = (pending || pss[0])?.id || '';
-            next.payment_status = (pending || pss[0])?.name || '';
-          }
-          return next;
-        });
+        // setFormData(prev => {
+        //   const next = { ...prev } as any;
+        //   if (!prev.category_id) {
+        //     const fuel = cats.find(c => c.name.toLowerCase() === 'fuel');
+        //     if (fuel) { next.category_id = fuel.id; next.category = fuel.name; }
+        //     else if (cats[0]) { next.category_id = cats[0].id; next.category = cats[0].name; }
+        //   }
+        //   if (!prev.source_id && srcs[0]) { next.source_id = srcs[0].id; next.source = srcs[0].name; }
+        //   if (!prev.payment_method_id && pms[0]) { next.payment_method_id = pms[0].id; next.payment_method = pms[0].name; }
+        //   if (!prev.payment_status_id) {
+        //     const pending = pss.find(s => s.name.toLowerCase() === 'pending');
+        //     next.payment_status_id = (pending || pss[0])?.id || '';
+        //     next.payment_status = (pending || pss[0])?.name || '';
+        //   }
+        //   return next;
+        // });
       } catch (err) {
         console.error('Failed fetching globals', err);
         showError('Error', 'Failed to load dropdown values');
       }
     };
-    fetchGlobals();
+    // fetchGlobals();
   }, []);
 
   // Selected items

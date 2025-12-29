@@ -119,22 +119,6 @@ export const getExpectedNormalBalance = (accountType: AccountType): NormalBalanc
 };
 
 /**
- * Validate parent-child account relationship
- */
-export const validateAccountHierarchy = (
-  accountType: AccountType,
-  parentAccountType?: AccountType
-): ValidationResult => {
-  const errors: string[] = [];
-
-  if (parentAccountType && accountType !== parentAccountType) {
-    errors.push('Child account must have the same type as parent account');
-  }
-
-  return { valid: errors.length === 0, errors };
-};
-
-/**
  * Validate account can be archived
  */
 export const validateAccountArchival = (
@@ -188,7 +172,6 @@ export const validateAccountForm = async (
     account_code: string;
     account_name: string;
     account_type: AccountType;
-    parent_account_type?: AccountType;
   },
   existingId?: string
 ): Promise<ValidationResult> => {
@@ -215,58 +198,5 @@ export const validateAccountForm = async (
   const typeResult = validateAccountType(formData.account_type);
   allErrors.push(...typeResult.errors);
 
-  // Validate hierarchy if parent exists
-  if (formData.parent_account_type) {
-    const hierarchyResult = validateAccountHierarchy(
-      formData.account_type,
-      formData.parent_account_type
-    );
-    allErrors.push(...hierarchyResult.errors);
-  }
-
   return { valid: allErrors.length === 0, errors: allErrors };
 };
-/**
- * Validates parent-child account relationship
- */
-export function validateParentChildRelationship(
-  parentId: string | undefined,
-  childAccountType: AccountType,
-  accounts: ChartOfAccount[]
-): ValidationResult {
-  if (!parentId) {
-    return { valid: true, errors: [] }; // No parent = root level, always valid
-  }
-
-  const parent = accounts.find(acc => acc.account_id === parentId);
-  
-  if (!parent) {
-    return {
-      valid: false,
-      errors: ['Selected parent account does not exist']
-    };
-  }
-
-  if (!parent.is_active) {
-    return {
-      valid: false,
-      errors: ['Cannot assign to an archived parent account']
-    };
-  }
-
-  if (parent.account_type !== childAccountType) {
-    return {
-      valid: false,
-      errors: [`Parent account must be of type ${childAccountType}`]
-    };
-  }
-
-  if (parent.parent_account_id) {
-    return {
-      valid: false,
-      errors: ['Cannot nest more than 2 levels deep (grandchildren not allowed)']
-    };
-  }
-
-  return { valid: true, errors: [] };
-}

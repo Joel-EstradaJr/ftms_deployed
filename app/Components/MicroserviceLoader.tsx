@@ -27,20 +27,13 @@ export default function MicroserviceLoader({
 
   const checkMicroserviceHealth = async () => {
     try {
-      const healthUrl = microservice.healthCheck 
-        ? `${microservice.url}${microservice.healthCheck}`
-        : microservice.url;
-        
-      const response = await fetch(healthUrl);
+      // UI-only mode: Simulate health check without actual fetch
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      if (response.ok) {
-        setIsHealthy(true);
-        setIsLoading(false);
-      } else {
-        throw new Error(`${microservice.name} is not responding`);
-      }
+      // For UI-only mode, always show as unavailable since there's no backend
+      throw new Error(`${microservice.name} is not available in UI-only mode`);
     } catch (err) {
-      setError(`Failed to connect to ${microservice.name}`);
+      setError(`UI-only mode: ${microservice.name} backend not available`);
       setIsHealthy(false);
       setIsLoading(false);
     }

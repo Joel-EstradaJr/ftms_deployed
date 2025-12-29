@@ -34,9 +34,9 @@ export default function RecordPayrollBatch({
   };
 
   const [formData, setFormData] = useState<PayrollBatchFormData>({
-    batchCode: existingData?.batchCode || generateBatchCode(),
-    periodStart: existingData?.periodStart || new Date().toISOString().split('T')[0],
-    periodEnd: existingData?.periodEnd || new Date().toISOString().split('T')[0],
+    batchCode: existingData?.payroll_period_code || generateBatchCode(),
+    periodStart: existingData?.period_start || new Date().toISOString().split('T')[0],
+    periodEnd: existingData?.period_end || new Date().toISOString().split('T')[0],
     selectedEmployees: existingData?.payrolls?.map(p => p.employeeId) || [],
     payrolls: existingData?.payrolls?.map(p => ({
       employeeId: p.employeeId,

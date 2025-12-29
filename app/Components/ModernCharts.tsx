@@ -48,7 +48,7 @@ export const ModernLineChart = ({ data, labels }: { data?: number[], labels?: st
             padding: 12,
             callbacks: {
               label: function(context) {
-                return '₱' + context.parsed.y.toLocaleString();
+                return '₱' + (context.parsed.y ?? 0).toLocaleString();
               }
             }
           }

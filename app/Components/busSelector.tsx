@@ -3,9 +3,29 @@ import PaginationComponent from "./pagination"; // Reuse your pagination
 import Loading from "./loading"; // Reuse your loading spinner
 import "../styles/components/busSelector.css"
 import "../styles/components/table.css"
-import type { Assignment } from '@/lib/operations/assignments';
 import { formatDateTime } from '../utils/formatting';
 import ModalHeader from './ModalHeader';
+
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
 
 type Employee = {
   employee_id: string;
