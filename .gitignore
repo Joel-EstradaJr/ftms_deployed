@@ -3,6 +3,7 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+pnpm-lock.yaml
 
 # Next.js
 /.next/
@@ -71,3 +72,7 @@ next-env.d.ts
 # OCR Service
 ocr_service/
 ocr_service
+
+
+# Docs
+/docs/

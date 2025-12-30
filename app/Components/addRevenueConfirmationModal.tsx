@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import '../styles/confirmationModal.css';
+import '../styles/components/confirmationModal.css';
+import ModalHeader from './ModalHeader';
 
 type ConfirmationModalProps = {
   isOpen: boolean;
@@ -68,9 +69,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         ref={modalRef}
         role="document"
       >
-        <div className="confirmationHeader">
-          <h2 id="confirmation-title">Confirmation</h2>
-        </div>
+        <ModalHeader title="Confirmation" onClose={onCancel} />
 
         <div className="confirmationContent">
           <div

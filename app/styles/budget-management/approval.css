@@ -1,0 +1,198 @@
+/* Tabbed Approval Interface Styles */
+
+/* Tab Navigation */
+.approval-tabs {
+  display: flex !important;
+  border-bottom: 0px solid var(--border-color) !important;
+  margin-bottom: 20px !important;
+  background: var(--foreground-color) !important;
+  border-radius: 8px 8px 0 0 !important;
+  overflow: hidden !important;
+  padding: 1rem !important;
+}
+
+.approval-tab {
+  padding: 12px 24px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--secondary-text-color) !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  border-bottom: 5px solid transparent !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 1 !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+.approval-tab.active {
+  color: var(--primary-color) !important;
+  border-bottom-color: var(--primary-color) !important;
+  border-bottom: 3px solid var(--primary-color) !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+.approval-tab:hover:not(.active) {
+  color: var(--primary-color) !important;
+  background: rgba(150, 28, 30, 0.03) !important;
+}
+
+.approval-tab-icon {
+  font-size: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.approval-tab-count {
+  background: var(--primary-color) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  padding: 2px 8px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  min-width: 20px !important;
+  text-align: center !important;
+}
+
+/* Tab Content */
+.tab-content {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+.tab-panel {
+  display: none !important;
+  flex: 1 !important;
+  flex-direction: column !important;
+  animation: fadeIn 0.3s ease-in-out !important;
+}
+
+.tab-panel.active {
+  display: flex !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Shared Controls */
+.shared-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+  flex-wrap: wrap !important;
+}
+
+.shared-controls .searchBar {
+  flex: 1 !important;
+  min-width: 300px !important;
+}
+
+.shared-controls .filter-section {
+  flex-shrink: 0 !important;
+}
+
+.shared-controls .export-section {
+  margin-left: auto !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .approval-tabs {
+    flex-direction: column !important;
+  }
+
+  .approval-tab {
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    justify-content: flex-start !important;
+  }
+
+  .shared-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .shared-controls .searchBar {
+    min-width: auto !important;
+  }
+
+  .shared-controls .export-section {
+    margin-left: 0 !important;
+    margin-top: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .approval-tab {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+
+  .approval-tab-icon {
+    font-size: 16px !important;
+  }
+}
+
+/* Loading States */
+.tab-loading {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 40px !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.tab-loading-text {
+  color: var(--secondary-text-color) !important;
+  font-size: 16px !important;
+}
+
+/* Empty States */
+.tab-empty {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 60px 20px !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  text-align: center !important;
+}
+
+.tab-empty-icon {
+  font-size: 48px !important;
+  color: var(--secondary-text-color) !important;
+  opacity: 0.5 !important;
+}
+
+.tab-empty-title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: var(--primary-text-color) !important;
+  margin: 0 !important;
+}
+
+.tab-empty-description {
+  font-size: 14px !important;
+  color: var(--secondary-text-color) !important;
+  margin: 0 !important;
+  max-width: 400px !important;
+}

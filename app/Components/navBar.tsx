@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import '../styles/navbar.css'; // External CSS for styling
+import '../styles/components/sidebar.css'; // External CSS for styling
 import NavItem from './NavItem'; // Importing NavItem component
 import SubModule from './SubModule'; // Importing SubModule component
 
@@ -61,45 +61,7 @@ const Navbar: React.FC<NavbarProps> = ({
             onClick={() => handleModuleClick('Dashboard')}
           />
 
-          {/* Revenue Management */}
-          <NavItem
-            label="Revenue Management"
-            icon="fa-duotone fa-regular fa-dollar-sign"
-            active={activeModule === 'Revenue Management'}
-            onClick={() => handleModuleClick('Revenue Management')}
-          />
-
-          {/* Expense Management */}
-          <NavItem
-            label="Expense Management"
-            icon="ri-money-dollar-circle-line"
-            active={activeModule === 'Expense Management'}
-            onClick={() => handleModuleClick('Expense Management')}
-          />
-
-          {/* Receipt Management */}
-          <NavItem
-            label="Receipt Management"
-            icon="ri-receipt-line"
-            active={activeModule === 'Receipt Management'}
-            onClick={() => handleModuleClick('Receipt Management')}
-          />
-          
-          {/* Receipt Management SubModules */}
-          {activeModule === 'Receipt Management' && (
-            <SubModule
-              subModule="Receipt Processing"
-              activeSubModule={activeSubModule}
-              onClick={handleSubModuleClick}
-            />
-          )}
-          {activeModule === 'Receipt Management' && (
-            <SubModule
-              subModule="Receipt Archive"
-              activeSubModule={activeSubModule}
-              onClick={handleSubModuleClick}
-            />
-          )}
+          {/* Receipt Management removed */}
 
           {/* Employee Financial Management */}
           <NavItem

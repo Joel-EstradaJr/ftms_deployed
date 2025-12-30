@@ -1,0 +1,788 @@
+/* ============================================================
+   JOURNAL ENTRY VIEW (JEV) TABLE STYLES
+   Only table-specific styling - uses modal2.css and forms.css for modal structure
+   ============================================================ */
+
+/* ----- Journal Lines Table Wrapper ----- */
+.journal-lines-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: visible;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--foreground-color);
+  margin: 20px 0;
+}
+
+.journal-lines-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.journal-lines-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+.journal-lines-wrapper::-webkit-scrollbar-track {
+  background-color: var(--table-row-color);
+}
+
+/* ----- Journal Lines Table ----- */
+.journal-lines-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--table-body-font-size);
+}
+
+.journal-lines-table thead {
+  background-color: var(--table-header-color);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.journal-lines-table thead th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--table-header-font-size);
+}
+
+.journal-lines-table thead th:first-child {
+  width: 5%;
+  text-align: center;
+}
+
+
+.journal-lines-table thead th.account-header {
+  width: 45%;
+}
+
+.journal-lines-table thead th.amount-header {
+  width: 20%;
+  text-align: right;
+}
+
+.journal-lines-table thead th.actions-header {
+  width: 10%;
+  text-align: center;
+}
+
+/* ----- Table Body Rows ----- */
+.journal-lines-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s;
+}
+
+.journal-lines-table tbody tr:hover {
+  background-color: var(--table-row-hover-color);
+}
+
+.journal-lines-table tbody tr.line-changed {
+  background-color: rgba(255, 193, 7, 0.1);
+  border-left: 4px solid var(--warning-color);
+}
+
+.journal-lines-table tbody td {
+  padding: 8px;
+  vertical-align: middle;
+  overflow: visible;
+}
+
+.journal-lines-table tbody td:first-child {
+  text-align: center;
+  color: var(--secondary-text-color);
+  font-weight: 600;
+}
+
+.journal-lines-table tbody td.account-cell {
+  width: 45%;
+  position: relative;
+  overflow: visible;
+}
+
+.journal-lines-table tbody td.account-cell > div {
+  width: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+.journal-lines-table tbody td.amount-cell {
+  width: 20%;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.journal-lines-table tbody td.actions-cell {
+  width: 10%;
+  text-align: center;
+}
+
+/* ----- Table Input Fields ----- */
+.journal-lines-table input[type="text"],
+.journal-lines-table input[type="number"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--modal-input-select-background-color);
+}
+
+.journal-lines-table input[type="text"]:focus,
+.journal-lines-table input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.journal-lines-table input[type="number"] {
+  text-align: right;
+}
+
+/* ----- SearchableDropdown in Table ----- */
+.journal-lines-table .searchable-dropdown {
+  width: 100%;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-trigger {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--modal-input-select-background-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  text-align: left;
+  transition: border-color 0.2s;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-trigger:hover {
+  border-color: var(--primary-color);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-trigger:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-menu {
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-search {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--modal-content-background-color);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-menu input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-option:hover {
+  background-color: var(--table-row-hover-color);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-option.selected {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* ----- Table Footer (Totals) ----- */
+.journal-lines-table tfoot {
+  background-color: var(--table-header-color);
+  font-weight: 600;
+}
+
+.journal-lines-table tfoot td {
+  padding: 12px 8px;
+  border-top: 2px solid var(--border-color);
+}
+
+.totals-row {
+  background-color: var(--table-header-color);
+}
+
+.totals-row td {
+  font-weight: 600;
+  color: var(--primary-text-color);
+}
+
+/* ----- Balance Status Row ----- */
+.balance-row {
+  font-weight: 600;
+}
+
+.balance-row.balanced {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: var(--success-color);
+}
+
+.balance-row.unbalanced {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: var(--error-color);
+}
+
+.balance-row i {
+  margin-right: 6px;
+  font-size: 18px;
+  vertical-align: middle;
+}
+
+/* ----- Action Buttons in Table ----- */
+.line-action-btn {
+  background: var(--error-color);
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: var(--table-action-button-border-radius) !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  transition: background-color 0.3s !important;
+  color: var(--foreground-color) !important;
+  outline: none !important;
+}
+
+.line-action-btn:hover:not(:disabled) {
+  background-color: var(--error-hover-color) !important;
+  color: var(--foreground-color);
+}
+
+.line-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.add-line-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  transition: background-color 0.2s;
+}
+
+.add-line-btn:hover {
+  background-color: var(--primary-hover-color) !important;
+}
+
+.add-line-btn i {
+  font-size: 16px;
+}
+
+/* ----- Responsive Design ----- */
+@media (max-width: 768px) {
+  .journal-lines-table thead th.account-header {
+    width: 55%;
+  }
+
+  .journal-lines-table thead th.amount-header {
+    width: 25%;
+  }
+}
+
+.journal-lines-wrapper {
+  max-height: var(--jev-table-max-height);
+  overflow-y: auto;
+  overflow-x: visible;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--foreground-color);
+}
+
+.journal-lines-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.journal-lines-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+.journal-lines-wrapper::-webkit-scrollbar-track {
+  background-color: var(--table-row-color);
+}
+
+/* ----- Journal Lines Table ----- */
+.journal-lines-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--table-body-font-size);
+}
+
+.journal-lines-table thead {
+  background-color: var(--table-header-color);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.journal-lines-table thead th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--table-header-font-size);
+}
+
+.journal-lines-table thead th:first-child {
+  width: 5%;
+  text-align: center;
+}
+
+.journal-lines-table thead th.account-header {
+  width: var(--jev-account-cell-width);
+}
+
+.journal-lines-table thead th.amount-header {
+  width: var(--jev-amount-cell-width);
+  text-align: right;
+}
+
+.journal-lines-table thead th.actions-header {
+  width: var(--jev-actions-cell-width);
+  text-align: center;
+}
+
+/* ----- Table Body Rows ----- */
+.journal-lines-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s;
+}
+
+.journal-lines-table tbody tr:hover {
+  background-color: var(--jev-line-hover-bg);
+}
+
+.journal-lines-table tbody tr.line-changed {
+  background-color: var(--jev-changed-field-bg);
+  border-left: 4px solid var(--jev-changed-field-border);
+}
+
+.journal-lines-table tbody td {
+  padding: 8px;
+  vertical-align: middle;
+  overflow: visible;
+}
+
+.journal-lines-table tbody td:first-child {
+  text-align: center;
+  color: var(--secondary-text-color);
+  font-weight: 600;
+}
+
+.journal-lines-table tbody td.account-cell {
+  width: var(--jev-account-cell-width);
+  position: relative;
+  overflow: visible;
+}
+
+.journal-lines-table tbody td.account-cell > div {
+  width: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+.journal-lines-table tbody td.amount-cell {
+  width: var(--jev-amount-cell-width);
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.journal-lines-table tbody td.actions-cell {
+  width: var(--jev-actions-cell-width);
+  text-align: center;
+}
+
+/* ----- Table Input Fields ----- */
+.journal-lines-table input[type="text"],
+.journal-lines-table input[type="number"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--modal-input-select-background-color);
+}
+
+.journal-lines-table input[type="text"]:focus,
+.journal-lines-table input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.journal-lines-table input[type="number"] {
+  text-align: right;
+}
+
+/* ----- SearchableDropdown in Table ----- */
+.journal-lines-table .searchable-dropdown {
+  width: 100%;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-trigger {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--modal-input-select-background-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  text-align: left;
+  transition: border-color 0.2s;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-trigger:hover {
+  border-color: var(--primary-color);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-trigger:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-menu {
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-search {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--modal-content-background-color);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-menu input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-option:hover {
+  background-color: var(--jev-line-hover-bg);
+}
+
+.journal-lines-table .searchable-dropdown .dropdown-option.selected {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* ----- Table Footer (Totals) ----- */
+.journal-lines-table tfoot {
+  background-color: var(--jev-totals-bg);
+  font-weight: 600;
+}
+
+.journal-lines-table tfoot td {
+  padding: 12px 8px;
+  border-top: 2px solid var(--border-color);
+}
+
+.totals-row {
+  background-color: var(--jev-totals-bg);
+}
+
+.totals-row td {
+  font-weight: 600;
+  color: var(--primary-text-color);
+}
+
+/* ----- Balance Status Row ----- */
+.balance-row {
+  font-weight: 600;
+}
+
+.balance-row.balanced {
+  background-color: var(--jev-balanced-bg);
+  color: var(--jev-balanced-text);
+}
+
+.balance-row.unbalanced {
+  background-color: var(--jev-unbalanced-bg);
+  color: var(--jev-unbalanced-text);
+}
+
+.balance-row i {
+  margin-right: 6px;
+  font-size: 18px;
+  vertical-align: middle;
+}
+
+/* ----- Action Buttons in Table ----- */
+.line-action-btn {
+  background: var(--error-color);
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: var(--table-action-button-border-radius) !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  transition: background-color 0.3s !important;
+  color: var(--foreground-color) !important;
+  outline: none !important;
+}
+
+.line-action-btn:hover {
+    background-color: var(--error-hover-color) !important;
+    color: var(--foreground-color);
+}
+
+.line-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.add-line-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  transition: background-color 0.2s;
+}
+
+.add-line-btn:hover {
+  background-color: var(--primary-hover-color)!important;
+}
+
+.add-line-btn i {
+  font-size: 16px;
+}
+
+/* ----- Modal Actions (Footer Buttons) ----- */
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.left-actions,
+.right-actions {
+  display: flex;
+  gap: var(--jev-action-button-gap);
+}
+
+/* ----- Action Buttons ----- */
+.cancel-btn,
+.submit-btn,
+.reset-btn,
+.undo-btn {
+  height: 35px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: var(--modal-button-font-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cancel-btn {
+  background-color: var(--table-row-hover-color);
+  color: var(--primary-text-color);
+}
+
+.cancel-btn:hover {
+  background-color: var(--border-color);
+}
+
+.submit-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-hover-color);
+}
+
+.submit-btn:disabled {
+  background-color: var(--button-disabled-color);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.reset-btn {
+  background-color: var(--jev-reset-button-bg);
+  color: white;
+}
+
+.reset-btn:hover:not(:disabled) {
+  background-color: var(--jev-reset-button-hover);
+}
+
+.reset-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.undo-btn {
+  background-color: var(--jev-undo-button-bg);
+  color: white;
+}
+
+.undo-btn:hover:not(:disabled) {
+  background-color: var(--jev-undo-button-hover);
+}
+
+.undo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ----- View Mode Styling ----- */
+.mainDetails {
+  background-color: var(--modal-content-background-color);
+  padding: var(--modal-content-padding);
+  border-radius: var(--modal-content-border-radius);
+  margin-bottom: 20px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detailRow:last-child {
+  border-bottom: none;
+}
+
+.detailRow .label {
+  font-weight: 600;
+  color: var(--secondary-text-color);
+  min-width: 180px;
+}
+
+.detailRow .value {
+  flex: 1;
+  color: var(--primary-text-color);
+  text-align: right;
+}
+
+.assignmentDetails {
+  background-color: var(--modal-content-background-color);
+  padding: var(--modal-content-padding);
+  border-radius: var(--modal-content-border-radius);
+  margin-top: 20px;
+}
+
+.modal-subtitle {
+  font-size: var(--modal-section-title-font-size);
+  font-weight: var(--modal-section-title-font-weight);
+  margin-bottom: var(--modal-section-title-margin-bottom);
+  color: var(--primary-text-color);
+}
+
+/* ----- Responsive Design ----- */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-field {
+    min-width: 100%;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .left-actions,
+  .right-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .journal-lines-table thead th.account-header {
+    width: 55%;
+  }
+
+  .journal-lines-table thead th.amount-header {
+    width: 25%;
+  }
+
+  .detailRow {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .detailRow .label {
+    min-width: auto;
+  }
+
+  .detailRow .value {
+    text-align: left;
+  }
+}

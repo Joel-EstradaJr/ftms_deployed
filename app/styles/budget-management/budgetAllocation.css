@@ -1,0 +1,647 @@
+﻿/* ============================================================
+   BUDGET ALLOCATION PAGE - BRANDED STYLING
+   ============================================================ */
+
+/* ---------- Page Container ---------- */
+.budgetAllocationPage {
+  background-color: var(--background-color);
+  min-height: 100vh;
+}
+
+/* ---------- Scrollable Content Wrapper ---------- */
+.scrollable-content {
+  width: 100% !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 1rem !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--border-color) transparent !important;
+}
+
+.scrollable-content::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+  background: var(--border-color) !important;
+  border-radius: 4px !important;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-text-color) !important;
+}
+
+/* ---------- Page Header ---------- */
+.pageHeader {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 2rem !important;
+  padding: 1.5rem 0 !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.headerLeft .title h1 {
+  font-size: var(--title-font-size) !important;
+  font-weight: var(--title-font-weight) !important;
+  color: var(--primary-text-color) !important;
+  margin: 0 0 var(--title-margin-bottom) 0 !important;
+}
+
+.headerLeft .title p {
+  color: var(--secondary-text-color) !important;
+  font-size: 1rem !important;
+  margin: 0 !important;
+}
+
+.headerActions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+}
+
+.headerActions .exportBtn {
+  background-color: var(--primary-color) !important;
+  color: var(--button-font-color) !important;
+  border: none !important;
+  padding: var(--page-button-gap) !important;
+  border-radius: var(--page-button-border-radius) !important;
+  font-size: var(--page-button-font-size) !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: background-color 0.2s ease !important;
+  box-shadow: var(--box-shadow) !important;
+}
+
+.headerActions .exportBtn:hover {
+  background-color: var(--primary-hover-color) !important;
+}
+
+.headerActions .exportBtn i {
+  font-size: 1.1rem !important;
+}
+
+/* ---------- Past Period Warning ---------- */
+.pastPeriodWarning {
+  background-color: var(--warning-color) !important;
+  border: 1px solid var(--warning-hover-color) !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  margin-bottom: 2rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+}
+
+.pastPeriodWarning i {
+  color: var(--warning-hover-color) !important;
+  font-size: 1.2rem !important;
+}
+
+.pastPeriodWarning span {
+  color: var(--primary-text-color) !important;
+  font-weight: 500 !important;
+}
+
+/* ---------- Budget Summary Cards ---------- */
+.budgetSummarySection {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap: 1.5rem !important;
+  margin-bottom: 2rem !important;
+}
+
+.summaryCard {
+  background-color: var(--foreground-color) !important;
+  border-radius: var(--card-border-radius) !important;
+  padding: var(--card-padding) !important;
+  box-shadow: var(--box-shadow) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.summaryCard:hover {
+  transform: var(--card-hover-transform) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.summaryIcon {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 1rem !important;
+}
+
+.summaryIcon:nth-child(1) {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover-color)) !important;
+}
+
+.summaryIcon:nth-child(2) {
+  background: linear-gradient(135deg, var(--error-color), var(--error-hover-color)) !important;
+}
+
+.summaryIcon:nth-child(3) {
+  background: linear-gradient(135deg, var(--success-color), var(--success-hover-color)) !important;
+}
+
+.summaryIcon:nth-child(4) {
+  background: linear-gradient(135deg, var(--info-color), var(--info-hover-color)) !important;
+}
+
+.summaryIcon i {
+  color: white !important;
+  font-size: 1.5rem !important;
+}
+
+.summaryContent h3 {
+  font-size: var(--card-title-font-size) !important;
+  font-weight: var(--card-title-font-weight) !important;
+  color: var(--primary-text-color) !important;
+  margin: 0 0 0.5rem 0 !important;
+}
+
+.summaryAmount {
+  font-size: var(--card-number-font-size) !important;
+  font-weight: var(--card-number-font-weight) !important;
+  color: var(--primary-text-color) !important;
+  margin: 0 !important;
+}
+
+.summaryAmount.used {
+  color: var(--error-color) !important;
+}
+
+.summaryAmount.negative {
+  color: var(--error-color) !important;
+}
+
+.summaryAmount.positive {
+  color: var(--success-color) !important;
+}
+
+/* ---------- Controls Section ---------- */
+.controlsSection {
+  background-color: var(--foreground-color) !important;
+  border-radius: var(--card-border-radius) !important;
+  padding: 1.5rem !important;
+  margin-bottom: 2rem !important;
+  box-shadow: var(--box-shadow) !important;
+  border: 1px solid var(--border-color) !important;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.searchSection {
+  margin-bottom: 1rem !important;
+}
+
+.searchBox {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 400px !important;
+}
+
+.searchBox i {
+  position: absolute !important;
+  left: 12px !important;
+  color: var(--secondary-text-color) !important;
+  font-size: 1.1rem !important;
+  z-index: 1 !important;
+}
+
+.searchInput {
+  width: 100% !important;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  background-color: var(--foreground-color) !important;
+  color: var(--primary-text-color) !important;
+  font-size: 1rem !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.searchInput:focus {
+  outline: none !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(150, 28, 30, 0.1) !important;
+}
+
+.filtersSection {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  flex-wrap: wrap !important;
+}
+
+.budgetPeriodSelector label {
+  font-size: var(--input-label-font-size) !important;
+  font-weight: var(--input-label-font-weight) !important;
+  color: var(--primary-text-color) !important;
+  margin-right: 0.5rem !important;
+}
+
+.period-picker {
+  min-width: 200px !important;
+}
+
+/* ---------- Department Budget Section ---------- */
+.departmentBudgetSection {
+  margin-bottom: 2rem !important;
+}
+
+.sectionHeader {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.sectionHeader h3 {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-text-color) !important;
+  margin: 0 !important;
+}
+
+.resultsCount {
+  color: var(--secondary-text-color) !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+}
+
+.departmentGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important;
+  gap: 1.5rem !important;
+}
+
+.departmentCard {
+  background-color: var(--foreground-color) !important;
+  border-radius: var(--card-border-radius) !important;
+  padding: 1.5rem !important;
+  box-shadow: var(--box-shadow) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.departmentCard:hover {
+  transform: var(--card-hover-transform) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.departmentHeader {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  margin-bottom: 1.5rem !important;
+  padding-bottom: 1rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.departmentInfo h4 {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-text-color) !important;
+  margin: 0 0 0.5rem 0 !important;
+}
+
+.departmentStatus {
+  display: inline-block !important;
+  padding: 0.25rem 0.75rem !important;
+  border-radius: 20px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+}
+
+.status-active {
+  background-color: var(--success-chip-bg-color) !important;
+  color: var(--success-chip-text-color) !important;
+}
+
+.status-exceeded {
+  background-color: var(--error-chip-bg-color) !important;
+  color: var(--error-chip-text-color) !important;
+}
+
+.status-inactive {
+  background-color: var(--warning-chip-bg-color) !important;
+  color: var(--warning-chip-text-color) !important;
+}
+
+.departmentActions {
+  display: flex !important;
+  gap: 0.5rem !important;
+}
+
+.viewDetailsBtn,
+.allocateBtn,
+.deductBtn {
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  color: var(--secondary-text-color) !important;
+}
+
+.viewDetailsBtn:hover {
+  background-color: var(--info-color) !important;
+  border-color: var(--info-color) !important;
+  color: white !important;
+}
+
+.allocateBtn:hover {
+  background-color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  color: white !important;
+}
+
+.deductBtn:hover:not(:disabled) {
+  background-color: var(--error-color) !important;
+  border-color: var(--error-color) !important;
+  color: white !important;
+}
+
+.allocateBtn.disabled,
+.deductBtn.disabled {
+  background-color: var(--table-header-color) !important;
+  border-color: var(--border-color) !important;
+  color: var(--secondary-text-color) !important;
+  cursor: not-allowed !important;
+}
+
+.allocateBtn.disabled:hover,
+.deductBtn.disabled:hover {
+  background-color: var(--table-header-color) !important;
+  border-color: var(--border-color) !important;
+  color: var(--secondary-text-color) !important;
+}
+
+.budgetMetrics {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 1rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.metric {
+  text-align: center !important;
+}
+
+.metric label {
+  display: block !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: var(--secondary-text-color) !important;
+  margin-bottom: 0.5rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.metricValue {
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: var(--primary-text-color) !important;
+}
+
+.metricValue.used {
+  color: var(--error-color) !important;
+}
+
+.metricValue.negative {
+  color: var(--error-color) !important;
+}
+
+.metricValue.positive {
+  color: var(--success-color) !important;
+}
+
+.utilizationSection {
+  margin-bottom: 1.5rem !important;
+}
+
+.utilizationHeader {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.utilizationHeader label {
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-text-color) !important;
+}
+
+.utilizationPercentage {
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+}
+
+.utilization-low {
+  color: var(--success-color) !important;
+}
+
+.utilization-medium {
+  color: var(--warning-color) !important;
+}
+
+.utilization-high {
+  color: var(--secondary-color) !important;
+}
+
+.utilization-exceeded {
+  color: var(--error-color) !important;
+}
+
+.utilizationBar {
+  width: 100% !important;
+  height: 8px !important;
+  background-color: var(--table-header-color) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+.utilizationFill {
+  height: 100% !important;
+  border-radius: 4px !important;
+  transition: width 0.3s ease !important;
+}
+
+.utilizationFill.utilization-low {
+  background: linear-gradient(90deg, var(--success-color), var(--success-hover-color)) !important;
+}
+
+.utilizationFill.utilization-medium {
+  background: linear-gradient(90deg, var(--warning-color), var(--warning-hover-color)) !important;
+}
+
+.utilizationFill.utilization-high {
+  background: linear-gradient(90deg, var(--secondary-color), var(--secondary-hover-color)) !important;
+}
+
+.utilizationFill.utilization-exceeded {
+  background: linear-gradient(90deg, var(--error-color), var(--error-hover-color)) !important;
+}
+
+.departmentFooter {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding-top: 1rem !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+.footerMetric {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  font-size: 0.9rem !important;
+  color: var(--secondary-text-color) !important;
+}
+
+.footerMetric i {
+  font-size: 1rem !important;
+}
+
+/* ---------- No Results ---------- */
+.noResults {
+  text-align: center !important;
+  padding: 3rem 2rem !important;
+  background-color: var(--foreground-color) !important;
+  border-radius: var(--card-border-radius) !important;
+  box-shadow: var(--box-shadow) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.noResults i {
+  font-size: 3rem !important;
+  color: var(--secondary-text-color) !important;
+  margin-bottom: 1rem !important;
+}
+
+.noResults h3 {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-text-color) !important;
+  margin: 0 0 0.5rem 0 !important;
+}
+
+.noResults p {
+  color: var(--secondary-text-color) !important;
+  margin: 0 !important;
+}
+
+/* ---------- Loading ---------- */
+.loading-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 60vh !important;
+}
+
+.loading-spinner {
+  font-size: 3rem !important;
+  animation: spin 1s linear infinite !important;
+  margin-bottom: 1.5rem !important;
+  color: var(--primary-color) !important;
+}
+
+.loading-container h2 {
+  margin: 0 0 0.5rem 0 !important;
+  color: var(--primary-text-color) !important;
+}
+
+.loading-container p {
+  margin: 0 !important;
+  font-size: 1rem !important;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Responsive Design ---------- */
+@media (max-width: 768px) {
+  .pageHeader {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+
+  .headerActions {
+    align-self: flex-end !important;
+  }
+
+  .budgetSummarySection {
+    grid-template-columns: 1fr !important;
+  }
+
+  .departmentGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .departmentHeader {
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+
+  .departmentActions {
+    align-self: flex-end !important;
+  }
+
+  .budgetMetrics {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+
+  .utilizationHeader {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+
+  .departmentFooter {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: flex-start !important;
+  }
+
+  .filtersSection {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+
+  .sectionHeader {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+}

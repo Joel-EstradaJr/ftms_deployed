@@ -1,0 +1,179 @@
+/* ----- FILTER CONTAINER ----- */
+.filter {
+    position: relative;
+}
+
+/* ----- FILTER BUTTON STYLING ----- */
+.filter-btn {
+    width: 85px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    border-radius: 8px;
+    background-color: var(--primary-color);
+    border: none;
+    color: var(--foreground-color);
+    font-size: 14px;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.filter-btn:hover {
+    background-color: var(--primary-hover-color);
+}
+
+
+/* ----- FILTER DROPDOWN STYLING ----- */
+.filter-dropdown {
+    position: absolute;
+    top: 45px;
+    right: 0;
+    width: 400px;
+    max-height: 400px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background: var(--foreground-color);
+    border: 1px solid var(--table-row-color);
+    color: var(--secondary-text-color);
+    padding: 16px;
+    font-size: 12px;
+    overflow-x: auto;
+    z-index: 500;
+}
+
+.filter-dropdown::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.filter-dropdown::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 4px;
+}
+
+.filter-dropdown::-webkit-scrollbar-track {
+    background-color: var(--table-row-color);
+    border-radius: 8px;
+}
+
+.filter-section {
+    margin-bottom: 12px;
+}
+
+.filter-section h3 {
+    color: var(--primary-text-color);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+
+/* ----- FILTER DROPDOWN STYLING: DATE RANGE ----- */
+.date-range-inputs {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.date-field {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.date-field input {
+    flex: 1;
+    padding: 6px 12px;
+    background-color: var(--table-row-color);
+    border: 1px solid var(--table-row-color);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.date-field input:hover {
+    border: 1px solid var(--border-color);
+}
+
+.date-field input:focus {
+    outline: none;
+    border-color: var(--primary-text-color);
+}
+
+
+/* ----- FILTER DROPDOWN STYLING: CHECKBOX & RADIO ----- */
+.filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-option {
+    padding: 6px 12px;
+    background-color: var(--table-row-color);
+    border: 1px solid var(--table-row-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-option:hover {
+    border: 1px solid var(--border-color);
+}
+
+.filter-option.selected {
+    background-color: #EEDDDD;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+
+/* ----- FILTER DROPDOWN STYLING: ACTION BUTTONS ----- */
+.filter-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 15px;
+}
+
+.filter-actions .clear-btn {
+    flex: 1;
+    padding: 8px;
+    background-color: var(--table-row-color);
+    color: var(--primary-text-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease-in-out;
+}
+
+.filter-actions .clear-btn:hover {
+    background-color: var(--table-row-hover-color);
+}
+
+.filter-actions .apply-btn {
+    flex: 1;
+    padding: 8px;
+    background-color: var(--primary-color);
+    color: var(--foreground-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease-in-out;
+}
+
+.filter-actions .apply-btn:hover {
+    background-color: var(--primary-hover-color);
+}
+
+
+/* ----- FILTER RESULT STYLING ----- */
+.filter-results {
+    font-size: 14px;
+    font-style: italic;
+    color: var(--secondary-text-color);
+    margin-bottom: 10px;
+    padding-left: 5px;
+}

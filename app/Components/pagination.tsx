@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../styles/pagination.css'; // Import the CSS file
+import '../styles/components/pagination.css'; // Import the CSS file
 
 type PaginationProps = {
   currentPage: number;

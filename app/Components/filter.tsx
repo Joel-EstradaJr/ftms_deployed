@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import "../styles/components/filter.css";
 
 // Generic filter option type
 export interface FilterOption {
@@ -7,7 +8,7 @@ export interface FilterOption {
 }
 
 // Types of filter fields we support
-export type FilterFieldType = 'dateRange' | 'checkbox' | 'radio';
+export type FilterFieldType = 'dateRange' | 'numberRange' | 'checkbox' | 'radio' | 'date';
 
 // Definition for a single filter section
 export interface FilterSection {
@@ -15,15 +16,15 @@ export interface FilterSection {
     title: string;
     type: FilterFieldType;
     options?: FilterOption[];
-    defaultValue?: string | string[] | { from: string; to: string }; // Specify possible types
+    defaultValue?: any;
     placeholder?: string;
 }
 
 // Props for the FilterDropdown component
 export interface FilterDropdownProps {
     sections: FilterSection[];
-    onApply: (filterValues: Record<string, string | string[] | { from: string; to: string }>) => void; // Specify possible types
-    initialValues?: Record<string, string | string[] | { from: string; to: string }>; // Specify possible types
+    onApply: (filterValues: Record<string, any>) => void;
+    initialValues?: Record<string, any>;
     className?: string;
 }
 
@@ -38,7 +39,7 @@ export default function FilterDropdown({
 
     // Initialize filter values with default values from sections and any provided initialValues
     const getInitialFilterValues = () => {
-        const defaults: Record<string, string | string[] | { from: string; to: string }> = {};
+        const defaults: Record<string, any> = {};
 
         sections.forEach(section => {
             if (initialValues[section.id] !== undefined) {
@@ -51,12 +52,16 @@ export default function FilterDropdown({
                     case 'dateRange':
                         defaults[section.id] = { from: '', to: '' };
                         break;
+                    case 'numberRange':
+                        defaults[section.id] = { min: '', max: '' };
+                        break;
                     case 'checkbox':
                         defaults[section.id] = [];
                         break;
-                    case 'radio':
+                    case 'date':
                         defaults[section.id] = '';
                         break;
+                    case 'radio':
                 }
             }
         });
@@ -64,7 +69,12 @@ export default function FilterDropdown({
         return defaults;
     };
 
-    const [filterValues, setFilterValues] = useState<Record<string, string | string[] | { from: string; to: string }>>(getInitialFilterValues());
+    const [filterValues, setFilterValues] = useState<Record<string, any>>(getInitialFilterValues);
+
+    // Sync filterValues when initialValues prop changes
+    useEffect(() => {
+        setFilterValues(getInitialFilterValues());
+    }, [initialValues]);
 
     // Handle clicks outside the dropdown to close it
     useEffect(() => {
@@ -91,7 +101,7 @@ export default function FilterDropdown({
         setFilterValues({
             ...filterValues,
             [sectionId]: {
-                ...filterValues[sectionId] as { from: string; to: string }, // Type assertion
+                ...filterValues[sectionId],
                 [field]: value
             }
         });
@@ -99,7 +109,7 @@ export default function FilterDropdown({
 
     // Handle checkbox selection (multiple selection)
     const handleCheckboxChange = (sectionId: string, optionId: string) => {
-        const currentValues = filterValues[sectionId] as string[] || [];
+        const currentValues = filterValues[sectionId] || [];
         const newValues = currentValues.includes(optionId)
             ? currentValues.filter((item: string) => item !== optionId)
             : [...currentValues, optionId];
@@ -124,20 +134,65 @@ export default function FilterDropdown({
         setIsOpen(false);
     };
 
-    // Clear all filters
+    // Clear all filters - reset to section defaults, NOT initialValues
     const handleClearAll = () => {
-        setFilterValues(getInitialFilterValues());
+        const clearedValues: Record<string, any> = {};
+        
+        sections.forEach(section => {
+            if (section.defaultValue !== undefined) {
+                clearedValues[section.id] = section.defaultValue;
+            } else {
+                // Set appropriate default based on filter type
+                switch (section.type) {
+                    case 'dateRange':
+                        clearedValues[section.id] = { from: '', to: '' };
+                        break;
+                    case 'numberRange':
+                        clearedValues[section.id] = { min: '', max: '' };
+                        break;
+                    case 'checkbox':
+                        clearedValues[section.id] = [];
+                        break;
+                    case 'date':
+                        clearedValues[section.id] = '';
+                        break;
+                    case 'radio':
+                        clearedValues[section.id] = '';
+                        break;
+                }
+            }
+        });
+        
+        setFilterValues(clearedValues);
+        onApply(clearedValues);
     };
 
     // Check if a checkbox option is selected
     const isCheckboxSelected = (sectionId: string, optionId: string) => {
-        const values = filterValues[sectionId] as string[] || [];
+        const values = filterValues[sectionId] || [];
         return values.includes(optionId);
     };
 
     // Render field based on type
     const renderFilterField = (section: FilterSection) => {
         switch (section.type) {
+            case 'date':
+                return (
+                    <div className="date-range-inputs">
+                        <div className="date-field">
+                            <input
+                                type="date"
+                                value={filterValues[section.id] || ''}
+                                onChange={(e) => setFilterValues({
+                                    ...filterValues,
+                                    [section.id]: e.target.value
+                                })}
+                                placeholder={section.placeholder || "mm/dd/yyyy"}
+                            />
+                        </div>
+                    </div>
+                );
+
             case 'dateRange':
                 return (
                     <div className="date-range-inputs">
@@ -145,7 +200,7 @@ export default function FilterDropdown({
                             <label>From:</label>
                             <input
                                 type="date"
-                                value={(filterValues[section.id] as { from: string; to: string })?.from || ''}
+                                value={filterValues[section.id]?.from || ''}
                                 onChange={(e) => handleDateRangeChange(section.id, "from", e.target.value)}
                                 placeholder={section.placeholder || "mm/dd/yyyy"}
                             />
@@ -154,9 +209,49 @@ export default function FilterDropdown({
                             <label>To:</label>
                             <input
                                 type="date"
-                                value={(filterValues[section.id] as { from: string; to: string })?.to || ''}
+                                value={filterValues[section.id]?.to || ''}
                                 onChange={(e) => handleDateRangeChange(section.id, "to", e.target.value)}
                                 placeholder={section.placeholder || "mm/dd/yyyy"}
+                            />
+                        </div>
+                    </div>
+                );
+
+            case 'numberRange':
+                return (
+                    <div className="date-range-inputs">
+                        <div className="date-field">
+                            <label>Min:</label>
+                            <input
+                                type="number"
+                                value={filterValues[section.id]?.min || ''}
+                                onChange={(e) => setFilterValues({
+                                    ...filterValues,
+                                    [section.id]: {
+                                        ...filterValues[section.id],
+                                        min: e.target.value
+                                    }
+                                })}
+                                placeholder={section.placeholder || "Minimum"}
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                        <div className="date-field">
+                            <label>Max:</label>
+                            <input
+                                type="number"
+                                value={filterValues[section.id]?.max || ''}
+                                onChange={(e) => setFilterValues({
+                                    ...filterValues,
+                                    [section.id]: {
+                                        ...filterValues[section.id],
+                                        max: e.target.value
+                                    }
+                                })}
+                                placeholder={section.placeholder || "Maximum"}
+                                step="0.01"
+                                min="0"
                             />
                         </div>
                     </div>
@@ -200,7 +295,7 @@ export default function FilterDropdown({
     return (
         <div className={`filter ${className}`}>
             <button className="filter-btn" onClick={toggleDropdown}>
-                <i className="ri-equalizer-line" /> Filter
+                <i className="ri-equalizer-line" /> Filters
             </button>
 
             {isOpen && (

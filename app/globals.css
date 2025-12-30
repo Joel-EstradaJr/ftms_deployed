@@ -48,28 +48,83 @@ textarea.input-error {
   background-color: none !important;
 }
 
-.closeButton {
-	width: 30px !important;
-	height: 30px !important;
-	border: none !important;
-	cursor: pointer !important;
-  padding: 0 0 !important;
-	border-radius: 50% !important;
-	position: absolute !important;
-	top: 12px !important;
-  outline:none !important;
-	right: 16px !important;
-	font-size: 20px !important;
-	color: var(--primary-text-color) !important;
-	transition: all 0.3s ease-in-out !important;
-  justify-content: center !important;
-  align-items: center !important;
+/* Page.tsx styling */
+.settings {
   display: flex !important;
+  width: 100% !important;
+  flex-wrap: wrap !important;
+  gap: 0 !important;
+  margin-bottom: 0px !important;
+  justify-content: space-between !important;
 }
 
-.closeButton:hover {
-	background-color: var(--table-header-color) !important;
+.search-filter-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
 }
+
+.searchBar {
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
+  min-width: 300px !important;
+  padding: var(--search-input-padding-right) !important;
+  height: var(--search-input-height) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--search-input-border-radius) !important;
+  background-color: var(--foreground-color) !important;
+  box-shadow: var(--box-shadow) !important;
+}
+
+.searchBar .searchInput {
+  flex: 1 !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 8px !important;
+  font-size: 14px !important;
+  color: var(--primary-text-color) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.modalButtons, .filters {
+  display: flex !important;
+  gap: var(--page-button-gap) !important;
+  justify-content: flex-end !important;
+}
+
+.modalButtons button,
+.filters button {
+  width: var(--modal-button-width) !important;
+  height: var(--modal-button-height) !important;
+  font-size: var(--modal-button-font-size) !important;
+  border-radius: var(--modal-button-border-radius) !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  color: var(--button-font-color) !important;
+  box-shadow: var(--box-shadow) !important;
+  transition: transform 0.15s ease, background 0.15s ease !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.addButton {
+  background: var(--primary-color) !important;
+}
+.addButton:hover {
+  background: var(--primary-hover-color) !important;
+}
+.addButton:disabled {
+  background: var(--button-disabled-color) !important;
+}
+.addButton:disabled:hover {
+  background: var(--button-disabled-color) !important;
+}
+
+
 
 :root {
 
@@ -93,15 +148,17 @@ textarea.input-error {
   --error-color: #FF4949;   /* also for delete button */
   --info-color: #2D8EFF;    /* also for edit button */
   --warning-color: #FFCC3D;
-
+  
   /* Table Colors */
   --border-color: #B3B3B3;
   --table-header-color: #D8D8D8;
   --table-row-border-bottom: 1px solid #B3B3B3;
+  --table-row-color: #FFFFFF;
   --table-row-hover-color: #ECECEC;
 
   /* Button Color */
   --button-font-color: #FFFFFF;
+  --button-disabled-color: #7a7a7a;
 
   /* Chip Colors */
   --success-chip-bg-color: #D1F7D1;
@@ -121,9 +178,36 @@ textarea.input-error {
   --info-hover-color: #267BDB;    /* hover edit button */ 
   --table-header-hover-color: #DDDDDD;
   --table-row-hover-color: #ECECEC;
-
+  --warning-hover-color: #E6B800;
+  
   /* Shadow */
   --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+
+  /* JEV Colors */
+  --jev-balanced-bg: #D1F7D1;
+  --jev-balanced-text: #23915F;
+  --jev-unbalanced-bg: #FFDDDD;
+  --jev-unbalanced-text: #A50000;
+  --jev-line-hover-bg: #F5F5F5;
+  --jev-changed-field-bg: #FFFDE7;
+  --jev-changed-field-border: #FBC02D;
+  --jev-totals-bg: #F9F9F9;
+  --jev-reset-button-bg: #FF9800;
+  --jev-reset-button-hover: #F57C00;
+  --jev-undo-button-bg: #9E9E9E;
+  --jev-undo-button-hover: #757575;
+  --jev-undo-highlight-bg: #E3F2FD;
+
+  /* JEV Sizes */
+  --jev-table-max-height: 400px;
+  --jev-account-cell-width: 45%;
+  --jev-amount-cell-width: 20%;
+  --jev-actions-cell-width: 10%;
+  --jev-form-section-padding: 20px 0;
+  --jev-form-field-gap: 20px;
+  --jev-modal-content-padding: 24px;
+  --jev-changed-icon-size: 16px;
+  --jev-action-button-gap: 12px;
 
   /* ================ SIZES ================*/
 
@@ -133,7 +217,7 @@ textarea.input-error {
   --title-margin-bottom: 15px;
 
   /* Input Labels */
-  --input-label-font-size: 14px;
+  --input-label-font-size: 16px;
   --input-label-font-weight: 600;
   --search-input-border-radius: 8px;
   --search-input-height: 35px;
@@ -141,7 +225,7 @@ textarea.input-error {
   --search-input-padding-right: 0 8px;
 
   /* Page Buttons - Export, import, add*/
-  --page-button-font-size: 14px;
+  --page-button-font-size: 16px;
   --page-button-width: 160px;
   --page-button-height: 35px;
   --page-button-border-radius: 8px;
@@ -160,6 +244,8 @@ textarea.input-error {
   --modal-button-gap: 8px;
 
   /* ================ TABLES ================*/
+  --table-header-font-size: 16px;
+  --table-body-font-size: 16px;
   --table-border-radius: 8px;
   --table-header-height: 40px;
   --table-row-height: 40px;
@@ -178,6 +264,10 @@ textarea.input-error {
   --modal-content-background-color: #ECECEC;
   --modal-content-border-radius: 8px;
   --modal-content-padding: 20px;
+  --modal-content-margin-bottom: 20px;
+  --modal-section-title-font-size: 18px;
+  --modal-section-title-font-weight: 600;
+  --modal-section-title-margin-bottom: 10px;
   --modal-input-select-background-color: #FFFFFF;
   --modal-content-row-gap: 1rem;
   --modal-content-column-gap: 20px;
@@ -214,6 +304,17 @@ textarea.input-error {
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
+  /* ================ DASHBOARD ================ */
+  --card-title-font-size: 16px;
+  --card-title-font-weight: normal; /* Fixed typo: weigth -> weight */
+  --card-number-font-size: 2.2rem;
+  --card-number-font-weight: 700;
+  --card-padding: 1.5rem;
+  --card-border-radius: 12px;
+  --card-gap: 1.5rem;
+  --card-hover-transform: translateY(-2px);
+  --card-border-width: 4px;
+
 }
 
 body {
@@ -223,6 +324,88 @@ body {
 
 .swal-custom-popup {
   z-index: 2000 !important;
+}
+
+/* ============================================================
+   UNIFIED MODAL HEADER STYLES
+   ============================================================ */
+
+.modalHeader, .modal-header, .revenue-modalHeader {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 1.25rem 2rem !important;
+  background: var(--foreground-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  flex-shrink: 0 !important;
+}
+
+.header-left h1,
+.header-left h2,
+.header-left h3,
+.modalHeader h1,
+.modalHeader h2,
+.modalHeader h3 {
+  margin: 0 !important;
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-text-color) !important;
+}
+
+.header-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1.5rem !important;
+}
+
+.timeDate {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  text-align: right !important;
+  gap: 0.25rem !important;
+}
+
+.currTime {
+  color: var(--primary-color) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+}
+
+.currDate {
+  color: var(--secondary-text-color) !important;
+  font-size: 0.85rem !important;
+  margin: 0 !important;
+}
+
+.closeButton, .close-btn {
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--secondary-text-color) !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  font-size: 1.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+.closeButton:hover, .close-btn:hover {
+  background: var(--error-color) !important;
+  border-color: var(--error-color) !important;
+  color: white !important;
+  transform: none !important;
+}
+
+.closeButton i, .close-btn i {
+  font-size: 1.25rem !important;
+  line-height: 1 !important;
 }
 
 /* ---break---*/

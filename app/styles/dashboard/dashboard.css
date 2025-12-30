@@ -1,0 +1,520 @@
+/* ============================================================
+   dashboard.css – Accounting Dashboard page
+   All styling relies on tokens from global.css (:root)
+   ============================================================ */
+
+/* ---------- Base Elements ---------- */
+button {
+  outline: none !important;
+  border: none !important;
+  border-radius: var(--page-button-border-radius) !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  font-family: var(--font-sans) !important;
+}
+
+.dashboardPage {
+  font-family: var(--font-sans) !important;
+  color: var(--primary-text-color) !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%) !important;
+  min-height: 100vh !important;
+  padding: 2rem !important;
+}
+
+/* ---------- Accounting Section ---------- */
+.accounting {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2rem !important;
+  width: 100% !important;
+  max-width: 1600px !important;
+  margin: 0 auto !important;
+}
+
+/* ---------- Settings Bar ---------- */
+.dashboard_settings {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 1.5rem !important;
+  width: 100% !important;
+  gap: 1rem !important;
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+.dashboard_settings input[type="text"],
+.dashboard_settings input[type="date"],
+.dashboard_settings select {
+  padding: 0.75rem 1rem !important;
+  border: 2px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  font-family: var(--font-sans) !important;
+  background-color: #f9fafb !important;
+  color: var(--primary-text-color) !important;
+  transition: all 0.3s ease !important;
+  font-size: 0.95rem !important;
+}
+
+.dashboard_settings input[type="text"]:focus,
+.dashboard_settings input[type="date"]:focus,
+.dashboard_settings select:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  background-color: white !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Date Range / Filtering */
+.filterDate,
+.dateRangePicker {
+  display: flex !important;
+  gap: 1rem !important;
+  align-items: center !important;
+}
+
+.date, .dashboard_filter {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+}
+
+.date label, .dashboard_filter label {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  color: #6b7280 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* ---------- Export Button ---------- */
+.dashboard_exportButton {
+  margin-left: auto !important;
+}
+
+.dashboard_exportButton button {
+  background: linear-gradient(135deg, #961C1E 0%, #be7609 100%) !important;
+  color: white !important;
+  border: none !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.dashboard_exportButton button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* ---------- Main Data Container ---------- */
+.dataContainer {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 2rem !important;
+  width: 100% !important;
+}
+
+/* ---------- Metrics Cards Section ---------- */
+.metricsSection {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+}
+
+.metricsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 1.5rem !important;
+}
+
+/* ---------- Modern Metric Cards ---------- */
+.metricCard {
+  background: white !important;
+  border-radius: 20px !important;
+  padding: 1.5rem !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.metricCard::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 4px !important;
+  background: linear-gradient(90deg, var(--card-color), var(--card-color-light)) !important;
+}
+
+.metricCard:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12) !important;
+}
+
+.metricCard-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.metricCard-icon {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 28px !important;
+  background: var(--card-color) !important;
+  box-shadow: 0 8px 16px var(--card-shadow) !important;
+}
+
+.metricCard-title {
+  flex: 1 !important;
+}
+
+.metricCard-subtitle {
+  flex: 1 !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem ;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.metricCard-title h3 {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  color: #6b7280 !important;
+  margin: 0 0 0.25rem 0 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.metricCard-title .categoryCount {
+  font-size: 0.7rem !important;
+  color: #9ca3af !important;
+}
+
+.metricCard-value {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  color: var(--card-color) !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.metricCard-change {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  font-size: 0.85rem !important;
+}
+
+.metricCard-change .arrow {
+  color: #10b981 !important;
+}
+
+.metricCard-change span:last-child {
+  color: #9ca3af !important;
+}
+
+.metricCard-details {
+  background: #f9fafb !important;
+  border-radius: 12px !important;
+  padding: 1rem !important;
+  max-height: 140px !important;
+  overflow-y: auto !important;
+}
+
+.metricCard-details::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.metricCard-details::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 3px !important;
+}
+
+.metricCard-details::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 3px !important;
+}
+
+.detailItem {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 0.75rem 0 !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.detailItem:last-child {
+  border-bottom: none !important;
+}
+
+.detailItem-label {
+  font-size: 0.9rem !important;
+  color: #6b7280 !important;
+  font-weight: 500 !important;
+}
+
+.detailItem-value {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+}
+
+.detailItem.total {
+  background: white !important;
+  border-radius: 8px !important;
+  padding: 0.75rem !important;
+  margin-top: 0.5rem !important;
+  border: none !important;
+}
+
+.detailItem.total .detailItem-value {
+  color: var(--card-color) !important;
+  font-size: 1.1rem !important;
+}
+
+/* Revenue Card Styling */
+.metricCard.revenue {
+  --card-color: #f59e0b !important;
+  --card-color-light: #fbbf24 !important;
+  --card-shadow: rgba(245, 158, 11, 0.25) !important;
+}
+
+/* Expenses Card Styling */
+.metricCard.expenses {
+  --card-color: #ef4444 !important;
+  --card-color-light: #f87171 !important;
+  --card-shadow: rgba(239, 68, 68, 0.25) !important;
+}
+
+/* Profit Card Styling */
+.metricCard.profit {
+  --card-color: #10b981 !important;
+  --card-color-light: #34d399 !important;
+  --card-shadow: rgba(16, 185, 129, 0.25) !important;
+  grid-column: span 2 !important;
+}
+
+.metricCard.profit .metricCard-value {
+  font-size: 3.5rem !important;
+  text-align: center !important;
+}
+
+/* Emotion Card Styling */
+.metricCard.emotion {
+  --card-color: #8b5cf6 !important;
+  --card-color-light: #a78bfa !important;
+  --card-shadow: rgba(139, 92, 246, 0.25) !important;
+  grid-column: span 2 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.emotion-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex: 1 !important;
+  gap: 2rem !important;
+}
+
+.emotion-status {
+  flex: 1 !important;
+}
+
+.emotion-status h2 {
+  font-size: 2.5rem !important;
+  font-weight: 700 !important;
+  color: var(--card-color) !important;
+  margin: 0 0 0.5rem 0 !important;
+}
+
+.emotion-status p {
+  font-size: 1rem !important;
+  color: #6b7280 !important;
+  margin: 0 !important;
+}
+
+.emotion-emoji {
+  width: 120px !important;
+  height: 120px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.emotion-emoji img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.3)) !important;
+}
+
+.three-dots-btn {
+  position: absolute !important;
+  top: 1.5rem !important;
+  right: 1.5rem !important;
+  background: #f3f4f6 !important;
+  border: none !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  font-size: 1.5rem !important;
+  color: #6b7280 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s !important;
+}
+
+.three-dots-btn:hover {
+  background: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+/* ---------- Graph Section ---------- */
+.graphSection {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+}
+
+.graphContainer {
+  background: white !important;
+  border-radius: 20px !important;
+  padding: 2rem !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  min-height: 400px !important;
+}
+
+.graphContainer .title h2 {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  margin: 0 0 2rem 0 !important;
+}
+
+.pieChartContainer {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 350px !important;
+}
+
+/* Chart Wrapper */
+.chartWrapper {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 300px !important;
+  padding: 1rem !important;
+}
+
+/* ---------- Insights Section ---------- */
+.insightsSection {
+  background: white !important;
+  border-radius: 20px !important;
+  padding: 2rem !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+.insightsSection h3 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  margin: 0 0 1.5rem 0 !important;
+}
+
+.insightCard {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+  border-left: 4px solid #3b82f6 !important;
+  border-radius: 12px !important;
+  padding: 1.25rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.insightCard:last-child {
+  margin-bottom: 0 !important;
+}
+
+.insightCard-title {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  color: #1e40af !important;
+  margin-bottom: 0.5rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.insightCard-content {
+  font-size: 1rem !important;
+  color: #1e3a8a !important;
+  font-weight: 500 !important;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1400px) {
+  .dataContainer {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboardPage {
+    padding: 1rem !important;
+  }
+  
+  .metricsGrid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .metricCard.profit,
+  .metricCard.emotion {
+    grid-column: span 1 !important;
+  }
+  
+  .dashboard_settings {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  .dashboard_exportButton {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .metricCard-value {
+    font-size: 2rem !important;
+  }
+  
+  .metricCard.profit .metricCard-value {
+    font-size: 2.5rem !important;
+  }
+  
+  .emotion-content {
+    flex-direction: column !important;
+    text-align: center !important;
+  }
+}

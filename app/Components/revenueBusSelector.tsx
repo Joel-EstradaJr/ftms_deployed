@@ -1,8 +1,32 @@
 import React, { useState, useMemo } from "react";
 import PaginationComponent from "./pagination"; // Reuse your pagination
 import Loading from "./loading"; // Reuse your loading spinner
-import "../styles/revenueBusSelector.css";
-import type { Assignment } from '@/lib/operations/assignments';
+import "../styles/components/busSelector.css";
+import "../styles/components/revenueBusSelector.css";
+import "../styles/components/table.css";
+import { formatDateTime } from '../utils/formatting';
+import ModalHeader from './ModalHeader';
+
+type Assignment = {
+  assignment_id: string;
+  bus_trip_id: string;
+  bus_route: string;
+  is_revenue_recorded: boolean;
+  is_expense_recorded: boolean;
+  date_assigned: string;
+  trip_fuel_expense: number;
+  trip_revenue: number;
+  assignment_type: string;
+  assignment_value: number;
+  payment_method: string;
+  driver_name: string | null;
+  conductor_name: string | null;
+  bus_plate_number: string | null;
+  bus_type: string | null;
+  body_number: string | null;
+  driver_id?: string | undefined;
+  conductor_id?: string | undefined;
+};
 
 type Employee = {
   employee_id: string;
@@ -25,7 +49,7 @@ type RevenueSourceSelectorProps = {
   isOpen: boolean;
 };
 
-const PAGE_SIZE = 5;
+const DEFAULT_PAGE_SIZE = 10;
 
 const RevenueSourceSelector: React.FC<RevenueSourceSelectorProps> = ({
   assignments,
@@ -39,16 +63,22 @@ const RevenueSourceSelector: React.FC<RevenueSourceSelectorProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  // Filter assignments based on selected category (Boundary/Percentage) and search
+  // Filter assignments based on selected category (Boundary/Percentage/Bus Rental) and search
   const filteredAssignments = useMemo(() => {
     let filtered = assignments;
     if (!selectedCategoryId) return [];
     const selectedCategory = categories.find(cat => cat.category_id === selectedCategoryId);
     if (!selectedCategory) return [];
+    // Normalize by removing all non-alphanumeric characters and lowercasing (e.g., 'Bus_Rental' -> 'busrental')
+    const normalizeKey = (s?: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     filtered = filtered.filter(a => {
-      if (selectedCategory.name === "Boundary") return a.assignment_type === "Boundary";
-      if (selectedCategory.name === "Percentage") return a.assignment_type === "Percentage";
+      const nameKey = normalizeKey(selectedCategory.name);
+      const atKey = normalizeKey(a.assignment_type);
+      if (nameKey === "boundary") return atKey === "boundary";
+      if (nameKey === "percentage") return atKey === "percentage";
+      if (nameKey === "busrental") return atKey === "busrental" || !a.assignment_type;
       return false;
     });
     if (search.trim()) {
@@ -62,16 +92,18 @@ const RevenueSourceSelector: React.FC<RevenueSourceSelectorProps> = ({
     );
   }, [assignments, categories, selectedCategoryId, search]);
 
-  const totalPages = Math.ceil(filteredAssignments.length / PAGE_SIZE);
+  const totalPages = Math.ceil(filteredAssignments.length / pageSize || 1);
   const paginatedAssignments = filteredAssignments.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
   );
 
   const formatAmount = (assignment: Assignment) => {
     const selectedCategory = categories.find(cat => cat.category_id === selectedCategoryId);
     let amount = assignment.trip_revenue;
-    if (selectedCategory?.name === "Percentage" && assignment.assignment_value) {
+    // Use the broadened normalization key for matching
+    const normalizeKey = (s?: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (normalizeKey(selectedCategory?.name) === "percentage" && assignment.assignment_value) {
       amount = assignment.trip_revenue * (assignment.assignment_value);
     }
     return `₱${amount.toLocaleString()}`;
@@ -83,15 +115,10 @@ const RevenueSourceSelector: React.FC<RevenueSourceSelectorProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modalOverlay">
+    <div className="revenue-modalOverlay">
       <div className="addRevenueModal">
-        <button type="button" className="closeButton" onClick={onClose}>
-          <i className="ri-close-line"></i>
-        </button>
-        <div className="modalHeader">
-          <h1>Select Assignment</h1>
-        </div>
-        <div className="revenue_modalContent">
+        <ModalHeader title="Select Assignment for Revenue" onClose={onClose} />
+        <div className="revenue-modalBody">
           <input
             type="text"
             placeholder="Search by plate or route"
@@ -103,54 +130,70 @@ const RevenueSourceSelector: React.FC<RevenueSourceSelectorProps> = ({
           {isLoading ? (
             <Loading />
           ) : (
-            <table id="revenue-assignment-table">
-              <thead>
-                <tr>
-                  <th>Date Assigned</th>
-                  <th>Amount</th>
-                  <th>Bus Plate Number</th>
-                  <th>Bus Type</th>
-                  <th>Bus Route</th>
-                  <th>Driver</th>
-                  <th>Conductor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedAssignments.length === 0 ? (
+            <div className="tableContainer">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={7} style={{ textAlign: "center" }}>
-                      No assignments found.
-                    </td>
+                    <th>No.</th>
+                    <th>Date Assigned</th>
+                    <th>Amount</th>
+                    <th>Plate Number</th>
+                    <th>Bus Type</th>
+                    <th>Route</th>
+                    <th>Driver</th>
+                    <th>Conductor</th>
                   </tr>
-                ) : (
-                  paginatedAssignments.map((assignment, index) => (
-                    <tr
-                      key={`${assignment.assignment_id}-${assignment.date_assigned}-${index}`}
-                      onClick={() => {
-                        onSelect(assignment);
-                        onClose();
-                      }}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <td>{assignment.date_assigned.split("T")[0]}</td>
-                      <td>{formatAmount(assignment)}</td>
-                      <td>{assignment.bus_plate_number || 'N/A'}</td>
-                      <td>{assignment.bus_type || 'N/A'}</td>
-                      <td>{assignment.bus_route}</td>
-                      <td>{assignment.driver_name || (assignment.driver_id ? getEmployeeName(assignment.driver_id) : 'N/A')}</td>
-                      <td>{assignment.conductor_name || (assignment.conductor_id ? getEmployeeName(assignment.conductor_id) : 'N/A')}</td>
+                </thead>
+                <tbody>
+                  {paginatedAssignments.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: "center" }}>
+                        No assignments found.
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    paginatedAssignments.map((assignment, idx) => {
+                      const rowNumber = (currentPage - 1) * pageSize + idx + 1;
+                      return (
+                        <tr
+                          key={`${assignment.assignment_id}-${assignment.date_assigned}-${idx}`}
+                          onClick={() => {
+                            onSelect(assignment);
+                            onClose();
+                          }}
+                        >
+                          <td>{rowNumber}</td>
+                          <td>
+                              {formatDateTime(assignment.date_assigned)
+                                .split("(")
+                                .map((part, index) =>
+                                  index === 0 ? (
+                                    <div key={index}>{part.trim()}</div>
+                                  ) : (
+                                    <div key={index}>({part}</div>
+                                  )
+                                )}
+                          </td>
+                          <td>{formatAmount(assignment)}</td>
+                          <td>{assignment.bus_plate_number || 'N/A'}</td>
+                          <td>{assignment.bus_type || 'N/A'}</td>
+                          <td>{assignment.bus_route}</td>
+                          <td>{assignment.driver_name || (assignment.driver_id ? getEmployeeName(assignment.driver_id) : 'N/A')}</td>
+                          <td>{assignment.conductor_name || (assignment.conductor_id ? getEmployeeName(assignment.conductor_id) : 'N/A')}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
           <PaginationComponent
             currentPage={currentPage}
             totalPages={totalPages}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
-            onPageSizeChange={() => {}}
+            onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
           />
         </div>
       </div>

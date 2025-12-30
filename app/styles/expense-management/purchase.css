@@ -1,0 +1,90 @@
+
+/* Purchase status chips */
+.chip.draft {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.chip.matched {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.chip.delivered {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.chip.closed {
+  background-color: #d1d5db;
+  color: #1f2937;
+}
+
+.chip.refunded {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.chip.replaced {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+/* Budget utilization indicators */
+.budget-utilization {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.budget-utilization.low {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.budget-utilization.medium {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.budget-utilization.high {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Purchase table specific styles */
+.purchase-table th,
+.purchase-table td {
+  font-size: 0.875rem;
+}
+
+.purchase-table th:nth-child(5),
+.purchase-table td:nth-child(5) {
+  max-width: 250px;
+}
+
+/* Add button for purchase expenses */
+.addBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background-color: var(--primary-color);
+  color: var(--foreground-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.addBtn:hover {
+  background-color: var(--primary-hover-color);
+}
+
+.addBtn i {
+  font-size: 1rem;
+}

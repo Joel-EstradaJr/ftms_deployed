@@ -1,0 +1,292 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { showError, showConfirmation } from '@/app/utils/Alerts';
+import { NormalBalance } from '@/app/types/jev';
+import '@/app/styles/components/forms.css';
+import '@/app/styles/components/modal.css';
+
+interface AccountType {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+}
+
+interface AccountFormData {
+  account_type_id: number;
+  account_name: string;
+  normal_balance: 'DEBIT' | 'CREDIT';
+  description?: string;
+  custom_suffix?: number;
+}
+
+interface AddAccountModalProps {
+  onClose: () => void;
+  onSubmit: (data: AccountFormData) => Promise<void>;
+}
+
+const AddAccountModal: React.FC<AddAccountModalProps> = ({ onClose, onSubmit }) => {
+  const [accountTypes, setAccountTypes] = useState<AccountType[]>([]);
+  const [formData, setFormData] = useState<AccountFormData>({
+    account_type_id: 0,
+    account_name: '',
+    normal_balance: 'DEBIT',
+    description: '',
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accountCodePreview, setAccountCodePreview] = useState<string>('');
+
+  // Dummy account types data
+  const dummyAccountTypes: AccountType[] = [
+    { id: 1, code: '1', name: 'Assets', description: 'Resources owned by the company' },
+    { id: 2, code: '2', name: 'Liabilities', description: 'Obligations owed to others' },
+    { id: 3, code: '3', name: 'Equity', description: 'Owner\'s stake in the business' },
+    { id: 4, code: '4', name: 'Revenue', description: 'Income from operations' },
+    { id: 5, code: '5', name: 'Expenses', description: 'Costs of doing business' }
+  ];
+
+  // Load dummy account types on mount
+  useEffect(() => {
+    setAccountTypes(dummyAccountTypes);
+    if (dummyAccountTypes.length > 0) {
+      setFormData(prev => ({ ...prev, account_type_id: dummyAccountTypes[0].id }));
+    }
+  }, []);
+
+  // Update account code preview when account type changes
+  useEffect(() => {
+    if (formData.account_type_id) {
+      const selectedType = accountTypes.find(t => t.id === formData.account_type_id);
+      if (selectedType) {
+        setAccountCodePreview(`${selectedType.code}XXX (e.g., ${selectedType.code}000, ${selectedType.code}005, ...)`);
+      }
+    }
+  }, [formData.account_type_id, accountTypes]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'account_type_id') {
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: parseInt(value, 10)
+      }));
+    } else if (name === 'custom_suffix') {
+      const numValue = value === '' ? undefined : parseInt(value, 10);
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: numValue
+      }));
+    } else {
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: value === '' ? undefined : value 
+      }));
+    }
+
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      setIsSubmitting(true);
+      setErrors({});
+      
+      // Basic validation
+      const newErrors: Record<string, string> = {};
+      
+      if (!formData.account_type_id) {
+        newErrors.account_type_id = 'Account type is required';
+      }
+      
+      if (!formData.account_name?.trim()) {
+        newErrors.account_name = 'Account name is required';
+      }
+      
+      if (!formData.normal_balance) {
+        newErrors.normal_balance = 'Normal balance is required';
+      }
+
+      if (formData.custom_suffix !== undefined) {
+        if (formData.custom_suffix < 0 || formData.custom_suffix > 999) {
+          newErrors.custom_suffix = 'Suffix must be between 0 and 999';
+        }
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        await showError('Please fill in all required fields correctly', 'Validation Error');
+        return;
+      }
+
+      // Show confirmation dialog
+      const result = await showConfirmation(
+        'Are you sure you want to add this account?',
+        'Confirm Add Account'
+      );
+
+      if (!result.isConfirmed) {
+        return;
+      }
+
+      // Submit to backend
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Error creating account:', error);
+      await showError('Failed to create account. Please try again.', 'Error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="modal-heading">
+        <h1 className="modal-title">Add New Account</h1>
+        <div className="modal-date-time">
+          <p>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+          <p>{new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</p>
+        </div>
+        <button className="close-modal-btn" onClick={onClose}>
+          <i className="ri-close-line"></i>
+        </button>
+      </div>
+
+      {/* Account Information */}
+      <p className="details-title">Account Information</p>
+      <div className="modal-content add">
+        <form className="add-form">
+          <div className="form-row">
+            {/* Account Type */}
+            <div className="form-group">
+              <label htmlFor="account_type_id">
+                Account Type<span className="requiredTags"> *</span>
+              </label>
+              <select
+                id="account_type_id"
+                name="account_type_id"
+                value={formData.account_type_id}
+                onChange={handleInputChange}
+                className={errors.account_type_id ? 'invalid-input' : ''}
+                required
+              >
+                <option value={0}>-- Select Account Type --</option>
+                {accountTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.name} ({type.code})
+                  </option>
+                ))}
+              </select>
+              <p className="add-error-message">{errors.account_type_id}</p>
+            </div>
+
+            {/* Normal Balance */}
+            <div className="form-group">
+              <label htmlFor="normal_balance">
+                Normal Balance<span className="requiredTags"> *</span>
+              </label>
+              <select
+                id="normal_balance"
+                name="normal_balance"
+                value={formData.normal_balance}
+                onChange={handleInputChange}
+                className={errors.normal_balance ? 'invalid-input' : ''}
+                required
+              >
+                <option value="DEBIT">Debit (Increases with Debits)</option>
+                <option value="CREDIT">Credit (Increases with Credits)</option>
+              </select>
+              <p className="add-error-message">{errors.normal_balance}</p>
+            </div>
+          </div>
+
+          <div className="form-row">
+            {/* Account Name */}
+            <div className="form-group">
+              <label htmlFor="account_name">
+                Account Name<span className="requiredTags"> *</span>
+              </label>
+              <input
+                type="text"
+                id="account_name"
+                name="account_name"
+                value={formData.account_name}
+                onChange={handleInputChange}
+                placeholder="e.g., Cash on Hand"
+                className={errors.account_name ? 'invalid-input' : ''}
+                required
+              />
+              <small className="hint-message">Must be unique within the account type</small>
+              <p className="add-error-message">{errors.account_name}</p>
+            </div>
+
+            {/* Account Code - Custom Suffix (Optional) */}
+            <div className="form-group">
+              <label htmlFor="custom_suffix">
+                Account Code Suffix (Optional)
+              </label>
+              <input
+                type="number"
+                id="custom_suffix"
+                name="custom_suffix"
+                value={formData.custom_suffix ?? ''}
+                onChange={handleInputChange}
+                placeholder="000-999"
+                min={0}
+                max={999}
+                className={errors.custom_suffix ? 'invalid-input' : ''}
+              />
+              <small className="hint-message">
+                {accountCodePreview || 'Auto-generated if not specified'}
+              </small>
+              <p className="add-error-message">{errors.custom_suffix}</p>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label htmlFor="description">Description (Optional)</label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description || ''}
+                onChange={handleInputChange}
+                placeholder="Provide details about this account's purpose..."
+                rows={3}
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="modal-actions">
+        <button
+          type="button"
+          className="cancel-btn"
+          onClick={onClose}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="submit-btn"
+          disabled={isSubmitting}
+          onClick={handleSubmit}
+        >
+          {isSubmitting ? 'Creating...' : 'Create Account'}
+        </button>
+      </div>
+    </>
+  );
+};
+
+export default AddAccountModal;

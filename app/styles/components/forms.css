@@ -1,0 +1,571 @@
+/* ----- MODAL FORMS STYLING: ADD AND EDIT ----- */
+.checkbox-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checkbox-wrapper label {
+    cursor: pointer;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.modal-content.add .add-form,
+.modal-content.edit .edit-form,
+.modal-content.view .view-form,
+.modal-content.view-expired .view-form,
+.modal-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-self: center;
+    gap: 12px!important;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+}
+
+.form-column {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--secondary-text-color);
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    min-width: 200px;
+    margin-top: 5px;
+    background-color: var(--foreground-color);
+    border: 1px solid var(--foreground-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease-in-out;
+}
+
+.form-group input {
+    padding: 6px 12px;
+}
+
+.form-group input[type="checkbox"] {
+    min-width: 0px;
+    padding: 0px;
+    width: auto;
+    cursor: pointer !important;
+}
+
+.form-group textarea {
+    padding: 6px 12px;
+    min-width: 600px;
+    height: 80px;
+    resize: none;
+}
+
+.form-group textarea.order {
+    padding: 6px 12px;
+    min-width: 300px;
+    height: 100%;
+    resize: none;
+}
+
+.form-group input[type='number'] {
+    min-width: 200px;
+    width: 100%;
+    padding: 6px 12px;
+}
+
+.form-group select {
+    padding: 8px 12px;
+}
+
+.edit-form .form-group.category {
+    margin-bottom: 5px;
+}
+
+.edit-form .form-group.expiration {
+    margin: 5px 0;
+}
+
+/* disabled styles */
+.form-group input:disabled,
+.form-group input:read-only,
+.form-group textarea:disabled,
+.form-group select:disabled {
+    background-color: var(--background-color);
+    border: 1px solid var(--background-color);
+    color: var(--secondary-text-color);
+    cursor: not-allowed;
+}
+
+.form-group select:disabled {
+    background-color: var(--background-color);
+    border: 1px solid var(--background-color);
+    color: var(--secondary-text-color);
+    appearance: none;
+    padding: 6px 12px;
+}
+
+.form-group input:disabled:hover,
+.form-group input:read-only:hover,
+.form-group textarea:disabled:hover,
+.form-group select:disabled:hover {
+    border-color: var(--background-color);
+}
+
+/* hover and focus styles */
+.form-group input:hover,
+.form-group textarea:hover,
+.form-group select:hover {
+    border-color: var(--border-color);
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary-text-color);
+}
+
+
+/* ----- MODAL FORMS STYLING: VIEW ----- */
+.modal-content.view {
+    min-width: 550px;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.modal-content.view-expired {
+    background-color: var(--error-chip-bg-color);
+    min-width: 550px;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.close-modal-btn.view {
+    width: 30px;
+    height: 30px;
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 20px;
+    color: var(--primary-text-color);
+    transition: all 0.3s ease-in-out;
+}
+
+.close-modal-btn.view:hover {
+    background-color: var(--table-row-color);
+}
+
+.view-form .form-group {
+    margin-bottom: 5px;
+}
+
+.view-form .form-group p {
+    margin-top: 5px;
+    padding: 6px 12px;
+    min-width: 200px;
+    min-height: 35px;
+    background-color: var(--foreground-color);
+    border: 1px solid var(--foreground-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+
+/* ----- MODAL FORMS STYLING: DELETE ----- */
+.modal-heading.delete {
+    margin: 0;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-heading.delete i {
+    font-size: 26px;
+    color: var(--error-color);
+}
+
+.modal-content.delete {
+    background-color: var(--foreground-color);
+    text-align: center;
+}
+
+.modal-actions.delete {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 32px;
+}
+
+/* ----- PURCHASE REQUEST MODAL SECTIONS ----- */
+.purchase-request-section,
+.purchase-items-section {
+    background-color: var(--table-row-hover-color);
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 8px;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary-text-color);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title i {
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+/* Item cards in expandable sections */
+.item-card {
+    background-color: var(--foreground-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin: 10px 0;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+}
+
+.item-card-header {
+    padding: 12px 16px;
+    background-color: var(--table-header-color);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.item-card-header:hover {
+    background-color: var(--border-color);
+}
+
+.item-card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.item-number {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 14px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: var(--primary-text-color);
+    font-size: 14px;
+}
+
+.item-expand-icon {
+    font-size: 18px;
+    color: var(--secondary-text-color);
+    transition: transform 0.3s ease-in-out;
+}
+
+.item-expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.item-card-body {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.item-detail-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.item-detail-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--secondary-text-color);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* New item badge */
+.new-item-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: var(--warning-chip-bg-color);
+    color: var(--warning-chip-text-color);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Grid layouts for purchase request details */
+.pr-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+
+/* ----- MODAL FORMS STYLING: INPUT VALIDATION ----- */
+.form-group input.invalid-input,
+.form-group textarea.invalid-input,
+.form-group select.invalid-input,
+.invalid-input {
+    border: 1px solid var(--error-color);
+    outline: none;
+}
+
+.add-form .add-error-message,
+.edit-form .edit-error-message,
+.error-text {
+    margin: 5px;
+    font-size: 12px;
+    color: var(--error-color);
+}
+
+.add-form .hint-message,
+.edit-form .hint-message, .hint-message {
+    margin: 5px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+}
+
+.add-form .add-error-message.quantity,
+.error-text.quantity {
+    margin-top: -5px;
+    margin-bottom: 5px;
+}
+
+
+/* ----- MODAL FORMS STYLING: DETAIL TITLE ----- */
+.details-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--secondary-text-color);
+    margin-bottom: 10px;
+    margin-top: 20px;
+}
+
+.details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ----- MODAL FORMS STYLING: FONT UPLOADED FILES ----- */
+.uploaded-documents-list {
+    margin-bottom: 5px;
+    padding-left: 0;
+    list-style: none;
+}
+
+.uploaded-document-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    margin-left: 20px;
+    margin-top: 10px;
+    background-color: var(--table-header-color);
+    color: var(--secondary-text-color);
+    padding: 3px;
+    padding-left: 20px;
+    padding-right: 20px;
+    border-radius: 30px;
+    width: fit-content;
+    font-size: 14px;
+}
+
+.existing-cr-note {
+    font-size: 12px;
+    font-style: italic;
+    margin: 5px;
+    color: var(--secondary-text-color);
+}
+
+.remove-document-button {
+    background: none;
+    border: none;
+    color: var(--error-color);
+    cursor: pointer;
+    padding: 0;
+    font-size: 16px;
+}
+
+
+/* ----- MODAL FORMS STYLING: DOCUMENT LINKS ----- */
+.view-documents-list {
+    margin-bottom: 5px;
+    padding-left: 0;
+}
+
+.view-document-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 10px 20px 6px;
+    background-color: var(--table-header-color);
+    color: var(--secondary-text-color);
+    padding: 8px 20px;
+    border-radius: 30px;
+    width: fit-content;
+    font-size: 14px;
+    min-width: 200px;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.view-document-item.link:hover {
+    background-color: var(--border-color);
+    color: var(--secondary-text-color);
+    cursor: pointer;
+}
+
+.view-document-item.error {
+    background-color: var(--error-chip-bg-color);
+    color: var(--error-chip-text-color);
+}
+
+.view-document-item.no-files {
+    background-color: var(--table-header-color);
+    color: var(--secondary-text-color);
+    font-style: italic;
+}
+
+
+/* ----- MODAL FORMS STYLING: TABLE ----- */
+.modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    border: 1px solid var(--table-header-color);
+    margin: 5px 0;
+    margin-bottom: 20px;
+}
+
+.modal-table-heading {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    height: 40px;
+    background-color: var(--table-header-color);
+    color: var(--primary-text-color);
+    font-weight: bold;
+    border-bottom: 1px solid var(--table-header-color);
+}
+
+.modal-table-body {
+    text-align: center;
+    vertical-align: middle;
+    background-color: var(--foreground-color);
+}
+
+.modal-table-body tr {
+    height: 40px;
+    border-bottom: 1px solid var(--table-header-color);
+    transition: all 0.2s ease-in-out;
+}
+
+.modal-table-heading th,
+.modal-table-body td {
+    max-width: 150px;
+    padding: 5px 15px;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+
+/* ----- MODAL FORMS STYLING: TABLE BUTTON ----- */
+.modal-table-add-btn {
+    width: 120px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    border-radius: 8px;
+    background-color: var(--info-color);
+    color: var(--foreground-color);
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.modal-table-add-btn i {
+    font-weight: 500;
+}
+
+.modal-table-add-btn:hover {
+    background-color: var(--info-hover-color);
+}
+
+/* cancel button */
+.modal-actions .cancel-btn {
+    width: 120px !important;
+    height: 35px !important;
+    border-radius: 8px !important;
+    background-color: var(--table-row-color) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease-in-out !important;
+    cursor: pointer !important;
+}
+
+.modal-actions .cancel-btn:hover {
+    background-color: var(--table-row-hover-color) !important;
+}
