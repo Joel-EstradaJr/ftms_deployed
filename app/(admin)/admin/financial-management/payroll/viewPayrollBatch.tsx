@@ -555,7 +555,7 @@ export default function ViewPayrollBatch({
                 disabled={downloadingBatch}
               >
                 <i className="ri-download-line"></i>
-                {downloadingBatch ? 'Generating...' : 'Download All Payslips (ZIP)'}
+                {downloadingBatch ? 'Generating...' : 'Download All Payslips'}
               </button>
             )}
 
