@@ -245,7 +245,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     
     let minimumRemittance = 0;
     let revenueInsufficient = false; // Revenue doesn't meet minimum wage requirement
-    let loanAmount = 0;
+    const loanAmount = 0;
     
     if (tripData.assignment_type === 'Boundary') {
       const requiredRevenue = tripData.assignment_value + driver_conductor_minimum + tripData.trip_fuel_expense;

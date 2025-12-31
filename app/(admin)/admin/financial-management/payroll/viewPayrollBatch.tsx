@@ -40,6 +40,7 @@ export default function ViewPayrollBatch({
   const [payslipModalOpen, setPayslipModalOpen] = useState(false);
   const [selectedPayrollForPayslip, setSelectedPayrollForPayslip] = useState<Payroll | null>(null);
   const [downloadingBatch, setDownloadingBatch] = useState(false);
+  const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
 
   // Handle select all
   const handleSelectAll = (checked: boolean) => {
@@ -362,8 +363,6 @@ export default function ViewPayrollBatch({
                     {undisbursedCount > 0 && onDisburse && <th style={{ width: '40px' }}></th>}
                     <th>Employee</th>
                     <th>Base Salary</th>
-                    <th>Allowances</th>
-                    <th>Deductions</th>
                     <th>Net Pay</th>
                     <th>Status</th>
                     <th style={{ width: '120px' }}>Actions</th>
@@ -393,8 +392,6 @@ export default function ViewPayrollBatch({
                           </div>
                         </td>
                         <td>{formatMoney(payroll.baseSalary)}</td>
-                        <td>{formatMoney(payroll.allowances)}</td>
-                        <td>{formatMoney(payroll.deductions)}</td>
                         <td style={{ fontWeight: 600 }}>{formatMoney(payroll.netPay)}</td>
                         <td>
                           {payroll.isDisbursed ? (
@@ -453,12 +450,21 @@ export default function ViewPayrollBatch({
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                         <h4 style={{ margin: 0, color: 'var(--primary-color)' }}>
-                          Payroll Details - {payroll.employee?.firstName} {payroll.employee?.lastName}
+                          <strong>Payroll Details - {payroll.employee?.firstName} {payroll.employee?.lastName}</strong>
                         </h4>
                         <button
                           className="submit-btn"
                           onClick={() => handleViewPayslip(payroll)}
-                          style={{ padding: '6px 12px', fontSize: '13px' }}
+                          onMouseEnter={() => setHoveredBtn(payroll.id)}
+                          onMouseLeave={() => setHoveredBtn(null)}
+                          style={{ 
+                            padding: '6px 12px', 
+                            fontSize: '13px', 
+                            color: 'var(--primary-color)',
+                            cursor: 'pointer',
+                            transform: hoveredBtn === payroll.id ? 'scale(1.03)' : 'scale(1)',
+                            transition: 'transform 0.2s ease'
+                          }}
                         >
                           <i className="ri-file-text-line"></i> View Full Payslip
                         </button>
@@ -547,10 +553,12 @@ export default function ViewPayrollBatch({
             >
               <i className="ri-close-line" /> Close
             </button>
+            {/* Download Button */}
             {batch.payrolls && batch.payrolls.length > 0 && (
               <button
                 type="button"
                 className="submit-btn"
+                id='DownloadAllPayslipsBtn'
                 onClick={handleDownloadAllPayslips}
                 disabled={downloadingBatch}
               >

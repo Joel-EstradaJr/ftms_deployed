@@ -332,7 +332,7 @@ const AdministrativeExpensePage: React.FC = () => {
       // const data = await response.json();
 
       // Simulate filtering on sample data from allExpenses (or initialize if empty)
-      let baseData = allExpenses.length > 0 ? allExpenses : sampleAdministrativeExpenses;
+      const baseData = allExpenses.length > 0 ? allExpenses : sampleAdministrativeExpenses;
       
       // Update allExpenses if this is first load
       if (allExpenses.length === 0) {

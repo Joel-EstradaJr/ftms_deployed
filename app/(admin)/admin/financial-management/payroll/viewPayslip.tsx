@@ -1,9 +1,7 @@
 "use client";
 import React, { useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import Modal from '@/Components/modal2';
-import domtoimage from 'dom-to-image-more';
-import jsPDF from 'jspdf';
-import Image from 'next/image';
 import { Payroll } from './types';
 import {
   calculateEarnings,
@@ -38,104 +36,120 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
 }) => {
   const payslipRef = useRef<HTMLDivElement>(null);
 
+  // Calculate breakdowns (moved before hooks to avoid conditional hook issues)
+  const rateType: RateType = 'monthly';
+  const employee = payroll?.employee;
+  const employeeName = employee ? getEmployeeName(employee) : '';
+
+  // Use react-to-print hook
+  const handlePrint = useReactToPrint({
+    contentRef: payslipRef,
+    documentTitle: payroll ? `Payslip_${employee?.employeeNumber}_${formatDate(batchPeriodStart)}_${formatDate(batchPeriodEnd)}` : 'Payslip',
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 8mm;
+      }
+      @media print {
+        html, body {
+          height: 100%;
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .payslipContainer {
+          background-color: #ffffff !important;
+          padding: 10px !important;
+          margin: 0 !important;
+          page-break-inside: avoid !important;
+          transform: scale(0.85);
+          transform-origin: top center;
+        }
+        .companyHeader {
+          margin-bottom: 10px !important;
+          padding-bottom: 8px !important;
+        }
+        .companyLogo {
+          max-height: 50px !important;
+        }
+        .companyName {
+          font-size: 18px !important;
+        }
+        .payPeriodSection {
+          margin-bottom: 10px !important;
+          padding: 6px 10px !important;
+          font-size: 11px !important;
+        }
+        .employeeInfoSection {
+          padding: 8px !important;
+          margin-bottom: 10px !important;
+        }
+        .empDetails {
+          padding: 4px 8px !important;
+          font-size: 11px !important;
+        }
+        .earningsDeductionsGrid {
+          margin-bottom: 10px !important;
+        }
+        .sectionHeading {
+          font-size: 12px !important;
+          margin-bottom: 6px !important;
+          padding-bottom: 3px !important;
+        }
+        .payslipTable {
+          font-size: 10px !important;
+        }
+        .payslipTableRow td {
+          padding: 4px 2px !important;
+        }
+        .totalsSection {
+          padding: 8px !important;
+          margin-bottom: 10px !important;
+        }
+        .totalRow {
+          font-size: 12px !important;
+          margin-bottom: 4px !important;
+        }
+        .netPayRow {
+          background-color: #333333 !important;
+          color: #ffffff !important;
+          padding: 8px 10px !important;
+          font-size: 14px !important;
+          margin-top: 8px !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .attendanceSection {
+          padding: 8px !important;
+          margin-bottom: 0 !important;
+        }
+        .attendanceHeading {
+          font-size: 12px !important;
+          margin-bottom: 8px !important;
+        }
+        .attendanceGrid > div {
+          padding: 6px !important;
+          font-size: 10px !important;
+        }
+        .attendanceValue {
+          font-size: 16px !important;
+        }
+        .attendanceValuePresent { color: #4caf50 !important; }
+        .attendanceValueAbsent { color: #f44336 !important; }
+        .attendanceValueLate { color: #ff9800 !important; }
+        .attendanceValueOvertime { color: #2196f3 !important; }
+      }
+    `,
+  });
+
   if (!payroll || !payroll.employee) return null;
 
-  // Calculate breakdowns
-  const rateType: RateType = 'monthly'; // Default to monthly, in production get from employee data
   const earnings = calculateEarnings(payroll.baseSalary, payroll.allowances, rateType);
   const deductions = calculateDeductions(payroll.deductions);
   const attendance = generateAttendanceData(payroll.isDisbursed);
   const grossPay = calculateGrossPay(earnings);
   const totalDeductions = calculateTotalDeductions(deductions);
-
-  const employee = payroll.employee;
-  const employeeName = getEmployeeName(employee);
-
-  // Download payslip as PDF
-  const handleDownloadPDF = async () => {
-    if (!payslipRef.current) return;
-
-    const downloadBtn = document.querySelector('.download-payslip-btn') as HTMLButtonElement;
-    
-    try {
-      if (downloadBtn) {
-        downloadBtn.disabled = true;
-        downloadBtn.textContent = 'Generating PDF...';
-      }
-
-      // Get the element's actual dimensions
-      const element = payslipRef.current;
-      const originalWidth = element.offsetWidth;
-      const originalHeight = element.offsetHeight;
-
-      // Use dom-to-image-more with proper dimensions
-      const dataUrl = await domtoimage.toPng(element, {
-        quality: 1,
-        bgcolor: '#ffffff',
-        width: originalWidth * 2,
-        height: originalHeight * 2,
-        style: {
-          transform: 'scale(2)',
-          transformOrigin: 'top left',
-          width: `${originalWidth}px`,
-          height: `${originalHeight}px`,
-        },
-      });
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      // Create image to get dimensions
-      const img = new Image();
-      img.src = dataUrl;
-      
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
-
-      // A4 dimensions with margins
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 10;
-      const contentWidth = pageWidth - (margin * 2);
-      
-      // Calculate image height maintaining aspect ratio
-      const imgHeight = (img.height * contentWidth) / img.width;
-
-      let heightLeft = imgHeight;
-      let position = margin;
-
-      pdf.addImage(dataUrl, 'PNG', margin, position, contentWidth, imgHeight);
-      heightLeft -= (pageHeight - margin * 2);
-
-      while (heightLeft > 0) {
-        pdf.addPage();
-        position = margin - (imgHeight - heightLeft);
-        pdf.addImage(dataUrl, 'PNG', margin, position, contentWidth, imgHeight);
-        heightLeft -= (pageHeight - margin * 2);
-      }
-
-      const filename = `Payslip_${employee.employeeNumber}_${formatDate(batchPeriodStart)}_${formatDate(batchPeriodEnd)}.pdf`;
-      pdf.save(filename);
-
-      if (downloadBtn) {
-        downloadBtn.disabled = false;
-        downloadBtn.innerHTML = '<i class="ri-download-line"></i> Download PDF';
-      }
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      
-      if (downloadBtn) {
-        downloadBtn.disabled = false;
-        downloadBtn.innerHTML = '<i class="ri-download-line"></i> Download PDF';
-      }
-      
-      alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -151,10 +165,11 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
         <div className="companyHeader">
           <div className="companyLogoContainer">
             <img 
-              src="/images/agila-logo.png" 
+              src="/agilaLogo.png" 
               alt="Agila Bus Transport Corp." 
               className="companyLogo"
             />
+            <h1 className="companyName">Agila Bus Transport Corp.</h1>
           </div>
           <p className="payslipReference">Payslip Reference: #{payroll.id}</p>
         </div>
@@ -176,13 +191,13 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
               <strong>Employee:</strong> {employeeName}
             </div>
             <div className="empDetails">
-              <strong>ID:</strong> {employee.employeeNumber}
+              <strong>ID:</strong> {employee?.employeeNumber}
             </div>
             <div className="empDetails">
-              <strong>Department:</strong> {employee.department || 'N/A'}
+              <strong>Department:</strong> {employee?.department || 'N/A'}
             </div>
             <div className="empDetails">
-              <strong>Position:</strong> {employee.position || 'N/A'}
+              <strong>Position:</strong> {employee?.position || 'N/A'}
             </div>
             <div className="empDetails">
               <strong>Basic Rate:</strong> {formatMoney(payroll.baseSalary)}
@@ -305,8 +320,8 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
         <button className="cancel-btn" onClick={onClose}>
           Close
         </button>
-        <button className="submit-btn download-payslip-btn" onClick={handleDownloadPDF}>
-          <i className="ri-download-line"></i> Download PDF
+        <button className="submit-btn download-payslip-btn" onClick={() => handlePrint()}>
+          <i className="ri-print-line"></i> Print / Save as PDF
         </button>
       </div>
     </Modal>

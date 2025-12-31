@@ -193,7 +193,7 @@ const MOCK_ACCOUNTS: ChartOfAccount[] = [
 ];
 
 // Simulated storage for newly created accounts
-let mockAccountsStorage = [...MOCK_ACCOUNTS];
+const mockAccountsStorage = [...MOCK_ACCOUNTS];
 let nextId = 100;
 
 /**

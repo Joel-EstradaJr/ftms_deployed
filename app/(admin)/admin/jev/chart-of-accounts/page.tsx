@@ -325,7 +325,7 @@ const ChartOfAccountsPage = () => {
 
   // Generate dynamic filename based on filters
   const getExportFilename = () => {
-    let filenameParts = ['Chart_of_Accounts'];
+    const filenameParts = ['Chart_of_Accounts'];
     
     if (statusFilter !== 'all') {
       filenameParts.push(statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1));
