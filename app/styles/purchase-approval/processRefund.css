@@ -106,34 +106,6 @@
   gap: 1rem !important;
 }
 
-.addButton {
-  background: var(--primary-color) !important;
-  color: var(--button-font-color) !important;
-  border: none !important;
-  border-radius: var(--modal-button-border-radius) !important;
-  padding: 0.75rem 1.5rem !important;
-  font-size: var(--modal-button-font-size) !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-  min-width: 140px !important;
-  justify-content: center !important;
-}
-
-.addButton:hover {
-  background: var(--primary-hover-color) !important;
-  transform: translateY(-1px) !important;
-}
-
-.addButton:disabled {
-  opacity: 0.6 !important;
-  cursor: not-allowed !important;
-  transform: none !important;
-}
-
 /* ---------- Required Tags ---------- */
 .requiredTags {
   color: var(--error-color) !important;

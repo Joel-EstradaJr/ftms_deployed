@@ -480,7 +480,7 @@ const PayrollPage = () => {
               className="addButton"
               onClick={handleOpenAddModal}
             >
-              <i className="ri-add-line" /> Generate Payroll Batch
+              <i className="ri-add-line" /> Add Payroll Batch
             </button>
           </div>
         </div>

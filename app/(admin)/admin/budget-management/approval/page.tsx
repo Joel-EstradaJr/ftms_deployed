@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import FilterDropdown, { FilterSection } from "../../../../Components/filter";
-import Loading from "../../../../Components/loading";
-import ErrorDisplay from "../../../../Components/errordisplay";
-import PaginationComponent from "../../../../Components/pagination";
-import { showSuccess, showError } from "../../../../utils/Alerts";
+import FilterDropdown, { FilterSection } from "@/Components/filter";
+import Loading from "@/Components/loading";
+import ErrorDisplay from "@/Components/errordisplay";
+import PaginationComponent from "@/Components/pagination";
+import ExportButton from "@/Components/ExportButton";
+import { showSuccess, showError } from "@/utils/Alerts";
 
 // Import shared types
 import {
@@ -16,11 +17,11 @@ import {
 } from "../../../../types/approvals";
 
 // Import styles
-import "../../../../styles/components/table.css";
-import "../../../../styles/components/chips.css";
-import "../../../../styles/components/filter.css";
-import "../../../../styles/components/modal.css";
-import "../../../../styles/budget-management/approval.css";
+import "@/styles/components/table.css";
+import "@/styles/components/chips.css";
+import "@/styles/components/filter.css";
+import "@/styles/components/modal.css";
+import "@/styles/budget-management/approval.css";
 
 // Import tab components
 import BudgetApprovalTab from "./BudgetApprovalTab";
@@ -32,6 +33,7 @@ export default function ApprovalsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sharedFilters, setSharedFilters] = useState<SharedApprovalFilters>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [exportData, setExportData] = useState<any[]>([]);
 
   // Tab configuration
   const tabs: ApprovalTab[] = [
@@ -47,6 +49,29 @@ export default function ApprovalsPage() {
       icon: 'ri-shopping-cart-line',
       count: 0 // Will be populated from data
     }
+  ];
+
+  // Export column configurations
+  const budgetExportColumns = [
+    { header: 'Request ID', key: 'request_id' },
+    { header: 'Title', key: 'title' },
+    { header: 'Category', key: 'category' },
+    { header: 'Requested Amount', key: 'requested_amount' },
+    { header: 'Status', key: 'status' },
+    { header: 'Requested By', key: 'requested_by' },
+    { header: 'Request Date', key: 'request_date' },
+    { header: 'Approval Date', key: 'approval_date' },
+    { header: 'Approved By', key: 'approved_by' }
+  ];
+
+  const purchaseExportColumns = [
+    { header: 'PR Number', key: 'purchase_request_code' },
+    { header: 'Department', key: 'department_name' },
+    { header: 'Request Type', key: 'request_type' },
+    { header: 'Reason', key: 'reason' },
+    { header: 'Total Amount', key: 'total_amount' },
+    { header: 'Status', key: 'purchase_request_status' },
+    { header: 'Request Date', key: 'created_at' }
   ];
 
   // Shared filter sections (common across tabs)
@@ -116,6 +141,11 @@ export default function ApprovalsPage() {
     console.log(`Exporting ${activeTab} data as ${format}`);
   };
 
+  // Callback to receive export data from child tabs
+  const handleExportDataUpdate = (data: any[]) => {
+    setExportData(data);
+  };
+
   return (
     <div className="card">
       <div className="elements">
@@ -165,26 +195,14 @@ export default function ApprovalsPage() {
           </div>
 
           {/* Export Controls */}
-          <div className="export-section">
-            <div className="export-dropdown">
-              <button className="export-dropdown-toggle">
-                <i className="ri-download-line" /> Export
-              </button>
-              <div className="export-dropdown-menu">
-                <button onClick={() => handleExport('csv')}>
-                  <i className="ri-file-text-line" />
-                  CSV
-                </button>
-                <button onClick={() => handleExport('excel')}>
-                  <i className="ri-file-excel-line" />
-                  Excel
-                </button>
-                <button onClick={() => handleExport('pdf')}>
-                  <i className="ri-file-pdf-line" />
-                  PDF
-                </button>
-              </div>
-            </div>
+          <div className="filters">
+            <ExportButton
+              data={exportData}
+              filename={`${activeTab}_approvals`}
+              columns={activeTab === 'budget' ? budgetExportColumns : purchaseExportColumns}
+              title={`${activeTab === 'budget' ? 'Budget' : 'Purchase Request'} Approvals Report`}
+              logo="/agilaLogo.png"
+            />
           </div>
         </div>
 
@@ -199,6 +217,7 @@ export default function ApprovalsPage() {
               onLoadingChange={setLoading}
               onError={setError}
               onExport={handleExport}
+              onDataUpdate={handleExportDataUpdate}
             />
           </div>
 
@@ -211,6 +230,7 @@ export default function ApprovalsPage() {
               onLoadingChange={setLoading}
               onError={setError}
               onExport={handleExport}
+              onDataUpdate={handleExportDataUpdate}
             />
           </div>
         </div>

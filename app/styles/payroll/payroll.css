@@ -177,7 +177,7 @@ button.releaseAllBtn:hover {
 .deleteBtn {
   padding: 6px 8px !important;
   border: none !important;
-  border-radius: var(--page-button-border-radius) !important;
+  border-radius: var(--page-button-border-radius) F!important;
   cursor: pointer !important;
   font-size: 12px !important;
   font-weight: 500 !important;
