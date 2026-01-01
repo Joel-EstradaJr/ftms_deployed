@@ -112,7 +112,7 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
           margin-bottom: 4px !important;
         }
         .netPayRow {
-          background-color: #333333 !important;
+          background-color: var(--primary-color) !important;
           color: #ffffff !important;
           padding: 8px 10px !important;
           font-size: 14px !important;
