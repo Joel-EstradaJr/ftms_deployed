@@ -14,13 +14,13 @@ export interface RentalRevenueForm {
     revenueCode: string; // auto-generated
     revenueType: 'RENTAL'; // readonly
     entityName: string; // customer text
-    amount: number; // total rental amount
-    rentalDownpayment: number;
-    rentalBalance: number; // auto-calculated
-    downpaymentReceivedAt: string; // date picker
-    balanceReceivedAt: string; // date picker
-    isCancelled: boolean; // checkbox
-    cancelledAt: string; // date picker, shows when cancelled
+    total_rental_amount: number; // total rental amount
+    downpayment_amount: number;
+    balance_amount: number; // auto-calculated
+    down_payment_date: string; // date picker
+    full_payment_date: string; // date picker
+    rental_status: boolean; // checkbox
+    cancelled_at: string; // date picker, shows when cancelled
     dateRecorded: string; // date picker
     sourceRefNo: string; // rental contract number
     remarks: string; // textarea
@@ -48,13 +48,13 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
         revenueCode: initialData?.revenueCode || "", // Will be auto-generated
         revenueType: 'RENTAL',
         entityName: initialData?.entityName || "",
-        amount: initialData?.amount || 0,
-        rentalDownpayment: initialData?.rentalDownpayment || 0,
-        rentalBalance: initialData?.rentalBalance || 0,
-        downpaymentReceivedAt: initialData?.downpaymentReceivedAt || "",
-        balanceReceivedAt: initialData?.balanceReceivedAt || "",
-        isCancelled: initialData?.isCancelled || false,
-        cancelledAt: initialData?.cancelledAt || "",
+        total_rental_amount: initialData?.total_rental_amount || 0,
+        downpayment_amount: initialData?.downpayment_amount || 0,
+        balance_amount: initialData?.balance_amount || 0,
+        down_payment_date: initialData?.down_payment_date || "",
+        full_payment_date: initialData?.full_payment_date || "",
+        rental_status: initialData?.rental_status || false,
+        cancelled_at: initialData?.cancelled_at || "",
         dateRecorded: initialData?.dateRecorded || new Date().toISOString().split('T')[0],
         sourceRefNo: initialData?.sourceRefNo || "",
         remarks: initialData?.remarks || "",
@@ -68,12 +68,12 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
 
     // Auto-calculate rental balance whenever amount or downpayment changes
     useEffect(() => {
-        const balance = rentalRevenueForm.amount - rentalRevenueForm.rentalDownpayment;
+        const balance = rentalRevenueForm.total_rental_amount - rentalRevenueForm.downpayment_amount;
         setRentalRevenueForm((prev) => ({
             ...prev,
-            rentalBalance: balance > 0 ? balance : 0
+            balance_amount: balance > 0 ? balance : 0
         }));
-    }, [rentalRevenueForm.amount, rentalRevenueForm.rentalDownpayment]);
+    }, [rentalRevenueForm.total_rental_amount, rentalRevenueForm.downpayment_amount]);
 
     useEffect(() => {
         setIsDirty(true);
@@ -81,13 +81,13 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
 
     // Function to handle changes in the form fields
     const handleChange = (field: string, value: any) => {
-        // Special handling for isCancelled checkbox
-        if (field === "isCancelled" && value === true) {
-            // If marking as cancelled and cancelledAt is empty, set it to today
+        // Special handling for rental_status checkbox
+        if (field === "rental_status" && value === true) {
+            // If marking as cancelled and cancelled_at is empty, set it to today
             setRentalRevenueForm((prev) => ({
                 ...prev,
                 [field]: value,
-                cancelledAt: prev.cancelledAt || new Date().toISOString().split('T')[0]
+                cancelled_at: prev.cancelled_at || new Date().toISOString().split('T')[0]
             }));
         } else {
             setRentalRevenueForm((prev) => ({ ...prev, [field]: value }));
@@ -112,8 +112,8 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
             errors.sourceRefNo = "Rental contract number is required";
         }
 
-        if (rentalRevenueForm.amount <= 0) {
-            errors.amount = "Total rental amount must be greater than 0";
+        if (rentalRevenueForm.total_rental_amount <= 0) {
+            errors.total_rental_amount = "Total rental amount must be greater than 0";
         }
 
         if (!rentalRevenueForm.dateRecorded) {
@@ -122,31 +122,31 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
 
         // Validate Phase 2 fields (downpayment) - only when recording or submitting downpayment
         if (phase === 'record' || phase === 'downpayment') {
-            if (rentalRevenueForm.rentalDownpayment <= 0) {
-                errors.rentalDownpayment = "Downpayment amount must be greater than 0";
+            if (rentalRevenueForm.downpayment_amount <= 0) {
+                errors.downpayment_amount = "Downpayment amount must be greater than 0";
             }
 
-            if (rentalRevenueForm.rentalDownpayment > rentalRevenueForm.amount) {
-                errors.rentalDownpayment = "Downpayment cannot exceed total rental amount";
+            if (rentalRevenueForm.downpayment_amount > rentalRevenueForm.total_rental_amount) {
+                errors.downpayment_amount = "Downpayment cannot exceed total rental amount";
             }
 
             if (!rentalRevenueForm.paymentMethodId) {
                 errors.paymentMethodId = "Payment method is required";
             }
 
-            if (!rentalRevenueForm.downpaymentReceivedAt) {
-                errors.downpaymentReceivedAt = "Downpayment date is required";
+            if (!rentalRevenueForm.down_payment_date) {
+                errors.down_payment_date = "Downpayment date is required";
             }
         }
 
         // Validate Phase 3 fields (balance payment)
         if (phase === 'balance') {
-            const expectedBalance = rentalRevenueForm.rentalBalance;
-            const enteredBalance = rentalRevenueForm.amount - rentalRevenueForm.rentalDownpayment;
+            const expectedBalance = rentalRevenueForm.balance_amount;
+            const enteredBalance = rentalRevenueForm.total_rental_amount - rentalRevenueForm.downpayment_amount;
             
             // Check if balance payment matches expected amount (within 0.01 tolerance)
             if (Math.abs(enteredBalance - expectedBalance) > 0.01) {
-                errors.rentalBalance = `Balance payment must exactly match ${formatMoney(expectedBalance)}`;
+                errors.balance_amount = `Balance payment must exactly match ${formatMoney(expectedBalance)}`;
             }
         }
 
@@ -168,9 +168,9 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                     <div style="text-align: left; padding: 10px;">
                         <p><strong>Customer:</strong> ${rentalRevenueForm.entityName}</p>
                         <p><strong>Contract:</strong> ${rentalRevenueForm.sourceRefNo}</p>
-                        <p><strong>Total Amount:</strong> ${formatMoney(rentalRevenueForm.amount)}</p>
-                        <p><strong>Downpayment:</strong> ${formatMoney(rentalRevenueForm.rentalDownpayment)}</p>
-                        <p><strong>Remaining Balance:</strong> ${formatMoney(rentalRevenueForm.rentalBalance)}</p>
+                        <p><strong>Total Amount:</strong> ${formatMoney(rentalRevenueForm.total_rental_amount)}</p>
+                        <p><strong>Downpayment:</strong> ${formatMoney(rentalRevenueForm.downpayment_amount)}</p>
+                        <p><strong>Remaining Balance:</strong> ${formatMoney(rentalRevenueForm.balance_amount)}</p>
                     </div>
                 `,
                 confirmText: 'Yes, record it!',
@@ -181,7 +181,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                 title: 'Pay Balance?',
                 html: `
                     <div style="text-align: left; padding: 10px;">
-                        <p><strong>Balance Amount:</strong> ${formatMoney(rentalRevenueForm.rentalBalance)}</p>
+                        <p><strong>Balance Amount:</strong> ${formatMoney(rentalRevenueForm.balance_amount)}</p>
                         <p style="color: #28a745; font-weight: bold;">This will complete the rental payment.</p>
                     </div>
                 `,
@@ -210,9 +210,9 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
         });
 
         if (result.isConfirmed) {
-            // Auto-set balanceReceivedAt to today when paying balance
+            // Auto-set full_payment_date to today when paying balance
             if (phase === 'balance') {
-                rentalRevenueForm.balanceReceivedAt = new Date().toISOString().split('T')[0];
+                rentalRevenueForm.full_payment_date = new Date().toISOString().split('T')[0];
             }
             
             onSave(rentalRevenueForm);
@@ -308,15 +308,15 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                 <div className="form-group">
                                     <label>Total Rental Amount</label>
                                     <input
-                                        className={formErrors?.amount ? "invalid-input" : ""}
+                                        className={formErrors?.total_rental_amount ? "invalid-input" : ""}
                                         type="number"
                                         min="0"
                                         step="0.01"
-                                        value={rentalRevenueForm.amount || ""}
-                                        onChange={(e) => handleChange("amount", parseFloat(e.target.value) || 0)}
+                                        value={rentalRevenueForm.total_rental_amount || ""}
+                                        onChange={(e) => handleChange("total_rental_amount", parseFloat(e.target.value) || 0)}
                                         placeholder="Enter total rental amount"
                                     />
-                                    <p className="add-error-message">{formErrors?.amount}</p>
+                                    <p className="add-error-message">{formErrors?.total_rental_amount}</p>
                                 </div>
 
                                 {/* Date Recorded */}
@@ -343,28 +343,28 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                 <div className="form-group">
                                     <label>Downpayment Amount</label>
                                     <input
-                                        className={formErrors?.rentalDownpayment ? "invalid-input" : ""}
+                                        className={formErrors?.downpayment_amount ? "invalid-input" : ""}
                                         type="number"
                                         min="0"
                                         step="0.01"
-                                        max={rentalRevenueForm.amount}
-                                        value={rentalRevenueForm.rentalDownpayment || ""}
-                                        onChange={(e) => handleChange("rentalDownpayment", parseFloat(e.target.value) || 0)}
+                                        max={rentalRevenueForm.total_rental_amount}
+                                        value={rentalRevenueForm.downpayment_amount || ""}
+                                        onChange={(e) => handleChange("downpayment_amount", parseFloat(e.target.value) || 0)}
                                         placeholder="Enter downpayment amount"
                                     />
-                                    <p className="add-error-message">{formErrors?.rentalDownpayment}</p>
+                                    <p className="add-error-message">{formErrors?.downpayment_amount}</p>
                                 </div>
 
                                 <div className="form-group">
                                     <label>Downpayment Received Date</label>
                                     <input
-                                        className={formErrors?.downpaymentReceivedAt ? "invalid-input" : ""}
+                                        className={formErrors?.down_payment_date ? "invalid-input" : ""}
                                         type="date"
                                         max={new Date().toISOString().split('T')[0]}
-                                        value={rentalRevenueForm.downpaymentReceivedAt}
-                                        onChange={(e) => handleChange("downpaymentReceivedAt", e.target.value)}
+                                        value={rentalRevenueForm.down_payment_date}
+                                        onChange={(e) => handleChange("down_payment_date", e.target.value)}
                                     />
-                                    <p className="add-error-message">{formErrors?.downpaymentReceivedAt}</p>
+                                    <p className="add-error-message">{formErrors?.down_payment_date}</p>
                                 </div>
                             </div>
 
@@ -392,7 +392,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                     <label>Remaining Balance</label>
                                     <input
                                         type="text"
-                                        value={formatMoney(rentalRevenueForm.rentalBalance)}
+                                        value={formatMoney(rentalRevenueForm.balance_amount)}
                                         disabled
                                         style={{ backgroundColor: '#fff3cd', fontWeight: 'bold', fontSize: '1.1em', color: '#856404' }}
                                     />
@@ -456,7 +456,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                     <label>Total Rental Amount</label>
                                     <input
                                         type="text"
-                                        value={formatMoney(rentalRevenueForm.amount)}
+                                        value={formatMoney(rentalRevenueForm.total_rental_amount)}
                                         disabled
                                         style={{ backgroundColor: '#f5f5f5' }}
                                     />
@@ -466,7 +466,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                     <label>Downpayment Paid</label>
                                     <input
                                         type="text"
-                                        value={formatMoney(rentalRevenueForm.rentalDownpayment)}
+                                        value={formatMoney(rentalRevenueForm.downpayment_amount)}
                                         disabled
                                         style={{ backgroundColor: '#f5f5f5' }}
                                     />
@@ -484,7 +484,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                     <label style={{ fontWeight: 'bold', color: '#856404' }}>Expected Balance Amount</label>
                                     <input
                                         type="text"
-                                        value={formatMoney(rentalRevenueForm.rentalBalance)}
+                                        value={formatMoney(rentalRevenueForm.balance_amount)}
                                         disabled
                                         style={{ 
                                             backgroundColor: '#fff3cd', 
