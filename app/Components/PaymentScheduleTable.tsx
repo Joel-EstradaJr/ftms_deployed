@@ -160,13 +160,12 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
       `}</style>
       
       <div className="table-wrapper">
-        <table className="modal-table">
-          <thead className="modal-table-heading">
+        <table className="tableContainer">
+          <thead className="data-table">
             <tr>
               <th style={{ width: '140px' }}>Due Date</th>
-              {mode !== 'add' && <th style={{ width: '120px' }}>Original Amount</th>}
               {totalCarriedOver > 0 && <th style={{ width: '120px' }}>Carried Over</th>}
-              <th style={{ width: '120px' }}>Current Due</th>
+              <th style={{ width: '120px' }}>Amount Due</th>
               {showPaidColumn && <th style={{ width: '120px' }}>Paid Amount</th>}
               <th style={{ width: '120px' }}>Balance</th>
               <th style={{ width: '110px' }}>Status</th>
@@ -178,7 +177,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
               )}
             </tr>
           </thead>
-          <tbody className="modal-table-body">
+          <tbody>
             {scheduleItems.map((item, index) => {
               const balance = item.currentDueAmount - item.paidAmount;
               const isDateEditable = isEditable && item.isEditable && item.paymentStatus === PaymentStatus.PENDING;
@@ -217,13 +216,6 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                     )}
                   </td>
 
-                  {/* Original Amount (edit/view mode) */}
-                  {mode !== 'add' && (
-                    <td style={{ textDecoration: amountChanged ? 'line-through' : 'none', color: amountChanged ? '#999' : 'inherit' }}>
-                      {formatMoney(item.originalDueAmount)}
-                    </td>
-                  )}
-
                   {/* Carried Over Amount */}
                   {totalCarriedOver > 0 && (
                     <td style={{ color: hasCarryOver ? '#FF8C00' : 'inherit', fontWeight: hasCarryOver ? '600' : 'normal' }}>
@@ -231,7 +223,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                     </td>
                   )}
 
-                  {/* Current Due Amount */}
+                  {/* Amount Due */}
                   <td>
                     {isAmountEditable && editingAmountIndex === index ? (
                       <input
@@ -244,17 +236,24 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                         autoFocus
                       />
                     ) : (
-                      <span
-                        onClick={() => isAmountEditable && setEditingAmountIndex(index)}
-                        style={{ 
-                          cursor: isAmountEditable ? 'pointer' : 'default',
-                          textDecoration: isAmountEditable ? 'underline' : 'none',
-                          color: amountChanged ? '#007BFF' : 'inherit',
-                          fontWeight: amountChanged ? '600' : 'normal'
-                        }}
-                      >
-                        {formatMoney(item.currentDueAmount)}
-                      </span>
+                      <div>
+                        <span
+                          onClick={() => isAmountEditable && setEditingAmountIndex(index)}
+                          style={{ 
+                            cursor: isAmountEditable ? 'pointer' : 'default',
+                            textDecoration: isAmountEditable ? 'underline' : 'none',
+                            color: amountChanged ? '#007BFF' : 'inherit',
+                            fontWeight: amountChanged ? '600' : 'normal'
+                          }}
+                        >
+                          {formatMoney(item.currentDueAmount)}
+                        </span>
+                        {amountChanged && (
+                          <div style={{ fontSize: '11px', color: '#999', textDecoration: 'line-through' }}>
+                            {formatMoney(item.originalDueAmount)}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
 
@@ -319,7 +318,6 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
               <td>
                 TOTAL:
               </td>
-              {mode !== 'add' && <td>{formatMoney(scheduleItems.reduce((sum, item) => sum + item.originalDueAmount, 0))}</td>}
               {totalCarriedOver > 0 && <td>{formatMoney(totalCarriedOver)}</td>}
               <td>{formatMoney(totalDue)}</td>
               {showPaidColumn && <td>{formatMoney(totalPaid)}</td>}
