@@ -213,8 +213,8 @@ const AdminBusRentalPage = () => {
     } catch (err) {
       console.error('Error fetching analytics:', err);
       // Fallback to local calculation
-      const totalRevenue = data.reduce((sum, record) => sum + record.amount, 0);
-      const activeRentals = data.filter(record => !record.isCancelled).length;
+      const totalRevenue = data.reduce((sum, record) => sum + record.total_rental_amount, 0);
+      const activeRentals = data.filter(record => !record.rental_status).length;
       const averageRentalAmount = data.length > 0 ? totalRevenue / data.length : 0;
 
       setAnalytics({
@@ -847,13 +847,6 @@ const AdminBusRentalPage = () => {
           cancelled_at: new Date().toISOString().split('T')[0]
         };
 
-        // TODO: Replace with actual API call
-        // const response = await fetch(`/api/admin/revenue/${id}`, {
-        //   method: 'PUT',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ ...updatedRecord, userId: 'admin' })
-        // });
-
         // For now, update locally
         setData(prevData =>
           prevData.map(item =>
@@ -872,13 +865,6 @@ const AdminBusRentalPage = () => {
 
   const handleSaveEdit = async (formData: any) => {
     try {
-      // TODO: Replace with actual API call to update the rental record
-      // const response = await fetch(`/api/admin/revenue/${activeRow?.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ ...formData, userId: 'admin' })
-      // });
-
       // For now, update the record locally
       setData(prevData =>
         prevData.map(item =>
@@ -1058,13 +1044,13 @@ const AdminBusRentalPage = () => {
 
                     return (
                       <tr key={item.id}>
-                        <td>{item.revenueCode}</td>
+                        <td style={{ maxWidth:10 }}>{item.revenueCode}</td>
                         <td>{item.entityName}</td>
                         <td>{formatMoney(item.total_rental_amount)}</td>
                         <td>{formatMoney(item.balance_amount)}</td>
-                        <td>
+                        <td style={{ maxWidth:10 }}>
                           <span className={`chip ${statusInfo.className}`}>
-                            <i className={statusInfo.icon}></i> {statusInfo.label}
+                            {statusInfo.label}
                           </span>
                         </td>
                         <td className="actionButtons">
@@ -1081,47 +1067,44 @@ const AdminBusRentalPage = () => {
                             </button>
                             
                             {/* Show Pay Balance button if rental has balance and downpayment is paid */}
-                            {!item.rental_status && item.balance_amount > 0 && item.downpayment_amount > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePayBalance(item.id);
-                                }}
-                                className="editBtn"
-                                title="Pay Balance"
-                                style={{ backgroundColor: '#28a745' }}
-                              >
-                                <i className="ri-money-dollar-circle-line"></i>
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePayBalance(item.id);
+                              }}
+                              className="editBtn"
+                              title="Pay Balance"
+                              style={{ backgroundColor: '#28a745' }}
+                              disabled={item.rental_status || (item.balance_amount === 0 && item.downpayment_amount > 0)}
+                            >
+                              <i className="ri-money-dollar-circle-line"></i>
+                            </button>
 
                             {/* Show Edit button if not cancelled and has balance */}
-                            {!item.rental_status && item.balance_amount > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEdit(item.id);
-                                }}
-                                className="editBtn"
-                                title="Edit Rental"
-                              >
-                                <i className="ri-edit-line"></i>
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(item.id);
+                              }}
+                              className="editBtn"
+                              title="Edit Rental"
+                              disabled={item.rental_status || (item.balance_amount === 0 && item.downpayment_amount > 0)}
+                            >
+                              <i className="ri-edit-line"></i>
+                            </button>
 
                             {/* Show Cancel button if not cancelled, has downpayment, and has balance */}
-                            {!item.rental_status && item.balance_amount > 0 && item.downpayment_amount > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelRental(item.id);
-                                }}
-                                className="deleteBtn"
-                                title="Cancel Rental"
-                              >
-                                <i className="ri-close-circle-line"></i>
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelRental(item.id);
+                              }}
+                              className="deleteBtn"
+                              title="Cancel Rental"
+                              disabled={item.rental_status || (item.balance_amount === 0 && item.downpayment_amount > 0)}
+                            >
+                              <i className="ri-close-circle-line"></i>
+                            </button>
                           </div>
                         </td>
                       </tr>

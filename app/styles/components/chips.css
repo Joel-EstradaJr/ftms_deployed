@@ -239,3 +239,34 @@
     background-color: var(--neutral-chip-bg-color);
     color: var(--neutral-chip-text-color);
 }
+
+/* ============================================================
+   BUS RENTAL STATUS - Rental-specific statuses
+   ============================================================ */
+/* Rental Cancelled - Red */
+.chip.cancelled {
+    background-color: #fee2e2;
+    color: #991b1b;
+    font-weight: 600;
+}
+
+/* Rental Completed - Green (Paid in full) */
+.chip.completed {
+    background-color: #d1fae5;
+    color: #065f46;
+    font-weight: 600;
+}
+
+/* Rental Active - Blue (Downpayment received, balance pending) */
+.chip.active {
+    background-color: #dbeafe;
+    color: #1e40af;
+    font-weight: 600;
+}
+
+/* Rental Pending - Yellow (Awaiting downpayment) */
+.chip.pending {
+    background-color: #fef3c7;
+    color: #92400e;
+    font-weight: 600;
+}
