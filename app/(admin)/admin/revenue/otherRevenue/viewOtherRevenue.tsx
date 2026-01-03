@@ -110,7 +110,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
             {/* Revenue Code */}
             <div className="form-group">
               <label>Revenue Code</label>
-              <p>{revenueData.revenueCode}</p>
+              <p>{revenueData.code}</p>
             </div>
 
             {/* Revenue Type */}
@@ -136,7 +136,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
             {/* Date Recorded */}
             <div className="form-group">
               <label>Date Recorded</label>
-              <p>{formatDate(revenueData.dateRecorded)}</p>
+              <p>{formatDate(revenueData.date_recorded)}</p>
             </div>
 
             {/* Revenue Category */}
@@ -148,7 +148,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
             {/* Reference Number */}
             <div className="form-group">
               <label>Reference Number</label>
-              <p>{revenueData.sourceRefNo}</p>
+              <p>{revenueData.payment_reference}</p>
             </div>
           </div>
 
