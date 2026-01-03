@@ -1008,49 +1008,47 @@ const OperationalExpensePage = () => {
                             </button>
 
                             {/* Status-based action buttons */}
-                            {expense.status === ExpenseStatus.PENDING && (
                               <>
                                 <button
                                   className="approveBtn"
                                   onClick={() => handleApprove(expense.id)}
                                   title="Approve Expense"
+                                  disabled= {expense.status !== ExpenseStatus.PENDING}
                                 >
                                   <i className="ri-check-line"></i>
                                 </button>
                               </>
-                            )}
 
-                            {expense.status === ExpenseStatus.REJECTED && (
                               <>
                                 <button
                                   className="editBtn"
                                   onClick={() => handleEdit(expense.id)}
                                   title="Edit Expense"
-                                  disabled
+                                  disabled={expense.status !== ExpenseStatus.REJECTED}
                                 >
                                   <i className="ri-edit-line"></i>
                                 </button>
                               </>
-                            )}
 
-                            {expense.status === ExpenseStatus.APPROVED && (
                               <>
                                 <button
                                   className="rejectBtn"
                                   onClick={() => handleRollback(expense.id)}
                                   title="Rollback to Pending"
+                                  disabled={expense.status !== ExpenseStatus.APPROVED}
                                 >
                                   <i className="ri-arrow-go-back-line"></i>
                                 </button>
+
                                 <button
                                   className="submitBtn"
                                   onClick={() => handlePost(expense.id)}
                                   title="Post to JEV"
+                                  disabled={expense.status !== ExpenseStatus.APPROVED}
                                 >
                                   <i className="ri-send-plane-line"></i>
                                 </button>
                               </>
-                            )}
 
                             {/* POSTED status - only view button visible (already rendered above) */}
                           </div>

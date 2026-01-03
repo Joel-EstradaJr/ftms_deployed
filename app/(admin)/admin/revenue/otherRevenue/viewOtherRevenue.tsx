@@ -142,7 +142,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
             {/* Revenue Category */}
             <div className="form-group">
               <label>Revenue Category</label>
-              <p>{formatCategory(revenueData.otherRevenueCategory)}</p>
+              <p>{formatCategory(revenueData.description)}</p>
             </div>
 
             {/* Reference Number */}

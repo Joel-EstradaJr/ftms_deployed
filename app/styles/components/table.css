@@ -6,7 +6,20 @@
     box-shadow: var(--box-shadow);
     background-color: var(--foreground-color);
     width: 100%;
-    /* height: 70%; */
+    height: 70%;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    justify-self: center;
+}
+
+.payment-table-wrapper {
+    margin-top: 0rem;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+    background-color: var(--foreground-color);
+    width: 100%;
     height: 70%;
     margin-bottom: 15px;
     border: 1px solid var(--border-color);

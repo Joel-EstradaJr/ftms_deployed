@@ -54,6 +54,8 @@ interface OtherRevenueRecord {
   id: number;
   code: string;
   date_recorded: string;
+  date_expected?: string;
+  last_payment_date?: string;
   source: {
     id: number;
     name: string;
@@ -61,6 +63,10 @@ interface OtherRevenueRecord {
   };
   description: string;
   amount: number;
+  balance?: number;
+  status?: string;
+  revenue_status?: string;
+  receivable_status?: string;
   paymentMethod: {
     id: number;
     methodName: string;
@@ -79,9 +85,9 @@ interface OtherRevenueRecord {
 export type OtherRevenueData = {
   id?: number;
   code: string;
-  revenueType: 'OTHER';
+  name: string;
   date_recorded: string;
-  otherRevenueCategory: string;
+  description: string;
   amount: number;
   payment_reference: string;
   department: string;
@@ -100,7 +106,7 @@ export type OtherRevenueData = {
   scheduleItems?: RevenueScheduleItem[];
   
   // Relations
-  paymentMethodId: number;
+  payment_method: string;
   
   // View-only fields
   verifiedBy?: string;
@@ -558,9 +564,9 @@ const AdminOtherRevenuePage = () => {
     return {
       id: record.id,
       code: record.code,
-      revenueType: 'OTHER',
+      name: 'OTHER',
       date_recorded: record.date_recorded,
-      otherRevenueCategory: record.source.sourceCode || record.externalRefType || 'OTHER',
+      description: record.description || record.source.name || '',
       amount: record.amount,
       payment_reference: record.externalRefId || '',
       department: 'Operations', // Default department - will be stored in future backend updates
@@ -572,7 +578,7 @@ const AdminOtherRevenuePage = () => {
       recognitionSchedule: '',
       isVerified: false,
       remarks: record.description || '',
-      paymentMethodId: record.paymentMethodId,
+      payment_method: record.paymentMethod?.methodName || '',
       verifiedBy: record.approvedBy || '',
       verifiedAt: '',
       receiptUrl: '',
@@ -696,15 +702,14 @@ const AdminOtherRevenuePage = () => {
       // Transform formData to backend-compatible format
       const payload = {
         revenueCode: formData.code,
+        name: formData.name,
         transactionDate: formData.date_recorded,
-        sourceId: revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory)?.id || 0,
-        description: formData.remarks || '',
+        description: formData.description,
         amount: formData.amount,
-        paymentMethodId: formData.paymentMethodId,
-        externalRefType: formData.otherRevenueCategory,
-        externalRefId: formData.payment_reference,
+        payment_method: formData.payment_method,
+        payment_reference: formData.payment_reference,
         createdBy: formData.createdBy,
-        // New fields - TODO: Add to backend schema
+        // Additional fields
         department: formData.department,
         discountAmount: formData.discountAmount,
         discountPercentage: formData.discountPercentage,
@@ -728,8 +733,8 @@ const AdminOtherRevenuePage = () => {
         // Generate simple incrementing numeric id
         const nextId = (MOCK_OTHER_REVENUE_DATA.reduce((max, r) => Math.max(max, r.id), 0) || 0) + 1;
 
-        const sourceObj = revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory) || { id: 0, name: formData.otherRevenueCategory, sourceCode: formData.otherRevenueCategory };
-        const paymentMethodObj = paymentMethods.find(p => p.id === formData.paymentMethodId) || { id: formData.paymentMethodId || 0, methodName: '', methodCode: '' };
+        const sourceObj = { id: 0, name: formData.description, sourceCode: 'OTHER' };
+        const paymentMethodObj = paymentMethods.find(p => p.methodName === formData.payment_method) || { id: 0, methodName: formData.payment_method, methodCode: '' };
 
         const newRecord: OtherRevenueRecord = {
           id: nextId,
@@ -741,7 +746,7 @@ const AdminOtherRevenuePage = () => {
           paymentMethod: paymentMethodObj,
           paymentMethodId: paymentMethodObj.id,
           sourceId: sourceObj.id,
-          externalRefType: formData.otherRevenueCategory,
+          externalRefType: 'OTHER',
           externalRefId: formData.payment_reference || undefined,
           createdBy: formData.createdBy || 'admin'
         };
@@ -757,20 +762,20 @@ const AdminOtherRevenuePage = () => {
         // Edit existing record in mock data
         const idx = MOCK_OTHER_REVENUE_DATA.findIndex(r => r.id === activeRow?.id);
         if (idx !== -1) {
-          const sourceObj = revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory) || { id: 0, name: formData.otherRevenueCategory, sourceCode: formData.otherRevenueCategory };
-          const paymentMethodObj = paymentMethods.find(p => p.id === formData.paymentMethodId) || { id: formData.paymentMethodId || 0, methodName: '', methodCode: '' };
+          const sourceObj = { id: 0, name: formData.description, sourceCode: 'OTHER' };
+          const paymentMethodObj = paymentMethods.find(p => p.methodName === formData.payment_method) || { id: 0, methodName: formData.payment_method, methodCode: '' };
 
           MOCK_OTHER_REVENUE_DATA[idx] = {
             ...MOCK_OTHER_REVENUE_DATA[idx],
             code: formData.code,
             date_recorded: formData.date_recorded,
             source: sourceObj,
-            description: formData.remarks || '',
+            description: formData.description,
             amount: formData.amount,
             paymentMethod: paymentMethodObj,
             paymentMethodId: paymentMethodObj.id,
             sourceId: sourceObj.id,
-            externalRefType: formData.otherRevenueCategory,
+            externalRefType: 'OTHER',
             externalRefId: formData.payment_reference || undefined,
             isUnearnedRevenue: formData.isUnearnedRevenue,
             scheduleItems: formData.scheduleItems || []
@@ -884,7 +889,12 @@ const AdminOtherRevenuePage = () => {
           item.code.toLowerCase().includes(searchLower) ||
           item.source.name.toLowerCase().includes(searchLower) ||
           item.description.toLowerCase().includes(searchLower) ||
-          item.amount.toString().includes(searchLower)
+          item.amount.toString().includes(searchLower) ||
+          (item.date_expected && item.date_expected.includes(searchLower)) ||
+          (item.last_payment_date && item.last_payment_date.includes(searchLower)) ||
+          (item.status && item.status.toLowerCase().includes(searchLower)) ||
+          (item.revenue_status && item.revenue_status.toLowerCase().includes(searchLower)) ||
+          (item.receivable_status && item.receivable_status.toLowerCase().includes(searchLower))
         );
       }
 
@@ -1091,9 +1101,14 @@ const AdminOtherRevenuePage = () => {
     revenueId: number;
     revenueCode: string;
     date_recorded: string;
+    date_expected?: string;
+    last_payment_date?: string;
     source: { id: number; name: string; sourceCode: string };
     description: string;
+    type: 'Receivable' | 'Single';
     amount: number;
+    receivable?: number;
+    status?: string;
     paymentMethod: { id: number; methodName: string; methodCode: string };
     isInstallmentRow: boolean;
     installmentNumber?: number;
@@ -1123,9 +1138,14 @@ const AdminOtherRevenuePage = () => {
               revenueId: record.id,
               revenueCode: record.code,
               date_recorded: record.date_recorded,
+              date_expected: record.date_expected,
+              last_payment_date: scheduleItem.paidAt || record.last_payment_date,
               source: record.source,
               description: record.description,
+              type: 'Receivable' as const,
               amount: record.amount,
+              receivable: balance,
+              status: record.status || record.receivable_status || status,
               paymentMethod: record.paymentMethod,
               isInstallmentRow: true,
               installmentNumber: scheduleItem.installmentNumber,
@@ -1144,9 +1164,14 @@ const AdminOtherRevenuePage = () => {
           revenueId: record.id,
           revenueCode: record.code,
           date_recorded: record.date_recorded,
+          date_expected: record.date_expected,
+          last_payment_date: record.last_payment_date,
           source: record.source,
           description: record.description,
+          type: 'Single' as const,
           amount: record.amount,
+          receivable: record.balance || 0,
+          status: record.status || record.revenue_status,
           paymentMethod: record.paymentMethod,
           isInstallmentRow: false,
           originalRecord: record
@@ -1256,24 +1281,24 @@ const AdminOtherRevenuePage = () => {
               <thead>
                 <tr>
                   <th
-                    onClick={() => handleSort("transactionDate")}
+                    onClick={() => handleSort("date_recorded")}
                     className="sortable-header"
                     title="Click to sort by Transaction Date"
                   >
-                    Transaction Date{getSortIndicator("transactionDate")}
+                    Transaction Date{getSortIndicator("date_recorded")}
                   </th>
-                  <th>Installment</th>
-                  <th>Due Date</th>
+                  <th>Received by</th>
                   <th>Source</th>
+                  <th>Type</th>
                   <th
                     onClick={() => handleSort("amount")}
                     className="sortable-header"
                     title="Click to sort by Amount"
                   >
-                    Amount{getSortIndicator("amount")}
+                    Total Amount{getSortIndicator("amount")}
                   </th>
-                  <th>Balance</th>
-                  <th>Payment Status</th>
+                  <th>Receivable</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1299,43 +1324,44 @@ const AdminOtherRevenuePage = () => {
                     return (
                       <tr key={row.id} className={rowClass}>
                         <td>{formatDate(row.date_recorded)}</td>
-                        
-                        {/* Installment Column */}
+                        {/* Received by Column - show date_expected or last_payment_date */}
                         <td>
-                          {row.isInstallmentRow ? (
-                            <span className="chip normal">
-                              {row.installmentNumber} of {row.totalInstallments}
-                            </span>
-                          ) : (
-                            <span className="chip normal">Single</span>
-                          )}
+                          {row.date_expected 
+                            ? formatDate(row.date_expected) 
+                            : row.last_payment_date 
+                              ? formatDate(row.last_payment_date) 
+                              : '—'}
                         </td>
-
-                        {/* Due Date Column */}
+                        {/* Source Column - show description */}
+                        <td>{row.description}</td>
+                        {/* Type Column - Receivable or Single */}
                         <td>
-                          {row.dueDate ? formatDate(row.dueDate) : '—'}
+                          <span className={`chip ${row.type.toLowerCase()}`}>
+                            {row.type}
+                          </span>
                         </td>
-
-                        <td>{row.source.name}</td>
+                        {/* Total Amount Column */}
                         <td>{formatMoney(row.amount)}</td>
-
-                        {/* Balance Column */}
+                        {/* Receivable Column */}
                         <td>
-                          {row.isInstallmentRow && row.balance !== undefined ? (
+                          {row.receivable !== undefined && row.receivable !== null ? (
                             <span style={{ 
-                              color: row.balance > 0 ? '#FF4949' : '#4CAF50',
+                              color: row.receivable > 0 ? '#FF4949' : '#4CAF50',
                               fontWeight: '600'
                             }}>
-                              {formatMoney(row.balance)}
+                              {formatMoney(row.receivable)}
                             </span>
                           ) : (
                             '—'
                           )}
                         </td>
-
-                        {/* Payment Status Column */}
+                        {/* Status Column */}
                         <td>
-                          {row.paymentStatus ? (
+                          {row.status ? (
+                            <span className={getPaymentStatusClass(row.paymentStatus || PaymentStatus.PENDING)}>
+                              {row.status.replace('_', ' ')}
+                            </span>
+                          ) : row.paymentStatus ? (
                             <span className={getPaymentStatusClass(row.paymentStatus)}>
                               {row.paymentStatus.replace('_', ' ')}
                             </span>

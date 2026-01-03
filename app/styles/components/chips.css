@@ -47,10 +47,23 @@
 .chip.out-of-stock,
 .chip.not-returned,
 .chip.decommissioned,
-.chip.receivable,
 .chip.trip_deficit {
     background-color: var(--error-chip-bg-color);
     color: var(--error-chip-text-color);
+}
+
+/* Receivable Type - Yellow/Warning (Money Still Owed) */
+.chip.receivable {
+    background-color: #FFF5C2;
+    color: #85643B;
+    font-weight: 600;
+}
+
+/* Single Type - Blue/Info (One-time Complete Payment) */
+.chip.single {
+    background-color: #D6E4FF;
+    color: #0050B3;
+    font-weight: 600;
 }
 
 /* Overdue with pulse animation */

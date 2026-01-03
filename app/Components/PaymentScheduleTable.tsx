@@ -159,7 +159,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
         }
       `}</style>
       
-      <div className="table-wrapper">
+      <div className="payment-table-wrapper">
         <table className="tableContainer">
           <thead className="data-table">
             <tr>
