@@ -252,7 +252,7 @@ const EditExpenseModal: React.FC<EditExpenseModalProps> = ({
       }
     };
     // fetchGlobals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Validation now handled within shared component via onValidityChange

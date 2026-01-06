@@ -49,13 +49,13 @@ interface BusRentalRecord {
   revenueCode: string; // auto-generated
   revenueType: 'RENTAL'; // readonly
   entityName: string; // customer text
-  amount: number; // total rental amount
-  rentalDownpayment: number;
-  rentalBalance: number; // auto-calculated
-  downpaymentReceivedAt: string | null; // date picker
-  balanceReceivedAt: string | null; // date picker
-  isCancelled: boolean; // checkbox
-  cancelledAt?: string | null; // date picker, shows when cancelled
+  total_rental_amount: number; // total rental amount
+  downpayment_amount: number;
+  balance_amount: number; // auto-calculated
+  down_payment_date: string | null; // date picker
+  full_payment_date: string | null; // date picker
+  rental_status: boolean; // checkbox
+  cancelled_at?: string | null; // date picker, shows when cancelled
   dateRecorded: string; // date picker
   sourceRefNo: string; // rental contract number
   remarks?: string; // textarea
@@ -72,9 +72,9 @@ interface BusRentalRecord {
   renterName?: string; // alias for entityName
   busPlateNumber?: string;
   bodyNumber?: string;
-  rentalStartDate?: string;
-  rentalEndDate?: string;
-  status?: string; // derived from isCancelled
+  rental_start_date?: string;
+  rental_end_date?: string;
+  status?: string; // derived from rental_status
 }
 
 interface PaginationMeta {
@@ -128,7 +128,7 @@ const AdminBusRentalPage = () => {
   });
 
   // Sort states
-  const [sortBy, setSortBy] = useState<"revenueCode" | "entityName" | "dateRecorded" | "amount" | "rentalBalance">("dateRecorded");
+  const [sortBy, setSortBy] = useState<"revenueCode" | "entityName" | "dateRecorded" | "total_rental_amount" | "balance_amount">("dateRecorded");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
@@ -199,8 +199,8 @@ const AdminBusRentalPage = () => {
       console.warn('API integration pending - using mock analytics data');
 
       // Use local calculation from current page data
-      const totalRevenue = data.reduce((sum, record) => sum + record.amount, 0);
-      const activeRentals = data.filter(record => !record.isCancelled).length;
+      const totalRevenue = data.reduce((sum, record) => sum + record.total_rental_amount, 0);
+      const activeRentals = data.filter(record => !record.rental_status).length;
       const averageRentalAmount = data.length > 0 ? totalRevenue / data.length : 0;
 
       setAnalytics({
@@ -213,8 +213,8 @@ const AdminBusRentalPage = () => {
     } catch (err) {
       console.error('Error fetching analytics:', err);
       // Fallback to local calculation
-      const totalRevenue = data.reduce((sum, record) => sum + record.amount, 0);
-      const activeRentals = data.filter(record => !record.isCancelled).length;
+      const totalRevenue = data.reduce((sum, record) => sum + record.total_rental_amount, 0);
+      const activeRentals = data.filter(record => !record.rental_status).length;
       const averageRentalAmount = data.length > 0 ? totalRevenue / data.length : 0;
 
       setAnalytics({
@@ -287,13 +287,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-001',
           revenueType: 'RENTAL',
           entityName: 'ABC Company Inc.',
-          amount: 50000.00,
-          rentalDownpayment: 20000.00,
-          rentalBalance: 30000.00,
-          downpaymentReceivedAt: '2024-11-01',
-          balanceReceivedAt: null,
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 50000.00,
+          downpayment_amount: 20000.00,
+          balance_amount: 30000.00,
+          down_payment_date: '2024-11-01',
+          full_payment_date: null,
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-11-01',
           sourceRefNo: 'CONTRACT-2024-001',
           remarks: 'Corporate event transportation for 3 days',
@@ -316,13 +316,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-002',
           revenueType: 'RENTAL',
           entityName: 'John Dela Cruz',
-          amount: 25000.00,
-          rentalDownpayment: 25000.00,
-          rentalBalance: 0.00,
-          downpaymentReceivedAt: '2024-10-15',
-          balanceReceivedAt: '2024-10-15',
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 25000.00,
+          downpayment_amount: 25000.00,
+          balance_amount: 0.00,
+          down_payment_date: '2024-10-15',
+          full_payment_date: '2024-10-15',
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-10-15',
           sourceRefNo: 'CONTRACT-2024-002',
           remarks: 'Wedding transportation - full payment received',
@@ -345,13 +345,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-003',
           revenueType: 'RENTAL',
           entityName: 'XYZ School Foundation',
-          amount: 75000.00,
-          rentalDownpayment: 30000.00,
-          rentalBalance: 45000.00,
-          downpaymentReceivedAt: '2024-10-20',
-          balanceReceivedAt: null,
-          isCancelled: true,
-          cancelledAt: '2024-10-25',
+          total_rental_amount: 75000.00,
+          downpayment_amount: 30000.00,
+          balance_amount: 45000.00,
+          down_payment_date: '2024-10-20',
+          full_payment_date: null,
+          rental_status: true,
+          cancelled_at: '2024-10-25',
           dateRecorded: '2024-10-20',
           sourceRefNo: 'CONTRACT-2024-003',
           remarks: 'Field trip cancelled due to weather conditions. Downpayment to be refunded.',
@@ -374,13 +374,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-004',
           revenueType: 'RENTAL',
           entityName: 'Maria Santos',
-          amount: 35000.00,
-          rentalDownpayment: 15000.00,
-          rentalBalance: 20000.00,
-          downpaymentReceivedAt: '2024-11-05',
-          balanceReceivedAt: null,
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 35000.00,
+          downpayment_amount: 15000.00,
+          balance_amount: 20000.00,
+          down_payment_date: '2024-11-05',
+          full_payment_date: null,
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-11-05',
           sourceRefNo: 'CONTRACT-2024-004',
           remarks: 'Family reunion trip - balance due before travel date',
@@ -402,13 +402,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-005',
           revenueType: 'RENTAL',
           entityName: 'Tech Solutions Corp',
-          amount: 100000.00,
-          rentalDownpayment: 50000.00,
-          rentalBalance: 50000.00,
-          downpaymentReceivedAt: '2024-11-08',
-          balanceReceivedAt: null,
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 100000.00,
+          downpayment_amount: 50000.00,
+          balance_amount: 50000.00,
+          down_payment_date: '2024-11-08',
+          full_payment_date: null,
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-11-08',
           sourceRefNo: 'CONTRACT-2024-005',
           remarks: 'Company outing - 5 buses for 2 days',
@@ -431,13 +431,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-006',
           revenueType: 'RENTAL',
           entityName: 'Pedro Reyes',
-          amount: 18000.00,
-          rentalDownpayment: 18000.00,
-          rentalBalance: 0.00,
-          downpaymentReceivedAt: '2024-09-30',
-          balanceReceivedAt: '2024-09-30',
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 18000.00,
+          downpayment_amount: 18000.00,
+          balance_amount: 0.00,
+          down_payment_date: '2024-09-30',
+          full_payment_date: '2024-09-30',
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-09-30',
           sourceRefNo: 'CONTRACT-2024-006',
           remarks: 'One-day beach trip - completed',
@@ -460,13 +460,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-007',
           revenueType: 'RENTAL',
           entityName: 'Green Valley Church',
-          amount: 45000.00,
-          rentalDownpayment: 20000.00,
-          rentalBalance: 25000.00,
-          downpaymentReceivedAt: '2024-11-10',
-          balanceReceivedAt: null,
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 45000.00,
+          downpayment_amount: 20000.00,
+          balance_amount: 25000.00,
+          down_payment_date: '2024-11-10',
+          full_payment_date: null,
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-11-10',
           sourceRefNo: 'CONTRACT-2024-007',
           remarks: 'Church retreat - 2 buses needed',
@@ -488,13 +488,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-008',
           revenueType: 'RENTAL',
           entityName: 'Global Trading Inc.',
-          amount: 60000.00,
-          rentalDownpayment: 25000.00,
-          rentalBalance: 35000.00,
-          downpaymentReceivedAt: '2024-10-28',
-          balanceReceivedAt: null,
-          isCancelled: true,
-          cancelledAt: '2024-11-02',
+          total_rental_amount: 60000.00,
+          downpayment_amount: 25000.00,
+          balance_amount: 35000.00,
+          down_payment_date: '2024-10-28',
+          full_payment_date: null,
+          rental_status: true,
+          cancelled_at: '2024-11-02',
           dateRecorded: '2024-10-28',
           sourceRefNo: 'CONTRACT-2024-008',
           remarks: 'Team building cancelled - client requested full refund',
@@ -516,13 +516,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-009',
           revenueType: 'RENTAL',
           entityName: 'Anna Garcia',
-          amount: 28000.00,
-          rentalDownpayment: 28000.00,
-          rentalBalance: 0.00,
-          downpaymentReceivedAt: '2024-11-03',
-          balanceReceivedAt: '2024-11-03',
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 28000.00,
+          downpayment_amount: 28000.00,
+          balance_amount: 0.00,
+          down_payment_date: '2024-11-03',
+          full_payment_date: '2024-11-03',
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-11-03',
           sourceRefNo: 'CONTRACT-2024-009',
           remarks: 'Birthday party transportation - paid in full',
@@ -545,13 +545,13 @@ const AdminBusRentalPage = () => {
           revenueCode: 'RNT-2024-010',
           revenueType: 'RENTAL',
           entityName: 'Sunrise University',
-          amount: 120000.00,
-          rentalDownpayment: 50000.00,
-          rentalBalance: 70000.00,
-          downpaymentReceivedAt: '2024-11-11',
-          balanceReceivedAt: null,
-          isCancelled: false,
-          cancelledAt: null,
+          total_rental_amount: 120000.00,
+          downpayment_amount: 50000.00,
+          balance_amount: 70000.00,
+          down_payment_date: '2024-11-11',
+          full_payment_date: null,
+          rental_status: false,
+          cancelled_at: null,
           dateRecorded: '2024-11-11',
           sourceRefNo: 'CONTRACT-2024-010',
           remarks: 'Educational tour - 6 buses for 3 days, balance due before departure',
@@ -636,7 +636,7 @@ const AdminBusRentalPage = () => {
   }, [search, activeFilters, sortBy, sortOrder]);
 
   // Sort handler
-  const handleSort = (field: "revenueCode" | "entityName" | "dateRecorded" | "amount" | "rentalBalance") => {
+  const handleSort = (field: "revenueCode" | "entityName" | "dateRecorded" | "total_rental_amount" | "balance_amount") => {
     if (sortBy === field) {
       // Toggle sort order if clicking same column
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -680,7 +680,7 @@ const AdminBusRentalPage = () => {
     icon: string;
   } => {
     // Cancelled
-    if (record.isCancelled) {
+    if (record.rental_status) {
       return { 
         label: 'Cancelled', 
         className: 'cancelled',
@@ -689,7 +689,7 @@ const AdminBusRentalPage = () => {
     }
     
     // Completed (all paid)
-    if (record.rentalBalance === 0 && record.balanceReceivedAt) {
+    if (record.balance_amount === 0 && record.full_payment_date) {
       return { 
         label: 'Completed', 
         className: 'completed',
@@ -698,7 +698,7 @@ const AdminBusRentalPage = () => {
     }
     
     // Active (downpayment received, balance pending)
-    if (record.rentalDownpayment > 0 && record.rentalBalance > 0) {
+    if (record.downpayment_amount > 0 && record.balance_amount > 0) {
       return { 
         label: 'Active', 
         className: 'active',
@@ -737,13 +737,13 @@ const AdminBusRentalPage = () => {
               revenueCode: rowData?.revenueCode || "",
               revenueType: 'RENTAL',
               entityName: rowData?.entityName || "",
-              amount: rowData?.amount || 0,
-              rentalDownpayment: rowData?.rentalDownpayment || 0,
-              rentalBalance: rowData?.rentalBalance || 0,
-              downpaymentReceivedAt: rowData?.downpaymentReceivedAt || "",
-              balanceReceivedAt: rowData?.balanceReceivedAt || "",
-              isCancelled: rowData?.isCancelled || false,
-              cancelledAt: rowData?.cancelledAt || "",
+              total_rental_amount: rowData?.total_rental_amount || 0,
+              downpayment_amount: rowData?.downpayment_amount || 0,
+              balance_amount: rowData?.balance_amount || 0,
+              down_payment_date: rowData?.down_payment_date || "",
+              full_payment_date: rowData?.full_payment_date || "",
+              rental_status: rowData?.rental_status || false,
+              cancelled_at: rowData?.cancelled_at || "",
               dateRecorded: rowData?.dateRecorded || "",
               sourceRefNo: rowData?.sourceRefNo || "",
               remarks: rowData?.remarks || "",
@@ -764,13 +764,13 @@ const AdminBusRentalPage = () => {
               revenueCode: rowData?.revenueCode || "",
               revenueType: 'RENTAL',
               entityName: rowData?.entityName || "",
-              amount: rowData?.amount || 0,
-              rentalDownpayment: rowData?.rentalDownpayment || 0,
-              rentalBalance: rowData?.rentalBalance || 0,
-              downpaymentReceivedAt: rowData?.downpaymentReceivedAt || "",
-              balanceReceivedAt: rowData?.balanceReceivedAt || "",
-              isCancelled: rowData?.isCancelled || false,
-              cancelledAt: rowData?.cancelledAt || "",
+              total_rental_amount: rowData?.total_rental_amount || 0,
+              downpayment_amount: rowData?.downpayment_amount || 0,
+              balance_amount: rowData?.balance_amount || 0,
+              down_payment_date: rowData?.down_payment_date || "",
+              full_payment_date: rowData?.full_payment_date || "",
+              rental_status: rowData?.rental_status || false,
+              cancelled_at: rowData?.cancelled_at || "",
               dateRecorded: rowData?.dateRecorded || "",
               sourceRefNo: rowData?.sourceRefNo || "",
               remarks: rowData?.remarks || "",
@@ -822,9 +822,9 @@ const AdminBusRentalPage = () => {
         <div style="text-align: left; padding: 10px;">
           <p><strong>Customer:</strong> ${record.entityName}</p>
           <p><strong>Contract:</strong> ${record.sourceRefNo}</p>
-          <p><strong>Total Amount:</strong> ${formatMoney(record.amount)}</p>
-          <p><strong>Downpayment:</strong> ${formatMoney(record.rentalDownpayment)}</p>
-          <p><strong>Balance:</strong> ${formatMoney(record.rentalBalance)}</p>
+          <p><strong>Total Amount:</strong> ${formatMoney(record.total_rental_amount)}</p>
+          <p><strong>Downpayment:</strong> ${formatMoney(record.downpayment_amount)}</p>
+          <p><strong>Balance:</strong> ${formatMoney(record.balance_amount)}</p>
           <hr/>
           <p style="color: #dc3545; font-weight: bold;">⚠️ This will mark the rental as cancelled.</p>
         </div>
@@ -843,16 +843,9 @@ const AdminBusRentalPage = () => {
         // Update rental to cancelled status
         const updatedRecord = {
           ...record,
-          isCancelled: true,
-          cancelledAt: new Date().toISOString().split('T')[0]
+          rental_status: true,
+          cancelled_at: new Date().toISOString().split('T')[0]
         };
-
-        // TODO: Replace with actual API call
-        // const response = await fetch(`/api/admin/revenue/${id}`, {
-        //   method: 'PUT',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ ...updatedRecord, userId: 'admin' })
-        // });
 
         // For now, update locally
         setData(prevData =>
@@ -872,13 +865,6 @@ const AdminBusRentalPage = () => {
 
   const handleSaveEdit = async (formData: any) => {
     try {
-      // TODO: Replace with actual API call to update the rental record
-      // const response = await fetch(`/api/admin/revenue/${activeRow?.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ ...formData, userId: 'admin' })
-      // });
-
       // For now, update the record locally
       setData(prevData =>
         prevData.map(item =>
@@ -1021,18 +1007,18 @@ const AdminBusRentalPage = () => {
                     Customer Name{getSortIndicator("entityName")}
                   </th>
                   <th
-                    onClick={() => handleSort("amount")}
+                    onClick={() => handleSort("total_rental_amount")}
                     style={{ cursor: 'pointer', userSelect: 'none' }}
                     title="Click to sort by Amount"
                   >
-                    Total Amount{getSortIndicator("amount")}
+                    Total Amount{getSortIndicator("total_rental_amount")}
                   </th>
                   <th
-                    onClick={() => handleSort("rentalBalance")}
+                    onClick={() => handleSort("balance_amount")}
                     style={{ cursor: 'pointer', userSelect: 'none' }}
                     title="Click to sort by Rental Balance"
                   >
-                    Rental Balance{getSortIndicator("rentalBalance")}
+                    Rental Balance{getSortIndicator("balance_amount")}
                   </th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -1058,13 +1044,13 @@ const AdminBusRentalPage = () => {
 
                     return (
                       <tr key={item.id}>
-                        <td>{item.revenueCode}</td>
+                        <td style={{ maxWidth:10 }}>{item.revenueCode}</td>
                         <td>{item.entityName}</td>
-                        <td>{formatMoney(item.amount)}</td>
-                        <td>{formatMoney(item.rentalBalance)}</td>
-                        <td>
+                        <td>{formatMoney(item.total_rental_amount)}</td>
+                        <td>{formatMoney(item.balance_amount)}</td>
+                        <td style={{ maxWidth:10 }}>
                           <span className={`chip ${statusInfo.className}`}>
-                            <i className={statusInfo.icon}></i> {statusInfo.label}
+                            {statusInfo.label}
                           </span>
                         </td>
                         <td className="actionButtons">
@@ -1081,47 +1067,44 @@ const AdminBusRentalPage = () => {
                             </button>
                             
                             {/* Show Pay Balance button if rental has balance and downpayment is paid */}
-                            {!item.isCancelled && item.rentalBalance > 0 && item.rentalDownpayment > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePayBalance(item.id);
-                                }}
-                                className="editBtn"
-                                title="Pay Balance"
-                                style={{ backgroundColor: '#28a745' }}
-                              >
-                                <i className="ri-money-dollar-circle-line"></i>
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePayBalance(item.id);
+                              }}
+                              className="editBtn"
+                              title="Pay Balance"
+                              style={{ backgroundColor: '#28a745' }}
+                              disabled={item.rental_status || (item.balance_amount === 0 && item.downpayment_amount > 0)}
+                            >
+                              <i className="ri-money-dollar-circle-line"></i>
+                            </button>
 
                             {/* Show Edit button if not cancelled and has balance */}
-                            {!item.isCancelled && item.rentalBalance > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEdit(item.id);
-                                }}
-                                className="editBtn"
-                                title="Edit Rental"
-                              >
-                                <i className="ri-edit-line"></i>
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(item.id);
+                              }}
+                              className="editBtn"
+                              title="Edit Rental"
+                              disabled={item.rental_status || (item.balance_amount === 0 && item.downpayment_amount > 0)}
+                            >
+                              <i className="ri-edit-line"></i>
+                            </button>
 
                             {/* Show Cancel button if not cancelled, has downpayment, and has balance */}
-                            {!item.isCancelled && item.rentalBalance > 0 && item.rentalDownpayment > 0 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelRental(item.id);
-                                }}
-                                className="deleteBtn"
-                                title="Cancel Rental"
-                              >
-                                <i className="ri-close-circle-line"></i>
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelRental(item.id);
+                              }}
+                              className="deleteBtn"
+                              title="Cancel Rental"
+                              disabled={item.rental_status || (item.balance_amount === 0 && item.downpayment_amount > 0)}
+                            >
+                              <i className="ri-close-circle-line"></i>
+                            </button>
                           </div>
                         </td>
                       </tr>

@@ -17,16 +17,6 @@ button {
 }
 
 /* ---------- Settings (filters) - Fixed Layout ---------- */
-.settings {
-  display: flex !important;
-  width: 100% !important;
-  flex-wrap: wrap !important;
-  gap: 12px !important;
-  margin-bottom: 20px !important;
-  align-items: center !important;
-  background-color: none !important;
-}
-
 /* Generate Payroll Button - Left aligned */
 button.generatePayrollBtn {
   padding: 0 16px !important;
@@ -187,7 +177,7 @@ button.releaseAllBtn:hover {
 .deleteBtn {
   padding: 6px 8px !important;
   border: none !important;
-  border-radius: var(--page-button-border-radius) !important;
+  border-radius: var(--page-button-border-radius) F!important;
   cursor: pointer !important;
   font-size: 12px !important;
   font-weight: 500 !important;
@@ -239,52 +229,6 @@ button.releaseAllBtn:hover {
 
 .deleteBtn:hover {
   background-color: var(--error-hover-color) !important;
-}
-
-/* ---------- View Modal ---------- */
-.modalOverlay {
-  position: fixed !important;
-  inset: 0 !important;
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  z-index: 1000 !important;
-}
-
-.modalContent {
-  background-color: var(--foreground-color) !important;
-  padding: 2rem !important;
-  border-radius: var(--modal-border-radius) !important;
-  max-width: 1200px !important;
-  width: 90% !important;
-  max-height: 90vh !important;
-  overflow-y: auto !important;
-}
-
-.modalHeader {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  margin-bottom: 1.5rem !important;
-}
-
-.modalHeader h2 {
-  margin: 0 !important;
-  font-size: 1.5rem !important;
-  color: var(--primary-text-color) !important;
-}
-
-.closeButton {
-  background: none !important;
-  border: none !important;
-  font-size: 1.5rem !important;
-  cursor: pointer !important;
-  color: var(--secondary-text-color) !important;
-}
-
-.closeButton:hover {
-  color: var(--primary-text-color) !important;
 }
 
 /* ---------- Detail sections ---------- */

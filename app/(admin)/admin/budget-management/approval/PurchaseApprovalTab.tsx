@@ -42,6 +42,7 @@ interface PurchaseApprovalTabProps {
   onLoadingChange: (loading: boolean) => void;
   onError: (error: string | null) => void;
   onExport: (format: 'csv' | 'excel' | 'pdf') => void;
+  onDataUpdate?: (data: any[]) => void;
 }
 
 export default function PurchaseApprovalTab({
@@ -50,7 +51,8 @@ export default function PurchaseApprovalTab({
   loading,
   onLoadingChange,
   onError,
-  onExport
+  onExport,
+  onDataUpdate
 }: PurchaseApprovalTabProps) {
   const [data, setData] = useState<PurchaseRequestApproval[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -739,6 +741,13 @@ export default function PurchaseApprovalTab({
 
     return result;
   }, [data, filters, searchTerm]);
+
+  // Send filtered data to parent for export
+  useEffect(() => {
+    if (onDataUpdate) {
+      onDataUpdate(filteredData);
+    }
+  }, [filteredData, onDataUpdate]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / pageSize);

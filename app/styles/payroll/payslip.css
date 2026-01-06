@@ -1,0 +1,376 @@
+/* ====================================
+   PAYSLIP STYLES
+   ==================================== */
+
+/* ----- CSS Variables ----- */
+:root {
+  /* Payslip-specific colors */
+  --payslip-container-bg: #ffffff;
+  --payslip-light-bg: #f5f5f5;
+  --payslip-lighter-bg: #f9f9f9;
+  --payslip-dark-border: #333;
+  --payslip-medium-text: #666;
+  --payslip-light-border: #ddd;
+  --payslip-net-pay-bg: #333;
+  --payslip-net-pay-color: #fff;
+  
+  /* Attendance stat colors */
+  --payslip-attendance-present: #4caf50;
+  --payslip-attendance-absent: #f44336;
+  --payslip-attendance-late: #ff9800;
+  --payslip-attendance-overtime: #2196f3;
+  
+  /* Spacing */
+  --payslip-padding-sm: 10px;
+  --payslip-padding-md: 15px;
+  --payslip-padding-lg: 20px;
+  --payslip-gap-sm: 8px;
+  --payslip-gap-md: 15px;
+  --payslip-gap-lg: 20px;
+  
+  /* Typography */
+  --payslip-font-xs: 12px;
+  --payslip-font-sm: 13px;
+  --payslip-font-md: 14px;
+  --payslip-font-lg: 16px;
+  --payslip-font-xl: 18px;
+  --payslip-font-xxl: 22px;
+  
+  /* Border radius */
+  --payslip-radius-sm: 6px;
+  --payslip-radius-md: 8px;
+}
+
+/* ----- Main Container ----- */
+.payslipContainer {
+  padding: 20px;
+  background-color: #ffffff;
+  font-family: Arial, sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ----- Company Header Section ----- */
+.companyHeader {
+  text-align: center;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--primary-color, #961C1E);
+  padding-bottom: 15px;
+  width: 100%;
+}
+
+.companyLogoContainer {
+  margin: 0 auto 10px auto;
+  max-width: 300px;
+}
+
+.companyLogo {
+  width: 100%;
+  height: auto;
+  max-height: 80px;
+  object-fit: contain;
+}
+
+.companyName {
+  margin: 0;
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+  color: var(--primary-color, #961C1E);
+  letter-spacing: 0.5px;
+}
+
+.payslipReference {
+  margin: 5px 0 0 0;
+  font-size: 12px;
+  color: var(--secondary-text-color, #666666);
+  text-align: left;
+}
+
+/* ----- Pay Period Section ----- */
+.payPeriodSection {
+  display: table;
+  width: 100%;
+  margin-bottom: 20px;
+  font-size: 13px;
+  border: 1px solid #dddddd;
+  background-color: #fafafa;
+}
+
+.payPeriodSection > div {
+  display: table-cell;
+  padding: 10px 15px;
+  vertical-align: middle;
+}
+
+.payPeriodSection > div:first-child {
+  text-align: left;
+  width: 70%;
+}
+
+.payPeriodSection > div:last-child {
+  text-align: right;
+  width: 30%;
+  border-left: 1px solid #dddddd;
+}
+
+/* ----- Employee Information Section ----- */
+.employeeInfoSection {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.employeeInfoGrid {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.empDetails {
+  display: table-row;
+}
+
+.empDetails strong {
+  display: table-cell;
+  width: auto;
+  padding: 6px 10px;
+  font-weight: bold;
+  text-align: left;
+  font-size: 13px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* .empDetails::after {
+  content: attr(data-value);
+  display: table-cell;
+  padding: 6px 10px;
+  text-align: right;
+  font-size: 13px;
+  border-bottom: 1px solid #e0e0e0;
+} */
+
+/* Use grid for 2-column layout */
+.employeeInfoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.empDetails {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 13px;
+}
+
+.empDetails strong {
+  display: inline;
+  width: auto;
+  padding: 0;
+  margin-right: 8px;
+  border-bottom: none;
+}
+
+/* ----- Earnings & Deductions Grid ----- */
+.earningsDeductionsGrid {
+  display: table;
+  width: 100%;
+  margin-bottom: 20px;
+  table-layout: fixed;
+}
+
+.earningsDeductionsGrid > div {
+  display: table-cell;
+  width: 50%;
+  padding: 0 10px;
+  vertical-align: top;
+}
+
+.earningsDeductionsGrid > div:first-child {
+  padding-left: 0;
+  border-right: 1px solid #e0e0e0;
+}
+
+.earningsDeductionsGrid > div:last-child {
+  padding-right: 0;
+}
+
+.sectionHeading {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333333;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #333333;
+}
+
+/* ----- Tables ----- */
+.payslipTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.payslipTableRow {
+  border-bottom: 1px solid #dddddd;
+}
+
+.payslipTableCell {
+  padding: 8px 4px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.payslipTableCellAmount {
+  padding: 8px 4px;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* ----- Totals Section ----- */
+.totalsSection {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.totalRow {
+  display: table;
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.totalRow span {
+  display: table-cell;
+}
+
+.totalRow span:first-child {
+  text-align: left;
+  width: 70%;
+}
+
+.totalRow span:last-child {
+  text-align: right;
+  width: 30%;
+  font-weight: bold;
+}
+
+.netPayRow {
+  display: table;
+  width: 100%;
+  padding: 12px 15px;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 12px;
+  box-sizing: border-box;
+}
+
+.netPayRow span {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.netPayRow span:first-child {
+  text-align: left;
+}
+
+.netPayRow span:last-child {
+  text-align: right;
+}
+
+/* ----- Attendance Summary Section ----- */
+.attendanceSection {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #e0e0e0;
+}
+
+.attendanceHeading {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #333333;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #333333;
+}
+
+.attendanceGrid {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.attendanceGrid > div {
+  display: table-cell;
+  text-align: center;
+  padding: 10px;
+  font-size: 12px;
+  vertical-align: top;
+  border-right: 1px solid #e0e0e0;
+}
+
+.attendanceGrid > div:last-child {
+  border-right: none;
+}
+
+.attendanceGrid > div strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: #666666;
+}
+
+.attendanceValue {
+  font-size: 20px;
+  font-weight: bold;
+  display: block;
+}
+
+.attendanceValuePresent {
+  color: #4caf50;
+}
+
+.attendanceValueAbsent {
+  color: #f44336;
+}
+
+.attendanceValueLate {
+  color: #ff9800;
+}
+
+.attendanceValueOvertime {
+  color: #2196f3;
+}
+
+/* ----- Print Styles ----- */
+@media print {
+  .payslipContainer {
+    padding: 10mm;
+  }
+  
+  body {
+    background: white !important;
+  }
+  
+  .companyHeader,
+  .employeeInfoSection,
+  .totalsSection,
+  .attendanceSection {
+    page-break-inside: avoid;
+  }
+}

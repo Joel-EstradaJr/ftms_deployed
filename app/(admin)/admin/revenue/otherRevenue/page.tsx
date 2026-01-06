@@ -7,7 +7,7 @@
  * - Analytics: Revenue breakdown by source type
  * - Database-optimized queries with indexes
  *
- * Columns: No., revenueCode, transactionDate, source, description, amount, paymentMethod, Actions
+ * Columns: No., code, date_recorded, source, description, amount, paymentMethod, Actions
  */
 
 "use client";
@@ -52,8 +52,10 @@ interface PaymentMethod {
 
 interface OtherRevenueRecord {
   id: number;
-  revenueCode: string;
-  transactionDate: string;
+  code: string;
+  date_recorded: string;
+  date_expected?: string;
+  last_payment_date?: string;
   source: {
     id: number;
     name: string;
@@ -61,6 +63,10 @@ interface OtherRevenueRecord {
   };
   description: string;
   amount: number;
+  balance?: number;
+  status?: string;
+  revenue_status?: string;
+  receivable_status?: string;
   paymentMethod: {
     id: number;
     methodName: string;
@@ -78,12 +84,12 @@ interface OtherRevenueRecord {
 
 export type OtherRevenueData = {
   id?: number;
-  revenueCode: string;
-  revenueType: 'OTHER';
-  dateRecorded: string;
-  otherRevenueCategory: string;
+  code: string;
+  name: string;
+  date_recorded: string;
+  description: string;
   amount: number;
-  sourceRefNo: string;
+  payment_reference: string;
   department: string;
   discountAmount?: number;
   discountPercentage?: number;
@@ -100,7 +106,7 @@ export type OtherRevenueData = {
   scheduleItems?: RevenueScheduleItem[];
   
   // Relations
-  paymentMethodId: number;
+  payment_method: string;
   
   // View-only fields
   verifiedBy?: string;
@@ -132,8 +138,8 @@ interface RevenueAnalytics {
 const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   {
     id: 1,
-    revenueCode: "REV-OTHER-2024-001",
-    transactionDate: "2024-11-01",
+    code: "REV-OTHER-2024-001",
+    date_recorded: "2024-11-01",
     source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
     description: "Sale of old computer equipment",
     amount: 45000.00,
@@ -201,8 +207,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 2,
-    revenueCode: "REV-OTHER-2024-002",
-    transactionDate: "2024-11-02",
+    code: "REV-OTHER-2024-002",
+    date_recorded: "2024-11-02",
     source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
     description: "Bank interest for Q3 2024",
     amount: 12500.50,
@@ -214,8 +220,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 3,
-    revenueCode: "REV-OTHER-2024-003",
-    transactionDate: "2024-11-03",
+    code: "REV-OTHER-2024-003",
+    date_recorded: "2024-11-03",
     source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
     description: "Late payment fees from trip rentals",
     amount: 8750.00,
@@ -227,8 +233,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 4,
-    revenueCode: "REV-OTHER-2024-004",
-    transactionDate: "2024-11-04",
+    code: "REV-OTHER-2024-004",
+    date_recorded: "2024-11-04",
     source: { id: 4, name: "Insurance Claims", sourceCode: "INSURANCE" },
     description: "Vehicle accident insurance payout",
     amount: 150000.00,
@@ -242,8 +248,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 5,
-    revenueCode: "REV-OTHER-2024-005",
-    transactionDate: "2024-11-05",
+    code: "REV-OTHER-2024-005",
+    date_recorded: "2024-11-05",
     source: { id: 5, name: "Donations", sourceCode: "DONATIONS" },
     description: "Corporate sponsorship from ABC Corp",
     amount: 75000.00,
@@ -256,8 +262,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 6,
-    revenueCode: "REV-OTHER-2024-006",
-    transactionDate: "2024-11-06",
+    code: "REV-OTHER-2024-006",
+    date_recorded: "2024-11-06",
     source: { id: 6, name: "Parking Fees", sourceCode: "OTHER" },
     description: "Monthly parking revenue at terminal",
     amount: 32500.00,
@@ -269,8 +275,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 7,
-    revenueCode: "REV-OTHER-2024-007",
-    transactionDate: "2024-11-07",
+    code: "REV-OTHER-2024-007",
+    date_recorded: "2024-11-07",
     source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
     description: "Sale of retired bus units",
     amount: 280000.00,
@@ -284,8 +290,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 8,
-    revenueCode: "REV-OTHER-2024-008",
-    transactionDate: "2024-11-08",
+    code: "REV-OTHER-2024-008",
+    date_recorded: "2024-11-08",
     source: { id: 7, name: "Advertising Revenue", sourceCode: "OTHER" },
     description: "Bus exterior advertising - November",
     amount: 45000.00,
@@ -297,8 +303,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 9,
-    revenueCode: "REV-OTHER-2024-009",
-    transactionDate: "2024-11-09",
+    code: "REV-OTHER-2024-009",
+    date_recorded: "2024-11-09",
     source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
     description: "Investment returns - fixed deposit",
     amount: 18200.75,
@@ -310,8 +316,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 10,
-    revenueCode: "REV-OTHER-2024-010",
-    transactionDate: "2024-11-10",
+    code: "REV-OTHER-2024-010",
+    date_recorded: "2024-11-10",
     source: { id: 8, name: "Merchandise Sales", sourceCode: "OTHER" },
     description: "Company merchandise and souvenirs",
     amount: 15600.00,
@@ -323,8 +329,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 11,
-    revenueCode: "REV-OTHER-2024-011",
-    transactionDate: "2024-11-11",
+    code: "REV-OTHER-2024-011",
+    date_recorded: "2024-11-11",
     source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
     description: "Penalty fees from contract breaches",
     amount: 12000.00,
@@ -336,8 +342,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 12,
-    revenueCode: "REV-OTHER-2024-012",
-    transactionDate: "2024-10-28",
+    code: "REV-OTHER-2024-012",
+    date_recorded: "2024-10-28",
     source: { id: 9, name: "Terminal Rentals", sourceCode: "OTHER" },
     description: "Food stall rental at bus terminal",
     amount: 28000.00,
@@ -349,8 +355,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 13,
-    revenueCode: "REV-OTHER-2024-013",
-    transactionDate: "2024-10-25",
+    code: "REV-OTHER-2024-013",
+    date_recorded: "2024-10-25",
     source: { id: 5, name: "Donations", sourceCode: "DONATIONS" },
     description: "Community fund-raising event proceeds",
     amount: 52000.00,
@@ -363,8 +369,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 14,
-    revenueCode: "REV-OTHER-2024-014",
-    transactionDate: "2024-10-20",
+    code: "REV-OTHER-2024-014",
+    date_recorded: "2024-10-20",
     source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
     description: "Sale of office furniture and fixtures",
     amount: 22500.00,
@@ -377,8 +383,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 15,
-    revenueCode: "REV-OTHER-2024-015",
-    transactionDate: "2024-10-15",
+    code: "REV-OTHER-2024-015",
+    date_recorded: "2024-10-15",
     source: { id: 10, name: "Scrap Sales", sourceCode: "OTHER" },
     description: "Sale of scrap metal from old parts",
     amount: 8900.50,
@@ -390,8 +396,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 16,
-    revenueCode: "REV-OTHER-2024-016",
-    transactionDate: "2024-10-10",
+    code: "REV-OTHER-2024-016",
+    date_recorded: "2024-10-10",
     source: { id: 4, name: "Insurance Claims", sourceCode: "INSURANCE" },
     description: "Property damage insurance claim",
     amount: 95000.00,
@@ -405,8 +411,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 17,
-    revenueCode: "REV-OTHER-2024-017",
-    transactionDate: "2024-10-05",
+    code: "REV-OTHER-2024-017",
+    date_recorded: "2024-10-05",
     source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
     description: "Savings account interest - October",
     amount: 6750.25,
@@ -418,8 +424,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 18,
-    revenueCode: "REV-OTHER-2024-018",
-    transactionDate: "2024-09-30",
+    code: "REV-OTHER-2024-018",
+    date_recorded: "2024-09-30",
     source: { id: 7, name: "Advertising Revenue", sourceCode: "OTHER" },
     description: "Digital billboard advertising - Q3",
     amount: 120000.00,
@@ -433,8 +439,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 19,
-    revenueCode: "REV-OTHER-2024-019",
-    transactionDate: "2024-09-25",
+    code: "REV-OTHER-2024-019",
+    date_recorded: "2024-09-25",
     source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
     description: "Overdue invoice penalty charges",
     amount: 15500.00,
@@ -446,8 +452,8 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
   },
   {
     id: 20,
-    revenueCode: "REV-OTHER-2024-020",
-    transactionDate: "2024-09-20",
+    code: "REV-OTHER-2024-020",
+    date_recorded: "2024-09-20",
     source: { id: 6, name: "Parking Fees", sourceCode: "OTHER" },
     description: "Quarterly parking fee collection",
     amount: 98000.00,
@@ -504,7 +510,7 @@ const AdminOtherRevenuePage = () => {
   });
 
   // Sort states
-  const [sortBy, setSortBy] = useState<"revenueCode" | "transactionDate" | "amount">("transactionDate");
+  const [sortBy, setSortBy] = useState<"code" | "date_recorded" | "amount">("date_recorded");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
@@ -557,12 +563,12 @@ const AdminOtherRevenuePage = () => {
   const transformRecordToFormData = (record: OtherRevenueRecord): OtherRevenueData => {
     return {
       id: record.id,
-      revenueCode: record.revenueCode,
-      revenueType: 'OTHER',
-      dateRecorded: record.transactionDate,
-      otherRevenueCategory: record.source.sourceCode || record.externalRefType || 'OTHER',
+      code: record.code,
+      name: 'OTHER',
+      date_recorded: record.date_recorded,
+      description: record.description || record.source.name || '',
       amount: record.amount,
-      sourceRefNo: record.externalRefId || '',
+      payment_reference: record.externalRefId || '',
       department: 'Operations', // Default department - will be stored in future backend updates
       discountAmount: 0,
       discountPercentage: 0,
@@ -572,7 +578,7 @@ const AdminOtherRevenuePage = () => {
       recognitionSchedule: '',
       isVerified: false,
       remarks: record.description || '',
-      paymentMethodId: record.paymentMethodId,
+      payment_method: record.paymentMethod?.methodName || '',
       verifiedBy: record.approvedBy || '',
       verifiedAt: '',
       receiptUrl: '',
@@ -695,16 +701,15 @@ const AdminOtherRevenuePage = () => {
       // TODO: Backend API integration
       // Transform formData to backend-compatible format
       const payload = {
-        revenueCode: formData.revenueCode,
-        transactionDate: formData.dateRecorded,
-        sourceId: revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory)?.id || 0,
-        description: formData.remarks || '',
+        revenueCode: formData.code,
+        name: formData.name,
+        transactionDate: formData.date_recorded,
+        description: formData.description,
         amount: formData.amount,
-        paymentMethodId: formData.paymentMethodId,
-        externalRefType: formData.otherRevenueCategory,
-        externalRefId: formData.sourceRefNo,
+        payment_method: formData.payment_method,
+        payment_reference: formData.payment_reference,
         createdBy: formData.createdBy,
-        // New fields - TODO: Add to backend schema
+        // Additional fields
         department: formData.department,
         discountAmount: formData.discountAmount,
         discountPercentage: formData.discountPercentage,
@@ -728,21 +733,21 @@ const AdminOtherRevenuePage = () => {
         // Generate simple incrementing numeric id
         const nextId = (MOCK_OTHER_REVENUE_DATA.reduce((max, r) => Math.max(max, r.id), 0) || 0) + 1;
 
-        const sourceObj = revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory) || { id: 0, name: formData.otherRevenueCategory, sourceCode: formData.otherRevenueCategory };
-        const paymentMethodObj = paymentMethods.find(p => p.id === formData.paymentMethodId) || { id: formData.paymentMethodId || 0, methodName: '', methodCode: '' };
+        const sourceObj = { id: 0, name: formData.description, sourceCode: 'OTHER' };
+        const paymentMethodObj = paymentMethods.find(p => p.methodName === formData.payment_method) || { id: 0, methodName: formData.payment_method, methodCode: '' };
 
         const newRecord: OtherRevenueRecord = {
           id: nextId,
-          revenueCode: formData.revenueCode,
-          transactionDate: formData.dateRecorded,
+          code: formData.code,
+          date_recorded: formData.date_recorded,
           source: sourceObj,
           description: formData.remarks || '',
           amount: formData.amount,
           paymentMethod: paymentMethodObj,
           paymentMethodId: paymentMethodObj.id,
           sourceId: sourceObj.id,
-          externalRefType: formData.otherRevenueCategory,
-          externalRefId: formData.sourceRefNo || undefined,
+          externalRefType: 'OTHER',
+          externalRefId: formData.payment_reference || undefined,
           createdBy: formData.createdBy || 'admin'
         };
 
@@ -757,21 +762,21 @@ const AdminOtherRevenuePage = () => {
         // Edit existing record in mock data
         const idx = MOCK_OTHER_REVENUE_DATA.findIndex(r => r.id === activeRow?.id);
         if (idx !== -1) {
-          const sourceObj = revenueSources.find(s => s.sourceCode === formData.otherRevenueCategory) || { id: 0, name: formData.otherRevenueCategory, sourceCode: formData.otherRevenueCategory };
-          const paymentMethodObj = paymentMethods.find(p => p.id === formData.paymentMethodId) || { id: formData.paymentMethodId || 0, methodName: '', methodCode: '' };
+          const sourceObj = { id: 0, name: formData.description, sourceCode: 'OTHER' };
+          const paymentMethodObj = paymentMethods.find(p => p.methodName === formData.payment_method) || { id: 0, methodName: formData.payment_method, methodCode: '' };
 
           MOCK_OTHER_REVENUE_DATA[idx] = {
             ...MOCK_OTHER_REVENUE_DATA[idx],
-            revenueCode: formData.revenueCode,
-            transactionDate: formData.dateRecorded,
+            code: formData.code,
+            date_recorded: formData.date_recorded,
             source: sourceObj,
-            description: formData.remarks || '',
+            description: formData.description,
             amount: formData.amount,
             paymentMethod: paymentMethodObj,
             paymentMethodId: paymentMethodObj.id,
             sourceId: sourceObj.id,
-            externalRefType: formData.otherRevenueCategory,
-            externalRefId: formData.sourceRefNo || undefined,
+            externalRefType: 'OTHER',
+            externalRefId: formData.payment_reference || undefined,
             isUnearnedRevenue: formData.isUnearnedRevenue,
             scheduleItems: formData.scheduleItems || []
           };
@@ -881,10 +886,15 @@ const AdminOtherRevenuePage = () => {
       if (search) {
         const searchLower = search.toLowerCase();
         filteredData = filteredData.filter(item =>
-          item.revenueCode.toLowerCase().includes(searchLower) ||
+          item.code.toLowerCase().includes(searchLower) ||
           item.source.name.toLowerCase().includes(searchLower) ||
           item.description.toLowerCase().includes(searchLower) ||
-          item.amount.toString().includes(searchLower)
+          item.amount.toString().includes(searchLower) ||
+          (item.date_expected && item.date_expected.includes(searchLower)) ||
+          (item.last_payment_date && item.last_payment_date.includes(searchLower)) ||
+          (item.status && item.status.toLowerCase().includes(searchLower)) ||
+          (item.revenue_status && item.revenue_status.toLowerCase().includes(searchLower)) ||
+          (item.receivable_status && item.receivable_status.toLowerCase().includes(searchLower))
         );
       }
 
@@ -905,7 +915,7 @@ const AdminOtherRevenuePage = () => {
       // Apply date range filter
       if (activeFilters.dateRange.from || activeFilters.dateRange.to) {
         filteredData = filteredData.filter(item => {
-          const itemDate = new Date(item.transactionDate);
+          const itemDate = new Date(item.date_recorded);
           const fromDate = activeFilters.dateRange.from ? new Date(activeFilters.dateRange.from) : null;
           const toDate = activeFilters.dateRange.to ? new Date(activeFilters.dateRange.to) : null;
 
@@ -932,10 +942,10 @@ const AdminOtherRevenuePage = () => {
       filteredData.sort((a, b) => {
         let comparison = 0;
         
-        if (sortBy === 'revenueCode') {
-          comparison = a.revenueCode.localeCompare(b.revenueCode);
-        } else if (sortBy === 'transactionDate') {
-          comparison = new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime();
+        if (sortBy === 'code') {
+          comparison = a.code.localeCompare(b.code);
+        } else if (sortBy === 'date_recorded') {
+          comparison = new Date(a.date_recorded).getTime() - new Date(b.date_recorded).getTime();
         } else if (sortBy === 'amount') {
           comparison = a.amount - b.amount;
         }
@@ -956,7 +966,7 @@ const AdminOtherRevenuePage = () => {
           const { updatedItems, carryoversProcessed } = processOverdueCarryover(record.scheduleItems);
           
           if (carryoversProcessed > 0) {
-            console.log(`Processed ${carryoversProcessed} carryover(s) for revenue ${record.revenueCode}`);
+            console.log(`Processed ${carryoversProcessed} carryover(s) for revenue ${record.code}`);
             // TODO: In production, save updatedItems to backend
           }
           
@@ -1009,7 +1019,7 @@ const AdminOtherRevenuePage = () => {
   }, [data, loading]);
 
   // Sort handler
-  const handleSort = (field: "revenueCode" | "transactionDate" | "amount") => {
+  const handleSort = (field: "code" | "date_recorded" | "amount") => {
     if (sortBy === field) {
       // Toggle sort order if clicking same column
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -1090,10 +1100,15 @@ const AdminOtherRevenuePage = () => {
     id: string; // Unique identifier for React key (revenueId-installmentNumber)
     revenueId: number;
     revenueCode: string;
-    transactionDate: string;
+    date_recorded: string;
+    date_expected?: string;
+    last_payment_date?: string;
     source: { id: number; name: string; sourceCode: string };
     description: string;
+    type: 'Receivable' | 'Single';
     amount: number;
+    receivable?: number;
+    status?: string;
     paymentMethod: { id: number; methodName: string; methodCode: string };
     isInstallmentRow: boolean;
     installmentNumber?: number;
@@ -1121,11 +1136,16 @@ const AdminOtherRevenuePage = () => {
             rows.push({
               id: `${record.id}-${scheduleItem.installmentNumber}`,
               revenueId: record.id,
-              revenueCode: record.revenueCode,
-              transactionDate: record.transactionDate,
+              revenueCode: record.code,
+              date_recorded: record.date_recorded,
+              date_expected: record.date_expected,
+              last_payment_date: scheduleItem.paidAt || record.last_payment_date,
               source: record.source,
               description: record.description,
+              type: 'Receivable' as const,
               amount: record.amount,
+              receivable: balance,
+              status: record.status || record.receivable_status || status,
               paymentMethod: record.paymentMethod,
               isInstallmentRow: true,
               installmentNumber: scheduleItem.installmentNumber,
@@ -1142,11 +1162,16 @@ const AdminOtherRevenuePage = () => {
         rows.push({
           id: `${record.id}-single`,
           revenueId: record.id,
-          revenueCode: record.revenueCode,
-          transactionDate: record.transactionDate,
+          revenueCode: record.code,
+          date_recorded: record.date_recorded,
+          date_expected: record.date_expected,
+          last_payment_date: record.last_payment_date,
           source: record.source,
           description: record.description,
+          type: 'Single' as const,
           amount: record.amount,
+          receivable: record.balance || 0,
+          status: record.status || record.revenue_status,
           paymentMethod: record.paymentMethod,
           isInstallmentRow: false,
           originalRecord: record
@@ -1256,24 +1281,24 @@ const AdminOtherRevenuePage = () => {
               <thead>
                 <tr>
                   <th
-                    onClick={() => handleSort("transactionDate")}
+                    onClick={() => handleSort("date_recorded")}
                     className="sortable-header"
                     title="Click to sort by Transaction Date"
                   >
-                    Transaction Date{getSortIndicator("transactionDate")}
+                    Transaction Date{getSortIndicator("date_recorded")}
                   </th>
-                  <th>Installment</th>
-                  <th>Due Date</th>
+                  <th>Received by</th>
                   <th>Source</th>
+                  <th>Type</th>
                   <th
                     onClick={() => handleSort("amount")}
                     className="sortable-header"
                     title="Click to sort by Amount"
                   >
-                    Amount{getSortIndicator("amount")}
+                    Total Amount{getSortIndicator("amount")}
                   </th>
-                  <th>Balance</th>
-                  <th>Payment Status</th>
+                  <th>Receivable</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1298,44 +1323,45 @@ const AdminOtherRevenuePage = () => {
 
                     return (
                       <tr key={row.id} className={rowClass}>
-                        <td>{formatDate(row.transactionDate)}</td>
-                        
-                        {/* Installment Column */}
+                        <td>{formatDate(row.date_recorded)}</td>
+                        {/* Received by Column - show date_expected or last_payment_date */}
                         <td>
-                          {row.isInstallmentRow ? (
-                            <span className="chip normal">
-                              {row.installmentNumber} of {row.totalInstallments}
-                            </span>
-                          ) : (
-                            <span className="chip normal">Single</span>
-                          )}
+                          {row.date_expected 
+                            ? formatDate(row.date_expected) 
+                            : row.last_payment_date 
+                              ? formatDate(row.last_payment_date) 
+                              : '—'}
                         </td>
-
-                        {/* Due Date Column */}
+                        {/* Source Column - show description */}
+                        <td>{row.description}</td>
+                        {/* Type Column - Receivable or Single */}
                         <td>
-                          {row.dueDate ? formatDate(row.dueDate) : '—'}
+                          <span className={`chip ${row.type.toLowerCase()}`}>
+                            {row.type}
+                          </span>
                         </td>
-
-                        <td>{row.source.name}</td>
+                        {/* Total Amount Column */}
                         <td>{formatMoney(row.amount)}</td>
-
-                        {/* Balance Column */}
+                        {/* Receivable Column */}
                         <td>
-                          {row.isInstallmentRow && row.balance !== undefined ? (
+                          {row.receivable !== undefined && row.receivable !== null ? (
                             <span style={{ 
-                              color: row.balance > 0 ? '#FF4949' : '#4CAF50',
+                              color: row.receivable > 0 ? '#FF4949' : '#4CAF50',
                               fontWeight: '600'
                             }}>
-                              {formatMoney(row.balance)}
+                              {formatMoney(row.receivable)}
                             </span>
                           ) : (
                             '—'
                           )}
                         </td>
-
-                        {/* Payment Status Column */}
+                        {/* Status Column */}
                         <td>
-                          {row.paymentStatus ? (
+                          {row.status ? (
+                            <span className={getPaymentStatusClass(row.paymentStatus || PaymentStatus.PENDING)}>
+                              {row.status.replace('_', ' ')}
+                            </span>
+                          ) : row.paymentStatus ? (
                             <span className={getPaymentStatusClass(row.paymentStatus)}>
                               {row.paymentStatus.replace('_', ' ')}
                             </span>
@@ -1433,7 +1459,7 @@ const AdminOtherRevenuePage = () => {
             <RecordPaymentModal
               entityType="revenue"
               recordId={selectedRevenueRecord.id}
-              recordRef={selectedRevenueRecord.revenueCode}
+              recordRef={selectedRevenueRecord.code}
               scheduleItems={selectedRevenueRecord.scheduleItems || []}
               selectedInstallment={selectedScheduleItem}
               paymentMethods={paymentMethods}

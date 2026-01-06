@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { PayrollBatch, Payroll } from './types';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showConfirmation, showSuccess, showError } from '../../../../utils/Alerts';
 import ViewPayslipModal from './viewPayslip';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import JSZip from 'jszip';
 import {
   calculateEarnings,
   calculateDeductions,
+  calculateGrossPay,
+  calculateTotalDeductions,
+  generateAttendanceData,
   formatRateType,
   getEmployeeName,
   RateType,
@@ -19,6 +20,7 @@ import '@/styles/components/modal2.css';
 import '@/styles/components/forms.css';
 import '@/styles/components/table.css';
 import '@/styles/components/chips.css';
+import '@/styles/payroll/payslip.css';
 
 interface ViewPayrollBatchProps {
   batch: PayrollBatch;
@@ -39,7 +41,113 @@ export default function ViewPayrollBatch({
   const [expandedDetails, setExpandedDetails] = useState<string | null>(null);
   const [payslipModalOpen, setPayslipModalOpen] = useState(false);
   const [selectedPayrollForPayslip, setSelectedPayrollForPayslip] = useState<Payroll | null>(null);
-  const [downloadingBatch, setDownloadingBatch] = useState(false);
+  const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
+
+  // Ref for batch print
+  const batchPrintRef = useRef<HTMLDivElement>(null);
+
+  // Batch print handler using react-to-print
+  const handleBatchPrint = useReactToPrint({
+    contentRef: batchPrintRef,
+    documentTitle: `Payroll_${batch.payroll_period_code}_All_Payslips`,
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 8mm;
+      }
+      @media print {
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .batch-payslip-page {
+          page-break-after: always;
+          page-break-inside: avoid;
+          height: 100%;
+          overflow: hidden;
+        }
+        .batch-payslip-page:last-child {
+          page-break-after: auto;
+        }
+        .payslipContainer {
+          transform: scale(0.72);
+          transform-origin: top center;
+          background-color: #ffffff !important;
+          padding: 10px !important;
+          margin: 0 auto;
+        }
+        .companyHeader {
+          margin-bottom: 8px !important;
+          padding-bottom: 8px !important;
+        }
+        .payPeriodSection {
+          padding: 6px 10px !important;
+          margin-bottom: 8px !important;
+        }
+        .employeeInfoSection {
+          padding: 8px !important;
+          margin-bottom: 8px !important;
+        }
+        .employeeInfoGrid {
+          gap: 4px !important;
+        }
+        .earningsDeductionsGrid {
+          gap: 15px !important;
+          margin-bottom: 8px !important;
+        }
+        .totalsSection {
+          margin-top: 8px !important;
+          padding: 8px !important;
+        }
+        .totalRow {
+          padding: 4px 8px !important;
+        }
+        .netPayRow {
+          background-color: #333333 !important;
+          color: #ffffff !important;
+          padding: 6px 8px !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .attendanceSection {
+          margin-top: 8px !important;
+          padding: 8px !important;
+        }
+        .attendanceGrid {
+          gap: 10px !important;
+        }
+        .companyLogo {
+          max-height: 40px !important;
+        }
+        .companyName {
+          font-size: 16px !important;
+        }
+        .sectionHeading {
+          font-size: 11px !important;
+          margin-bottom: 6px !important;
+        }
+        .payslipTable {
+          font-size: 10px !important;
+        }
+        .payslipTableRow td {
+          padding: 3px 6px !important;
+        }
+        .attendanceHeading {
+          font-size: 11px !important;
+          margin-bottom: 6px !important;
+        }
+        .attendanceValue {
+          font-size: 16px !important;
+        }
+        .attendanceValuePresent { color: #4caf50 !important; }
+        .attendanceValueAbsent { color: #f44336 !important; }
+        .attendanceValueLate { color: #ff9800 !important; }
+        .attendanceValueOvertime { color: #2196f3 !important; }
+      }
+    `,
+  });
 
   // Handle select all
   const handleSelectAll = (checked: boolean) => {
@@ -94,99 +202,168 @@ export default function ViewPayrollBatch({
     setPayslipModalOpen(true);
   };
 
-  // Handle download all payslips as ZIP
-  const handleDownloadAllPayslips = async () => {
-    if (!batch.payrolls || batch.payrolls.length === 0) return;
+  // Render single payslip for batch print
+  const renderPayslipForPrint = (payroll: Payroll) => {
+    if (!payroll.employee) return null;
 
-    setDownloadingBatch(true);
-    try {
-      const zip = new JSZip();
-      const payslipsFolder = zip.folder('payslips');
+    const rateType: RateType = 'monthly';
+    const earnings = calculateEarnings(payroll.baseSalary, payroll.allowances, rateType);
+    const deductions = calculateDeductions(payroll.deductions);
+    const attendance = generateAttendanceData(payroll.isDisbursed);
+    const grossPay = calculateGrossPay(earnings);
+    const totalDeductions = calculateTotalDeductions(deductions);
+    const employeeName = getEmployeeName(payroll.employee);
 
-      if (!payslipsFolder) {
-        throw new Error('Failed to create ZIP folder');
-      }
-
-      // Generate PDF for each payroll
-      for (const payroll of batch.payrolls) {
-        if (!payroll.employee) continue;
-
-        // Create a temporary div for the payslip content
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.padding = '20px';
-        tempDiv.style.backgroundColor = '#ffffff';
-        tempDiv.style.width = '800px';
-        document.body.appendChild(tempDiv);
-
-        // Generate payslip HTML (simplified version)
-        const rateType: RateType = 'monthly';
-        const earnings = calculateEarnings(payroll.baseSalary, payroll.allowances, rateType);
-        const deductions = calculateDeductions(payroll.deductions);
-        const employeeName = getEmployeeName(payroll.employee);
-
-        tempDiv.innerHTML = `
-          <div style="font-family: Arial, sans-serif;">
-            <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px;">
-              <h1 style="margin: 0; font-size: 24px;">ACME Solutions Inc.</h1>
-              <p style="margin: 5px 0; font-size: 14px;">Payslip Reference: #${payroll.id}</p>
+    return (
+      <div key={payroll.id} className="batch-payslip-page">
+        <div className="payslipContainer">
+          {/* Company Header */}
+          <div className="companyHeader">
+            <div className="companyLogoContainer">
+              <img 
+                src="/agilaLogo.png" 
+                alt="Agila Bus Transport Corp." 
+                className="companyLogo"
+              />
+              <h1 className="companyName">Agila Bus Transport Corp.</h1>
             </div>
-            <div style="margin-bottom: 20px;">
-              <strong>Pay Period:</strong> ${formatDate(batch.period_start)} - ${formatDate(batch.period_end)}<br/>
-              <strong>Employee:</strong> ${employeeName}<br/>
-              <strong>ID:</strong> ${payroll.employee.employeeNumber}<br/>
-              <strong>Department:</strong> ${payroll.employee.department || 'N/A'}<br/>
-              <strong>Net Pay:</strong> ${formatMoney(payroll.netPay)}
+            <p className="payslipReference">Payslip Reference: #{payroll.id}</p>
+          </div>
+
+          {/* Pay Period */}
+          <div className="payPeriodSection">
+            <div>
+              <strong>Pay Period:</strong> {formatDate(batch.period_start)} - {formatDate(batch.period_end)}
+            </div>
+            <div>
+              <strong>Pay Date:</strong> {payroll.disbursementDate ? formatDate(payroll.disbursementDate) : 'Pending'}
             </div>
           </div>
-        `;
 
-        // Convert to canvas and PDF
-        const canvas = await html2canvas(tempDiv, {
-          scale: 2,
-          logging: false,
-          backgroundColor: '#ffffff',
-        });
+          {/* Employee Info */}
+          <div className="employeeInfoSection">
+            <div className="employeeInfoGrid">
+              <div className="empDetails">
+                <strong>Employee:</strong> {employeeName}
+              </div>
+              <div className="empDetails">
+                <strong>ID:</strong> {payroll.employee.employeeNumber}
+              </div>
+              <div className="empDetails">
+                <strong>Department:</strong> {payroll.employee.department || 'N/A'}
+              </div>
+              <div className="empDetails">
+                <strong>Position:</strong> {payroll.employee.position || 'N/A'}
+              </div>
+              <div className="empDetails">
+                <strong>Basic Rate:</strong> {formatMoney(payroll.baseSalary)}
+              </div>
+              <div className="empDetails">
+                <strong>Rate Type:</strong> {formatRateType(rateType)}
+              </div>
+            </div>
+          </div>
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4',
-        });
+          {/* Earnings and Deductions */}
+          <div className="earningsDeductionsGrid">
+            <div>
+              <h3 className="sectionHeading">EARNINGS</h3>
+              <table className="payslipTable">
+                <tbody>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Basic Pay ({formatRateType(rateType)})</td>
+                    <td className="payslipTableCellAmount">{formatMoney(earnings.basicPay)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Overtime Pay ({attendance.overtimeHours} hrs @ 125%)</td>
+                    <td className="payslipTableCellAmount">{formatMoney(earnings.overtimePay)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Rice Allowance</td>
+                    <td className="payslipTableCellAmount">{formatMoney(earnings.riceAllowance)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Transportation Allowance</td>
+                    <td className="payslipTableCellAmount">{formatMoney(earnings.transportationAllowance)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Other Allowances</td>
+                    <td className="payslipTableCellAmount">{formatMoney(earnings.otherAllowances)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        const imgWidth = 210;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            <div>
+              <h3 className="sectionHeading">DEDUCTIONS</h3>
+              <table className="payslipTable">
+                <tbody>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Withholding Tax</td>
+                    <td className="payslipTableCellAmount">{formatMoney(deductions.withholdingTax)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Social Security Contribution</td>
+                    <td className="payslipTableCellAmount">{formatMoney(deductions.sssContribution)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">PhilHealth Contribution</td>
+                    <td className="payslipTableCellAmount">{formatMoney(deductions.philhealthContribution)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Pag-IBIG Contribution</td>
+                    <td className="payslipTableCellAmount">{formatMoney(deductions.pagibigContribution)}</td>
+                  </tr>
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell">Other Deductions</td>
+                    <td className="payslipTableCellAmount">{formatMoney(deductions.otherDeductions)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-        // Add PDF to ZIP
-        const pdfBlob = pdf.output('blob');
-        const filename = `Payslip_${payroll.employee.employeeNumber}_${payroll.employee.lastName}.pdf`;
-        payslipsFolder.file(filename, pdfBlob);
+          {/* Totals */}
+          <div className="totalsSection">
+            <div className="totalRow">
+              <span><strong>Total Gross Pay:</strong></span>
+              <span>{formatMoney(grossPay)}</span>
+            </div>
+            <div className="totalRow">
+              <span><strong>Total Deductions:</strong></span>
+              <span>({formatMoney(totalDeductions)})</span>
+            </div>
+            <div className="netPayRow">
+              <span>NET PAY:</span>
+              <span>{formatMoney(payroll.netPay)}</span>
+            </div>
+          </div>
 
-        // Clean up
-        document.body.removeChild(tempDiv);
-      }
-
-      // Generate and download ZIP
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Payroll_${batch.payroll_period_code}_Payslips.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      showSuccess('All payslips downloaded successfully', 'Success');
-    } catch (error) {
-      console.error('Error generating payslips:', error);
-      showError('Failed to generate payslips. Please try again.', 'Error');
-    } finally {
-      setDownloadingBatch(false);
-    }
+          {/* Attendance */}
+          <div className="attendanceSection">
+            <h3 className="attendanceHeading">Attendance Summary</h3>
+            <div className="attendanceGrid">
+              <div>
+                <strong>Present Count:</strong>
+                <div className="attendanceValue attendanceValuePresent">{attendance.presentCount}</div>
+              </div>
+              <div>
+                <strong>Absent Count:</strong>
+                <div className="attendanceValue attendanceValueAbsent">{attendance.absentCount}</div>
+              </div>
+              <div>
+                <strong>Late Count:</strong>
+                <div className="attendanceValue attendanceValueLate">{attendance.lateCount}</div>
+              </div>
+              <div>
+                <strong>Total Overtime Hours:</strong>
+                <div className="attendanceValue attendanceValueOvertime">{attendance.overtimeHours}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Get status badge class
@@ -362,8 +539,6 @@ export default function ViewPayrollBatch({
                     {undisbursedCount > 0 && onDisburse && <th style={{ width: '40px' }}></th>}
                     <th>Employee</th>
                     <th>Base Salary</th>
-                    <th>Allowances</th>
-                    <th>Deductions</th>
                     <th>Net Pay</th>
                     <th>Status</th>
                     <th style={{ width: '120px' }}>Actions</th>
@@ -393,8 +568,6 @@ export default function ViewPayrollBatch({
                           </div>
                         </td>
                         <td>{formatMoney(payroll.baseSalary)}</td>
-                        <td>{formatMoney(payroll.allowances)}</td>
-                        <td>{formatMoney(payroll.deductions)}</td>
                         <td style={{ fontWeight: 600 }}>{formatMoney(payroll.netPay)}</td>
                         <td>
                           {payroll.isDisbursed ? (
@@ -453,12 +626,21 @@ export default function ViewPayrollBatch({
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                         <h4 style={{ margin: 0, color: 'var(--primary-color)' }}>
-                          Payroll Details - {payroll.employee?.firstName} {payroll.employee?.lastName}
+                          <strong>Payroll Details - {payroll.employee?.firstName} {payroll.employee?.lastName}</strong>
                         </h4>
                         <button
                           className="submit-btn"
                           onClick={() => handleViewPayslip(payroll)}
-                          style={{ padding: '6px 12px', fontSize: '13px' }}
+                          onMouseEnter={() => setHoveredBtn(payroll.id)}
+                          onMouseLeave={() => setHoveredBtn(null)}
+                          style={{ 
+                            padding: '6px 12px', 
+                            fontSize: '13px', 
+                            color: 'var(--primary-color)',
+                            cursor: 'pointer',
+                            transform: hoveredBtn === payroll.id ? 'scale(1.03)' : 'scale(1)',
+                            transition: 'transform 0.2s ease'
+                          }}
                         >
                           <i className="ri-file-text-line"></i> View Full Payslip
                         </button>
@@ -547,15 +729,16 @@ export default function ViewPayrollBatch({
             >
               <i className="ri-close-line" /> Close
             </button>
+            {/* Download Button */}
             {batch.payrolls && batch.payrolls.length > 0 && (
               <button
                 type="button"
                 className="submit-btn"
-                onClick={handleDownloadAllPayslips}
-                disabled={downloadingBatch}
+                id='DownloadAllPayslipsBtn'
+                onClick={() => handleBatchPrint()}
               >
-                <i className="ri-download-line"></i>
-                {downloadingBatch ? 'Generating...' : 'Download All Payslips (ZIP)'}
+                <i className="ri-printer-line"></i>
+                Print All Payslips
               </button>
             )}
 
@@ -574,6 +757,13 @@ export default function ViewPayrollBatch({
               </button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Hidden container for batch print */}
+      <div style={{ display: 'none' }}>
+        <div ref={batchPrintRef}>
+          {batch.payrolls?.map(payroll => renderPayslipForPrint(payroll))}
         </div>
       </div>
 

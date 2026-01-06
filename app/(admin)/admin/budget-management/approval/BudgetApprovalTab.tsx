@@ -43,6 +43,7 @@ interface BudgetApprovalTabProps {
   onLoadingChange: (loading: boolean) => void;
   onError: (error: string | null) => void;
   onExport: (format: 'csv' | 'excel' | 'pdf') => void;
+  onDataUpdate?: (data: any[]) => void;
 }
 
 export default function BudgetApprovalTab({
@@ -51,7 +52,8 @@ export default function BudgetApprovalTab({
   loading,
   onLoadingChange,
   onError,
-  onExport
+  onExport,
+  onDataUpdate
 }: BudgetApprovalTabProps) {
   const [data, setData] = useState<BudgetRequest[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -294,6 +296,13 @@ export default function BudgetApprovalTab({
 
     return result;
   }, [data, filters, searchTerm, sortField, sortOrder]);
+
+  // Send filtered data to parent for export
+  useEffect(() => {
+    if (onDataUpdate) {
+      onDataUpdate(filteredData);
+    }
+  }, [filteredData, onDataUpdate]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / pageSize);

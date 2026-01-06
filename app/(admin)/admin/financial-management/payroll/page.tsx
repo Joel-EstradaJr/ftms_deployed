@@ -443,7 +443,7 @@ const PayrollPage = () => {
                 <i className="ri-search-line" />
                 <input
                   type="text"
-                  placeholder="Search batch code, period, employees, net pay..."
+                  placeholder="Search batch code, period, employees, net pay"
                   value={search}
                   onChange={handleSearchChange}
                   onKeyDown={handleSearchKeyPress}
@@ -462,13 +462,6 @@ const PayrollPage = () => {
 
           <div className="filters">
             <button
-              className="generatePayrollBtn"
-              onClick={handleOpenAddModal}
-            >
-              <i className="ri-add-line" /> Generate Payroll Batch
-            </button>
-
-            <button
               className="releaseAllBtn"
               onClick={handleReleaseAll}
               disabled={filteredData.filter(b => b.status.toLowerCase() === 'pending').length === 0}
@@ -482,6 +475,13 @@ const PayrollPage = () => {
               columns={exportColumns}
               title="Payroll Management Report"
             />
+            
+            <button
+              className="addButton"
+              onClick={handleOpenAddModal}
+            >
+              <i className="ri-add-line" /> Add Payroll Batch
+            </button>
           </div>
         </div>
 

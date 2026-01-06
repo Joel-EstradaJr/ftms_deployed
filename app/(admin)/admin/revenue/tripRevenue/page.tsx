@@ -13,8 +13,11 @@ import RevenueFilter from "@/Components/RevenueFilter";
 
 import ViewTripRevenueModal from "./viewTripRevenue";
 import RecordTripRevenueModal from "./recordTripRevenue"; // Combined add/edit modal
-import RecordReceivablePaymentModal from "./recordReceivablePayment"; // Receivable payment modal
+import TripReceivablePaymentModal from "./TripReceivablePaymentModal"; // Receivable payment modal wrapper
 import ConfigModal, { ConfigData } from "./configModal"; // Configuration modal
+
+import { PaymentRecordData } from "@/app/types/payments";
+import { RevenueScheduleItem, PaymentStatus } from "../../../../types/revenue";
 
 import { showSuccess, showError } from '@/utils/Alerts';
 import { formatDate, formatMoney } from '@/utils/formatting';
@@ -47,13 +50,17 @@ interface BusTripRecord {
   bus_type: string; // 'Airconditioned' or 'Ordinary'
   body_number: string;
   bus_brand: string; // 'Hilltop', 'Agila', 'DARJ'
+  body_builder: string; // Same as bus_brand (for modal compatibility)
   
   // Status tracking (from Model Revenue table)
   dateRecorded: string | null;
+  date_recorded: string | null; // Same as dateRecorded (for modal compatibility)
   amount: number | null;
+  total_amount: number | null; // Receivable total (for modal compatibility)
   status: string; // 'remitted' or 'pending'
   remarks: string | null;
   dueDate?: string | null; // receivable due date (for receivable status)
+  due_date: string | null; // Same as dueDate (for modal compatibility)
   
   // receivable payment details (for receivable status)
   receivableDetails?: {
@@ -99,6 +106,10 @@ interface BusTripRecord {
   driverMiddleName?: string;
   driverLastName?: string;
   driverSuffix?: string;
+  
+  // Installment schedules (for receivable payments)
+  driverInstallments?: RevenueScheduleItem[];
+  conductorInstallments?: RevenueScheduleItem[];
 }
 
 interface RevenueSource {
@@ -112,6 +123,82 @@ interface PaymentMethod {
   methodName: string;
   methodCode: string;
 }
+
+// Helper function to calculate shortage amount based on assignment type
+const calculateShortageAmount = (record: BusTripRecord): number => {
+  if (record.assignment_type === 'Boundary') {
+    // For Boundary: shortage is the quota (assignment_value) that wasn't remitted
+    return record.assignment_value;
+  } else {
+    // For Percentage: shortage is company's share of trip revenue
+    // assignment_value is the company's share percentage
+    return record.trip_revenue * (record.assignment_value / 100);
+  }
+};
+
+// Helper function to generate installment schedules
+const generateInstallmentSchedule = (
+  totalAmount: number,
+  startDate: string,
+  numberOfPayments: number = 3,
+  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' = 'WEEKLY',
+  paidAmount: number = 0
+): RevenueScheduleItem[] => {
+  const installments: RevenueScheduleItem[] = [];
+  const amountPerInstallment = totalAmount / numberOfPayments;
+  let remainingPaid = paidAmount;
+  
+  for (let i = 0; i < numberOfPayments; i++) {
+    const dueDate = new Date(startDate);
+    
+    switch (frequency) {
+      case 'DAILY':
+        dueDate.setDate(dueDate.getDate() + i);
+        break;
+      case 'WEEKLY':
+        dueDate.setDate(dueDate.getDate() + (i * 7));
+        break;
+      case 'MONTHLY':
+        dueDate.setMonth(dueDate.getMonth() + i);
+        break;
+    }
+    
+    const dueDateStr = dueDate.toISOString().split('T')[0];
+    
+    // Calculate how much of this installment is paid
+    const installmentPaid = Math.min(remainingPaid, amountPerInstallment);
+    remainingPaid -= installmentPaid;
+    
+    const balance = amountPerInstallment - installmentPaid;
+    let status: PaymentStatus;
+    
+    if (balance <= 0.01) {
+      status = PaymentStatus.PAID;
+    } else if (installmentPaid > 0) {
+      status = PaymentStatus.PARTIALLY_PAID;
+    } else if (new Date(dueDateStr) < new Date()) {
+      status = PaymentStatus.OVERDUE;
+    } else {
+      status = PaymentStatus.PENDING;
+    }
+    
+    installments.push({
+      id: `inst-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+      installmentNumber: i + 1,
+      originalDueDate: dueDateStr,
+      currentDueDate: dueDateStr,
+      originalDueAmount: amountPerInstallment,
+      currentDueAmount: amountPerInstallment,
+      paidAmount: installmentPaid,
+      carriedOverAmount: 0,
+      paymentStatus: status,
+      isPastDue: new Date(dueDateStr) < new Date() && balance > 0,
+      isEditable: status !== PaymentStatus.PAID
+    });
+  }
+  
+  return installments;
+};
 
 // MOCK DATA FOR TESTING
 const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
@@ -136,9 +223,13 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "001",
     bus_brand: "Hilltop",
+    body_builder: "Hilltop",
     dateRecorded: "2025-11-11",
+    date_recorded: "2025-11-11",
     date_expected: "2025-11-14",
     amount: 15000.00,
+    total_amount: null,
+    due_date: null,
     status: "remitted",
     remarks: "On-time remittance, no issues",
     driverName: "Juan Santos Dela Cruz",
@@ -177,9 +268,13 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Ordinary",
     body_number: "002",
     bus_brand: "Agila",
+    body_builder: "Agila",
     dateRecorded: null,
+    date_recorded: null,
     date_expected: null,
     amount: null,
+    total_amount: null,
+    due_date: null,
     status: "pending",
     remarks: null,
     driverName: "Carlos Mendoza Cruz",
@@ -218,9 +313,13 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "003",
     bus_brand: "DARJ",
+    body_builder: "DARJ",
     dateRecorded: "2025-11-10",
+    date_recorded: "2025-11-10",
     date_expected: "2025-11-13",
     amount: 18000.00,
+    total_amount: null,
+    due_date: null,
     status: "remitted",
     remarks: "Complete remittance with fuel receipts",
     driverName: "Pedro Ramos Reyes, Sr.",
@@ -242,7 +341,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-004",
     bus_trip_id: "TRIP-004",
     bus_route: "Sta. Cruz to S. Palay",
-    date_assigned: "2025-11-02", // Old date - will be auto-converted to receivable (trip deficit)
+    date_assigned: "2025-11-02",
     trip_fuel_expense: 1800.00,
     trip_revenue: 10000.00,
     amount: 0,
@@ -260,10 +359,14 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Ordinary",
     body_number: "004",
     bus_brand: "Hilltop",
-    dateRecorded: null,
-    date_expected: null,
-    status: "pending",
-    remarks: null,
+    body_builder: "Hilltop",
+    dateRecorded: "2025-11-05",
+    date_recorded: "2025-11-05",
+    date_expected: "2025-11-05",
+    total_amount: 8300.00,
+    due_date: "2025-12-05",
+    status: "receivable",
+    remarks: "Automatically converted to receivable - Deadline exceeded with no remittance.",
     driverName: "Miguel Garcia Fernandez",
     conductorName: "Ana Torres Santos",
     // Driver details
@@ -278,6 +381,23 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     conductorMiddleName: "Torres",
     conductorLastName: "Santos",
     conductorSuffix: "",
+    // Receivable details with installments - UNPAID
+    receivableDetails: {
+      totalAmount: 8300.00,
+      dueDate: "2025-12-05",
+      createdDate: "2025-11-05",
+      driverShare: 4150.00,
+      driverPaid: 0,
+      driverStatus: 'Pending',
+      driverPayments: [],
+      conductorShare: 4150.00,
+      conductorPaid: 0,
+      conductorStatus: 'Pending',
+      conductorPayments: [],
+      overallStatus: 'Pending'
+    },
+    driverInstallments: generateInstallmentSchedule(4150.00, "2025-12-05", 3, 'WEEKLY', 0),
+    conductorInstallments: generateInstallmentSchedule(4150.00, "2025-12-05", 3, 'WEEKLY', 0),
   },
 
   {
@@ -302,9 +422,13 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "005",
     bus_brand: "Agila",
+    body_builder: "Agila",
     dateRecorded: "",
+    date_recorded: "",
     date_expected: "",
     status: "pending",
+    total_amount: null,
+    due_date: null,
     remarks: "Remitted with complete documentation",
     driverName: "Carlos Mendoza Villanueva, III",
     conductorName: "Rosa Santos Martinez",
@@ -345,8 +469,12 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Ordinary",
     body_number: "006",
     bus_brand: "DARJ",
-    status: "pending", // Will be auto-converted to receivable by checkAndUpdateStatus
-    remarks: null,
+    body_builder: "DARJ",
+    date_recorded: "2025-11-03",
+    total_amount: 7050.00,
+    due_date: "2025-12-03",
+    status: "receivable",
+    remarks: "Automatically converted to receivable - Deadline exceeded.",
     driverName: "Jose Alvarez Reyes",
     conductorName: "Elena Cruz Bautista",
     // Driver details
@@ -361,6 +489,25 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     conductorMiddleName: "Cruz",
     conductorLastName: "Bautista",
     conductorSuffix: "",
+    // Receivable details - PARTIALLY PAID (Driver has 1 payment)
+    receivableDetails: {
+      totalAmount: 7050.00,
+      dueDate: "2025-12-03",
+      createdDate: "2025-11-03",
+      driverShare: 3525.00,
+      driverPaid: 1175.00,
+      driverStatus: 'Pending',
+      driverPayments: [
+        { date: "2025-11-10", time: "10:30 AM", amount: 1175.00, method: "Cash", recordedBy: "Admin" }
+      ],
+      conductorShare: 3525.00,
+      conductorPaid: 0,
+      conductorStatus: 'Pending',
+      conductorPayments: [],
+      overallStatus: 'Partial'
+    },
+    driverInstallments: generateInstallmentSchedule(3525.00, "2025-12-03", 3, 'WEEKLY', 1175.00),
+    conductorInstallments: generateInstallmentSchedule(3525.00, "2025-12-03", 3, 'WEEKLY', 0),
   },
   
   {
@@ -384,10 +531,14 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Airconditioned",
     body_number: "007",
     bus_brand: "Hilltop",
+    body_builder: "Hilltop",
     dateRecorded: "2025-11-11",
+    date_recorded: "2025-11-11",
     date_expected: "2025-11-14",
-    amount: 5000.00, // Less than expected (7000 + 2000 = 9000), so it's receivable
-    status: "Trip Deficit",
+    amount: 5000.00,
+    total_amount: 4000.00,
+    due_date: "2025-12-11",
+    status: "receivable",
     remarks: "Partial remittance - shortfall converted to receivable.",
     driverName: "Ricardo Alvarez Fernandez",
     conductorName: "Maria Santos Lopez",
@@ -403,6 +554,23 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     conductorMiddleName: "Santos",
     conductorLastName: "Lopez",
     conductorSuffix: "",
+    // Receivable details for shortfall (9000 expected - 5000 paid = 4000 shortfall)
+    receivableDetails: {
+      totalAmount: 4000.00,
+      dueDate: "2025-12-11",
+      createdDate: "2025-11-11",
+      driverShare: 2000.00,
+      driverPaid: 0,
+      driverStatus: 'Pending',
+      driverPayments: [],
+      conductorShare: 2000.00,
+      conductorPaid: 0,
+      conductorStatus: 'Pending',
+      conductorPayments: [],
+      overallStatus: 'Pending'
+    },
+    driverInstallments: generateInstallmentSchedule(2000.00, "2025-12-11", 2, 'WEEKLY', 0),
+    conductorInstallments: generateInstallmentSchedule(2000.00, "2025-12-11", 2, 'WEEKLY', 0),
   },
   
   // Test case: Driver only (no conductor)
@@ -427,9 +595,13 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_type: "Ordinary",
     body_number: "008",
     bus_brand: "Hilltop",
+    body_builder: "Hilltop",
     dateRecorded: null,
+    date_recorded: null,
     date_expected: null,
     amount: null,
+    total_amount: null,
+    due_date: null,
     status: "pending",
     remarks: null,
     driverName: "Luis Cruz Santos",
@@ -441,6 +613,62 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     driverLastName: "Santos",
     driverSuffix: "",
     // NO CONDUCTOR - leave fields undefined to test driver-only scenario
+  },
+  // RECEIVABLE - Driver only, with installments (partially paid)
+  {
+    assignment_id: "ASSIGN-009",
+    bus_trip_id: "TRIP-009",
+    bus_route: "PITX Express",
+    date_assigned: "2025-11-05",
+    trip_fuel_expense: 1800.00,
+    trip_revenue: 9500.00,
+    assignment_type: "Boundary",
+    assignment_value: 6000.00,
+    payment_method: "Company Cash",
+    employee_id: "EMP-010",
+    employee_firstName: "Roberto",
+    employee_middleName: "Santos",
+    employee_lastName: "Cruz",
+    employee_suffix: "",
+    position_id: "POS-001",
+    position_name: "Driver",
+    bus_plate_number: "VWX 2222",
+    bus_type: "Airconditioned",
+    body_number: "009",
+    bus_brand: "Agila",
+    body_builder: "Agila",
+    dateRecorded: "2025-11-08",
+    date_recorded: "2025-11-08",
+    date_expected: "2025-11-08",
+    amount: 0,
+    total_amount: 7800.00,
+    due_date: "2025-12-08",
+    status: "receivable",
+    remarks: "Driver-only trip - converted to receivable.",
+    driverName: "Roberto Santos Cruz",
+    conductorName: undefined,
+    // Driver details only
+    driverId: "EMP-010",
+    driverFirstName: "Roberto",
+    driverMiddleName: "Santos",
+    driverLastName: "Cruz",
+    driverSuffix: "",
+    // NO CONDUCTOR
+    // Receivable details - Driver only (partially paid)
+    receivableDetails: {
+      totalAmount: 7800.00,
+      dueDate: "2025-12-08",
+      createdDate: "2025-11-08",
+      driverShare: 7800.00,
+      driverPaid: 2600.00,
+      driverStatus: 'Pending',
+      driverPayments: [
+        { date: "2025-11-15", time: "2:00 PM", amount: 2600.00, method: "Cash", recordedBy: "Admin" }
+      ],
+      overallStatus: 'Partial'
+    },
+    driverInstallments: generateInstallmentSchedule(7800.00, "2025-12-08", 3, 'WEEKLY', 2600.00),
+    // No conductor installments
   },
 ];
 
@@ -470,6 +698,8 @@ const AdminTripRevenuePage = () => {
     receivable_due_date: 30,
     conductor_share: 50,
     driver_share: 50,
+    default_frequency: 'WEEKLY',
+    default_number_of_payments: 3,
   });
 
   // Filter options state
@@ -530,14 +760,18 @@ const AdminTripRevenuePage = () => {
         content = <RecordTripRevenueModal
           mode={mode}
           tripData={rowData!}
+          config={config}
           onSave={handleSaveTripRevenue}
           onClose={closeModal}
         />;
         break;
       case "payReceivable":
-        content = <RecordReceivablePaymentModal
+        content = <TripReceivablePaymentModal
           tripData={rowData!}
-          onSave={handleReceivablePayment}
+          paymentMethods={paymentMethods}
+          currentUser="Admin User" // TODO: Get from auth context
+          onPaymentRecorded={handleReceivablePayment}
+          onCloseReceivable={handleCloseReceivable}
           onClose={closeModal}
         />;
         break;
@@ -574,84 +808,129 @@ const AdminTripRevenuePage = () => {
     showSuccess('Configuration saved successfully', 'Success');
   };
 
-  // Handle receivable payment
-  const handleReceivablePayment = async (paymentData: any) => {
+  // Handle receivable payment - updated for new format with installments
+  const handleReceivablePayment = async (paymentData: PaymentRecordData & { employeeType: 'driver' | 'conductor'; employeeId: string }) => {
     console.log('Recording receivable payment:', paymentData);
     
-    // Update persistent mock data
+    // Update persistent mock data - update the installment schedule
     setFullDataset(prevData => prevData.map(item => {
-      if (item.assignment_id === paymentData.assignment_id) {
-        if (paymentData.action === 'closeReceivable') {
-          // Close the receivable
-          return {
-            ...item,
-            receivableDetails: item.receivableDetails ? {
-              ...item.receivableDetails,
-              overallStatus: 'Closed' as const
-            } : item.receivableDetails
-          };
-        } else {
-          // Record payment
-          const receivableDetails = item.receivableDetails;
-          if (!receivableDetails) return item;
+      if (item.assignment_id === paymentData.recordId) {
+        const installmentKey = paymentData.employeeType === 'driver' ? 'driverInstallments' : 'conductorInstallments';
+        const installments = item[installmentKey] || [];
+        
+        // Get cascade breakdown or create single payment
+        const cascadeBreakdown = paymentData.cascadeBreakdown || [{
+          installmentNumber: paymentData.installmentNumber,
+          scheduleItemId: paymentData.scheduleItemId,
+          amountApplied: paymentData.amountToPay
+        }];
+        
+        // Update the affected installments
+        const updatedInstallments = installments.map(installment => {
+          const affectedInstallment = cascadeBreakdown.find(
+            (ai: { installmentNumber: number; scheduleItemId: string; amountApplied: number }) => 
+              ai.scheduleItemId === installment.id
+          );
+          if (affectedInstallment) {
+            const newPaidAmount = installment.paidAmount + affectedInstallment.amountApplied;
+            const balance = installment.currentDueAmount - newPaidAmount;
+            const newStatus: PaymentStatus = 
+              balance <= 0 ? PaymentStatus.PAID : newPaidAmount > 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PENDING;
+            return {
+              ...installment,
+              paidAmount: newPaidAmount,
+              paymentStatus: newStatus
+            };
+          }
+          return installment;
+        });
 
+        // Calculate new totals for receivableDetails
+        const receivableDetails = item.receivableDetails;
+        if (receivableDetails) {
+          const totalPaid = updatedInstallments.reduce((sum, inst) => sum + inst.paidAmount, 0);
+          const totalDue = updatedInstallments.reduce((sum, inst) => sum + inst.currentDueAmount, 0);
+          const isPaid = Math.abs(totalPaid - totalDue) < 0.01;
+
+          const hasConductor = item.conductorId && item.conductorName && item.conductorName !== 'N/A';
+          
           if (paymentData.employeeType === 'driver') {
-            const newDriverPaid = receivableDetails.driverPaid + paymentData.payment.amount;
-            const newDriverStatus: 'Pending' | 'Paid' | 'Overdue' = 
-              Math.abs(newDriverPaid - receivableDetails.driverShare) < 0.01 ? 'Paid' : 'Pending';
-            
-            const hasConductor = item.conductorId && item.conductorName && item.conductorName !== 'N/A';
+            const newDriverStatus: 'Pending' | 'Paid' | 'Overdue' = isPaid ? 'Paid' : 'Pending';
             let newOverallStatus = receivableDetails.overallStatus;
             
             if (hasConductor) {
               if (newDriverStatus === 'Paid' && receivableDetails.conductorStatus === 'Paid') {
                 newOverallStatus = 'Paid';
-              } else if (newDriverStatus === 'Paid' || receivableDetails.conductorStatus === 'Paid') {
+              } else if (newDriverStatus === 'Paid' || receivableDetails.conductorStatus === 'Paid' || totalPaid > 0) {
                 newOverallStatus = 'Partial';
               }
             } else {
-              newOverallStatus = newDriverStatus === 'Paid' ? 'Paid' : 'Pending';
+              newOverallStatus = newDriverStatus === 'Paid' ? 'Paid' : totalPaid > 0 ? 'Partial' : 'Pending';
             }
 
             return {
               ...item,
+              driverInstallments: updatedInstallments,
               receivableDetails: {
                 ...receivableDetails,
-                driverPaid: newDriverPaid,
+                driverPaid: totalPaid,
                 driverStatus: newDriverStatus,
-                driverPayments: [...receivableDetails.driverPayments, paymentData.payment],
                 overallStatus: newOverallStatus
               }
             };
-          } else if (paymentData.employeeType === 'conductor') {
-            const newConductorPaid = (receivableDetails.conductorPaid || 0) + paymentData.payment.amount;
-            const newConductorStatus: 'Pending' | 'Paid' | 'Overdue' = 
-              Math.abs(newConductorPaid - (receivableDetails.conductorShare || 0)) < 0.01 ? 'Paid' : 'Pending';
-            
+          } else {
+            const newConductorStatus: 'Pending' | 'Paid' | 'Overdue' = isPaid ? 'Paid' : 'Pending';
             let newOverallStatus = receivableDetails.overallStatus;
+            
             if (receivableDetails.driverStatus === 'Paid' && newConductorStatus === 'Paid') {
               newOverallStatus = 'Paid';
-            } else if (receivableDetails.driverStatus === 'Paid' || newConductorStatus === 'Paid') {
+            } else if (receivableDetails.driverStatus === 'Paid' || newConductorStatus === 'Paid' || totalPaid > 0) {
               newOverallStatus = 'Partial';
             }
 
             return {
               ...item,
+              conductorInstallments: updatedInstallments,
               receivableDetails: {
                 ...receivableDetails,
-                conductorPaid: newConductorPaid,
+                conductorPaid: totalPaid,
                 conductorStatus: newConductorStatus,
-                conductorPayments: [...(receivableDetails.conductorPayments || []), paymentData.payment],
                 overallStatus: newOverallStatus
               }
             };
           }
         }
+        
+        return { ...item, [installmentKey]: updatedInstallments };
       }
       return item;
     }));
     
+    // Show success message
+    showSuccess(`Payment of ${formatMoney(paymentData.amountToPay)} recorded successfully`, 'Payment Recorded');
+    
     // Refresh displayed data
+    fetchData();
+  };
+
+  // Handle close receivable
+  const handleCloseReceivable = async (assignmentId: string) => {
+    console.log('Closing receivable:', assignmentId);
+    
+    setFullDataset(prevData => prevData.map(item => {
+      if (item.assignment_id === assignmentId) {
+        return {
+          ...item,
+          receivableDetails: item.receivableDetails ? {
+            ...item.receivableDetails,
+            overallStatus: 'Closed' as const
+          } : item.receivableDetails
+        };
+      }
+      return item;
+    }));
+    
+    showSuccess('Receivable closed successfully', 'Closed');
     fetchData();
   };
 
@@ -664,30 +943,51 @@ const AdminTripRevenuePage = () => {
     showSuccess(`Trip revenue ${mode === 'add' ? 'recorded' : 'updated'} successfully (MOCK)`, 'Success');
     
     // Update persistent mock data
-    if (mode === 'add') {
-      setFullDataset(prevData => prevData.map(item => 
-        item.assignment_id === formData.assignment_id
-          ? {
-              ...item,
-              dateRecorded: formData.dateRecorded,
-              amount: formData.amount,
-              status: 'remitted',
-              remarks: formData.remarks
-            }
-          : item
-      ));
-    } else {
-      setFullDataset(prevData => prevData.map(item => 
-        item.assignment_id === formData.assignment_id
-          ? {
-              ...item,
-              dateRecorded: formData.dateRecorded,
-              amount: formData.amount,
-              remarks: formData.remarks
-            }
-          : item
-      ));
-    }
+    setFullDataset(prevData => prevData.map(item => {
+      if (item.assignment_id !== formData.assignment_id) {
+        return item;
+      }
+      
+      // Base update for all cases
+      const updatedItem: BusTripRecord = {
+        ...item,
+        dateRecorded: formData.dateRecorded,
+        date_recorded: formData.dateRecorded,
+        amount: formData.amount,
+        status: formData.status || 'remitted',
+        remarks: formData.remarks
+      };
+      
+      // Handle receivable case with installments
+      if (formData.status === 'receivable' && formData.receivable) {
+        const receivable = formData.receivable;
+        const hasConductor = !!receivable.conductorId;
+        
+        updatedItem.total_amount = receivable.totalAmount;
+        updatedItem.dueDate = receivable.dueDate;
+        updatedItem.due_date = receivable.dueDate;
+        updatedItem.receivableDetails = {
+          totalAmount: receivable.totalAmount,
+          dueDate: receivable.dueDate,
+          createdDate: formData.dateRecorded,
+          driverShare: receivable.driverShare,
+          driverPaid: 0,
+          driverStatus: 'Pending',
+          driverPayments: [],
+          ...(hasConductor && {
+            conductorShare: receivable.conductorShare,
+            conductorPaid: 0,
+            conductorStatus: 'Pending',
+            conductorPayments: []
+          }),
+          overallStatus: 'Pending'
+        };
+        updatedItem.driverInstallments = receivable.driverInstallments;
+        updatedItem.conductorInstallments = hasConductor ? receivable.conductorInstallments : undefined;
+      }
+      
+      return updatedItem;
+    }));
     
     // Refresh displayed data
     fetchData();
@@ -733,12 +1033,12 @@ const AdminTripRevenuePage = () => {
       dueDate.setDate(dueDate.getDate() + config.receivable_due_date);
       const dueDateStr = dueDate.toISOString().split('T')[0];
       
-      // Calculate receivable shares based on conductor presence
+      // Calculate receivable amount using shortage logic (not full trip_revenue)
       const hasConductor = record.conductorId && record.conductorName && record.conductorName !== 'N/A';
-      const totalAmount = record.trip_revenue; // Total trip deficit is the unpaid revenue
+      const totalAmount = calculateShortageAmount(record);
       
       let driverShare = totalAmount;
-      let conductorShare = undefined;
+      let conductorShare: number | undefined = undefined;
       
       if (hasConductor) {
         // Split based on configured shares
@@ -749,13 +1049,35 @@ const AdminTripRevenuePage = () => {
       // Determine if already overdue
       const isOverdue = now > dueDate;
       
-      console.log(`[${record.body_number}] ✓ Converting to receivables (trip deficit) - Setting dateRecorded=${dateRecorded}, dueDate=${dueDateStr} (${config.receivable_due_date} days)`);
+      // Generate installment schedules using config defaults
+      const driverInstallments = generateInstallmentSchedule(
+        driverShare,
+        dueDateStr,
+        config.default_number_of_payments,
+        config.default_frequency,
+        0 // No payments yet
+      );
+      
+      const conductorInstallments = hasConductor && conductorShare
+        ? generateInstallmentSchedule(
+            conductorShare,
+            dueDateStr,
+            config.default_number_of_payments,
+            config.default_frequency,
+            0 // No payments yet
+          )
+        : undefined;
+      
+      console.log(`[${record.body_number}] ✓ Converting to receivable - totalAmount=${totalAmount}, driverShare=${driverShare}, conductorShare=${conductorShare}, installments=${config.default_number_of_payments}x${config.default_frequency}`);
       return {
         ...record,
         status: 'receivable', // Deadline exceeded, converted to receivable
         dateRecorded: dateRecorded, // Set current date as dateRecorded
+        date_recorded: dateRecorded, // Alias for modal compatibility
         amount: 0, // No payment made, amount is 0
+        total_amount: totalAmount, // Total receivable amount
         dueDate: dueDateStr, // Calculate due date based on config
+        due_date: dueDateStr, // Alias for modal compatibility
         remarks: `Automatically converted to receivable - Deadline exceeded with no remittance. Due: ${formatDate(dueDateStr)}`,
         receivableDetails: {
           totalAmount,
@@ -772,7 +1094,9 @@ const AdminTripRevenuePage = () => {
             conductorPayments: []
           } : {}),
           overallStatus: isOverdue ? 'Overdue' : 'Pending'
-        }
+        },
+        driverInstallments,
+        conductorInstallments
       };
     }
 

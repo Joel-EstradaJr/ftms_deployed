@@ -9,13 +9,13 @@ interface BusRentalRecord {
     revenueCode: string;
     revenueType: 'RENTAL';
     entityName: string;
-    amount: number;
-    rentalDownpayment: number;
-    rentalBalance: number;
-    downpaymentReceivedAt: string | null;
-    balanceReceivedAt: string | null;
-    isCancelled: boolean;
-    cancelledAt?: string | null;
+    total_rental_amount: number;
+    downpayment_amount: number;
+    balance_amount: number;
+    down_payment_date: string | null;
+    full_payment_date: string | null;
+    rental_status: boolean;
+    cancelled_at?: string | null;
     dateRecorded: string;
     sourceRefNo: string;
     remarks?: string;
@@ -24,8 +24,8 @@ interface BusRentalRecord {
     receiptUrl?: string;
     busPlateNumber?: string;
     bodyNumber?: string;
-    rentalStartDate?: string;
-    rentalEndDate?: string;
+    rental_start_date?: string;
+    rental_end_date?: string;
 }
 
 interface ViewRentalDetailsModalProps {
@@ -110,7 +110,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <label>Total Rental Amount</label>
                             <input
                                 type="text"
-                                value={formatMoney(record.amount)}
+                                value={formatMoney(record.total_rental_amount)}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -138,7 +138,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <label>Downpayment Amount</label>
                             <input
                                 type="text"
-                                value={formatMoney(record.rentalDownpayment)}
+                                value={formatMoney(record.downpayment_amount)}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -148,12 +148,12 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <label>Downpayment Received Date</label>
                             <input
                                 type="text"
-                                value={record.downpaymentReceivedAt ? formatDate(record.downpaymentReceivedAt) : 'Not yet received'}
+                                value={record.down_payment_date ? formatDate(record.down_payment_date) : 'Not yet received'}
                                 disabled
                                 style={{ 
-                                    backgroundColor: record.downpaymentReceivedAt ? '#e8f5e9' : '#f5f5f5',
-                                    color: record.downpaymentReceivedAt ? '#2e7d32' : '#999',
-                                    fontWeight: record.downpaymentReceivedAt ? 'bold' : 'normal'
+                                    backgroundColor: record.down_payment_date ? '#e8f5e9' : '#f5f5f5',
+                                    color: record.down_payment_date ? '#2e7d32' : '#999',
+                                    fontWeight: record.down_payment_date ? 'bold' : 'normal'
                                 }}
                             />
                         </div>
@@ -177,13 +177,13 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <label>Remaining Balance</label>
                             <input
                                 type="text"
-                                value={formatMoney(record.rentalBalance)}
+                                value={formatMoney(record.balance_amount)}
                                 disabled
                                 style={{ 
-                                    backgroundColor: record.rentalBalance > 0 ? '#fff3cd' : '#e8f5e9', 
+                                    backgroundColor: record.balance_amount > 0 ? '#fff3cd' : '#e8f5e9', 
                                     fontWeight: 'bold', 
                                     fontSize: '1.1em', 
-                                    color: record.rentalBalance > 0 ? '#856404' : '#2e7d32'
+                                    color: record.balance_amount > 0 ? '#856404' : '#2e7d32'
                                 }}
                             />
                         </div>
@@ -192,7 +192,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
             </div>
 
             {/* Phase 3: Balance Payment (if paid) */}
-            {record.balanceReceivedAt && (
+            {record.full_payment_date && (
                 <>
                     <p className="details-title">III. Balance Payment</p>
                     <div className="modal-content add">
@@ -202,7 +202,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                                     <label>Balance Amount Paid</label>
                                     <input
                                         type="text"
-                                        value={formatMoney(record.amount - record.rentalDownpayment)}
+                                        value={formatMoney(record.total_rental_amount - record.downpayment_amount)}
                                         disabled
                                         style={{ 
                                             backgroundColor: '#e8f5e9', 
@@ -217,7 +217,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                                     <label>Balance Received Date</label>
                                     <input
                                         type="text"
-                                        value={formatDate(record.balanceReceivedAt)}
+                                        value={formatDate(record.full_payment_date)}
                                         disabled
                                         style={{ 
                                             backgroundColor: '#e8f5e9', 
@@ -233,9 +233,9 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
             )}
 
             {/* Cancellation Information (if applicable) */}
-            {record.isCancelled && (
+            {record.rental_status && (
                 <>
-                    <p className="details-title">{record.balanceReceivedAt ? 'IV' : 'III'}. Cancellation Information</p>
+                    <p className="details-title">{record.full_payment_date ? 'IV' : 'III'}. Cancellation Information</p>
                     <div className="modal-content add">
                         <form className="add-form">
                             <div className="form-row">
@@ -246,7 +246,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                                     </label>
                                     <input
                                         type="text"
-                                        value={record.cancelledAt ? formatDate(record.cancelledAt) : 'N/A'}
+                                        value={record.cancelled_at ? formatDate(record.cancelled_at) : 'N/A'}
                                         disabled
                                         style={{ backgroundColor: '#ffe5e5', color: '#dc3545', fontWeight: 'bold' }}
                                     />
@@ -271,8 +271,8 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
             {record.remarks && (
                 <>
                     <p className="details-title">
-                        {record.balanceReceivedAt && record.isCancelled ? 'V' : 
-                         record.balanceReceivedAt || record.isCancelled ? 'IV' : 'III'}. Additional Information (Optional)
+                        {record.full_payment_date && record.rental_status ? 'V' : 
+                         record.full_payment_date || record.rental_status ? 'IV' : 'III'}. Additional Information (Optional)
                     </p>
                     <div className="modal-content add">
                         <form className="add-form">

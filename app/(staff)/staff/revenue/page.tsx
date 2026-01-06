@@ -505,7 +505,7 @@ const RevenuePage = () => {
       // const result: RevenueRecord = await response.json();
       const result: RevenueRecord = {} as RevenueRecord; // TODO: Replace with actual API response
 
-      let attachmentCountForNew = 0;
+      const attachmentCountForNew = 0;
 
       // If attachments were selected, upload them (optional) using new API
       // if (newRevenue.attachments && newRevenue.attachments.length > 0) {

@@ -54,6 +54,8 @@ export interface ConfigData {
   receivable_due_date: number; // Days until receivable is due
   driver_share: number; // Percentage share for driver (0-100)
   conductor_share: number; // Percentage share for conductor (0-100)
+  default_frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY'; // Default installment frequency
+  default_number_of_payments: number; // Default number of installments (1-12)
 }
 
 interface FormErrors {
@@ -62,6 +64,8 @@ interface FormErrors {
   receivable_due_date: string;
   driver_share: string;
   conductor_share: string;
+  default_frequency: string;
+  default_number_of_payments: string;
 }
 
 export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigModalProps) {
@@ -71,6 +75,8 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     receivable_due_date: currentConfig?.receivable_due_date || 30,
     driver_share: currentConfig?.driver_share || 50,
     conductor_share: currentConfig?.conductor_share || 50,
+    default_frequency: currentConfig?.default_frequency || 'WEEKLY',
+    default_number_of_payments: currentConfig?.default_number_of_payments || 3,
   });
 
   // Update formData when currentConfig changes (modal reopens)
@@ -83,6 +89,8 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
         receivable_due_date: currentConfig.receivable_due_date,
         driver_share: currentConfig.driver_share,
         conductor_share: currentConfig.conductor_share,
+        default_frequency: currentConfig.default_frequency || 'WEEKLY',
+        default_number_of_payments: currentConfig.default_number_of_payments || 3,
       });
     }
   }, [currentConfig]);
@@ -93,6 +101,8 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     receivable_due_date: '',
     driver_share: '',
     conductor_share: '',
+    default_frequency: '',
+    default_number_of_payments: '',
   });
 
   const [isFormValid, setIsFormValid] = useState(false);
@@ -137,6 +147,20 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
           errorMessage = 'Conductor share cannot exceed 100%';
         }
         break;
+      
+      case 'default_frequency':
+        if (!value || !['DAILY', 'WEEKLY', 'MONTHLY'].includes(value)) {
+          errorMessage = 'Please select a valid frequency';
+        }
+        break;
+      
+      case 'default_number_of_payments':
+        if (!value || value < 1) {
+          errorMessage = 'Number of payments must be at least 1';
+        } else if (value > 12) {
+          errorMessage = 'Number of payments cannot exceed 12';
+        }
+        break;
     }
 
     setFormErrors(prev => ({
@@ -154,6 +178,8 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     const receivableDueDateValid = validateFormField('receivable_due_date', formData.receivable_due_date);
     const driverShareValid = validateFormField('driver_share', formData.driver_share);
     const conductorShareValid = validateFormField('conductor_share', formData.conductor_share);
+    const frequencyValid = validateFormField('default_frequency', formData.default_frequency);
+    const numberOfPaymentsValid = validateFormField('default_number_of_payments', formData.default_number_of_payments);
 
     // Check if shares add up to 100%
     if (formData.conductor_share + formData.driver_share !== 100) {
@@ -161,7 +187,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       return false;
     }
 
-    return minimumWageValid && durationToLateValid && receivableDueDateValid && driverShareValid && conductorShareValid;
+    return minimumWageValid && durationToLateValid && receivableDueDateValid && driverShareValid && conductorShareValid && frequencyValid && numberOfPaymentsValid;
   };
 
   // Check form validity on data changes
@@ -173,21 +199,25 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       formData.driver_share >= 0 &&
       formData.conductor_share >= 0 &&
       formData.conductor_share + formData.driver_share === 100 &&
+      ['DAILY', 'WEEKLY', 'MONTHLY'].includes(formData.default_frequency) &&
+      formData.default_number_of_payments >= 1 &&
+      formData.default_number_of_payments <= 12 &&
       formErrors.minimum_wage === '' &&
       formErrors.duration_to_late === '' &&
       formErrors.receivable_due_date === '' &&
       formErrors.driver_share === '' &&
-      formErrors.conductor_share === '';
+      formErrors.conductor_share === '' &&
+      formErrors.default_frequency === '' &&
+      formErrors.default_number_of_payments === '';
     
     setIsFormValid(isValid);
   }, [formData, formErrors]);
 
   // Handle input change
   const handleInputChange = (field: keyof ConfigData, value: any) => {
-    const numValue = parseFloat(value) || 0;
-
     // Special handling for conductor/driver share - auto-adjust the other share
     if (field === 'conductor_share') {
+      const numValue = parseFloat(value) || 0;
       const newConductorShare = Math.min(100, Math.max(0, numValue));
       const newDriverShare = 100 - newConductorShare;
       
@@ -207,6 +237,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
     }
     
     if (field === 'driver_share') {
+      const numValue = parseFloat(value) || 0;
       const newDriverShare = Math.min(100, Math.max(0, numValue));
       const newConductorShare = 100 - newDriverShare;
       
@@ -225,7 +256,28 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       return;
     }
     
-    // Default handling for other fields
+    // Handle string fields (like default_frequency)
+    if (field === 'default_frequency') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value as 'DAILY' | 'WEEKLY' | 'MONTHLY'
+      }));
+      
+      // Clear error when user changes value
+      if (formErrors[field]) {
+        setFormErrors(prev => ({
+          ...prev,
+          [field]: ''
+        }));
+      }
+      return;
+    }
+    
+    // Default handling for numeric fields
+    const numValue = field === 'default_number_of_payments' 
+      ? Math.round(parseFloat(value) || 0) 
+      : parseFloat(value) || 0;
+    
     setFormData(prev => ({
       ...prev,
       [field]: numValue
@@ -401,6 +453,55 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
               </small>
               {formErrors.conductor_share && (
                 <p className="add-error-message">{formErrors.conductor_share}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Default Installment Settings */}
+          <div className="form-row">
+            <div className="form-group">
+              <label>
+                Default Frequency<span className="requiredTags"> *</span>
+              </label>
+              <select
+                value={formData.default_frequency}
+                onChange={(e) => handleInputChange('default_frequency', e.target.value)}
+                onBlur={() => handleInputBlur('default_frequency')}
+                className={formErrors.default_frequency ? 'invalid-input' : ''}
+                required
+              >
+                <option value="DAILY">Daily</option>
+                <option value="WEEKLY">Weekly</option>
+                <option value="MONTHLY">Monthly</option>
+              </select>
+              <small className="hint-message">
+                Default payment frequency for receivable installments
+              </small>
+              {formErrors.default_frequency && (
+                <p className="add-error-message">{formErrors.default_frequency}</p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>
+                Default Number of Payments<span className="requiredTags"> *</span>
+              </label>
+              <input
+                type="number"
+                value={formData.default_number_of_payments}
+                onChange={(e) => handleInputChange('default_number_of_payments', e.target.value)}
+                onBlur={() => handleInputBlur('default_number_of_payments')}
+                min="1"
+                max="12"
+                className={formErrors.default_number_of_payments ? 'invalid-input' : ''}
+                placeholder="3"
+                required
+              />
+              <small className="hint-message">
+                Default number of installments for receivable payments (1-12)
+              </small>
+              {formErrors.default_number_of_payments && (
+                <p className="add-error-message">{formErrors.default_number_of_payments}</p>
               )}
             </div>
           </div>

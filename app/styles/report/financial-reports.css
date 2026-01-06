@@ -1,0 +1,380 @@
+/* ============================================================
+   financial-reports.css – Styles for Journal Entry, Income Statement,
+   and Financial Position Reports
+   ============================================================ */
+
+/* ---------- Report Tab Content ---------- */
+.reportTabContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 1rem;
+  background-color: var(--background-color);
+  border-radius: var(--page-button-border-radius);
+  gap: 1rem;
+}
+
+/* ---------- Report Headers ---------- */
+.report-header,
+.financial-report-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--foreground-color);
+  border-radius: var(--page-button-border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+.report-header h2,
+.financial-report-header .company-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-text-color);
+  margin-bottom: 0.5rem;
+}
+
+.financial-report-header .report-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  margin-bottom: 0.25rem;
+}
+
+.report-date-range,
+.financial-report-header .period-ending {
+  font-size: 0.95rem;
+  color: var(--secondary-text-color);
+  margin: 0;
+}
+
+/* ---------- Journal Entry Report Specific ---------- */
+.journal-entry-report {
+  width: 100%;
+}
+
+.journal-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.journal-table thead th {
+  background-color: var(--table-header-color);
+  color: var(--primary-text-color);
+  font-weight: 600;
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.journal-table thead th.amount-col {
+  text-align: right;
+  min-width: 120px;
+}
+
+/* Transaction header row */
+.transaction-header-row {
+  background-color: var(--primary-color) !important;
+}
+
+.transaction-header-row .transaction-title {
+  color: white;
+  font-weight: 600;
+  padding: 10px 15px;
+  font-size: 0.95rem;
+}
+
+/* Journal lines */
+.journal-line td {
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--secondary-text-color);
+}
+
+.journal-line .account-name-credit {
+  padding-left: 30px;
+}
+
+.journal-line .amount-col {
+  text-align: right;
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Remarks row */
+.remarks-row {
+  background-color: #f8f9fa;
+}
+
+.remarks-row td {
+  padding: 0 !important;
+}
+
+.remarks-content {
+  padding: 12px 15px;
+  font-size: 0.875rem;
+  color: var(--secondary-text-color);
+  font-style: italic;
+  line-height: 1.5;
+  border-left: 4px solid var(--primary-color);
+  margin: 8px 15px;
+  background-color: #fff;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Spacer row */
+.spacer-row td {
+  padding: 8px 0 !important;
+  background-color: transparent !important;
+}
+
+/* Total row */
+.journal-table .total-row {
+  background-color: var(--table-header-color) !important;
+  font-weight: 700;
+}
+
+.journal-table .total-row td {
+  padding: 12px 15px;
+  border-top: 2px solid var(--border-color);
+  color: var(--primary-text-color);
+}
+
+.journal-table .total-label {
+  text-align: right;
+  font-weight: 700;
+}
+
+.journal-table .total-amount {
+  text-align: right;
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+}
+
+/* Balance check indicator */
+.balance-check {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.balance-check .balanced {
+  color: var(--success-color);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(19, 206, 102, 0.1);
+  border-radius: var(--page-button-border-radius);
+}
+
+.balance-check .unbalanced {
+  color: var(--danger-color);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(150, 28, 30, 0.1);
+  border-radius: var(--page-button-border-radius);
+}
+
+/* ---------- Financial Statement Tables (Income Statement & Financial Position) ---------- */
+.income-statement-report,
+.financial-position-report {
+  width: 100%;
+}
+
+.financial-statement-wrapper {
+  height: auto !important;
+  max-height: none !important;
+}
+
+.financial-statement-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.financial-statement-table tbody tr {
+  border-bottom: none;
+}
+
+.financial-statement-table tbody tr:hover {
+  background-color: var(--table-row-hover-color);
+}
+
+/* Section headers */
+.section-header-row .section-title {
+  font-weight: 600;
+  color: var(--primary-text-color);
+  padding: 12px 15px;
+  font-size: 0.95rem;
+}
+
+.major-section-header {
+  background-color: var(--primary-color) !important;
+}
+
+.major-section-header .major-section-title {
+  color: white !important;
+  font-weight: 700;
+  padding: 12px 15px;
+  font-size: 1rem;
+}
+
+/* Line items */
+.line-item td {
+  padding: 8px 15px;
+  color: var(--secondary-text-color);
+}
+
+.line-item .account-name {
+  padding-left: 30px;
+}
+
+.line-item.indent-1 .account-name,
+.indent-1 {
+  padding-left: 45px;
+}
+
+.line-item .amount-col {
+  text-align: right;
+  font-family: 'Roboto Mono', monospace;
+  min-width: 100px;
+}
+
+.line-item .subtotal-col {
+  text-align: right;
+  font-family: 'Roboto Mono', monospace;
+  min-width: 120px;
+}
+
+.line-item .subtotal-col .negative,
+.line-item .amount-col.negative {
+  color: var(--danger-color);
+}
+
+/* Contra accounts (accumulated depreciation) */
+.contra-account .account-name {
+  font-style: italic;
+}
+
+/* Subtotal rows */
+.subtotal-row td {
+  padding: 10px 15px;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  border-top: 1px solid var(--border-color);
+}
+
+.subtotal-row .subtotal-label {
+  font-weight: 600;
+}
+
+.subtotal-row .subtotal-amount {
+  text-align: right;
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Total rows */
+.financial-statement-table .total-row {
+  background-color: var(--table-header-color) !important;
+}
+
+.financial-statement-table .total-row td {
+  padding: 12px 15px;
+  font-weight: 700;
+  color: var(--primary-text-color);
+  border-top: 2px solid var(--border-color);
+  border-bottom: 3px double var(--border-color);
+}
+
+.financial-statement-table .total-label {
+  font-weight: 700;
+}
+
+.financial-statement-table .total-amount {
+  text-align: right;
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+}
+
+/* Net Income row (special emphasis) */
+.net-income-row {
+  background-color: var(--primary-color) !important;
+}
+
+.net-income-row td {
+  color: white !important;
+}
+
+/* Empty rows */
+.empty-row td {
+  padding: 6px 0;
+  background-color: transparent !important;
+}
+
+/* Section separator */
+.section-separator td {
+  padding: 12px 0;
+  border-bottom: 2px solid var(--border-color);
+}
+
+/* Balance sheet table specific */
+.balance-sheet-table .account-name {
+  min-width: 300px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .reportTabContent {
+    padding: 0.5rem;
+  }
+
+  .report-header h2,
+  .financial-report-header .company-name {
+    font-size: 1.25rem;
+  }
+
+  .journal-table thead th,
+  .journal-table tbody td,
+  .financial-statement-table td {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+
+  .remarks-content {
+    font-size: 0.75rem;
+  }
+
+  .transaction-header-row .transaction-title {
+    font-size: 0.85rem;
+  }
+}
+
+/* ---------- Print Styles ---------- */
+@media print {
+  .reportTabContent {
+    padding: 0;
+  }
+
+  .tabBar-wrapper,
+  .settings,
+  .balance-check {
+    display: none !important;
+  }
+
+  .table-wrapper {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+
+  .journal-table thead th,
+  .financial-statement-table .major-section-header .major-section-title,
+  .transaction-header-row .transaction-title {
+    background-color: #f0f0f0 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

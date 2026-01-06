@@ -1,38 +1,22 @@
-/**
- * View Trip Revenue Modal Component
- * 
- * ============================================================================
- * BACKEND INTEGRATION NOTES
- * ============================================================================
- * 
- * This component displays detailed trip revenue and remittance information.
- * It calculates and displays receivable details if the trip has been converted to a receivable.
- * 
- * DATA REQUIREMENTS FROM BACKEND:
- * The tripData prop should include all fields from BusTripRecord interface:
- * - Assignment details (assignment_id, assignment_type, assignment_value, etc.)
- * - Bus details (bus_plate_number, body_number, etc.)
- * - Employee details (employee_id, position, etc.)
- * - Driver/Conductor names (driverName, conductorName) - can be pre-computed
- * - Remittance details (dateRecorded, amount, status, remarks)
- * 
- * Receivable CALCULATION:
- * If status is 'receivable' or deadline exceeded, the component automatically:
- * - Calculates the receivable principal amount (shortfall from expected remittance)
- * - Applies 10% interest (can be made configurable)
- * - Distributes the total receivable between conductor and driver
- * 
- * NOTE: receivable calculation logic should match recordTripRevenue.tsx for consistency
- * Consider moving calculation logic to a shared utility function or backend
- * 
- * ============================================================================
- */
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
+
+// Installment schedule interface
+interface InstallmentSchedule {
+  due_date: string;
+  amount_due: number;
+  status: string;
+}
+
+// Employee installment data interface
+interface EmployeeInstallments {
+  employee_name: string;
+  total_share: number;
+  installments: InstallmentSchedule[];
+}
 
 interface ViewTripRevenueModalProps {
   tripData: {
@@ -60,13 +44,21 @@ interface ViewTripRevenueModalProps {
     bus_plate_number: string;
     bus_type: string; // 'Airconditioned' or 'Ordinary'
     body_number: string;
-    bus_brand: string; // 'Hilltop', 'Agila', 'DARJ'
+    body_builder: string; // 'Hilltop', 'Agila', 'DARJ'
     
     // Status tracking (from Model Revenue table)
-    dateRecorded: string | null;
+    date_recorded: string | null;
+    date_expected: string | null;
     amount: number | null;
     status: string; // 'remitted', 'pending', or 'receivable'
     remarks: string | null;
+    
+    // Shortage/Receivable details
+    total_amount: number | null;
+    due_date: string | null;
+    installments?: InstallmentSchedule[]; // Legacy support
+    driver_installments?: EmployeeInstallments;
+    conductor_installments?: EmployeeInstallments;
     
     // Computed/display fields
     driverName?: string;
@@ -113,6 +105,8 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
     totalReceivableAmount: 0,
     conductorShare: 0,
     driverShare: 0,
+    dueDate: '',
+    principalAmount: 0,
   });
 
   useEffect(() => {
@@ -197,6 +191,19 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
       }
     }
 
+    // Calculate due date: use date_expected if provided, otherwise calculate from date_assigned
+    let dueDate = '';
+    if (tripData.date_expected) {
+      dueDate = tripData.date_expected;
+    } else {
+      const calculatedDueDate = new Date(tripData.date_assigned);
+      calculatedDueDate.setHours(calculatedDueDate.getHours() + config.durationToLate);
+      dueDate = calculatedDueDate.toISOString().split('T')[0];
+    }
+
+    // Calculate principal amount: use total_amount if provided, otherwise calculate
+    const principalAmount = tripData.total_amount ?? receivableAmount;
+
     setCalculatedData({
       expectedRemittance,
       maximumRemittance,
@@ -207,6 +214,8 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
       totalReceivableAmount,
       conductorShare,
       driverShare,
+      dueDate,
+      principalAmount,
     });
   }, [tripData, config]);
 
@@ -266,29 +275,35 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
       <p className="details-title">I. Bus Details</p>
       <div className="modal-content view">
         <form className="view-form">
-          {/* Body number, plate number, and bus brand */}
+          {/* Date Assigned, Body Number, Body Builder */}
           <div className="form-row">
+            {/* Date Assigned */}
+            <div className="form-group">
+              <label>Date Assigned</label>
+              <p>{formatDate(tripData.date_assigned)}</p>
+            </div>
+
             {/* Body Number */}
             <div className="form-group">
               <label>Body Number</label>
               <p>{tripData.body_number}</p>
             </div>
 
+            {/* Body Builder */}
+            <div className="form-group">
+              <label>Body Builder</label>
+              <p>{tripData.body_builder}</p>
+            </div>
+          </div>
+
+          {/* Plate Number, Bus Type, Route */}
+          <div className="form-row">
             {/* Plate Number */}
             <div className="form-group">
               <label>Plate Number</label>
               <p>{tripData.bus_plate_number}</p>
             </div>
 
-            {/* Bus Brand */}
-            <div className="form-group">
-              <label>Bus Brand</label>
-              <p>{tripData.bus_brand}</p>
-            </div>
-          </div>
-
-          {/* Bus type and route */}
-          <div className="form-row">
             {/* Bus Type */}
             <div className="form-group">
               <label>Bus Type</label>
@@ -301,46 +316,74 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
               <p>{tripData.bus_route}</p>
             </div>
           </div>
+
+          {/* Assignment Type, Company Share, Payment Method */}
+          <div className="form-row">
+            {/* Assignment Type */}
+            <div className="form-group">
+              <label>Assignment Type</label>
+              <p>{tripData.assignment_type}</p>
+            </div>
+
+            {/* Company Share */}
+            <div className="form-group">
+              <label>Company Share</label>
+              <p>
+                {tripData.assignment_type === 'Boundary' 
+                  ? formatMoney(tripData.assignment_value)
+                  : `${tripData.assignment_value}%`
+                }
+              </p>
+            </div>
+
+            {/* Payment Method */}
+            <div className="form-group">
+              <label>Payment Method</label>
+              <p>{tripData.payment_method}</p>
+            </div>
+          </div>
+
+          {/* Trip Revenue, Fuel Expense, Company Share (calculated) */}
+          <div className="form-row">
+            {/* Trip Revenue */}
+            <div className="form-group">
+              <label>Trip Revenue</label>
+              <p>{formatMoney(tripData.trip_revenue)}</p>
+            </div>
+
+            {/* Fuel Expense */}
+            <div className="form-group">
+              <label>Fuel Expense</label>
+              <p>{formatMoney(tripData.trip_fuel_expense)}</p>
+            </div>
+
+            {/* Company Share (calculated amount) */}
+            <div className="form-group">
+              <label>Company Share</label>
+              <p>{formatMoney(tripData.assignment_value)}</p>
+            </div>
+          </div>
         </form>
       </div>
 
-      {/* II. Assigned Employee */}
-      <p className="details-title">II. Assigned Employee</p>
+      {/* II. Employee Details */}
+      <p className="details-title">II. Employee Details</p>
       <div className="modal-content view">
         <form className="view-form">
-          {/* Driver Details */}
+          {/* Driver Name and Conductor Name */}
           <div className="form-row">
+            {/* Driver Name */}
             <div className="form-group">
-              <label>Employee ID</label>
-              <p>{tripData.driverId || tripData.employee_id}</p>
+              <label>Driver Name</label>
+              <p>{tripData.driverName || 'N/A'}</p>
             </div>
-          </div>
-          
-          <div className="form-row">
-            <div className="form-group">
-              <label>{tripData.driverName || 'N/A'}</label>
-              <p>{tripData.driverPosition || tripData.position_name || 'Driver'}</p>
-            </div>
-          </div>
 
-          {/* Conductor Details - Only show if conductor exists */}
-          {tripData.conductorName && tripData.conductorName !== 'N/A' && (
-            <>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Employee ID</label>
-                  <p>{tripData.conductorId || 'N/A'}</p>
-                </div>
-              </div>
-              
-              <div className="form-row">
-                <div className="form-group">
-                  <label>{tripData.conductorName}</label>
-                  <p>{tripData.conductorPosition || 'Conductor'}</p>
-                </div>
-              </div>
-            </>
-          )}
+            {/* Conductor Name */}
+            <div className="form-group">
+              <label>Conductor Name</label>
+              <p>{tripData.conductorName || 'N/A'}</p>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -348,18 +391,33 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
       <p className="details-title">III. Remittance Details</p>
       <div className="modal-content view">
         <form className="view-form">
-          {/* Date assigned and assignment type */}
+          {/* Date Recorded, Due Date, Expected Remittance */}
           <div className="form-row">
-            {/* Date Assigned */}
+            {/* Date Recorded */}
             <div className="form-group">
-              <label>Date Assigned</label>
-              <p>{formatDate(tripData.date_assigned)}</p>
+              <label>Date Recorded</label>
+              <p>{tripData.date_recorded ? formatDate(tripData.date_recorded) : 'Not yet recorded'}</p>
             </div>
 
-            {/* Assignment Type */}
+            {/* Due Date */}
             <div className="form-group">
-              <label>Assignment Type</label>
-              <p>{tripData.assignment_type}</p>
+              <label>Due Date</label>
+              <p>{formatDate(calculatedData.dueDate)}</p>
+            </div>
+
+            {/* Expected Remittance */}
+            <div className="form-group">
+              <label>Expected Remittance</label>
+              <p>{formatMoney(tripData.assignment_value + tripData.trip_fuel_expense)}</p>
+            </div>
+          </div>
+
+          {/* Amount Remitted, Remittance Status */}
+          <div className="form-row">
+            {/* Amount Remitted */}
+            <div className="form-group">
+              <label>Amount Remitted</label>
+              <p>{tripData.amount !== null ? formatMoney(tripData.amount) : formatMoney(0)}</p>
             </div>
 
             {/* Remittance Status */}
@@ -377,71 +435,6 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
             </div>
           </div>
 
-          {/* Assignment value and payment method */}
-          <div className="form-row">
-            {/* Assignment Value */}
-            <div className="form-group">
-              <label>
-                {tripData.assignment_type === 'Boundary' ? 'Quota Amount' : 'Company Share %'}
-              </label>
-              <p>
-                {tripData.assignment_type === 'Boundary' 
-                  ? formatMoney(tripData.assignment_value)
-                  : `${tripData.assignment_value}%`
-                }
-              </p>
-            </div>
-
-            {/* Payment Method */}
-            <div className="form-group">
-              <label>Payment Method</label>
-              <p>{tripData.payment_method}</p>
-            </div>
-          </div>
-
-          {/* Trip revenue and fuel expense */}
-          <div className="form-row">
-            {/* Trip Revenue */}
-            <div className="form-group">
-              <label>Trip Revenue</label>
-              <p>{formatMoney(tripData.trip_revenue)}</p>
-            </div>
-
-            {/* Fuel Expense */}
-            <div className="form-group">
-              <label>Fuel Expense</label>
-              <p>{formatMoney(tripData.trip_fuel_expense)}</p>
-            </div>
-          </div>
-
-          {/* Expected remittance */}
-          <div className="form-row">
-            <div className="form-group">
-              <label>Expected Remittance</label>
-              <p>
-                {calculatedData.expectedRemittance > 0 
-                  ? formatMoney(calculatedData.expectedRemittance)
-                  : 'N/A (Revenue does not meet minimum wage requirement)'
-                }
-              </p>
-            </div>
-          </div>
-
-          {/* Date recorded and amount remitted */}
-          <div className="form-row">
-            {/* Date Recorded */}
-            <div className="form-group">
-              <label>Date Recorded</label>
-              <p>{tripData.dateRecorded ? formatDate(tripData.dateRecorded) : 'Not yet recorded'}</p>
-            </div>
-
-            {/* Amount Remitted */}
-            <div className="form-group">
-              <label>Amount Remitted</label>
-              <p>{tripData.amount !== null ? formatMoney(tripData.amount) : formatMoney(0)}</p>
-            </div>
-          </div>
-
           {/* Remarks */}
           <div className="form-row">
             <div className="form-group full-width">
@@ -452,69 +445,194 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
         </form>
       </div>
 
-      {/* IV. Receivable Details */}
+      {/* IV. Shortage Details */}
       {calculatedData.showReceivableSection && (
         <>
-          <p className="details-title">IV. Receivable Details</p>
+          <p className="details-title">IV. Shortage Details</p>
           <div className="modal-content view">
             <form className="view-form">
-              {/* Receivable type (always Trip Deficit) */}
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Receivable Type</label>
-                  <p>Trip Deficit</p>
+              {/* Receivable Amount Breakdown - Collapsible */}
+              <details className="breakdown-details">
+                <summary className="breakdown-summary">
+                  <span>Receivable Amount Breakdown</span>
+                </summary>
+                <div className="breakdown-content" style={{ padding: '16px', backgroundColor: '#fafafa', borderRadius: '8px', marginTop: '12px' }}>
+                  <p className="breakdown-section-title" style={{ fontWeight: '600', marginBottom: '12px' }}>Calculation:</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e0e0e0', gap: '60px' }}>
+                    <span style={{ flex: '1' }}>Trip Revenue:</span>
+                    <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>{formatMoney(tripData.trip_revenue)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e0e0e0', gap: '60px' }}>
+                    <span style={{ flex: '1' }}>Company Share ({tripData.assignment_type === 'Percentage' ? `${tripData.assignment_value}%` : 'Boundary'}):</span>
+                    <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>
+                      {tripData.assignment_type === 'Percentage' 
+                        ? formatMoney((tripData.trip_revenue * tripData.assignment_value) / 100)
+                        : formatMoney(tripData.assignment_value)
+                      }
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e0e0e0', gap: '60px' }}>
+                    <span style={{ flex: '1' }}>Fuel Expense:</span>
+                    <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>{formatMoney(tripData.trip_fuel_expense)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e0e0e0', gap: '60px' }}>
+                    <span style={{ flex: '1' }}>Expected Remittance:</span>
+                    <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>{formatMoney(tripData.assignment_value + tripData.trip_fuel_expense)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e0e0e0', gap: '60px' }}>
+                    <span style={{ flex: '1' }}>(-) Amount Remitted:</span>
+                    <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>({formatMoney(tripData.amount || 0)})</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', marginTop: '10px', borderTop: '2px solid #333', gap: '60px' }}>
+                    <span style={{ fontWeight: '600', flex: '1' }}>Total Receivable:</span>
+                    <span style={{ fontWeight: '700', fontSize: '1.1em', textAlign: 'right', minWidth: '120px' }}>{formatMoney(calculatedData.totalReceivableAmount)}</span>
+                  </div>
+                  
+                  <p style={{ fontWeight: '600', marginTop: '28px', marginBottom: '12px' }}>Receivable Distribution:</p>
+                  {tripData.conductorName && tripData.conductorName !== 'N/A' && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e0e0e0', gap: '60px' }}>
+                      <span style={{ flex: '1' }}>Conductor Share ({config.defaultConductorShare}%):</span>
+                      <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>{formatMoney(calculatedData.conductorShare)}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', gap: '60px' }}>
+                    <span style={{ flex: '1' }}>Driver Share ({tripData.conductorName && tripData.conductorName !== 'N/A' ? `${config.defaultDriverShare}%` : '100%'}):</span>
+                    <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>{formatMoney(calculatedData.driverShare)}</span>
+                  </div>
                 </div>
-              </div>
+              </details>
 
-              {/* receivable amount and interest */}
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Receivable Amount (Principal)</label>
-                  <p>{formatMoney(calculatedData.receivableAmount)}</p>
-                </div>
-
-                <div className="form-group">
-                  <label>Receivable Interest (10%)</label>
-                  <p>{formatMoney(calculatedData.receivableInterest)}</p>
-                </div>
-
+              {/* Total Receivable Amount and Due Date */}
+              <div className="form-row" style={{ marginTop: '20px' }}>
                 <div className="form-group">
                   <label>Total Receivable Amount</label>
                   <p className="total-amount">{formatMoney(calculatedData.totalReceivableAmount)}</p>
+                  <small className="helper-text">The amount short from expected remittance</small>
                 </div>
-              </div>
-
-              {/* Conductor and driver shares */}
-              <div className="form-row">
-                {tripData.conductorName && tripData.conductorName !== 'N/A' && (
-                  <div className="form-group">
-                    <label>Conductor Share ({config.defaultConductorShare}%)</label>
-                    <p>{formatMoney(calculatedData.conductorShare)}</p>
-                  </div>
-                )}
 
                 <div className="form-group">
-                  <label>Driver Share ({tripData.conductorName && tripData.conductorName !== 'N/A' ? `${config.defaultDriverShare}%` : '100%'})</label>
-                  <p>{formatMoney(calculatedData.driverShare)}</p>
+                  <label>Receivable Due Date</label>
+                  <p>
+                    {tripData.due_date 
+                      ? formatDate(tripData.due_date)
+                      : tripData.date_recorded 
+                        ? (() => {
+                            const dueDate = new Date(tripData.date_recorded);
+                            dueDate.setDate(dueDate.getDate() + 30);
+                            return formatDate(dueDate.toISOString().split('T')[0]);
+                          })()
+                        : 'N/A'
+                    }
+                  </p>
                 </div>
               </div>
 
-              {/* Receivable due date (if recorded) */}
-              {tripData.dateRecorded && (
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Receivable Due Date</label>
-                    <p>
-                      {(() => {
-                        const dueDate = new Date(tripData.dateRecorded);
-                        dueDate.setDate(dueDate.getDate() + 30); // 30 days from date recorded
-                        return formatDate(dueDate.toISOString().split('T')[0]);
-                      })()}
-                    </p>
+              {/* Conductor Name and Share */}
+              {tripData.conductorName && tripData.conductorName !== 'N/A' && (
+                <div style={{ display: 'flex', gap: '60px', marginBottom: '16px' }}>
+                  <div style={{ flex: '1' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#555' }}>Conductor Name</label>
+                    <p style={{ margin: 0 }}>{tripData.conductorName}</p>
+                  </div>
+
+                  <div style={{ minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#555' }}>Conductor Share</label>
+                    <p style={{ margin: 0 }}>{formatMoney(calculatedData.conductorShare)}</p>
                   </div>
                 </div>
               )}
+
+              {/* Driver Name and Share */}
+              <div style={{ display: 'flex', gap: '60px' }}>
+                <div style={{ flex: '1' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#555' }}>Driver Name</label>
+                  <p style={{ margin: 0 }}>{tripData.driverName || 'N/A'}</p>
+                </div>
+
+                <div style={{ minWidth: '200px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#555' }}>Driver Share</label>
+                  <p style={{ margin: 0 }}>{formatMoney(calculatedData.driverShare)}</p>
+                </div>
+              </div>
             </form>
+          </div>
+
+          {/* Conductor Installment Schedule - Only show if conductor exists */}
+          {tripData.conductorName && tripData.conductorName !== 'N/A' && (
+            <>
+              <p className="details-subtitle">Conductor Installment Schedule</p>
+              <div className="modal-content view">
+                <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
+                  <span className="employee-name" style={{ fontWeight: '600' }}>{tripData.conductor_installments?.employee_name || tripData.conductorName}</span>
+                  <span className="employee-share" style={{ fontWeight: '500', color: '#666' }}>Total: {formatMoney(tripData.conductor_installments?.total_share || calculatedData.conductorShare)}</span>
+                </div>
+                <table className="installment-table">
+                  <thead>
+                    <tr>
+                      <th>Due Date</th>
+                      <th>Amount Due</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tripData.conductor_installments?.installments && tripData.conductor_installments.installments.length > 0 ? (
+                      tripData.conductor_installments.installments.map((installment, index) => (
+                        <tr key={index}>
+                          <td>{formatDate(installment.due_date)}</td>
+                          <td>{formatMoney(installment.amount_due)}</td>
+                          <td>
+                            <span className={`chip ${installment.status === 'paid' ? 'completed' : 'pending'}`}>
+                              {installment.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: 'center' }}>No installment schedule available</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* Driver Installment Schedule */}
+          <p className="details-subtitle">Driver Installment Schedule</p>
+          <div className="modal-content view">
+            <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
+              <span className="employee-name" style={{ fontWeight: '600' }}>{tripData.driver_installments?.employee_name || tripData.driverName || 'N/A'}</span>
+              <span className="employee-share" style={{ fontWeight: '500', color: '#666' }}>Total: {formatMoney(tripData.driver_installments?.total_share || calculatedData.driverShare)}</span>
+            </div>
+            <table className="installment-table">
+              <thead>
+                <tr>
+                  <th>Due Date</th>
+                  <th>Amount Due</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tripData.driver_installments?.installments && tripData.driver_installments.installments.length > 0 ? (
+                  tripData.driver_installments.installments.map((installment, index) => (
+                    <tr key={index}>
+                      <td>{formatDate(installment.due_date)}</td>
+                      <td>{formatMoney(installment.amount_due)}</td>
+                      <td>
+                        <span className={`chip ${installment.status === 'paid' ? 'completed' : 'pending'}`}>
+                          {installment.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'center' }}>No installment schedule available</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </>
       )}

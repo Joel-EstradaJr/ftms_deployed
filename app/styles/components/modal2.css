@@ -333,6 +333,10 @@
     background-color: var(--secondary-hover-color);
 }
 
+#DownloadAllPayslipsBtn {
+  min-width: 200px !important;
+}
+
 
 /* ----- ANIMATIONS ----- */
 @keyframes modal-fade-in {
