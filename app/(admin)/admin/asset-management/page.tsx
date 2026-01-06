@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import "../../../styles/components/table.css";
 import "../../../styles/components/modal2.css";
 import "../../../styles/components/chips.css";
@@ -102,8 +102,8 @@ export default function AssetManagementPage() {
     return () => clearTimeout(t);
   }, []);
 
-  // Filter sections for the FilterDropdown
-  const filterSections: FilterSection[] = [
+  // Filter sections for the FilterDropdown - memoized to prevent infinite re-renders
+  const filterSections: FilterSection[] = useMemo(() => [
     {
       id: 'assetType',
       title: 'Asset Type',
@@ -140,7 +140,7 @@ export default function AssetManagementPage() {
       type: 'dateRange',
       defaultValue: { from: '', to: '' }
     },
-  ];
+  ], []);
 
   const handleApplyFilters = (values: Record<string, any>) => {
     setFilters(values);

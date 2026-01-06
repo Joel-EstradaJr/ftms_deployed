@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import "../styles/components/filter.css";
 
 // Generic filter option type
@@ -31,19 +31,28 @@ export interface FilterDropdownProps {
 export default function FilterDropdown({
     sections,
     onApply,
-    initialValues = {},
+    initialValues,
     className = ""
 }: FilterDropdownProps) {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [isOpen, setIsOpen] = useState(false);
 
+    // Memoize section IDs to detect actual changes
+    const sectionIds = useMemo(() => sections.map(s => s.id).join(','), [sections]);
+
+    // Memoize initialValues to prevent unnecessary re-renders
+    const stableInitialValues = useMemo(() => initialValues || {}, [
+        // Only update when the actual content changes, not the reference
+        initialValues ? JSON.stringify(initialValues) : '{}'
+    ]);
+
     // Initialize filter values with default values from sections and any provided initialValues
-    const getInitialFilterValues = () => {
+    const getInitialFilterValues = useCallback(() => {
         const defaults: Record<string, any> = {};
 
         sections.forEach(section => {
-            if (initialValues[section.id] !== undefined) {
-                defaults[section.id] = initialValues[section.id];
+            if (stableInitialValues[section.id] !== undefined) {
+                defaults[section.id] = stableInitialValues[section.id];
             } else if (section.defaultValue !== undefined) {
                 defaults[section.id] = section.defaultValue;
             } else {
@@ -67,14 +76,14 @@ export default function FilterDropdown({
         });
 
         return defaults;
-    };
+    }, [sections, stableInitialValues]);
 
-    const [filterValues, setFilterValues] = useState<Record<string, any>>(getInitialFilterValues);
+    const [filterValues, setFilterValues] = useState<Record<string, any>>(() => getInitialFilterValues());
 
-    // Sync filterValues when initialValues prop changes
+    // Sync filterValues when initialValues prop changes (with stable reference)
     useEffect(() => {
         setFilterValues(getInitialFilterValues());
-    }, [initialValues]);
+    }, [sectionIds, stableInitialValues, getInitialFilterValues]);
 
     // Handle clicks outside the dropdown to close it
     useEffect(() => {
