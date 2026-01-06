@@ -235,7 +235,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
             {/* Cancellation Information (if applicable) */}
             {record.rental_status && (
                 <>
-                    <p className="details-title">{record.balanceReceivedAt ? 'IV' : 'III'}. Cancellation Information</p>
+                    <p className="details-title">{record.full_payment_date ? 'IV' : 'III'}. Cancellation Information</p>
                     <div className="modal-content add">
                         <form className="add-form">
                             <div className="form-row">
