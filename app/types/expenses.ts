@@ -100,17 +100,18 @@ export interface ExpenseItem {
 // Operational Expense Interface
 export interface OperationalExpense {
   id: string;
-  expense_type: string;
-  date: string;
+  expense_type: string; // NO_DB_COLUMN - used for display/categorization only
+  date_assigned: string;
   amount: number;
   description: string;
   category?: string;
   status: string;
   bus_id?: string;
-  bus_number?: string;
+  body_number?: string;
   employee_id?: string;
   employee_name?: string;
   receipt_number?: string;
+  payable_id?: number | null; // if not null/empty, reimbursable
   items?: ExpenseItem[];
   created_by: string;
   approved_by?: string;

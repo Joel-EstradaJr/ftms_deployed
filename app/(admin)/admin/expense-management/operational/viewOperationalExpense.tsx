@@ -10,6 +10,11 @@ interface ViewOperationalExpenseModalProps {
     paymentMethodName?: string;
     accountCode?: string;
     accountName?: string;
+    bodyNumber?: string;
+    busType?: string;
+    dateAssigned?: string;
+    reimbursementEmployeeName?: string;
+    reimbursementEmployeeNumber?: string;
   };
   onClose: () => void;
 }
@@ -96,16 +101,10 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
         <p className="details-title">I. Basic Expense Information</p>
         <form className="view-form">
           <div className="form-row">
-            {/* Expense Category */}
+            {/* Expense Name */}
             <div className="form-group">
-              <label>Expense Category</label>
+              <label>Expense Name</label>
               <p>{formatCategory(expenseData.expenseCategory)}</p>
-            </div>
-
-            {/* Expense Subcategory */}
-            <div className="form-group">
-              <label>Expense Subcategory</label>
-              <p>{expenseData.expenseSubcategory || 'N/A'}</p>
             </div>
 
             {/* Amount */}
@@ -113,25 +112,11 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
               <label>Amount</label>
               <p className="amount-field">{formatMoney(expenseData.amount)}</p>
             </div>
-          </div>
 
-          <div className="form-row">
             {/* Payment Method */}
             <div className="form-group">
               <label>Payment Method</label>
               <p>{expenseData.paymentMethodName || 'N/A'}</p>
-            </div>
-
-            {/* Reimbursable Status */}
-            <div className="form-group">
-              <label>Reimbursable</label>
-              <p>
-                {expenseData.isReimbursable ? (
-                  <span className="chip pending">Yes</span>
-                ) : (
-                  <span className="chip cancelled">No</span>
-                )}
-              </p>
             </div>
           </div>
         </form>
@@ -144,10 +129,16 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
             <p className="details-title">II. Trip Assignment Details</p>
             <form className="view-form">
               <div className="form-row">
-                {/* Bus Plate Number */}
+                {/* Plate Number */}
                 <div className="form-group">
-                  <label>Bus Plate Number</label>
+                  <label>Plate Number</label>
                   <p>{expenseData.busPlateNumber || 'N/A'}</p>
+                </div>
+
+                {/* Body Number */}
+                <div className="form-group">
+                  <label>Body Number</label>
+                  <p>{expenseData.bodyNumber || 'N/A'}</p>
                 </div>
 
                 {/* Route */}
@@ -155,11 +146,19 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
                   <label>Route</label>
                   <p>{expenseData.route || 'N/A'}</p>
                 </div>
+              </div>
 
-                {/* Department */}
+              <div className="form-row">
+                {/* Type */}
                 <div className="form-group">
-                  <label>Department</label>
-                  <p>{expenseData.department || 'N/A'}</p>
+                  <label>Type</label>
+                  <p>{expenseData.busType || 'N/A'}</p>
+                </div>
+
+                {/* Date Assigned */}
+                <div className="form-group">
+                  <label>Date Assigned</label>
+                  <p>{expenseData.dateAssigned ? formatDate(expenseData.dateAssigned) : 'N/A'}</p>
                 </div>
               </div>
             </form>
@@ -168,32 +167,69 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
       )}
 
       {/* III. Accounting Details */}
-      {expenseData.accountCodeId && (
+      <div className="modal-content view">
+        <p className="details-title">
+          {(expenseData.cachedTripId || expenseData.busPlateNumber) ? 'III' : 'II'}. Accounting Details
+        </p>
+        <form className="view-form">
+          <div className="form-row">
+            {/* Accounting Code */}
+            {expenseData.accountCodeId && (
+              <div className="form-group">
+                <label>Accounting Code</label>
+                <p>{expenseData.accountCode && expenseData.accountName ? `${expenseData.accountCode} - ${expenseData.accountName}` : 'N/A'}</p>
+              </div>
+            )}
+
+            {/* Reimbursable Status */}
+            <div className="form-group">
+              <label>Reimbursable Expense</label>
+              <p>
+                {expenseData.isReimbursable ? (
+                  <span className="chip reimbursable">Yes</span>
+                ) : (
+                  <span className="chip not-reimbursable">No</span>
+                )}
+              </p>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Reimbursable Details (if applicable) */}
+      {expenseData.isReimbursable && expenseData.reimbursementEmployeeId && (
         <>
           <div className="modal-content view">
             <p className="details-title">
-              {(expenseData.cachedTripId || expenseData.busPlateNumber) ? 'III' : 'II'}. Accounting Details
+              {(() => {
+                let section = 2;
+                if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
+                section++; // Accounting Details always shows
+                return `${['', 'I', 'II', 'III', 'IV', 'V'][section]}`;
+              })()}. Reimbursable Details
             </p>
             <form className="view-form">
               <div className="form-row">
-                {/* Account Code */}
+                {/* Employee to Reimburse */}
                 <div className="form-group">
-                  <label>Account Code</label>
-                  <p>{expenseData.accountCode || 'N/A'}</p>
+                  <label>Employee to Reimburse</label>
+                  <p>{expenseData.reimbursementEmployeeName || expenseData.reimbursementEmployeeNumber || 'N/A'}</p>
                 </div>
 
-                {/* Account Name */}
-                <div className="form-group">
-                  <label>Account Name</label>
-                  <p>{expenseData.accountName || 'N/A'}</p>
-                </div>
+                {/* Reimbursement Purpose */}
+                {expenseData.reimbursementPurpose && (
+                  <div className="form-group">
+                    <label>Purpose</label>
+                    <p>{expenseData.reimbursementPurpose}</p>
+                  </div>
+                )}
               </div>
             </form>
           </div>
         </>
       )}
 
-      {/* IV. Supporting Documents */}
+      {/* Supporting Documents */}
       {expenseData.receiptUrl && (
         <>
           <div className="modal-content view">
@@ -201,8 +237,9 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
               {(() => {
                 let section = 2;
                 if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
-                if (expenseData.accountCodeId) section++;
-                return `${['', 'I', 'II', 'III', 'IV', 'V'][section]}`;
+                section++; // Accounting Details
+                if (expenseData.isReimbursable && expenseData.reimbursementEmployeeId) section++;
+                return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][section]}`;
               })()}. Supporting Documents
             </p>
             <form className="view-form">
@@ -219,76 +256,76 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
         </>
       )}
 
-      {/* V. Approval Details (if approved) */}
-      {expenseData.approvedBy && (
-        <>
-          <div className="modal-content view">
-            <p className="details-title">
-              {(() => {
-                let section = 2;
-                if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
-                if (expenseData.accountCodeId) section++;
-                if (expenseData.receiptUrl) section++;
-                return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][section]}`;
-              })()}. Approval Details
-            </p>
-            <form className="view-form">
-              <div className="form-row">
-                {/* Approved By */}
-                <div className="form-group">
-                  <label>Approved By</label>
-                  <p>{expenseData.approvedBy}</p>
-                </div>
+      {/* Audit Details */}
+      <div className="modal-content view">
+        <p className="details-title">
+          {(() => {
+            let section = 2;
+            if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
+            section++; // Accounting Details
+            if (expenseData.isReimbursable && expenseData.reimbursementEmployeeId) section++;
+            if (expenseData.receiptUrl) section++;
+            return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][section]}`;
+          })()}. Audit
+        </p>
+        <form className="view-form">
+          <div className="form-row">
+            {/* Requested By */}
+            <div className="form-group">
+              <label>Requested by</label>
+              <p>{expenseData.createdBy}</p>
+            </div>
 
-                {/* Approved At */}
-                <div className="form-group">
-                  <label>Approved At</label>
-                  <p>{formatDate(expenseData.approvedAt || '')}</p>
-                </div>
+            {/* Requested On */}
+            {expenseData.createdAt && (
+              <div className="form-group">
+                <label>Requested on</label>
+                <p>{formatDate(expenseData.createdAt)}</p>
               </div>
-            </form>
+            )}
           </div>
-        </>
-      )}
 
-      {/* VI. Additional Information */}
-      {(expenseData.remarks || expenseData.createdBy) && (
+          {expenseData.approvedBy && (
+            <div className="form-row">
+              {/* Approved By */}
+              <div className="form-group">
+                <label>Approved by</label>
+                <p>{expenseData.approvedBy}</p>
+              </div>
+
+              {/* Approved On */}
+              {expenseData.approvedAt && (
+                <div className="form-group">
+                  <label>Approved on</label>
+                  <p>{formatDate(expenseData.approvedAt)}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </form>
+      </div>
+
+      {/* Additional Information */}
+      {expenseData.remarks && (
         <>
           <div className="modal-content view">
             <p className="details-title">
               {(() => {
                 let section = 2;
                 if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
-                if (expenseData.accountCodeId) section++;
+                section++; // Accounting Details
+                if (expenseData.isReimbursable && expenseData.reimbursementEmployeeId) section++;
                 if (expenseData.receiptUrl) section++;
-                if (expenseData.approvedBy) section++;
-                return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][section]}`;
+                section++; // Audit
+                return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][section]}`;
               })()}. Additional Information
             </p>
             <form className="view-form">
-              {expenseData.remarks && (
-                <div className="form-row">
-                  <div className="form-group full-width">
-                    <label>Remarks</label>
-                    <p>{expenseData.remarks}</p>
-                  </div>
-                </div>
-              )}
-
               <div className="form-row">
-                {/* Created By */}
-                <div className="form-group">
-                  <label>Created By</label>
-                  <p>{expenseData.createdBy}</p>
+                <div className="form-group full-width">
+                  <label>Description</label>
+                  <p>{expenseData.remarks}</p>
                 </div>
-
-                {/* Created At */}
-                {expenseData.createdAt && (
-                  <div className="form-group">
-                    <label>Created At</label>
-                    <p>{formatDate(expenseData.createdAt)}</p>
-                  </div>
-                )}
               </div>
             </form>
           </div>

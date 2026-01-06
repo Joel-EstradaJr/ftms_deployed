@@ -6,6 +6,8 @@ import "@/styles/expense-management/operational.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showConfirmation } from "@/utils/Alerts";
 import { isValidAmount } from "@/utils/validation";
+import SearchableDropdown, { DropdownOption } from "@/Components/SearchableDropdown";
+import TripSelectorModal from '@/Components/TripSelector';
 
 interface RecordOperationalExpenseModalProps {
   mode: "add" | "edit" | "approve";
@@ -17,7 +19,10 @@ interface RecordOperationalExpenseModalProps {
   cachedTrips: Array<{ 
     id: number; 
     busPlateNumber: string; 
+    body_number: string;
+    bus_type: string;
     route: string; 
+    date_assigned: string;
     departmentId: number;
     departmentName: string;
   }>;
@@ -150,28 +155,30 @@ export default function RecordOperationalExpenseModal({
 
   const [touched, setTouched] = useState<Set<keyof FormErrors>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
+  const [isTripSelectorOpen, setIsTripSelectorOpen] = useState(false);
+  const [selectedTripDetails, setSelectedTripDetails] = useState({
+    date_assigned: '',
+    body_number: '',
+    bus_type: '',
+    route: ''
+  });
 
-  // Handle trip selection and auto-populate related fields
-  const handleTripChange = (tripId: string) => {
-    const selectedTrip = cachedTrips.find(trip => trip.id === Number(tripId));
+  // Handle trip selection from TripSelector modal
+  const handleTripSelect = (trip: any) => {
+    setFormData(prev => ({
+      ...prev,
+      cachedTripId: trip.id,
+      busPlateNumber: trip.busPlateNumber,
+      route: trip.route,
+      department: trip.departmentName,
+    }));
     
-    if (selectedTrip) {
-      setFormData(prev => ({
-        ...prev,
-        cachedTripId: selectedTrip.id,
-        busPlateNumber: selectedTrip.busPlateNumber,
-        route: selectedTrip.route,
-        department: selectedTrip.departmentName,
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        cachedTripId: undefined,
-        busPlateNumber: '',
-        route: '',
-        department: '',
-      }));
-    }
+    setSelectedTripDetails({
+      date_assigned: trip.date_assigned || '',
+      body_number: trip.body_number || '',
+      bus_type: trip.bus_type || '',
+      route: trip.route || ''
+    });
   };
 
   // Validation function
@@ -182,7 +189,7 @@ export default function RecordOperationalExpenseModal({
         return '';
       
       case 'expenseCategory':
-        if (!value) return 'Expense category is required';
+        if (!value) return 'Expense name is required';
         return '';
       
       case 'amount':
@@ -241,12 +248,6 @@ export default function RecordOperationalExpenseModal({
       processedValue = value === '' ? 0 : parseFloat(value);
     } else if (type === 'checkbox') {
       processedValue = (e.target as HTMLInputElement).checked;
-    }
-
-    // Special handling for trip selection
-    if (name === 'cachedTripId') {
-      handleTripChange(value);
-      return;
     }
 
     setFormData(prev => ({
@@ -388,7 +389,7 @@ export default function RecordOperationalExpenseModal({
                     onBlur={handleInputBlur}
                     className={errors.dateRecorded && touched.has('dateRecorded') ? 'input-error' : ''}
                     required
-                    disabled
+                    disabled={mode === 'edit'}
                   />
                   {errors.dateRecorded && touched.has('dateRecorded') && (
                     <span className="error-message">{errors.dateRecorded}</span>
@@ -398,7 +399,7 @@ export default function RecordOperationalExpenseModal({
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="expenseCategory" className="required">Expense Category</label>
+                  <label htmlFor="expenseCategory" className="required">Expense Name</label>
                   <select
                     id="expenseCategory"
                     name="expenseCategory"
@@ -407,13 +408,13 @@ export default function RecordOperationalExpenseModal({
                     onBlur={handleInputBlur}
                     className={errors.expenseCategory && touched.has('expenseCategory') ? 'input-error' : ''}
                     required
-                    disabled
                   >
-                    <option value="">Select Category</option>
+                    <option value="">Select Expense</option>
                     {EXPENSE_CATEGORIES.map(cat => (
                       <option key={cat.value} value={cat.value}>{cat.label}</option>
                     ))}
                   </select>
+                  <small className="field-note">Typable dropdown - checks DB for similar inputs (NO_DB_COLUMN)</small>
                   {errors.expenseCategory && touched.has('expenseCategory') && (
                     <span className="error-message">{errors.expenseCategory}</span>
                   )}
@@ -489,28 +490,33 @@ export default function RecordOperationalExpenseModal({
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="cachedTripId">Trip Assignment <span className="requiredTags"> *</span></label>
-                  <select
-                    id="cachedTripId"
-                    name="cachedTripId"
-                    value={formData.cachedTripId || ''}
-                    onChange={handleInputChange}
-                    required
-                    disabled={!!formData.cachedTripId || mode === 'edit'}
-                  >
-                    <option value="">Select Trip</option>
-                    {cachedTrips.map(trip => (
-                      <option key={trip.id} value={trip.id}>
-                        {trip.busPlateNumber} - {trip.route}
-                      </option>
-                    ))}
-                  </select>
-                  <small className="field-note">Selecting a trip will auto-populate bus, route, and department</small>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <input
+                      type="text"
+                      id="cachedTripId"
+                      value={formData.cachedTripId ? `Trip #${formData.cachedTripId} - ${formData.busPlateNumber} (${formData.route})` : ''}
+                      placeholder="No trip selected"
+                      disabled
+                      className="input-disabled"
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsTripSelectorOpen(true)}
+                      className="submit-btn"
+                      style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}
+                      disabled={mode === 'edit'}
+                    >
+                      <i className="ri-search-line"></i> Select Trip
+                    </button>
+                  </div>
+                  <small className="field-note">Trip Selector returns: Date Assigned, Body Number, Type, Route</small>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="busPlateNumber">Bus Plate Number</label>
+                  <label htmlFor="busPlateNumber">Plate Number</label>
                   <input
                     type="text"
                     id="busPlateNumber"
@@ -522,6 +528,20 @@ export default function RecordOperationalExpenseModal({
                 </div>
 
                 <div className="form-group">
+                  <label htmlFor="bodyNumber">Body Number</label>
+                  <input
+                    type="text"
+                    id="bodyNumber"
+                    name="bodyNumber"
+                    value={selectedTripDetails.body_number || ''} 
+                    disabled
+                    className="input-disabled"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
                   <label htmlFor="route">Route</label>
                   <input
                     type="text"
@@ -532,16 +552,14 @@ export default function RecordOperationalExpenseModal({
                     className="input-disabled"
                   />
                 </div>
-              </div>
 
-              <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="department">Department</label>
+                  <label htmlFor="busType">Type</label>
                   <input
                     type="text"
-                    id="department"
-                    name="department"
-                    value={formData.department || ''}
+                    id="busType"
+                    name="busType"
+                    value={selectedTripDetails.bus_type || ''}
                     disabled
                     className="input-disabled"
                   />
@@ -556,7 +574,7 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">III. Accounting Details</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="accountCodeId">Account Code<span className="requiredTags"> *</span></label>
+                  <label htmlFor="accountCodeId">Accounting Code<span className="requiredTags"> *</span></label>
                   <select
                     id="accountCodeId"
                     name="accountCodeId"
@@ -571,6 +589,7 @@ export default function RecordOperationalExpenseModal({
                       </option>
                     ))}
                   </select>
+                  <small className="field-note">Pre-select when Expense Name is selected, but still editable</small>
                 </div>
 
                 <div className="form-group">
@@ -608,26 +627,34 @@ export default function RecordOperationalExpenseModal({
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="reimbursementEmployeeId" className="required">Employee to Reimburse</label>
-                    <select
-                      id="reimbursementEmployeeId"
-                      name="reimbursementEmployeeId"
+                    <SearchableDropdown
+                      options={employees.map(emp => ({
+                        value: emp.employee_id,
+                        label: `${emp.employee_number} - ${emp.name}`,
+                        description: `${emp.job_title} | ${emp.department}`
+                      }))}
                       value={formData.reimbursementEmployeeId || ''}
-                      onChange={handleInputChange}
-                      onBlur={handleInputBlur}
+                      onChange={(value) => {
+                        setFormData(prev => ({ ...prev, reimbursementEmployeeId: value }));
+                        if (touched.has('reimbursementEmployeeId')) {
+                          setErrors(prev => ({
+                            ...prev,
+                            reimbursementEmployeeId: validateFormField('reimbursementEmployeeId', value)
+                          }));
+                        }
+                      }}
+                      onBlur={() => {
+                        setTouched(prev => new Set(prev).add('reimbursementEmployeeId'));
+                        setErrors(prev => ({
+                          ...prev,
+                          reimbursementEmployeeId: validateFormField('reimbursementEmployeeId', formData.reimbursementEmployeeId)
+                        }));
+                      }}
+                      placeholder="Select Employee"
                       className={errors.reimbursementEmployeeId && touched.has('reimbursementEmployeeId') ? 'input-error' : ''}
-                      required
-                    >
-                      <option value="">Select Employee</option>
-                      {employees && employees.length > 0 ? (
-                        employees.map(emp => (
-                          <option key={emp.employee_id} value={emp.employee_id}>
-                            {emp.employee_number} - {emp.name} ({emp.job_title})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="" disabled>No employees available</option>
-                      )}
-                    </select>
+                      showDescription={true}
+                    />
+                    <small className="field-note">Searchable Dropdown - No Custom Input</small>
                     {errors.reimbursementEmployeeId && touched.has('reimbursementEmployeeId') && (
                       <span className="error-message">{errors.reimbursementEmployeeId}</span>
                     )}
@@ -732,7 +759,7 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">V. Additional Information</h3>
               <div className="form-row">
                 <div className="form-group full-width">
-                  <label htmlFor="remarks">Remarks</label>
+                  <label htmlFor="remarks">Description</label>
                   <textarea
                     id="remarks"
                     name="remarks"
@@ -777,6 +804,14 @@ export default function RecordOperationalExpenseModal({
           {isSaving ? 'Saving...' : (mode === 'add' ? 'Record Expense' : mode === 'approve' ? 'Approve & Record' : 'Update Expense')}
         </button>
       </div>
+
+      {/* Trip Selector Modal */}
+      <TripSelectorModal
+        isOpen={isTripSelectorOpen}
+        onClose={() => setIsTripSelectorOpen(false)}
+        onSelect={handleTripSelect}
+        trips={cachedTrips}
+      />
     </>
   );
 }
