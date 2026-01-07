@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import ModalHeader from '../../../../Components/ModalHeader';
 import { formatMoney, formatDate } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
-import '../../../../styles/components/modal.css';
+import '../../../../styles/components/modal2.css';
 import '../../../../styles/components/forms.css';
+import '../../../../styles/components/chips.css';
 
 import { CashAdvanceRequest } from './ViewCashAdvanceModal';
 
@@ -122,104 +122,124 @@ export default function CashAdvanceApprovalModal({
   };
 
   return (
-    <div className="modalOverlay">
-      <div className="modalStandard">
-        <ModalHeader
-          title={`${action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Review'} Cash Advance Request`}
-          onClose={onClose}
-        />
+    <>
+      <div className="modal-heading">
+        <h1 className="modal-title">
+          {action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Review'} Cash Advance Request
+        </h1>
+        <div className="modal-date-time">
+          <p>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+          <p>{new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</p>
+        </div>
 
-        <div className="modalContent">
-          {!action ? (
+        <button className="close-modal-btn view" onClick={onClose}>
+          <i className="ri-close-line"></i>
+        </button>
+      </div>
+
+        {!action ? (
             // Initial review screen
             <>
-              <div className="sectionTitle">Request Details</div>
+              <p className="details-title">Request Details</p>
+              <div className="modal-content view">
+                <form className="view-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Request ID</label>
+                      <p>{request.request_id}</p>
+                    </div>
 
-              <div className="formFieldsHorizontal">
-                <div className="formField">
-                  <label>Request ID</label>
-                  <div className="viewField">{request.request_id}</div>
-                </div>
+                    <div className="form-group">
+                      <label>Request Date</label>
+                      <p>{formatDate(request.request_date)}</p>
+                    </div>
 
-                <div className="formField">
-                  <label>Request Date</label>
-                  <div className="viewField">{formatDate(request.request_date)}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Request Type</label>
-                  <div className="viewField">
-                    <span className={`chip ${getRequestTypeClass(request.request_type)}`}>
-                      {request.request_type}
-                    </span>
+                    <div className="form-group">
+                      <label>Request Type</label>
+                      <p className="chip-container">
+                        <span className={`chip ${getRequestTypeClass(request.request_type)}`}>
+                          {request.request_type}
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </form>
               </div>
 
-              <div className="sectionTitle">Employee Information</div>
+              <p className="details-title">Employee Information</p>
+              <div className="modal-content view">
+                <form className="view-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Employee Number</label>
+                      <p>{request.employee_number}</p>
+                    </div>
 
-              <div className="formFieldsHorizontal">
-                <div className="formField">
-                  <label>Employee Number</label>
-                  <div className="viewField">{request.employee_number}</div>
-                </div>
+                    <div className="form-group">
+                      <label>Employee Name</label>
+                      <p>{request.employee_name}</p>
+                    </div>
 
-                <div className="formField">
-                  <label>Employee Name</label>
-                  <div className="viewField">{request.employee_name}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Position</label>
-                  <div className="viewField">{request.position}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Department</label>
-                  <div className="viewField">{request.department}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Contact</label>
-                  <div className="viewField">{formatContactInfo()}</div>
-                </div>
-              </div>
-
-              <div className="sectionTitle">Amount Details</div>
-
-              <div className="formFieldsHorizontal">
-                <div className="formField">
-                  <label>Requested Amount</label>
-                  <div className="viewField" style={{ fontWeight: 600, color: '#1890ff' }}>
-                    {formatMoney(request.requested_amount)}
+                    <div className="form-group">
+                      <label>Position</label>
+                      <p>{request.position}</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="formField full-width">
-                  <label>Purpose</label>
-                  <div className="viewField">{request.purpose}</div>
-                </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Department</label>
+                      <p>{request.department}</p>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Contact</label>
+                      <p>{formatContactInfo()}</p>
+                    </div>
+                  </div>
+                </form>
               </div>
 
-              <div className="modalButtons">
+              <p className="details-title">Amount Details</p>
+              <div className="modal-content view">
+                <form className="view-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Requested Amount</label>
+                      <p style={{ fontWeight: 600, color: '#1890ff' }}>
+                        {formatMoney(request.requested_amount)}
+                      </p>
+                    </div>
+
+                    <div className="form-group" style={{ flex: 2 }}>
+                      <label>Purpose</label>
+                      <p>{request.purpose}</p>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <div className="modal-actions">
                 <button
-                  className="approveButton"
+                  className="submit-btn"
                   onClick={() => setAction('approve')}
                   disabled={isProcessing}
+                  style={{ backgroundColor: 'var(--success-color)' }}
                 >
                   <i className="ri-check-line"></i>
                   Approve Request
                 </button>
                 <button
-                  className="rejectButton"
+                  className="submit-btn"
                   onClick={() => setAction('reject')}
                   disabled={isProcessing}
+                  style={{ backgroundColor: 'var(--error-color)' }}
                 >
                   <i className="ri-close-line"></i>
                   Reject Request
                 </button>
                 <button
-                  className="cancelButton"
+                  className="cancel-btn"
                   onClick={onClose}
                   disabled={isProcessing}
                 >
@@ -230,51 +250,58 @@ export default function CashAdvanceApprovalModal({
           ) : action === 'approve' ? (
             // Approval form with editable amount
             <>
-              <div className="sectionTitle">Approve Cash Advance</div>
-              
-              <div className="formFieldsHorizontal">
-                <div className="formField">
-                  <label>Employee</label>
-                  <div className="viewField">{request.employee_name}</div>
-                </div>
+              <p className="details-title">Approve Cash Advance</p>
+              <div className="modal-content view">
+                <form className="view-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Employee</label>
+                      <p>{request.employee_name}</p>
+                    </div>
 
-                <div className="formField">
-                  <label>Requested Amount</label>
-                  <div className="viewField">{formatMoney(request.requested_amount)}</div>
-                </div>
+                    <div className="form-group">
+                      <label>Requested Amount</label>
+                      <p>{formatMoney(request.requested_amount)}</p>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 2 }}>
+                      <label>Approved Amount <span style={{ color: 'var(--error-color)' }}>*</span></label>
+                      <input
+                        type="number"
+                        value={approvedAmount}
+                        onChange={(e) => setApprovedAmount(parseFloat(e.target.value) || 0)}
+                        min="0"
+                        step="0.01"
+                        placeholder="Enter approved amount"
+                      />
+                      {showAmountWarning && (
+                        <p className="hint-message" style={{ color: '#f39c12', marginTop: '8px' }}>
+                          <i className="ri-alert-line"></i> Approved amount exceeds the requested amount
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </form>
               </div>
 
-              <div className="formField full-width">
-                <label>Approved Amount <span className="requiredTags">*</span></label>
-                <input
-                  type="number"
-                  value={approvedAmount}
-                  onChange={(e) => setApprovedAmount(parseFloat(e.target.value) || 0)}
-                  min="0"
-                  step="0.01"
-                  placeholder="Enter approved amount"
-                  style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-                />
-                {showAmountWarning && (
-                  <p className="hint-message" style={{ color: '#f39c12', marginTop: '8px' }}>
-                    <i className="ri-alert-line"></i> Approved amount exceeds the requested amount
-                  </p>
-                )}
-              </div>
-
-              <div className="modalButtons">
+              <div className="modal-actions">
                 <button
-                  className="approveButton"
+                  className="submit-btn"
                   onClick={handleSubmit}
                   disabled={isProcessing || approvedAmount <= 0}
+                  style={{ backgroundColor: 'var(--success-color)' }}
                 >
+                  <i className="ri-check-line"></i>
                   {isProcessing ? 'Processing...' : 'Confirm Approval'}
                 </button>
                 <button
-                  className="cancelButton"
+                  className="cancel-btn"
                   onClick={() => setAction(null)}
                   disabled={isProcessing}
                 >
+                  <i className="ri-arrow-left-line"></i>
                   Back
                 </button>
               </div>
@@ -282,52 +309,57 @@ export default function CashAdvanceApprovalModal({
           ) : (
             // Rejection form
             <>
-              <div className="sectionTitle">Reject Cash Advance</div>
-              
-              <div className="formFieldsHorizontal">
-                <div className="formField">
-                  <label>Employee</label>
-                  <div className="viewField">{request.employee_name}</div>
-                </div>
+              <p className="details-title">Reject Cash Advance</p>
+              <div className="modal-content view">
+                <form className="view-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Employee</label>
+                      <p>{request.employee_name}</p>
+                    </div>
 
-                <div className="formField">
-                  <label>Requested Amount</label>
-                  <div className="viewField">{formatMoney(request.requested_amount)}</div>
-                </div>
+                    <div className="form-group">
+                      <label>Requested Amount</label>
+                      <p>{formatMoney(request.requested_amount)}</p>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group" style={{ flex: 2 }}>
+                      <label>Reason for Rejection <span style={{ color: 'var(--error-color)' }}>*</span></label>
+                      <textarea
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Please provide a detailed reason for rejecting this cash advance request..."
+                        rows={4}
+                        required
+                      />
+                    </div>
+                  </div>
+                </form>
               </div>
 
-              <div className="formField full-width">
-                <label>Reason for Rejection <span className="requiredTags">*</span></label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Please provide a detailed reason for rejecting this cash advance request..."
-                  rows={4}
-                  required
-                  style={{ width: '100%', resize: 'vertical' }}
-                />
-              </div>
-
-              <div className="modalButtons">
+              <div className="modal-actions">
                 <button
-                  className="rejectButton"
+                  className="submit-btn"
                   onClick={handleSubmit}
                   disabled={isProcessing || !rejectionReason.trim()}
+                  style={{ backgroundColor: 'var(--error-color)' }}
                 >
+                  <i className="ri-close-line"></i>
                   {isProcessing ? 'Processing...' : 'Confirm Rejection'}
                 </button>
                 <button
-                  className="cancelButton"
+                  className="cancel-btn"
                   onClick={() => setAction(null)}
                   disabled={isProcessing}
                 >
+                  <i className="ri-arrow-left-line"></i>
                   Back
                 </button>
               </div>
             </>
           )}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

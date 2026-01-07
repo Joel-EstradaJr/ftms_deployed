@@ -124,7 +124,7 @@ export default function ViewCashAdvanceModal({ request, onClose }: ViewCashAdvan
 
             <div className="form-group">
               <label>Status</label>
-              <p>
+              <p className="chip-container">
                 <span className={`chip ${getStatusClass(request.status)}`}>
                   {request.status}
                 </span>
@@ -133,7 +133,7 @@ export default function ViewCashAdvanceModal({ request, onClose }: ViewCashAdvan
 
             <div className="form-group">
               <label>Request Type</label>
-              <p>
+              <p className="chip-container">
                 <span className={`chip ${getRequestTypeClass(request.request_type)}`}>
                   {request.request_type}
                 </span>

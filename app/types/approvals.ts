@@ -1,6 +1,6 @@
 // Shared types for the combined approval system
 export interface ApprovalTab {
-  id: 'budget' | 'purchase';
+  id: 'budget' | 'purchase' | 'cash-advance';
   title: string;
   icon?: string;
   count?: number;

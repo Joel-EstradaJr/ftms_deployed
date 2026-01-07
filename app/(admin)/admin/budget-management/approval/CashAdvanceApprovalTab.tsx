@@ -1,19 +1,19 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import PaginationComponent from "../../../../Components/pagination";
-import ModalManager from "../../../../Components/modalManager";
-import { showSuccess, showError } from "../../../../utils/Alerts";
-import { formatDate, formatMoney } from "../../../../utils/formatting";
+import PaginationComponent from "@/Components/pagination";
+import ModalManager from "@/Components/modalManager";
+import { showSuccess, showError } from "@/utils/Alerts";
+import { formatDate, formatMoney } from "@/utils/formatting";
 
 // Import modal components
 import ViewCashAdvanceModal, { CashAdvanceRequest } from "./ViewCashAdvanceModal";
 import CashAdvanceApprovalModal from "./CashAdvanceApprovalModal";
 
 // Import styles
-import "../../../../styles/budget-management/budgetApproval.css";
-import "../../../../styles/components/table.css";
-import "../../../../styles/components/chips.css";
+import "@/styles/budget-management/budgetApproval.css";
+import "@/styles/components/table.css";
+import "@/styles/components/chips.css";
 
 import { SharedApprovalFilters } from "../../../../types/approvals";
 
@@ -261,9 +261,9 @@ export default function CashAdvanceApprovalTab({
   const [data, setData] = useState<CashAdvanceRequest[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<CashAdvanceRequest | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  const [activeRow, setActiveRow] = useState<CashAdvanceRequest | null>(null);
   const [sortField, setSortField] = useState<keyof CashAdvanceRequest>('request_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -373,16 +373,52 @@ export default function CashAdvanceApprovalTab({
     }
   };
 
-  // Handle view modal
+  // Open modal with different modes
+  const openModal = (mode: 'view' | 'approve', rowData?: CashAdvanceRequest) => {
+    let content;
+
+    switch (mode) {
+      case 'view':
+        content = (
+          <ViewCashAdvanceModal
+            request={rowData!}
+            onClose={closeModal}
+          />
+        );
+        break;
+      case 'approve':
+        content = (
+          <CashAdvanceApprovalModal
+            request={rowData!}
+            onClose={closeModal}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
+        );
+        break;
+      default:
+        content = null;
+    }
+
+    setModalContent(content);
+    setActiveRow(rowData || null);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalContent(null);
+    setActiveRow(null);
+  };
+
+  // Handle view
   const handleView = (request: CashAdvanceRequest) => {
-    setSelectedRequest(request);
-    setShowViewModal(true);
+    openModal('view', request);
   };
 
   // Handle approval modal
   const handleApprovalAction = (request: CashAdvanceRequest) => {
-    setSelectedRequest(request);
-    setShowApprovalModal(true);
+    openModal('approve', request);
   };
 
   // Handle approve from modal
@@ -534,27 +570,22 @@ export default function CashAdvanceApprovalTab({
                       >
                         <i className="ri-eye-line" />
                       </button>
-                      {request.status === 'Pending' && (
-                        <>
-                          <button
-                            className="approveBtn"
-                            onClick={() => handleApprovalAction(request)}
-                            title="Approve"
-                          >
-                            <i className="ri-check-line" />
-                          </button>
-                          <button
-                            className="rejectBtn"
-                            onClick={() => {
-                              setSelectedRequest(request);
-                              setShowApprovalModal(true);
-                            }}
-                            title="Reject"
-                          >
-                            <i className="ri-close-line" />
-                          </button>
-                        </>
-                      )}
+                      <button
+                        className="approveBtn"
+                        onClick={() => handleApprovalAction(request)}
+                        title="Approve"
+                        disabled={request.status !== 'Pending'}
+                      >
+                        <i className="ri-check-line" />
+                      </button>
+                      <button
+                        className="rejectBtn"
+                        onClick={() => handleApprovalAction(request)}
+                        title="Reject"
+                        disabled={request.status !== 'Pending'}
+                      >
+                        <i className="ri-close-line" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -578,38 +609,12 @@ export default function CashAdvanceApprovalTab({
         />
       )}
 
-      {/* View Modal */}
-      {showViewModal && selectedRequest && (
-        <ModalManager
-          isOpen={showViewModal}
-          onClose={() => {
-            setShowViewModal(false);
-            setSelectedRequest(null);
-          }}
-          modalContent={
-            <ViewCashAdvanceModal
-              request={selectedRequest}
-              onClose={() => {
-                setShowViewModal(false);
-                setSelectedRequest(null);
-              }}
-            />
-          }
-        />
-      )}
-
-      {/* Approval Modal */}
-      {showApprovalModal && selectedRequest && (
-        <CashAdvanceApprovalModal
-          request={selectedRequest}
-          onClose={() => {
-            setShowApprovalModal(false);
-            setSelectedRequest(null);
-          }}
-          onApprove={handleApprove}
-          onReject={handleReject}
-        />
-      )}
+      {/* Modal Manager */}
+      <ModalManager
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        modalContent={modalContent}
+      />
     </>
   );
 }
