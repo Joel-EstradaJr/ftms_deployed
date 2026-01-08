@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import IncomeStatementCharts from "./charts/IncomeStatementCharts";
 
 // Types for Income Statement
 export type IncomeStatementLine = {
@@ -243,6 +244,9 @@ const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Visual Data Charts */}
+      <IncomeStatementCharts data={data} />
     </div>
   );
 };
