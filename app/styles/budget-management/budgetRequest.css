@@ -233,6 +233,75 @@ button {
   font-size: 16px !important;
 }
 /* ---------- Responsive ---------- */
+
+/* Table Responsiveness */
+/* Responsive table with sticky columns */
+  .table-container {
+    overflow-x: auto !important;
+  }
+  
+  /* Set minimum widths for each column */
+  .data-table th:nth-child(1),
+  .data-table td:nth-child(1) {
+    min-width: 250px !important;
+  }
+  
+  .data-table th:nth-child(2),
+  .data-table td:nth-child(2) {
+    min-width: 200px !important;
+  }
+  
+  .data-table th:nth-child(3),
+  .data-table td:nth-child(3) {
+    min-width: 250px !important;
+  }
+  
+  .data-table th:nth-child(4),
+  .data-table td:nth-child(4) {
+    min-width: 300px !important;
+  }
+  
+  .data-table th:nth-child(5),
+  .data-table td:nth-child(5) {
+    min-width: 300px !important;
+  }
+  
+  .data-table th:nth-child(6),
+  .data-table td:nth-child(6) {
+    min-width: 200px !important;
+  }
+  
+  .data-table th.sticky-status,
+.data-table td:nth-child(6) {
+  position: sticky !important;
+  right: 120px !important;
+  background-color: var(--foreground-color) !important;
+  min-width: 120px !important;
+  z-index: 2 !important;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.data-table thead th.sticky-status {
+  z-index: 3 !important;
+}
+
+/* Sticky Actions column (7th column) */
+.data-table th.sticky-actions,
+.data-table td:nth-child(7) {
+  position: sticky !important;
+  right: 0 !important;
+  background-color: var(--foreground-color) !important;
+  min-width: 120px !important;
+  z-index: 2 !important;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1) !important;
+  text-align: center !important;
+}
+
+.data-table thead th.sticky-actions {
+  z-index: 3 !important;
+}
+
+
 @media (max-width: 768px) {
   .budgetRequestPage {
     padding: 1rem !important;

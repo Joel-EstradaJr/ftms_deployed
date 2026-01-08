@@ -25,10 +25,13 @@ interface BudgetRequest {
   title: string;
   description: string;
   requested_amount: number;
+  approved_amount?: number;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
   category: string;
   requested_by: string;
   request_date: string;
+  department: string;
+  requested_type: 'Emergency' | 'Urgent' | 'Regular' | 'Project-Based';
   approval_date?: string;
   approved_by?: string;
   rejection_reason?: string;
@@ -84,6 +87,8 @@ export default function BudgetApprovalTab({
             category: 'Maintenance',
             requested_by: 'John Doe',
             request_date: '2024-03-15',
+            department: 'Operations',
+            requested_type: 'Urgent',
             created_at: '2024-03-15T10:00:00Z'
           },
           {
@@ -91,10 +96,13 @@ export default function BudgetApprovalTab({
             title: 'Driver Training Program',
             description: 'Comprehensive training program for new drivers including safety protocols and customer service training.',
             requested_amount: 25000,
+            approved_amount: 25000,
             status: 'Approved',
             category: 'Training',
             requested_by: 'Mike Johnson',
             request_date: '2024-03-10',
+            department: 'Human Resources',
+            requested_type: 'Regular',
             approval_date: '2024-03-12',
             approved_by: 'Finance Director',
             created_at: '2024-03-10T14:30:00Z'
@@ -108,6 +116,8 @@ export default function BudgetApprovalTab({
             category: 'Marketing',
             requested_by: 'Sarah Wilson',
             request_date: '2024-03-08',
+            department: 'Marketing',
+            requested_type: 'Project-Based',
             rejection_reason: 'Budget already allocated for Q1 marketing activities',
             created_at: '2024-03-08T09:15:00Z'
           },
@@ -120,6 +130,8 @@ export default function BudgetApprovalTab({
             category: 'Office Supplies',
             requested_by: 'Anna Garcia',
             request_date: '2024-03-12',
+            department: 'Administration',
+            requested_type: 'Regular',
             created_at: '2024-03-12T11:20:00Z'
           },
           {
@@ -127,10 +139,13 @@ export default function BudgetApprovalTab({
             title: 'IT Equipment Upgrade',
             description: 'Upgrade of computer systems and networking equipment for improved performance.',
             requested_amount: 75000,
+            approved_amount: 65000,
             status: 'Approved',
             category: 'IT',
             requested_by: 'Carlos Rodriguez',
             request_date: '2024-03-05',
+            department: 'Information Technology',
+            requested_type: 'Urgent',
             approval_date: '2024-03-07',
             approved_by: 'IT Director',
             created_at: '2024-03-05T14:45:00Z'
@@ -144,6 +159,8 @@ export default function BudgetApprovalTab({
             category: 'HR',
             requested_by: 'Maria Lopez',
             request_date: '2024-03-18',
+            department: 'Human Resources',
+            requested_type: 'Project-Based',
             created_at: '2024-03-18T09:30:00Z'
           },
           {
@@ -155,6 +172,8 @@ export default function BudgetApprovalTab({
             category: 'Security',
             requested_by: 'David Chen',
             request_date: '2024-03-01',
+            department: 'Security',
+            requested_type: 'Urgent',
             rejection_reason: 'Security budget already committed for the year',
             created_at: '2024-03-01T16:15:00Z'
           },
@@ -163,10 +182,13 @@ export default function BudgetApprovalTab({
             title: 'Vehicle Fuel Efficiency Program',
             description: 'Implementation of fuel efficiency monitoring and driver training program.',
             requested_amount: 20000,
+            approved_amount: 20000,
             status: 'Approved',
             category: 'Operations',
             requested_by: 'Elena Martinez',
             request_date: '2024-02-28',
+            department: 'Operations',
+            requested_type: 'Project-Based',
             approval_date: '2024-03-02',
             approved_by: 'Operations Manager',
             created_at: '2024-02-28T13:40:00Z'
@@ -180,6 +202,8 @@ export default function BudgetApprovalTab({
             category: 'Training',
             requested_by: 'Robert Kim',
             request_date: '2024-03-20',
+            department: 'Customer Service',
+            requested_type: 'Regular',
             created_at: '2024-03-20T10:00:00Z'
           },
           {
@@ -187,10 +211,13 @@ export default function BudgetApprovalTab({
             title: 'Facility Maintenance Contract',
             description: 'Annual contract for facility maintenance and cleaning services.',
             requested_amount: 60000,
+            approved_amount: 60000,
             status: 'Approved',
             category: 'Facilities',
             requested_by: 'Lisa Wong',
             request_date: '2024-02-25',
+            department: 'Facilities',
+            requested_type: 'Regular',
             approval_date: '2024-02-27',
             approved_by: 'Facilities Manager',
             created_at: '2024-02-25T12:30:00Z'
@@ -204,6 +231,8 @@ export default function BudgetApprovalTab({
             category: 'IT',
             requested_by: 'James Park',
             request_date: '2024-03-22',
+            department: 'Information Technology',
+            requested_type: 'Regular',
             created_at: '2024-03-22T15:20:00Z'
           },
           {
@@ -211,10 +240,13 @@ export default function BudgetApprovalTab({
             title: 'Emergency Response Equipment',
             description: 'Purchase of first aid kits, defibrillators, and emergency response equipment.',
             requested_amount: 35000,
+            approved_amount: 35000,
             status: 'Approved',
             category: 'Safety',
             requested_by: 'Sarah Johnson',
             request_date: '2024-02-20',
+            department: 'Safety and Compliance',
+            requested_type: 'Emergency',
             approval_date: '2024-02-22',
             approved_by: 'Safety Officer',
             created_at: '2024-02-20T11:10:00Z'
@@ -423,47 +455,60 @@ export default function BudgetApprovalTab({
                     <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                   )}
                 </th>
-                <th onClick={() => handleSort('title')} className="sortable">
-                  Title
-                  {sortField === 'title' && (
+                <th onClick={() => handleSort('department')} className="sortable">
+                  Department
+                  {sortField === 'department' && (
                     <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                   )}
                 </th>
                 <th onClick={() => handleSort('category')} className="sortable">
-                  Category
+                  Budget Category
                   {sortField === 'category' && (
                     <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                   )}
                 </th>
                 <th onClick={() => handleSort('requested_amount')} className="sortable">
-                  Amount
+                  Requested Amount
                   {sortField === 'requested_amount' && (
                     <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                   )}
                 </th>
-                <th>Status</th>
-                <th onClick={() => handleSort('requested_by')} className="sortable">
-                  Requested By
-                  {sortField === 'requested_by' && (
+                <th onClick={() => handleSort('approved_amount')} className="sortable">
+                  Approved Amount
+                  {sortField === 'approved_amount' && (
                     <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                   )}
                 </th>
-                <th>Actions</th>
+                <th onClick={() => handleSort('requested_type')} className="sortable">
+                  Requested Type
+                  {sortField === 'requested_type' && (
+                    <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                  )}
+                </th>
+                <th className="sticky-status">Status</th>
+                <th className="sticky-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedData.map(request => (
                 <tr key={request.request_id} onClick={() => handleView(request)} title="View Details">
                   <td>{formatDate(request.request_date)}</td>
-                  <td>{request.title}</td>
+                  <td>{request.department}</td>
                   <td>{request.category}</td>
-                  <td>{formatMoney(request.requested_amount)}</td>
+                  <td className="amount-cell">{formatMoney(request.requested_amount)}</td>
+                  <td className="amount-cell">
+                    {request.approved_amount ? formatMoney(request.approved_amount) : '-'}
+                  </td>
+                  <td>
+                    <span className={`chip ${request.requested_type === 'Emergency' ? 'emergency' : request.requested_type === 'Urgent' ? 'urgent' : 'regular'}`}>
+                      {request.requested_type}
+                    </span>
+                  </td>
                   <td>
                     <span className={`chip ${getStatusClass(request.status)}`}>
                       {request.status}
                     </span>
                   </td>
-                  <td>{request.requested_by}</td>
                   <td className="actionButtons">
                     <div className="actionButtonsContainer">
                       <button
