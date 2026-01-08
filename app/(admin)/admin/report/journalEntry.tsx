@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import JournalEntryCharts from "./charts/JournalEntryCharts";
 
 // Types for Journal Entry
 export type JournalEntryLine = {
@@ -170,6 +171,9 @@ const JournalEntryReport: React.FC<JournalEntryReportProps> = ({
           <span className="unbalanced">⚠ Unbalanced: Difference of ₱{formatCurrency(Math.abs(totals.debit - totals.credit))}</span>
         )}
       </div>
+
+      {/* Visual Data Charts */}
+      <JournalEntryCharts transactions={transactions} />
     </div>
   );
 };

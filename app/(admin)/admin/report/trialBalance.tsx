@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import FinancialPositionCharts from "./charts/FinancialPositionCharts";
 
 // Types for Financial Position / Trial Balance
 export type FinancialPositionLine = {
@@ -227,6 +228,9 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
           </span>
         )}
       </div>
+
+      {/* Visual Data Charts */}
+      <FinancialPositionCharts data={data} />
     </div>
   );
 };

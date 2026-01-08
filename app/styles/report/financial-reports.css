@@ -378,3 +378,361 @@
     print-color-adjust: exact;
   }
 }
+
+/* ============================================================
+   Charts Section Styles
+   ============================================================ */
+
+/* Charts Section Container */
+.charts-section {
+  width: 100%;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: var(--foreground-color);
+  border-radius: var(--page-button-border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+.charts-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.charts-header h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--primary-text-color);
+  margin: 0 0 0.5rem 0;
+}
+
+.charts-subtitle {
+  font-size: 0.9rem;
+  color: var(--secondary-text-color);
+  margin: 0;
+}
+
+/* Summary Cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--page-button-border-radius);
+  background: linear-gradient(135deg, var(--background-color) 0%, var(--foreground-color) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 1.5rem;
+}
+
+.summary-icon i {
+  font-size: 1.5rem;
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summary-label {
+  font-size: 0.8rem;
+  color: var(--secondary-text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary-text-color);
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Card Colors */
+.debit-card .summary-icon {
+  background-color: rgba(54, 162, 235, 0.15);
+  color: #36a2eb;
+}
+
+.credit-card .summary-icon {
+  background-color: rgba(255, 99, 132, 0.15);
+  color: #ff6384;
+}
+
+.transactions-card .summary-icon {
+  background-color: rgba(75, 192, 192, 0.15);
+  color: #4bc0c0;
+}
+
+.accounts-card .summary-icon {
+  background-color: rgba(153, 102, 255, 0.15);
+  color: #9966ff;
+}
+
+.revenue-card .summary-icon {
+  background-color: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+
+.expense-card .summary-icon {
+  background-color: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.profit-card .summary-icon {
+  background-color: rgba(52, 152, 219, 0.15);
+  color: #3498db;
+}
+
+.margin-card .summary-icon {
+  background-color: rgba(155, 89, 182, 0.15);
+  color: #9b59b6;
+}
+
+.assets-card .summary-icon {
+  background-color: rgba(52, 152, 219, 0.15);
+  color: #3498db;
+}
+
+.liabilities-card .summary-icon {
+  background-color: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.equity-card .summary-icon {
+  background-color: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+
+.ratio-card .summary-icon {
+  background-color: rgba(155, 89, 182, 0.15);
+  color: #9b59b6;
+}
+
+/* Charts Grid */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.chart-container {
+  background-color: var(--background-color);
+  border-radius: var(--page-button-border-radius);
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.chart-container.chart-wide {
+  grid-column: span 2;
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chart-title i {
+  font-size: 1.15rem;
+  color: var(--primary-color);
+}
+
+.chart-wrapper {
+  height: 280px;
+  position: relative;
+}
+
+.chart-wrapper.doughnut-wrapper {
+  height: 260px;
+}
+
+.chart-wrapper.margin-chart-wrapper {
+  height: 180px;
+}
+
+/* Financial Ratios Section */
+.financial-ratios {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background-color: var(--background-color);
+  border-radius: var(--page-button-border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.ratios-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ratios-title i {
+  font-size: 1.15rem;
+  color: var(--primary-color);
+}
+
+.ratios-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.ratio-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--foreground-color) 0%, var(--background-color) 100%);
+  border-radius: var(--page-button-border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.ratio-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary-text-color);
+  margin-bottom: 0.5rem;
+}
+
+.ratio-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  font-family: 'Roboto Mono', monospace;
+  margin-bottom: 0.25rem;
+}
+
+.ratio-desc {
+  font-size: 0.7rem;
+  color: var(--secondary-text-color);
+  line-height: 1.3;
+}
+
+/* Responsive Design for Charts */
+@media (max-width: 1200px) {
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .ratios-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .charts-section {
+    padding: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-container.chart-wide {
+    grid-column: span 1;
+  }
+
+  .chart-wrapper {
+    height: 250px;
+  }
+
+  .chart-wrapper.doughnut-wrapper {
+    height: 280px;
+  }
+
+  .ratios-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .summary-card {
+    padding: 0.875rem 1rem;
+  }
+
+  .summary-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .summary-icon i {
+    font-size: 1.25rem;
+  }
+
+  .summary-value {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ratios-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-wrapper.doughnut-wrapper {
+    height: 320px;
+  }
+}
+
+/* Print Styles for Charts */
+@media print {
+  .charts-section {
+    page-break-before: always;
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-container {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}
