@@ -52,6 +52,13 @@
   width: 100%;
 }
 
+/* Override default table-wrapper height for financial reports */
+.journal-entry-report .table-wrapper,
+.income-statement-report .table-wrapper,
+.financial-position-report .table-wrapper {
+  height: auto;
+}
+
 .journal-table {
   width: 100%;
   border-collapse: collapse;
