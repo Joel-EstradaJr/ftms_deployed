@@ -237,7 +237,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Requests</label>
-                <div style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--secondary-text-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.budget_requests_count} pending requests</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--secondary-text-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.purchase_request_count} pending requests</div>
               </div>
             </div>
 
