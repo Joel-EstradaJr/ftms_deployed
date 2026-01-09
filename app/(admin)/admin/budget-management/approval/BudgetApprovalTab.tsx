@@ -882,10 +882,8 @@ export default function BudgetApprovalTab({
                   <td>{formatDate(request.request_date)}</td>
                   <td>{request.department}</td>
                   <td>{request.category}</td>
-                  <td className="amount-cell">{formatMoney(request.requested_amount)}</td>
-                  <td className="amount-cell">
-                    {request.approved_amount ? formatMoney(request.approved_amount) : '-'}
-                  </td>
+                  <td>{formatMoney(request.requested_amount)}</td>
+                  <td>{request.approved_amount ? formatMoney(request.approved_amount) : '-'}</td>
                   <td>
                     <span className={`chip ${getRequestTypeClass(request.requested_type)}`}>
                       {request.requested_type}
