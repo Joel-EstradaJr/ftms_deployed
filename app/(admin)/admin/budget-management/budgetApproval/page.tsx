@@ -14,7 +14,7 @@ import { formatDate, formatDateTime } from '../../../../utils/formatting';
 import Loading from '../../../../Components/loading';
 import { showSuccess, showError } from '../../../../utils/Alerts';
 import FilterDropdown, { FilterSection } from "../../../../Components/filter";
-import ViewBudgetRequest from '../budgetRequest/viewBudgetRequest';
+import ViewBudgetRequest from '../approval/viewBudgetRequest';
 import AuditTrailBudgetRequest from '../budgetRequest/auditTrailBudgetRequest';
 
 interface BudgetRequest {

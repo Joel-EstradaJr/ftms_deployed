@@ -12,7 +12,7 @@ import Loading from '../../../../Components/loading';
 import { showSuccess, showError } from '../../../../utils/Alerts';
 import FilterDropdown, { FilterSection } from "../../../../Components/filter";
 import AddBudgetRequest from './addBudgetRequest';
-import ViewBudgetRequest from './viewBudgetRequest';
+import ViewBudgetRequest from '../approval/viewBudgetRequest';
 import AuditTrailBudgetRequest from './auditTrailBudgetRequest';
 
 
