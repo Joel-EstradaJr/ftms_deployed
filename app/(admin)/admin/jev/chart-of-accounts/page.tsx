@@ -97,11 +97,16 @@ const ChartOfAccountsPage = () => {
       const hasAccountTypeFilter = accountTypeFilters.length > 0;
       const trimmedSearch = debouncedSearch.trim();
 
+      // Determine if we need client-side filtering
+      // We need client-side filtering when:
+      // 1. There's an account type filter (backend doesn't support accountTypeId array filter)
+      // 2. Status filter is 'archived' (backend returns all when includeArchived=true, but we need only archived)
+      const needsClientSideFiltering = hasAccountTypeFilter || statusFilter === 'archived';
+
       const params: ChartOfAccountsQueryParams = {
-        page: hasAccountTypeFilter ? 1 : currentPage,
-        // fetch more when we need to paginate client-side to avoid truncation
-        limit: hasAccountTypeFilter ? 10000 : pageSize,
-        includeArchived: statusFilter !== 'active', // true for archived/all, false for active
+        page: needsClientSideFiltering ? 1 : currentPage,
+        limit: needsClientSideFiltering ? 10000 : pageSize,
+        includeArchived: statusFilter === 'archived' || statusFilter === 'all',
       };
 
       if (trimmedSearch) {
@@ -116,27 +121,33 @@ const ChartOfAccountsPage = () => {
       // Frontend filters
       let filteredData = result.data;
 
+      // Apply account type filter (client-side only)
       if (hasAccountTypeFilter) {
         const typeSet = new Set(accountTypeFilters.map(String));
         filteredData = filteredData.filter(acc => typeSet.has(String(acc.account_type)));
       }
 
+      // Apply status filter (client-side for additional filtering)
+      // Backend includeArchived returns both active and archived when true
+      // We need to filter further based on statusFilter
       if (statusFilter === 'active') {
         filteredData = filteredData.filter(acc => acc.is_active);
       } else if (statusFilter === 'archived') {
         filteredData = filteredData.filter(acc => !acc.is_active);
       }
-      // statusFilter === 'all' -> no extra filtering
+      // statusFilter === 'all' -> no additional filtering needed
 
       // Pagination
       let paginatedData = filteredData;
       let total = filteredData.length;
       let calculatedTotalPages = Math.ceil(total / pageSize);
 
-      if (hasAccountTypeFilter) {
+      if (needsClientSideFiltering) {
+        // Client-side pagination
         const startIndex = (currentPage - 1) * pageSize;
         paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
       } else {
+        // Use backend pagination only when no client-side filtering
         total = result.pagination.total;
         calculatedTotalPages = result.pagination.totalPages;
       }
@@ -144,6 +155,11 @@ const ChartOfAccountsPage = () => {
       setAccounts(paginatedData);
       setTotalPages(Math.max(1, calculatedTotalPages));
       setTotalItems(total);
+      
+      // Auto-adjust current page if it exceeds new total pages
+      if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
+        setCurrentPage(calculatedTotalPages);
+      }
       
       // Mark loading as complete
       setLoading(false);

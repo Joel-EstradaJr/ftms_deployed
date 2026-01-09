@@ -358,17 +358,60 @@ export async function fetchAccountTypes(): Promise<{
   id: number;
   name: string;
   code: string;
-  label: string;
+  description: string | null;
 }[]> {
-  // This would need a backend endpoint - for now, return hardcoded values
-  // TODO: Replace with actual API call when endpoint is available
-  return [
-    { id: 1, name: 'ASSET', code: '1', label: 'Asset' },
-    { id: 2, name: 'LIABILITY', code: '2', label: 'Liability' },
-    { id: 3, name: 'EQUITY', code: '3', label: 'Equity' },
-    { id: 4, name: 'REVENUE', code: '4', label: 'Revenue' },
-    { id: 5, name: 'EXPENSE', code: '5', label: 'Expense' },
-  ];
+  try {
+    const response = await api.get<{
+      success: boolean;
+      data: {
+        id: number;
+        code: string;
+        name: string;
+        description: string | null;
+      }[];
+      message: string;
+    }>('/api/v1/admin/account-types');
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to fetch account types');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching account types:', error);
+    // Fallback to hardcoded values if API fails
+    return [
+      { id: 1, name: 'ASSET', code: '1', description: 'Resources owned by the company' },
+      { id: 2, name: 'LIABILITY', code: '2', description: 'Obligations owed to others' },
+      { id: 3, name: 'EQUITY', code: '3', description: "Owner's stake in the business" },
+      { id: 4, name: 'REVENUE', code: '4', description: 'Income from operations' },
+      { id: 5, name: 'EXPENSE', code: '5', description: 'Costs of doing business' },
+    ];
+  }
+}
+
+/**
+ * Get suggested account code for a given account type
+ */
+export async function getSuggestedAccountCode(accountTypeId: number): Promise<string> {
+  try {
+    const response = await api.get<{
+      success: boolean;
+      data: {
+        suggested_code: string;
+      };
+      message: string;
+    }>(`/api/v1/admin/chart-of-accounts/suggest-code/${accountTypeId}`);
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to get suggested account code');
+    }
+
+    return response.data.suggested_code;
+  } catch (error) {
+    console.error('Error fetching suggested account code:', error);
+    throw error;
+  }
 }
 
 export default {
@@ -380,4 +423,5 @@ export default {
   restoreChartOfAccount,
   deleteChartOfAccount,
   fetchAccountTypes,
+  getSuggestedAccountCode,
 };
