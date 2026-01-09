@@ -62,26 +62,40 @@ interface ChartOfAccountDetailBackendResponse {
     account_code: string;
     account_name: string;
     account_type_id: number;
+    account_type_name: string;
     normal_balance: NormalBalance;
     description: string | null;
-    is_deleted: boolean;
-    is_system_account: boolean;
+    status: 'Active' | 'Archived';
+    linked_entries_count: number;
     created_at: string;
-    updated_at: string;
+    updated_at: string | null;
     created_by: string | null;
     updated_by: string | null;
     archived_at: string | null;
     archived_by: string | null;
-    account_type: {
-      id: number;
-      name: string;
-      code: string;
-    };
-    _count?: {
-      journal_entry_lines: number;
-    };
   };
   message: string;
+}
+
+/**
+ * Extended chart of account details for view modal
+ */
+export interface ExtendedChartOfAccount {
+  account_id: string;
+  account_code: string;
+  account_name: string;
+  account_type: AccountType;
+  account_type_name: string;
+  normal_balance: NormalBalance;
+  description?: string;
+  is_active: boolean;
+  journal_entry_lines_count: number;
+  created_by?: string;
+  created_at?: string;
+  updated_by?: string;
+  updated_at?: string;
+  deleted_by?: string;
+  deleted_at?: string;
 }
 
 /**
@@ -178,9 +192,9 @@ export async function fetchChartOfAccountById(id: string): Promise<ChartOfAccoun
 
     const item = response.data;
 
-    // Map account_type.name to AccountType enum
+    // Map account_type_name to AccountType enum
     let accountType: AccountType;
-    switch (item.account_type.name.toUpperCase()) {
+    switch (item.account_type_name.toUpperCase()) {
       case 'ASSET':
         accountType = AccountType.ASSET;
         break;
@@ -207,11 +221,72 @@ export async function fetchChartOfAccountById(id: string): Promise<ChartOfAccoun
       account_type: accountType,
       normal_balance: item.normal_balance,
       description: item.description || undefined,
-      is_active: !item.is_deleted,
-      is_system_account: item.is_system_account,
+      is_active: item.status === 'Active',
+      is_system_account: false,
     };
   } catch (error) {
     console.error('Error fetching chart of account by ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch extended chart of account details by ID (for view modal)
+ * Includes audit fields and linked entries count
+ */
+export async function fetchChartOfAccountDetailById(id: string): Promise<ExtendedChartOfAccount | null> {
+  try {
+    const response = await api.get<ChartOfAccountDetailBackendResponse>(
+      `/api/v1/admin/chart-of-accounts/${id}`
+    );
+
+    if (!response.success || !response.data) {
+      return null;
+    }
+
+    const item = response.data;
+
+    // Map account_type_name to AccountType enum
+    let accountType: AccountType;
+    switch (item.account_type_name.toUpperCase()) {
+      case 'ASSET':
+        accountType = AccountType.ASSET;
+        break;
+      case 'LIABILITY':
+        accountType = AccountType.LIABILITY;
+        break;
+      case 'EQUITY':
+        accountType = AccountType.EQUITY;
+        break;
+      case 'REVENUE':
+        accountType = AccountType.REVENUE;
+        break;
+      case 'EXPENSE':
+        accountType = AccountType.EXPENSE;
+        break;
+      default:
+        accountType = AccountType.ASSET; // Fallback
+    }
+
+    return {
+      account_id: String(item.id),
+      account_code: item.account_code,
+      account_name: item.account_name,
+      account_type: accountType,
+      account_type_name: item.account_type_name,
+      normal_balance: item.normal_balance,
+      description: item.description || undefined,
+      is_active: item.status === 'Active',
+      journal_entry_lines_count: item.linked_entries_count,
+      created_by: item.created_by || undefined,
+      created_at: item.created_at,
+      updated_by: item.updated_by || undefined,
+      updated_at: item.updated_at || undefined,
+      deleted_by: item.archived_by || undefined,
+      deleted_at: item.archived_at || undefined,
+    };
+  } catch (error) {
+    console.error('Error fetching chart of account detail by ID:', error);
     return null;
   }
 }
@@ -417,6 +492,7 @@ export async function getSuggestedAccountCode(accountTypeId: number): Promise<st
 export default {
   fetchChartOfAccounts,
   fetchChartOfAccountById,
+  fetchChartOfAccountDetailById,
   createChartOfAccount,
   updateChartOfAccount,
   archiveChartOfAccount,
