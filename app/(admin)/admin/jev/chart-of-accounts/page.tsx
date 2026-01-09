@@ -540,7 +540,7 @@ const ChartOfAccountsPage = () => {
                   <th style={{ width: 140, minWidth: 140, textAlign: 'center' as const }}>Account Code</th>
                   <th className="account-name" style={{ minWidth: 150, textAlign: 'left' }}>Account Name</th>
                   <th style={{ minWidth: 140, textAlign: 'center' }}>Account Type</th>
-                  <th style={{ width: 120, minWidth: 120, textAlign: 'center' }}>Normal Balance</th>
+                  <th style={{ width: 140, minWidth: 140, textAlign: 'center', whiteSpace: 'nowrap' }}>Normal Balance</th>
                   <th style={{ minWidth: 250, textAlign: 'left' }}>Description</th>
                   <th style={{ width: 120, minWidth: 120, textAlign: 'center' }}>Status</th>
                   <th style={{ width: 140, minWidth: 140, textAlign: 'center' }}>Actions</th>
