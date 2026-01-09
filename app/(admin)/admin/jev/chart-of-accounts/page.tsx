@@ -17,10 +17,16 @@ import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
 
 import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
-import { fetchChartOfAccounts, createChartOfAccount, ChartOfAccountsQueryParams, PaginationResponse } from '@/app/services/chartOfAccountsService';
+import { 
+  fetchChartOfAccounts, 
+  createChartOfAccount, 
+  archiveChartOfAccount,
+  restoreChartOfAccount,
+  ChartOfAccountsQueryParams, 
+  PaginationResponse 
+} from '@/app/services/chartOfAccountsService';
 import {getAccountTypeClass, 
-        canArchiveAccount,
-        getNormalBalance} from '@/app/lib/jev/accountHelpers';
+        canArchiveAccount} from '@/app/lib/jev/accountHelpers';
 
 // import '@/app/styles/JEV/chart-of-accounts.css';
 import '@/app/styles/components/table.css'; 
@@ -208,7 +214,7 @@ const ChartOfAccountsPage = () => {
         'Account Code': account.account_code,
         'Account Name': account.account_name,
         'Account Type': account.account_type,
-        'Normal Balance': getNormalBalance(account.account_type),
+        'Normal Balance': account.normal_balance || 'N/A',
         'Description': account.description || '-',
         'Status': account.is_active ? 'Active' : 'Archived'
       }));
@@ -354,9 +360,6 @@ const ChartOfAccountsPage = () => {
       return;
     }
     
-    // Note: Child count check removed as we need all accounts to calculate this
-    // Backend should validate this on archive attempt
-    
     const result = await showConfirmation(
       `Are you sure you want to archive "${account.account_name}"?<br/>
       <span style="color: #666; font-size: 0.9em;">This account will no longer appear in active listings.</span>`,
@@ -364,8 +367,18 @@ const ChartOfAccountsPage = () => {
     );
 
     if (result.isConfirmed) {
-      await showSuccess('Account archived successfully', 'Success');
-      loadAccountsFromApi();
+      try {
+        await archiveChartOfAccount(account.account_id);
+        await showSuccess('Account archived successfully', 'Success');
+        loadAccountsFromApi();
+      } catch (error) {
+        console.error('Error archiving account:', error);
+        if (error instanceof Error) {
+          await showError(error.message, 'Archive Failed');
+        } else {
+          await showError('Failed to archive account', 'Error');
+        }
+      }
     }
   };
 
@@ -376,16 +389,26 @@ const ChartOfAccountsPage = () => {
     );
 
     if (result.isConfirmed) {
-      await showSuccess('Account restored successfully', 'Success');
-      loadAccountsFromApi();
+      try {
+        await restoreChartOfAccount(account.account_id);
+        await showSuccess('Account restored successfully', 'Success');
+        loadAccountsFromApi();
+      } catch (error) {
+        console.error('Error restoring account:', error);
+        if (error instanceof Error) {
+          await showError(error.message, 'Restore Failed');
+        } else {
+          await showError('Failed to restore account', 'Error');
+        }
+      }
     }
   };
 
   const renderActionButtons = (account: ChartOfAccount) => {
-    // Determine deleted state: prefer `is_deleted` if available, fallback to inverse of `is_active`
-    const isDeleted = (account as any).is_deleted ?? !account.is_active;
+    // Use is_active to determine archived state (is_active = false means archived)
+    const isArchived = !account.is_active;
 
-    if (isDeleted) {
+    if (isArchived) {
       // Archived: show only View + Unarchive
       return (
         <div className="actionButtonsContainer">
@@ -397,9 +420,9 @@ const ChartOfAccountsPage = () => {
             <i className="ri-eye-line" />
           </button>
           <button
-            className="successBtn"
+            className="restoreBtn"
             onClick={() => handleRestore(account)}
-            title="Unarchive Account"
+            title="Restore Account"
           >
             <i className="ri-refresh-line" />
           </button>
@@ -549,7 +572,7 @@ const ChartOfAccountsPage = () => {
                       </td>
 
                       {/* Normal Balance */}
-                      <td>{getNormalBalance(account.account_type)}</td>
+                      <td>{account.normal_balance || 'N/A'}</td>
 
                       {/* Description */}
                       <td>

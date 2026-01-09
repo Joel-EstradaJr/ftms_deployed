@@ -1,16 +1,23 @@
 /**
- * Mock API utilities for UI-only frontend
- * This file provides mock data utilities without any network calls
+ * API Client for FTMS Backend
+ * Handles all HTTP requests to the backend API
  */
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   message?: string;
   error?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
-// Keep ApiError for backwards compatibility but it won't be thrown
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -22,22 +29,107 @@ export class ApiError extends Error {
   }
 }
 
-// No actual API calls - this is a pure UI-only frontend
+/**
+ * Main API client with methods for HTTP requests
+ */
 export const api = {
-  get: async <T>(_endpoint: string): Promise<T> => {
-    throw new Error('API calls are disabled in UI-only mode');
+  get: async <T>(endpoint: string, params?: Record<string, any>): Promise<T> => {
+    const url = new URL(`${API_BASE_URL}${endpoint}`);
+    
+    // Add query parameters
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value));
+        }
+      });
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new ApiError(response.status, error.message || 'Request failed', error);
+    }
+
+    return response.json();
   },
-  post: async <T>(_endpoint: string, _data?: any): Promise<T> => {
-    throw new Error('API calls are disabled in UI-only mode');
+
+  post: async <T>(endpoint: string, data?: any): Promise<T> => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new ApiError(response.status, error.message || 'Request failed', error);
+    }
+
+    return response.json();
   },
-  put: async <T>(_endpoint: string, _data?: any): Promise<T> => {
-    throw new Error('API calls are disabled in UI-only mode');
+
+  put: async <T>(endpoint: string, data?: any): Promise<T> => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new ApiError(response.status, error.message || 'Request failed', error);
+    }
+
+    return response.json();
   },
-  patch: async <T>(_endpoint: string, _data?: any): Promise<T> => {
-    throw new Error('API calls are disabled in UI-only mode');
+
+  patch: async <T>(endpoint: string, data?: any): Promise<T> => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new ApiError(response.status, error.message || 'Request failed', error);
+    }
+
+    return response.json();
   },
-  delete: async <T>(_endpoint: string): Promise<T> => {
-    throw new Error('API calls are disabled in UI-only mode');
+
+  delete: async <T>(endpoint: string): Promise<T> => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new ApiError(response.status, error.message || 'Request failed', error);
+    }
+
+    return response.json();
   },
 };
 
