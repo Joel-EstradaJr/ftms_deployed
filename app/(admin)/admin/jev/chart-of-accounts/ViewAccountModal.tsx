@@ -130,12 +130,6 @@ const ViewAccountModal: React.FC<ViewAccountModalProps> = ({ account, onClose })
               <label>No. of Linked Entries</label>
               <p>{account.journal_entry_lines_count ?? 0}</p>
             </div>
-
-            {/* System Account Indicator */}
-            <div className="form-group">
-              <label>System Account</label>
-              <p>{account.is_system_account ? 'Yes' : 'No'}</p>
-            </div>
           </div>
         </form>
       </div>
