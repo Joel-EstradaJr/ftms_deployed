@@ -28,8 +28,9 @@ interface DepartmentBudget {
   allocated_budget: number;
   used_budget: number;
   remaining_budget: number;
-  budget_requests_count: number;
-  last_allocation_date: string;
+  reserved_budget: number;
+  purchase_request_count: number;
+  last_update_date: string;
   budget_period: string;
   status: 'Active' | 'Inactive' | 'Exceeded';
 }
@@ -550,13 +551,6 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
               </div>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: '0', color: 'var(--primary-text-color)' }}>Allocation History</h3>
-                  <span style={{ color: 'var(--secondary-text-color)' }}>
-                    Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredHistory.length)} of {filteredHistory.length} records
-                  </span>
-                </div>
-
                 <div className="tableContainer">
                   <table>
                     <thead>

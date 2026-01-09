@@ -124,7 +124,14 @@ textarea.input-error {
   background: var(--button-disabled-color) !important;
 }
 
-
+/* Container for ships View/Modals*/
+.chip-container {
+  background: none !important;
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  shadow: none !important;
+}
 
 :root {
 

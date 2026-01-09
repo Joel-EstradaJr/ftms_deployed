@@ -44,14 +44,14 @@ const MOCK_PAYMENT_METHODS = [
 
 // Mock Data - Cached Trips
 const MOCK_CACHED_TRIPS = [
-  { id: 1, busPlateNumber: 'ABC-123', route: 'Manila - Baguio', departmentId: 1, departmentName: 'Operations' },
-  { id: 2, busPlateNumber: 'DEF-456', route: 'Manila - Batangas', departmentId: 1, departmentName: 'Operations' },
-  { id: 3, busPlateNumber: 'GHI-789', route: 'Manila - Bicol', departmentId: 1, departmentName: 'Operations' },
-  { id: 4, busPlateNumber: 'JKL-012', route: 'Manila - Tuguegarao', departmentId: 1, departmentName: 'Operations' },
-  { id: 5, busPlateNumber: 'MNO-345', route: 'Manila - Pangasinan', departmentId: 1, departmentName: 'Operations' },
-  { id: 6, busPlateNumber: 'PQR-678', route: 'Manila - Ilocos', departmentId: 1, departmentName: 'Operations' },
-  { id: 7, busPlateNumber: 'STU-901', route: 'Manila - Camarines Sur', departmentId: 1, departmentName: 'Operations' },
-  { id: 8, busPlateNumber: 'VWX-234', route: 'Manila - Nueva Ecija', departmentId: 1, departmentName: 'Operations' },
+  { id: 1, busPlateNumber: 'ABC-123', body_number: 'BN-001', bus_type: 'Ordinary', route: 'Manila - Baguio', date_assigned: '2026-01-06', departmentId: 1, departmentName: 'Operations' },
+  { id: 2, busPlateNumber: 'DEF-456', body_number: 'BN-002', bus_type: 'Air-Con', route: 'Manila - Batangas', date_assigned: '2026-01-06', departmentId: 1, departmentName: 'Operations' },
+  { id: 3, busPlateNumber: 'GHI-789', body_number: 'BN-003', bus_type: 'Deluxe', route: 'Manila - Bicol', date_assigned: '2026-01-05', departmentId: 1, departmentName: 'Operations' },
+  { id: 4, busPlateNumber: 'JKL-012', body_number: 'BN-004', bus_type: 'Ordinary', route: 'Manila - Tuguegarao', date_assigned: '2026-01-05', departmentId: 1, departmentName: 'Operations' },
+  { id: 5, busPlateNumber: 'MNO-345', body_number: 'BN-005', bus_type: 'Air-Con', route: 'Manila - Pangasinan', date_assigned: '2026-01-04', departmentId: 1, departmentName: 'Operations' },
+  { id: 6, busPlateNumber: 'PQR-678', body_number: 'BN-006', bus_type: 'Deluxe', route: 'Manila - Ilocos', date_assigned: '2026-01-04', departmentId: 1, departmentName: 'Operations' },
+  { id: 7, busPlateNumber: 'STU-901', body_number: 'BN-007', bus_type: 'Ordinary', route: 'Manila - Camarines Sur', date_assigned: '2026-01-03', departmentId: 1, departmentName: 'Operations' },
+  { id: 8, busPlateNumber: 'VWX-234', body_number: 'BN-008', bus_type: 'Air-Con', route: 'Manila - Nueva Ecija', date_assigned: '2026-01-03', departmentId: 1, departmentName: 'Operations' },
 ];
 
 // Mock Data - Chart of Accounts (Expense accounts only)
@@ -89,19 +89,19 @@ const transformRecordToFormData = (record: OperationalExpense): OperationalExpen
   return {
     id: Number(record.id),
     expenseCode: record.receipt_number || '',
-    dateRecorded: record.date,
+    dateRecorded: record.date_assigned,
     expenseCategory: record.expense_type,
     expenseSubcategory: record.category || '',
     amount: record.amount,
     cachedTripId: record.bus_id ? Number(record.bus_id) : undefined,
-    busPlateNumber: record.bus_number || '',
+    busPlateNumber: record.body_number || '',
     route: '', // Not in current structure
     department: '', // Not in current structure
     receiptFile: null,
     receiptUrl: '', // Not in current structure
     accountCodeId: undefined,
     paymentMethodId: 1, // Default to Cash
-    isReimbursable: false,
+    isReimbursable: record.payable_id !== null && record.payable_id !== undefined,
     remarks: record.description || '',
     status: record.status,
     createdBy: record.created_by,
@@ -116,16 +116,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '1',
     expense_type: OperationalExpenseType.FUEL,
-    date: '2025-11-14',
+    date_assigned: '2025-11-14',
     amount: 5000,
     description: 'Diesel fuel for Bus ABC-123',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '1',
-    bus_number: 'ABC-123',
+    body_number: 'ABC-123',
     employee_id: '1',
     employee_name: 'Juan Dela Cruz',
     receipt_number: 'EXP-OP-001',
+    payable_id: null,
     created_by: 'driver_001',
     approved_by: 'admin',
     created_at: '2025-11-14T08:00:00Z',
@@ -135,16 +136,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '2',
     expense_type: OperationalExpenseType.TOLL,
-    date: '2025-11-13',
+    date_assigned: '2025-11-13',
     amount: 350,
     description: 'Skyway toll fee - Manila to Batangas',
     category: 'Transportation',
     status: ExpenseStatus.PENDING,
     bus_id: '2',
-    bus_number: 'DEF-456',
+    body_number: 'DEF-456',
     employee_id: '2',
     employee_name: 'Maria Santos',
     receipt_number: 'EXP-OP-002',
+    payable_id: null,
     created_by: 'driver_002',
     created_at: '2025-11-13T14:30:00Z',
     updated_at: '2025-11-13T14:30:00Z'
@@ -152,16 +154,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '3',
     expense_type: OperationalExpenseType.PARKING,
-    date: '2025-11-13',
+    date_assigned: '2025-11-13',
     amount: 150,
     description: 'Terminal parking fee',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '3',
-    bus_number: 'GHI-789',
+    body_number: 'GHI-789',
     employee_id: '3',
     employee_name: 'Pedro Reyes',
     receipt_number: 'EXP-OP-003',
+    payable_id: null,
     created_by: 'driver_003',
     approved_by: 'supervisor_01',
     created_at: '2025-11-13T10:15:00Z',
@@ -171,16 +174,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '4',
     expense_type: OperationalExpenseType.ALLOWANCES,
-    date: '2025-11-12',
+    date_assigned: '2025-11-12',
     amount: 800,
     description: 'Driver meal allowance - long trip',
     category: 'Allowances',
     status: ExpenseStatus.POSTED,
     bus_id: '4',
-    bus_number: 'JKL-012',
+    body_number: 'JKL-012',
     employee_id: '4',
     employee_name: 'Rosa Garcia',
     receipt_number: 'EXP-OP-004',
+    payable_id: 1,
     created_by: 'driver_004',
     approved_by: 'admin',
     created_at: '2025-11-12T18:00:00Z',
@@ -190,16 +194,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '5',
     expense_type: OperationalExpenseType.FUEL,
-    date: '2025-11-12',
+    date_assigned: '2025-11-12',
     amount: 4500,
     description: 'Premium diesel for express service',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '5',
-    bus_number: 'MNO-345',
+    body_number: 'MNO-345',
     employee_id: '5',
     employee_name: 'Antonio Lopez',
     receipt_number: 'EXP-OP-005',
+    payable_id: null,
     created_by: 'driver_005',
     approved_by: 'supervisor_01',
     created_at: '2025-11-12T07:30:00Z',
@@ -209,16 +214,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '6',
     expense_type: OperationalExpenseType.PETTY_CASH,
-    date: '2025-11-11',
+    date_assigned: '2025-11-11',
     amount: 500,
     description: 'Emergency repair supplies',
     category: 'Maintenance',
     status: ExpenseStatus.APPROVED,
     bus_id: '6',
-    bus_number: 'PQR-678',
+    body_number: 'PQR-678',
     employee_id: '6',
     employee_name: 'Linda Cruz',
     receipt_number: 'EXP-OP-006',
+    payable_id: null,
     created_by: 'driver_006',
     approved_by: 'admin',
     created_at: '2025-11-11T13:45:00Z',
@@ -228,16 +234,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '7',
     expense_type: OperationalExpenseType.TERMINAL_FEES,
-    date: '2025-11-11',
+    date_assigned: '2025-11-11',
     amount: 200,
     description: 'Provincial terminal entrance fee',
     category: 'Transportation',
     status: ExpenseStatus.PENDING,
     bus_id: '7',
-    bus_number: 'STU-901',
+    body_number: 'STU-901',
     employee_id: '7',
     employee_name: 'Carlos Mendoza',
     receipt_number: 'EXP-OP-007',
+    payable_id: null,
     created_by: 'driver_007',
     created_at: '2025-11-11T16:20:00Z',
     updated_at: '2025-11-11T16:20:00Z'
@@ -245,16 +252,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '8',
     expense_type: OperationalExpenseType.VIOLATIONS,
-    date: '2025-11-10',
+    date_assigned: '2025-11-10',
     amount: 1000,
     description: 'Traffic violation penalty',
     category: 'Penalties',
     status: ExpenseStatus.REJECTED,
     bus_id: '8',
-    bus_number: 'VWX-234',
+    body_number: 'VWX-234',
     employee_id: '8',
     employee_name: 'Miguel Torres',
     receipt_number: 'EXP-OP-008',
+    payable_id: null,
     created_by: 'driver_008',
     created_at: '2025-11-10T11:00:00Z',
     updated_at: '2025-11-10T12:00:00Z'
@@ -262,16 +270,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '9',
     expense_type: OperationalExpenseType.FUEL,
-    date: '2025-11-10',
+    date_assigned: '2025-11-10',
     amount: 5200,
     description: 'Diesel refuel at Petron station',
     category: 'Transportation',
     status: ExpenseStatus.POSTED,
     bus_id: '1',
-    bus_number: 'ABC-123',
+    body_number: 'ABC-123',
     employee_id: '1',
     employee_name: 'Juan Dela Cruz',
     receipt_number: 'EXP-OP-009',
+    payable_id: null,
     created_by: 'driver_001',
     approved_by: 'admin',
     created_at: '2025-11-10T06:00:00Z',
@@ -281,16 +290,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '10',
     expense_type: OperationalExpenseType.TOLL,
-    date: '2025-11-09',
+    date_assigned: '2025-11-09',
     amount: 280,
     description: 'NLEX toll fee',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '2',
-    bus_number: 'DEF-456',
+    body_number: 'DEF-456',
     employee_id: '2',
     employee_name: 'Maria Santos',
     receipt_number: 'EXP-OP-010',
+    payable_id: null,
     created_by: 'driver_002',
     approved_by: 'supervisor_01',
     created_at: '2025-11-09T15:00:00Z',
@@ -300,16 +310,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '11',
     expense_type: OperationalExpenseType.ALLOWANCES,
-    date: '2025-11-09',
+    date_assigned: '2025-11-09',
     amount: 600,
     description: 'Conductor daily allowance',
     category: 'Allowances',
     status: ExpenseStatus.APPROVED,
     bus_id: '3',
-    bus_number: 'GHI-789',
+    body_number: 'GHI-789',
     employee_id: '9',
     employee_name: 'Ana Villanueva',
     receipt_number: 'EXP-OP-011',
+    payable_id: 2,
     created_by: 'conductor_001',
     approved_by: 'admin',
     created_at: '2025-11-09T17:00:00Z',
@@ -319,16 +330,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '12',
     expense_type: OperationalExpenseType.PARKING,
-    date: '2025-11-08',
+    date_assigned: '2025-11-08',
     amount: 100,
     description: 'Bus depot overnight parking',
     category: 'Transportation',
     status: ExpenseStatus.POSTED,
     bus_id: '4',
-    bus_number: 'JKL-012',
+    body_number: 'JKL-012',
     employee_id: '4',
     employee_name: 'Rosa Garcia',
     receipt_number: 'EXP-OP-012',
+    payable_id: null,
     created_by: 'driver_004',
     approved_by: 'admin',
     created_at: '2025-11-08T20:00:00Z',
@@ -338,16 +350,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '13',
     expense_type: OperationalExpenseType.FUEL,
-    date: '2025-11-08',
+    date_assigned: '2025-11-08',
     amount: 4800,
     description: 'Gasoline for route operations',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '5',
-    bus_number: 'MNO-345',
+    body_number: 'MNO-345',
     employee_id: '5',
     employee_name: 'Antonio Lopez',
     receipt_number: 'EXP-OP-013',
+    payable_id: null,
     created_by: 'driver_005',
     approved_by: 'supervisor_01',
     created_at: '2025-11-08T09:00:00Z',
@@ -357,16 +370,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '14',
     expense_type: OperationalExpenseType.PETTY_CASH,
-    date: '2025-11-07',
+    date_assigned: '2025-11-07',
     amount: 300,
     description: 'Cleaning supplies for bus',
     category: 'Maintenance',
     status: ExpenseStatus.PENDING,
     bus_id: '6',
-    bus_number: 'PQR-678',
+    body_number: 'PQR-678',
     employee_id: '6',
     employee_name: 'Linda Cruz',
     receipt_number: 'EXP-OP-014',
+    payable_id: null,
     created_by: 'driver_006',
     created_at: '2025-11-07T12:00:00Z',
     updated_at: '2025-11-07T12:00:00Z'
@@ -374,16 +388,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '15',
     expense_type: OperationalExpenseType.TERMINAL_FEES,
-    date: '2025-11-07',
+    date_assigned: '2025-11-07',
     amount: 250,
     description: 'Terminal usage fee - Cubao',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '7',
-    bus_number: 'STU-901',
+    body_number: 'STU-901',
     employee_id: '7',
     employee_name: 'Carlos Mendoza',
     receipt_number: 'EXP-OP-015',
+    payable_id: null,
     created_by: 'driver_007',
     approved_by: 'admin',
     created_at: '2025-11-07T08:30:00Z',
@@ -393,16 +408,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '16',
     expense_type: OperationalExpenseType.TOLL,
-    date: '2025-11-06',
+    date_assigned: '2025-11-06',
     amount: 420,
     description: 'SCTEX toll charges',
     category: 'Transportation',
     status: ExpenseStatus.POSTED,
     bus_id: '8',
-    bus_number: 'VWX-234',
+    body_number: 'VWX-234',
     employee_id: '8',
     employee_name: 'Miguel Torres',
     receipt_number: 'EXP-OP-016',
+    payable_id: null,
     created_by: 'driver_008',
     approved_by: 'supervisor_01',
     created_at: '2025-11-06T14:00:00Z',
@@ -412,16 +428,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '17',
     expense_type: OperationalExpenseType.ALLOWANCES,
-    date: '2025-11-06',
+    date_assigned: '2025-11-06',
     amount: 700,
     description: 'Emergency overnight allowance',
     category: 'Allowances',
     status: ExpenseStatus.APPROVED,
     bus_id: '1',
-    bus_number: 'ABC-123',
+    body_number: 'ABC-123',
     employee_id: '1',
     employee_name: 'Juan Dela Cruz',
     receipt_number: 'EXP-OP-017',
+    payable_id: 3,
     created_by: 'driver_001',
     approved_by: 'admin',
     created_at: '2025-11-06T22:00:00Z',
@@ -431,16 +448,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '18',
     expense_type: OperationalExpenseType.FUEL,
-    date: '2025-11-05',
+    date_assigned: '2025-11-05',
     amount: 5500,
     description: 'Shell diesel premium',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '2',
-    bus_number: 'DEF-456',
+    body_number: 'DEF-456',
     employee_id: '2',
     employee_name: 'Maria Santos',
     receipt_number: 'EXP-OP-018',
+    payable_id: null,
     created_by: 'driver_002',
     approved_by: 'supervisor_01',
     created_at: '2025-11-05T07:00:00Z',
@@ -450,16 +468,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '19',
     expense_type: OperationalExpenseType.PETTY_CASH,
-    date: '2025-11-05',
+    date_assigned: '2025-11-05',
     amount: 450,
     description: 'First aid supplies',
     category: 'Safety',
     status: ExpenseStatus.PENDING,
     bus_id: '3',
-    bus_number: 'GHI-789',
+    body_number: 'GHI-789',
     employee_id: '3',
     employee_name: 'Pedro Reyes',
     receipt_number: 'EXP-OP-019',
+    payable_id: null,
     created_by: 'driver_003',
     created_at: '2025-11-05T11:30:00Z',
     updated_at: '2025-11-05T11:30:00Z'
@@ -467,16 +486,17 @@ const sampleOperationalExpenses: OperationalExpense[] = [
   {
     id: '20',
     expense_type: OperationalExpenseType.PARKING,
-    date: '2025-11-04',
+    date_assigned: '2025-11-04',
     amount: 180,
     description: 'Mall parking during layover',
     category: 'Transportation',
     status: ExpenseStatus.APPROVED,
     bus_id: '4',
-    bus_number: 'JKL-012',
+    body_number: 'JKL-012',
     employee_id: '4',
     employee_name: 'Rosa Garcia',
     receipt_number: 'EXP-OP-020',
+    payable_id: null,
     created_by: 'driver_004',
     approved_by: 'admin',
     created_at: '2025-11-04T16:00:00Z',
@@ -808,7 +828,7 @@ const OperationalExpensePage = () => {
         const searchLower = searchTerm.toLowerCase();
         filteredData = filteredData.filter(expense =>
           expense.description.toLowerCase().includes(searchLower) ||
-          expense.bus_number?.toLowerCase().includes(searchLower) ||
+          expense.body_number?.toLowerCase().includes(searchLower) ||
           expense.employee_name?.toLowerCase().includes(searchLower) ||
           expense.receipt_number?.toLowerCase().includes(searchLower)
         );
@@ -823,11 +843,11 @@ const OperationalExpensePage = () => {
       }
 
       if (filters.dateRange?.from) {
-        filteredData = filteredData.filter(expense => expense.date >= filters.dateRange!.from!);
+        filteredData = filteredData.filter(expense => expense.date_assigned >= filters.dateRange!.from!);
       }
 
       if (filters.dateRange?.to) {
-        filteredData = filteredData.filter(expense => expense.date <= filters.dateRange!.to!);
+        filteredData = filteredData.filter(expense => expense.date_assigned <= filters.dateRange!.to!);
       }
 
       const startIndex = (currentPage - 1) * pageSize;
@@ -889,12 +909,13 @@ const OperationalExpensePage = () => {
 
   // Prepare export data
   const exportData = data.map(expense => ({
-    'Date': formatDate(expense.date),
+    'Date': formatDate(expense.date_assigned),
     'Expense Type': expense.expense_type.replace(/_/g, ' '),
-    'Bus': expense.bus_number || '-',
+    'Body Number': expense.body_number || '-',
     'Employee': expense.employee_name || '-',
     'Description': expense.description,
     'Amount': formatMoney(expense.amount),
+    'Reimbursable': expense.payable_id ? 'Yes' : 'No',
     'Status': expense.status,
     'Receipt': expense.receipt_number || '-'
   }));
@@ -960,11 +981,10 @@ const OperationalExpensePage = () => {
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Expense Type</th>
-                    <th>Bus</th>
-                    <th>Employee</th>
-                    <th>Description</th>
+                    <th>Expense</th>
+                    <th>Body Number</th>
                     <th>Amount</th>
+                    <th>Reimbursable</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -972,25 +992,30 @@ const OperationalExpensePage = () => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="loading-cell">Loading...</td>
+                      <td colSpan={7} className="loading-cell">Loading...</td>
                     </tr>
                   ) : data.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="empty-cell">No operational expenses found.</td>
+                      <td colSpan={7} className="empty-cell">No operational expenses found.</td>
                     </tr>
                   ) : (
                     data.map((expense) => (
                       <tr key={expense.id} className={activeRow === Number(expense.id) ? 'active-row' : ''}>
-                        <td>{formatDate(expense.date)}</td>
+                        <td>{formatDate(expense.date_assigned)}</td>
                         <td>
                           <span className={`chip ${expense.expense_type.toLowerCase()}`}>
                             {expense.expense_type.replace(/_/g, ' ')}
                           </span>
                         </td>
-                        <td>{expense.bus_number || '-'}</td>
-                        <td>{expense.employee_name || '-'}</td>
-                        <td className="expense-description">{expense.description}</td>
+                        <td>{expense.body_number || '-'}</td>
                         <td className="expense-amount">{formatMoney(expense.amount)}</td>
+                        <td>
+                          {expense.payable_id ? (
+                            <span className="chip reimbursable">Yes</span>
+                          ) : (
+                            <span className="chip not-reimbursable">No</span>
+                          )}
+                        </td>
                         <td>
                           <span className={`chip ${expense.status.toLowerCase()}`}>
                             {expense.status}

@@ -1,6 +1,6 @@
 // Shared types for the combined approval system
 export interface ApprovalTab {
-  id: 'budget' | 'purchase';
+  id: 'budget' | 'purchase' | 'cash-advance';
   title: string;
   icon?: string;
   count?: number;
@@ -10,6 +10,8 @@ export interface SharedApprovalFilters {
   dateRange?: { from: string; to: string };
   status?: string[];
   search?: string;
+  requestType?: string[];
+  category?: string[];
 }
 
 export interface ApprovalTableConfig {

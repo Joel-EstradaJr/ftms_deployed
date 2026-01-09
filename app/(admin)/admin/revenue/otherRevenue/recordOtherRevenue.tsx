@@ -689,7 +689,7 @@ export default function RecordOtherRevenueModal({
                       type="number"
                       value={formData.numberOfPayments || ''}
                       onChange={(e) => handleInputChange('numberOfPayments', parseInt(e.target.value) || 0)}
-                      min="2"
+                      min="1"
                       max="100"
                       disabled={mode === 'edit'}
                       className={mode === 'edit' ? 'disabled-field' : ''}
