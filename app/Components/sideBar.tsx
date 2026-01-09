@@ -14,8 +14,10 @@ const Sidebar: React.FC = () => {
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
   const { getUrl } = useNavigationUrl();
 
-  // Audit link (static, no longer using microservices)
-  const auditHref = getUrl('/audit');
+  // External microservice URLs from environment variables
+  const auditLogsUrl = process.env.NEXT_PUBLIC_AUDIT_LOGS_URL || 'https://agila-audit-frontend.vercel.app';
+  const budgetRequestUrl = process.env.NEXT_PUBLIC_BUDGET_REQUEST_URL || 'https://budget-request-micro-frontend.vercel.app';
+  
   const auditActiveKey = 'audit';
   const auditIconClass = 'ri-booklet-line';
 
@@ -229,14 +231,18 @@ const Sidebar: React.FC = () => {
 
           {openSubMenu === "budget-management" && (
             <div className="sub-menu active">
-              {/* Budget Request - Both roles */}
-              <Link
-                href={getUrl("/budget-management/budgetRequest")}
+              {/* Budget Request - Both roles - External microservice */}
+              <a
+                href={budgetRequestUrl}
                 className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
-                onClick={() => setActiveItem("budget-request")}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveItem("budget-request");
+                  window.location.href = budgetRequestUrl;
+                }}
               >
                 Budget Request
-              </Link>
+              </a>
               
               {/* Budget Allocation - Admin only */}
               {userRole === 'admin' && (
@@ -330,16 +336,20 @@ const Sidebar: React.FC = () => {
             </>
           )}
 
-          {/* Audit Logs - Admin only */}
+          {/* Audit Logs - Admin only - External microservice */}
           {userRole === 'admin' && (
-            <Link
-              href={auditHref}
+            <a
+              href={auditLogsUrl}
               className={`nav-item ${activeItem === auditActiveKey ? "active" : ""}`}
-              onClick={() => setActiveItem(auditActiveKey)}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveItem(auditActiveKey);
+                window.location.href = auditLogsUrl;
+              }}
             >
               <i className={auditIconClass} />
               <span>Audit Logs</span>
-            </Link>
+            </a>
             )}
         </div>
 
