@@ -13,8 +13,9 @@ interface DepartmentBudget {
   allocated_budget: number;
   used_budget: number;
   remaining_budget: number;
-  budget_requests_count: number;
-  last_allocation_date: string;
+  reserved_budget: number;
+  purchase_request_count: number;
+  last_update_date: string;
   budget_period: string;
   status: 'Active' | 'Inactive' | 'Exceeded';
 }

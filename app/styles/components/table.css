@@ -155,7 +155,17 @@ td.actionButtons {
   width: 100% !important;
 }
 
-.actionButtonsContainer button:disabled {
+.departmentActions {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: right !important;
+  align-items: center !important;
+  gap: 5px !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.actionButtonsContainer button:disabled, .departmentActions button:disabled {
   cursor: not-allowed !important;
   background-color: var(--border-color) !important;
 }
@@ -172,7 +182,10 @@ td.actionButtons {
 .actionButtonsContainer .auditBtn,
 .actionButtonsContainer .refundBtn,
 .actionButtonsContainer .matchBtn,
-.actionButtonsContainer .postBtn {
+.actionButtonsContainer .postBtn,
+.departmentActions .viewBtn,
+.departmentActions .allocateBtn,
+.departmentActions .deductBtn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -212,10 +225,10 @@ td.actionButtons {
 }
 
 /* Delete button (Error/Red) */
-.deleteBtn {
+.deleteBtn, .deductBtn {
   background-color: var(--error-color) !important;
 }
-.deleteBtn:hover {
+.deleteBtn:hover, .deductBtn:hover {
   background-color: var(--error-hover-color) !important;
 } 
 
@@ -268,10 +281,10 @@ td.actionButtons {
 }
 
 /* Download button (Info/Blue) */
-.downloadBtn {
+.downloadBtn, .allocateBtn {
   background-color: var(--info-color) !important;
 }
-.downloadBtn:hover {
+.downloadBtn:hover, .allocateBtn:hover {
   background-color: var(--info-hover-color) !important;
 }
 

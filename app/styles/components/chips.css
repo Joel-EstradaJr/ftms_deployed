@@ -153,9 +153,22 @@
 /* ============================================================
    SPECIAL COLORS (Urgent, Refund Processing)
    ============================================================ */
-.chip.urgent {
+.chip.urgent,
+.chip.emergency {
     background-color: #ff5722;
     color: white;
+    font-weight: 600;
+}
+
+.chip.regular {
+    background-color: var(--info-chip-bg-color);
+    color: var(--info-chip-text-color);
+}
+
+.chip.project-based {
+    background-color: #D6E4FF;
+    color: #0050B3;
+    font-weight: 500;
 }
 
 .chip.refund-processing {

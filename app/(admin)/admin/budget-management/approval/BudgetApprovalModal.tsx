@@ -57,19 +57,35 @@ export default function BudgetApprovalModal({
 }: BudgetApprovalModalProps) {
   const [action, setAction] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [approveAmount, setApproveAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showItemsModal, setShowItemsModal] = useState(false);
 
   const handleApprove = async () => {
+    // Validate approve amount
+    const amount = parseFloat(approveAmount);
+    if (!approveAmount || isNaN(amount) || amount <= 0) {
+      showError("Please enter a valid approval amount.", "Invalid Amount");
+      return;
+    }
+
+    if (amount > request.requested_amount) {
+      const confirmHigher = await showConfirmation(
+        `The approval amount (₱${amount.toLocaleString()}) is higher than the requested amount (₱${request.requested_amount.toLocaleString()}). Do you want to proceed?`,
+        "Confirm Higher Amount"
+      );
+      if (!confirmHigher.isConfirmed) return;
+    }
+
     const result = await showConfirmation(
-      `Are you sure you want to <b>APPROVE</b> the budget request "${request.title}"?`,
+      `Are you sure you want to <b>APPROVE</b> the budget request "${request.title}" with an amount of <b>₱${amount.toLocaleString()}</b>?`,
       "Approve Budget Request"
     );
 
     if (result.isConfirmed) {
       setIsProcessing(true);
       try {
-        onApprove(request);
+        onApprove({ ...request, approved_amount: amount });
         showSuccess("Budget request has been approved successfully.", "Request Approved");
         onClose();
       } catch (error) {
@@ -204,7 +220,10 @@ export default function BudgetApprovalModal({
               <div className="modalButtons">
                 <button
                   className="approveButton"
-                  onClick={() => setAction('approve')}
+                  onClick={() => {
+                    setAction('approve');
+                    setApproveAmount(request.requested_amount.toString());
+                  }}
                   disabled={isProcessing}
                 >
                   <i className="ri-check-line"></i>
@@ -231,13 +250,48 @@ export default function BudgetApprovalModal({
             // Approval confirmation
             <>
               <div className="sectionTitle">Confirm Approval</div>
-              <p>Are you sure you want to approve this budget request? This action cannot be undone.</p>
+              
+              <div className="formFieldsHorizontal">
+                <div className="formField">
+                  <label>Requested Amount</label>
+                  <div className="viewField">{formatMoney(request.requested_amount)}</div>
+                </div>
+
+                <div className="formField">
+                  <label>Approve Amount <span className="requiredTags">*</span></label>
+                  <input
+                    type="number"
+                    value={approveAmount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Limit to 15 characters (max ~999,999,999,999.99)
+                      if (value.length <= 15) {
+                        setApproveAmount(value);
+                      }
+                    }}
+                    placeholder="Enter approval amount"
+                    min="0"
+                    step="0.01"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <small style={{ color: 'var(--secondary-text-color)', fontSize: '12px' }}>
+                    Default is requested amount. Maximum 15 characters.
+                  </small>
+                </div>
+              </div>
 
               <div className="modalButtons">
                 <button
                   className="approveButton"
                   onClick={handleSubmit}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !approveAmount || parseFloat(approveAmount) <= 0}
                 >
                   {isProcessing ? 'Processing...' : 'Confirm Approval'}
                 </button>

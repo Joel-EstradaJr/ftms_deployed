@@ -10,6 +10,8 @@ export interface SharedApprovalFilters {
   dateRange?: { from: string; to: string };
   status?: string[];
   search?: string;
+  requestType?: string[];
+  category?: string[];
 }
 
 export interface ApprovalTableConfig {

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import "../../../../styles/budget-management/budgetAllocation.css";
-import MonthYearPicker from '../../../../Components/MonthYearPicker';
-import ErrorDisplay from '../../../../Components/errordisplay';
-import Loading from '../../../../Components/loading';
-import { formatDate } from '../../../../utils/formatting';
+import "@/styles/budget-management/budgetAllocation.css";
+import "@/styles/components/table.css";
+import MonthYearPicker from '@/Components/MonthYearPicker';
+import ErrorDisplay from '@/Components/errordisplay';
+import Loading from '@/Components/loading';
+import { formatDate } from '@/utils/formatting';
 import AllocateBudgetAllocation from './allocateBudgetAllocation';
 import DeductBudgetAllocation from './deductBudgetAllocation';
 import DepartmentDetailsModal from './departmentDetailsModal';
@@ -18,8 +19,9 @@ interface DepartmentBudget {
   allocated_budget: number;
   used_budget: number;
   remaining_budget: number;
-  budget_requests_count: number;
-  last_allocation_date: string;
+  reserved_budget: number;
+  purchase_request_count: number;
+  last_update_date: string;
   budget_period: string;
   status: 'Active' | 'Inactive' | 'Exceeded';
 }
@@ -58,7 +60,10 @@ const BudgetAllocationPage: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentBudget | null>(null);
   const [allocationAmount, setAllocationAmount] = useState('');
   const [allocationNotes, setAllocationNotes] = useState('');
-  const [budgetPeriod, setBudgetPeriod] = useState('2024-09'); // Current month
+  const [budgetPeriod, setBudgetPeriod] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [searchTerm, setSearchTerm] = useState('');
 
   // Helper function to generate monthly options
@@ -115,8 +120,9 @@ const BudgetAllocationPage: React.FC = () => {
         allocated_budget: 500000,
         used_budget: 320000,
         remaining_budget: 180000,
-        budget_requests_count: 12,
-        last_allocation_date: '2024-09-01T00:00:00Z',
+        reserved_budget: 50000,
+        purchase_request_count: 12,
+        last_update_date: '2026-01-09T00:00:00Z',
         budget_period: budgetPeriod,
         status: 'Active'
       },
@@ -126,8 +132,9 @@ const BudgetAllocationPage: React.FC = () => {
         allocated_budget: 750000,
         used_budget: 680000,
         remaining_budget: 70000,
-        budget_requests_count: 18,
-        last_allocation_date: '2024-09-01T00:00:00Z',
+        reserved_budget: 100000,
+        purchase_request_count: 18,
+        last_update_date: '2026-01-09T00:00:00Z',
         budget_period: budgetPeriod,
         status: 'Active'
       },
@@ -137,8 +144,9 @@ const BudgetAllocationPage: React.FC = () => {
         allocated_budget: 400000,
         used_budget: 420000,
         remaining_budget: -20000,
-        budget_requests_count: 8,
-        last_allocation_date: '2024-09-01T00:00:00Z',
+        reserved_budget: 30000,
+        purchase_request_count: 8,
+        last_update_date: '2026-01-09T00:00:00Z',
         budget_period: budgetPeriod,
         status: 'Exceeded'
       },
@@ -148,8 +156,9 @@ const BudgetAllocationPage: React.FC = () => {
         allocated_budget: 300000,
         used_budget: 145000,
         remaining_budget: 155000,
-        budget_requests_count: 6,
-        last_allocation_date: '2024-09-01T00:00:00Z',
+        reserved_budget: 25000,
+        purchase_request_count: 6,
+        last_update_date: '2026-01-09T00:00:00Z',
         budget_period: budgetPeriod,
         status: 'Active'
       }
@@ -226,7 +235,7 @@ const BudgetAllocationPage: React.FC = () => {
             ...dept,
             allocated_budget: dept.allocated_budget + allocationData.amount,
             remaining_budget: dept.remaining_budget + allocationData.amount,
-            last_allocation_date: allocationData.allocated_date,
+            last_update_date: allocationData.allocated_date,
             status: 'Active' as const
             };
         }
@@ -255,7 +264,7 @@ const BudgetAllocationPage: React.FC = () => {
             ...dept,
             allocated_budget: newAllocated,
             remaining_budget: newRemaining,
-            last_allocation_date: deductionData.deducted_date,
+            last_update_date: deductionData.deducted_date,
             status: newAllocated <= 0 ? 'Inactive' as const : dept.status
             };
         }
@@ -435,7 +444,7 @@ const BudgetAllocationPage: React.FC = () => {
                       </div>
                       <div className="departmentActions">
                         <button 
-                          className="viewDetailsBtn"
+                          className="viewBtn"
                           onClick={() => handleViewDetails(department)}
                           title="View Details"
                         >
@@ -520,11 +529,11 @@ const BudgetAllocationPage: React.FC = () => {
                     <div className="departmentFooter">
                       <div className="footerMetric">
                         <i className="ri-file-list-line" />
-                        <span>{department.budget_requests_count} Requests</span>
+                        <span>{department.purchase_request_count} Requests</span>
                       </div>
                       <div className="footerMetric">
                         <i className="ri-calendar-line" />
-                        <span>Last: {formatDate(department.last_allocation_date)}</span>
+                        <span>Last: {formatDate(department.last_update_date)}</span>
                       </div>
                     </div>
                   </div>

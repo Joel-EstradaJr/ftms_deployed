@@ -274,7 +274,7 @@ export default function BudgetApprovalTab({
   const filteredData = useMemo(() => {
     let result = [...data];
 
-    // Search filter
+    // Search filter - searches across multiple fields
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       result = result.filter(item =>
@@ -282,7 +282,11 @@ export default function BudgetApprovalTab({
         item.title.toLowerCase().includes(searchLower) ||
         item.description.toLowerCase().includes(searchLower) ||
         item.requested_by.toLowerCase().includes(searchLower) ||
-        item.category.toLowerCase().includes(searchLower)
+        item.department.toLowerCase().includes(searchLower) ||
+        item.category.toLowerCase().includes(searchLower) ||
+        item.requested_type.toLowerCase().includes(searchLower) ||
+        item.requested_amount.toString().includes(searchLower) ||
+        (item.approved_amount && item.approved_amount.toString().includes(searchLower))
       );
     }
 
@@ -293,10 +297,27 @@ export default function BudgetApprovalTab({
           'pending': 'Pending Approval',
           'approved': 'Approved',
           'rejected': 'Rejected',
-          'completed': 'Closed'
+          'completed': 'Closed',
+          'draft': 'Draft'
         };
         return filters.status!.some(status => statusMap[status] === item.status);
       });
+    }
+
+    // Request Type filter
+    if (filters.requestType?.length) {
+      result = result.filter(item =>
+        filters.requestType!.includes(item.requested_type)
+      );
+    }
+
+    // Category filter
+    if (filters.category?.length) {
+      result = result.filter(item =>
+        filters.category!.some(cat => 
+          item.category.toLowerCase().includes(cat.toLowerCase())
+        )
+      );
     }
 
     // Date range filter
@@ -377,6 +398,7 @@ export default function BudgetApprovalTab({
           ? {
               ...item,
               status: 'Approved' as const,
+              approved_amount: request.approved_amount,
               approval_date: new Date().toISOString().split('T')[0],
               approved_by: 'Current User'
             }
@@ -420,6 +442,22 @@ export default function BudgetApprovalTab({
         return 'draft';
       default:
         return 'pending';
+    }
+  };
+
+  // Get request type chip class
+  const getRequestTypeClass = (type: string) => {
+    switch (type) {
+      case 'Emergency':
+        return 'emergency';
+      case 'Urgent':
+        return 'urgent';
+      case 'Regular':
+        return 'regular';
+      case 'Project-Based':
+        return 'project-based';
+      default:
+        return 'regular';
     }
   };
 
@@ -491,7 +529,7 @@ export default function BudgetApprovalTab({
             </thead>
             <tbody>
               {paginatedData.map(request => (
-                <tr key={request.request_id} onClick={() => handleView(request)} title="View Details">
+                <tr key={request.request_id}>
                   <td>{formatDate(request.request_date)}</td>
                   <td>{request.department}</td>
                   <td>{request.category}</td>
@@ -500,7 +538,7 @@ export default function BudgetApprovalTab({
                     {request.approved_amount ? formatMoney(request.approved_amount) : '-'}
                   </td>
                   <td>
-                    <span className={`chip ${request.requested_type === 'Emergency' ? 'emergency' : request.requested_type === 'Urgent' ? 'urgent' : 'regular'}`}>
+                    <span className={`chip ${getRequestTypeClass(request.requested_type)}`}>
                       {request.requested_type}
                     </span>
                   </td>
@@ -511,6 +549,13 @@ export default function BudgetApprovalTab({
                   </td>
                   <td className="actionButtons">
                     <div className="actionButtonsContainer">
+                      <button 
+                          className="viewBtn"
+                          onClick={() => handleView(request)} 
+                          title="View Details"
+                        >
+                          <i className="ri-eye-line" />
+                        </button>
                       <button
                         className="auditBtn"
                         onClick={() => handleAuditTrail(request)}
@@ -518,15 +563,14 @@ export default function BudgetApprovalTab({
                       >
                         <i className="ri-history-line" />
                       </button>
-                      {request.status === 'Pending Approval' && (
-                        <button
-                          className="approveBtn"
-                          onClick={() => handleApprovalAction(request)}
-                          title="Approve/Reject"
-                        >
-                          <i className="ri-check-line" />
-                        </button>
-                      )}
+                      <button
+                        className="approveBtn"
+                        onClick={() => handleApprovalAction(request)}
+                        title="Approve/Reject"
+                        disabled={request.status !== 'Pending Approval'}
+                      >
+                        <i className="ri-check-line" />
+                      </button>
                     </div>
                   </td>
                 </tr>
