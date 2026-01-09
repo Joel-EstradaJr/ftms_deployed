@@ -954,7 +954,6 @@ export default function PurchaseApprovalTab({
                       >
                         <i className="ri-eye-line" />
                       </button>
-                      {request.purchase_request_status === ApprovalStatus.PENDING && (
                         <>
                           <button
                             className="approveBtn"
@@ -963,6 +962,7 @@ export default function PurchaseApprovalTab({
                               openApproveModal(request);
                             }}
                             title="Approve"
+                            disabled={request.purchase_request_status !== ApprovalStatus.PENDING}
                           >
                             <i className="ri-check-line" />
                           </button>
@@ -973,24 +973,12 @@ export default function PurchaseApprovalTab({
                               openRejectModal(request);
                             }}
                             title="Reject"
+                            disabled={request.purchase_request_status !== ApprovalStatus.PENDING}
+
                           >
                             <i className="ri-close-line" />
                           </button>
                         </>
-                      )}
-                      {(request.purchase_request_status === ApprovalStatus.APPROVED || 
-                        request.purchase_request_status === ApprovalStatus.ADJUSTED) && (
-                        <button
-                          className="editBtn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleView(request);
-                          }}
-                          title="Edit"
-                        >
-                          <i className="ri-edit-line" />
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>

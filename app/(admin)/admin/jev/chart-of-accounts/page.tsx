@@ -15,6 +15,7 @@ import RecordChartOfAccount from './recordChartOfAccount';
 import AddAccountModal from './AddAccountModal';
 import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
+import ViewAccountModal from './ViewAccountModal';
 
 import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
 import { fetchChartOfAccounts, createChartOfAccount, ChartOfAccountsQueryParams, PaginationResponse } from '@/app/services/chartOfAccountsService';
@@ -25,7 +26,7 @@ import {getAccountTypeClass,
 // import '@/app/styles/JEV/chart-of-accounts.css';
 import '@/app/styles/components/table.css'; 
 import '@/app/styles/components/chips.css';
-import '@/app/styles/JEV/JEV_table.css'; 
+
 
 const ChartOfAccountsPage = () => {
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
@@ -270,12 +271,9 @@ const ChartOfAccountsPage = () => {
   const openViewModal = (account: ChartOfAccount) => {
     setSelectedAccount(account);
     setModalContent(
-      <RecordChartOfAccount
+      <ViewAccountModal
         account={account}
-        mode="view"
-        accounts={accounts} // Using current page accounts
         onClose={closeModal}
-        onSave={async () => {}} // No-op for view mode
       />
     );
     setIsModalOpen(true);
@@ -514,13 +512,12 @@ const ChartOfAccountsPage = () => {
               <thead>
                 <tr>
                   <th style={{ width: 60,  minWidth: 60,  textAlign: 'center' }}>No.</th>
-                  <th style={{ width: 140, minWidth: 140, textAlign: 'center' as const }}>Account Code</th>
-                  <th className="account-name" style={{ minWidth: 150, textAlign: 'left' }}>Account Name</th>
+                  <th style={{ minWidth: 140, textAlign: 'center' as const }}>Account Code</th>
+                  <th className="account-name" style={{ textAlign: 'center' }}>Account Name</th>
                   <th style={{ minWidth: 140, textAlign: 'center' }}>Account Type</th>
-                  <th style={{ width: 120, minWidth: 120, textAlign: 'center' }}>Normal Balance</th>
-                  <th style={{ minWidth: 250, textAlign: 'left' }}>Description</th>
-                  <th style={{ width: 120, minWidth: 120, textAlign: 'center' }}>Status</th>
-                  <th style={{ width: 140, minWidth: 140, textAlign: 'center' }}>Actions</th>
+                  <th style={{ minWidth: 120, textAlign: 'center' }}>Normal Balance</th>
+                  <th style={{ minWidth: 120, textAlign: 'center' }}>Status</th>
+                  <th style={{ minWidth: 140, textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -550,17 +547,6 @@ const ChartOfAccountsPage = () => {
 
                       {/* Normal Balance */}
                       <td>{getNormalBalance(account.account_type)}</td>
-
-                      {/* Description */}
-                      <td>
-                        {account.description ? (
-                          <span title={account.description}>
-                            {account.description.length > 50 
-                              ? `${account.description.substring(0, 50)}...` 
-                              : account.description}
-                          </span>
-                        ) : '-'}
-                      </td>
 
                       {/* Status - Single value centered */}
                       <td className="table-status">
