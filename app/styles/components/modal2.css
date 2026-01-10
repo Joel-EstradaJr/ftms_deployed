@@ -276,7 +276,7 @@
 }
 
 /* delete stock button */
-.modal-actions.delete .delete-btn {
+.modal-actions.delete .delete-btn, .modal-actions .delete-btn {
     width: 120px;
     height: 35px;
     border-radius: 8px;
@@ -288,7 +288,7 @@
     cursor: pointer;
 }
 
-.modal-actions.delete .delete-btn:hover {
+.modal-actions.delete .delete-btn:hover,.modal-actions .delete-btn:hover {
     background-color: var(--primary-hover-color);
 }
 

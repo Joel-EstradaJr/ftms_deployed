@@ -556,7 +556,6 @@ const DisposalApproval = () => {
                   </th>
                   <th>Item/Bus Reference</th>
                   <th>Status</th>
-                  <th>Description</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -596,11 +595,6 @@ const DisposalApproval = () => {
                         <span className={getStatusClass(row.status)}>
                           {row.status}
                         </span>
-                      </td>
-                      <td title={row.description}>
-                        {row.description.length > 50
-                          ? `${row.description.substring(0, 50)}...`
-                          : row.description}
                       </td>
                       <td className="actionButtons">
                         <div className="actionButtonsContainer">
