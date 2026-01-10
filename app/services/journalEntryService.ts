@@ -212,7 +212,7 @@ export async function deleteJournalEntry(id: string | number, reason: string): P
   try {
     const response = await api.delete<ApiResponse<void>>(
       `/api/v1/admin/journal-entries/${id}`,
-      { reason }
+      { data: { reason } }
     );
 
     if (!response.success) {
