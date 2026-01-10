@@ -278,53 +278,52 @@ const Sidebar: React.FC = () => {
             <span>Financial Reports</span>
           </Link>
 
-        
-          {/* Records & Reports - Admin only */}
+          {/* Chart of Accounts - Admin only */}
           {userRole === 'admin' && (
-            <>
-              <div
-                className={`nav-item module ${
-                  ["journal-entries","chart-of-accounts", "asset-management", "disposal-approval"].includes(activeItem!) ? "active" : ""
-                }`}
-                onClick={() => toggleSubMenu("records-reports")}
-              >
-                <i className="ri-folder-3-line"></i>
-                <span>Records & Reports</span>
-                <i
-                  className={`dropdown-arrow ri-arrow-down-s-line ${
-                    openSubMenu === "records-reports" ? "rotate" : ""
-                  }`}
-                />
-              </div>
+            <Link
+              href={getUrl("/jev/chart-of-accounts")}
+              className={`nav-item ${activeItem === "chart-of-accounts" ? "active" : ""}`}
+              onClick={() => setActiveItem("chart-of-accounts")}
+            >
+              <i className="ri-file-list-3-line" />
+              <span>Chart of Accounts</span>
+            </Link>
+          )}
 
-              {openSubMenu === "records-reports" && (
-                <div className="sub-menu active">
-                  <Link
-                    href={getUrl("/jev/chart-of-accounts")}
-                    className={`sub-item ${activeItem === "chart-of-accounts" ? "active" : ""}`}
-                    onClick={() => setActiveItem("chart-of-accounts")}
-                  >
-                    Chart of Accounts
-                  </Link>
+          {/* Journal Entries - Admin only */}
+          {userRole === 'admin' && (
+            <Link
+              href={getUrl("/jev/journal-entries")}
+              className={`nav-item ${activeItem === "journal-entries" ? "active" : ""}`}
+              onClick={() => setActiveItem("journal-entries")}
+            >
+              <i className="ri-draft-line" />
+              <span>Journal Entries</span>
+            </Link>
+          )}
 
-                  <Link
-                    href={getUrl("/jev/journal-entries")}
-                    className={`sub-item ${activeItem === "journal-entries" ? "active" : ""}`}
-                    onClick={() => setActiveItem("journal-entries")}
-                  >
-                    Journal Entries
-                  </Link>
+          {/* Asset Management - Admin only */}
+          {userRole === 'admin' && (
+            <Link
+              href={getUrl("/asset-management")}
+              className={`nav-item ${activeItem === "asset-management" ? "active" : ""}`}
+              onClick={() => setActiveItem("asset-management")}
+            >
+              <i className="ri-archive-line" />
+              <span>Asset Management</span>
+            </Link>
+          )}
 
-                  <Link
-                    href={getUrl("/asset-management")}
-                    className={`sub-item ${activeItem === "asset-management" ? "active" : ""}`}
-                    onClick={() => setActiveItem("asset-management")}
-                  >
-                    Asset Management
-                  </Link>
-                </div>
-              )}
-            </>
+          {/* Disposal Approval - Admin only */}
+          {userRole === 'admin' && (
+            <Link
+              href={getUrl("/disposal-approval")}
+              className={`nav-item ${activeItem === "disposal-approval" ? "active" : ""}`}
+              onClick={() => setActiveItem("disposal-approval")}
+            >
+              <i className="ri-delete-bin-line" />
+              <span>Disposal Approval</span>
+            </Link>
           )}
 
           {/* Audit Logs - Admin only */}

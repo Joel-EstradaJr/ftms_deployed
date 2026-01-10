@@ -9,9 +9,9 @@ import { showError } from '@/utils/Alerts';
 
 interface DisposalRecord {
   id: number;
-  disposalCode: string;
-  disposalMethod: string;
-  disposalDate: string;
+  disposal_code: string;
+  disposal_method: string;
+  disposal_date: string;
   quantity: number;
   description: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -24,51 +24,78 @@ interface DisposalRecord {
   
   // Stock details (if disposal type is stock)
   stock?: {
-    itemCode: string;
-    itemName: string;
-    unitOfMeasure: string;
-    category: string;
-    currentStock: number;
-    stockStatus: string;
-    stockRecordedDate: string;
-    description: string;
+    item_code: string;
+    item?: {
+      item_name: string;
+      unit?: {
+        unit_name: string;
+      };
+      category?: {
+        category_name: string;
+      };
+      description?: string;
+    };
+    current_stock: number;
+    status: string;
+    created_at: string;
   };
   
   // Batch details (if disposal type is batch)
   batch?: {
-    batchNumber: string;
-    itemCode: string;
-    itemName: string;
-    unitOfMeasure: string;
-    category: string;
+    batch_number: string;
+    stock?: {
+      item_code: string;
+      item?: {
+        item_name: string;
+        unit?: {
+          unit_name: string;
+        };
+        category?: {
+          category_name: string;
+        };
+      };
+    };
     quantity: number;
-    expirationDate?: string;
-    receivedDate: string;
+    expiration_date?: string;
+    received_date: string;
     remarks?: string;
   };
   
   // Bus details (if disposal type is bus)
   bus?: {
-    busCode: string;
-    plateNumber: string;
-    bodyNumber: string;
-    busType: string;
+    bus_code: string;
+    plate_number: string;
+    body_number: string;
+    bus_type: string;
     status: string;
     model: string;
-    yearModel: string;
+    year_model: string;
     condition: string;
-    acquisitionMethod: string;
-    manufacturer: string;
-    bodyBuilder: string;
-    chassisNumber: string;
-    engineNumber: string;
-    seatCapacity: number;
-    registrationStatus: string;
-    dealerName?: string;
-    previousOwner?: string;
+    acquisition_method: string;
+    manufacturer?: {
+      manufacturer_name: string;
+    };
+    body_builder?: {
+      body_builder_name: string;
+    };
+    chassis_number: string;
+    engine_number: string;
+    seat_capacity: number;
+    registration_status: string;
+    brand_new_details?: {
+      dealer_name: string;
+    };
+    second_hand_details?: {
+      previous_owner: string;
+    };
   };
   
   // Revenue details
+  disposal_revenue?: {
+    disposal_value: number;
+    book_value: number;
+    gain_loss: number;
+  };
   revenue?: {
     disposalValue: number;
     bookValue: number;
@@ -86,10 +113,10 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
   // Editable fields state
   const [status, setStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>(disposal.status);
   const [disposalValue, setDisposalValue] = useState<string>(
-    disposal.revenue?.disposalValue?.toString() || '0'
+    disposal.disposal_revenue?.disposal_value?.toString() || disposal.revenue?.disposalValue?.toString() || '0'
   );
   const [bookValue, setBookValue] = useState<string>(
-    disposal.revenue?.bookValue?.toString() || '0'
+    disposal.disposal_revenue?.book_value?.toString() || disposal.revenue?.bookValue?.toString() || '0'
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ disposalValue?: string; bookValue?: string }>({});
@@ -179,7 +206,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <label>Disposal Code</label>
               <input
                 type="text"
-                value={disposal.disposalCode}
+                value={disposal.disposal_code}
                 disabled
                 className="disabled-input"
               />
@@ -206,7 +233,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <label>Disposal Method</label>
               <input
                 type="text"
-                value={disposal.disposalMethod}
+                value={disposal.disposal_method}
                 disabled
                 className="disabled-input"
               />
@@ -217,7 +244,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <label>Disposal Date</label>
               <input
                 type="text"
-                value={formatDate(disposal.disposalDate)}
+                value={formatDate(disposal.disposal_date)}
                 disabled
                 className="disabled-input"
               />

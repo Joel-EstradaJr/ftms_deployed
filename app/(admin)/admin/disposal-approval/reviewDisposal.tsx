@@ -8,9 +8,9 @@ import { formatDate, formatMoney } from '@/utils/formatting';
 
 interface DisposalRecord {
   id: number;
-  disposalCode: string;
-  disposalMethod: string;
-  disposalDate: string;
+  disposal_code: string;
+  disposal_method: string;
+  disposal_date: string;
   quantity: number;
   description: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -165,7 +165,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
             <div className="form-row">
               <div className="form-group">
                 <label>Disposal Code</label>
-                <p>{disposal.disposalCode}</p>
+                <p>{disposal.disposal_code}</p>
               </div>
 
               <div className="form-group">
@@ -183,14 +183,14 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
                 <label>Disposal Method</label>
                 <p>
                   <span className="chip normal">
-                    {disposal.disposalMethod}
+                    {disposal.disposal_method}
                   </span>
                 </p>
               </div>
 
               <div className="form-group">
                 <label>Disposal Date</label>
-                <p>{formatDate(disposal.disposalDate)}</p>
+                <p>{formatDate(disposal.disposal_date)}</p>
               </div>
             </div>
 
