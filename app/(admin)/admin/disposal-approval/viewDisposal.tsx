@@ -35,36 +35,52 @@ interface DisposalRecord {
   
   // Batch details (if disposal type is batch)
   batch?: {
-    batchNumber: string;
-    itemCode: string;
-    itemName: string;
-    unitOfMeasure: string;
-    category: string;
+    batch_number: string;
+    stock?: {
+      item_code: string;
+      item?: {
+        item_name: string;
+        unit?: {
+          unit_name: string;
+        };
+        category?: {
+          category_name: string;
+        };
+      };
+    };
     quantity: number;
-    expirationDate?: string;
-    receivedDate: string;
+    expiration_date?: string;
+    received_date: string;
     remarks?: string;
   };
   
   // Bus details (if disposal type is bus)
   bus?: {
-    busCode: string;
-    plateNumber: string;
-    bodyNumber: string;
-    busType: string;
+    bus_code: string;
+    plate_number: string;
+    body_number: string;
+    bus_type: string;
     status: string;
     model: string;
-    yearModel: string;
+    year_model: string;
     condition: string;
-    acquisitionMethod: string;
-    manufacturer: string;
-    bodyBuilder: string;
-    chassisNumber: string;
-    engineNumber: string;
-    seatCapacity: number;
-    registrationStatus: string;
-    dealerName?: string;
-    previousOwner?: string;
+    acquisition_method: string;
+    manufacturer?: {
+      manufacturer_name: string;
+    };
+    body_builder?: {
+      body_builder_name: string;
+    };
+    chassis_number: string;
+    engine_number: string;
+    seat_capacity: number;
+    registration_status: string;
+    brand_new_details?: {
+      dealer_name: string;
+    };
+    second_hand_details?: {
+      previous_owner: string;
+    };
   };
   
   // Revenue details
