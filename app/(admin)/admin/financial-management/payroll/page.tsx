@@ -57,7 +57,12 @@ const PayrollPage = () => {
       
       // Fetch HR payroll data grouped by period from integration endpoint
       try {
-        const payrollBatches = await payrollService.fetchPayrollBatches();
+        // Get current date for default filtering
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth(); // 0-based (0 = January)
+        
+        const payrollBatches = await payrollService.fetchPayrollBatches(currentYear, currentMonth);
         
         // Transform grouped payroll data to PayrollBatch format for display
         const transformedBatches: PayrollBatch[] = payrollBatches.map((batch, index) => {
