@@ -10,6 +10,11 @@ import '@/styles/components/modal2.css';
 import '@/styles/components/forms.css';
 import '@/styles/components/chips.css';
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 interface RecordPayrollBatchProps {
   mode: 'add' | 'edit';
   existingData?: PayrollBatch | null;
@@ -50,6 +55,10 @@ export default function RecordPayrollBatch({
       disbursementDate: p.disbursementDate
     })) || []
   });
+
+  const [periodType, setPeriodType] = useState<1 | 2>(1); // 1 = 1st-15th, 2 = 16th-end
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
 
   const [formErrors, setFormErrors] = useState<PayrollBatchFormErrors>({
     batchCode: '',
@@ -166,6 +175,31 @@ export default function RecordPayrollBatch({
     fetchEmployees();
   }, []);
 
+  // Update dates when period selection changes
+  useEffect(() => {
+    const period = payrollService.getSemiMonthlyPeriod(selectedYear, selectedMonth, periodType);
+    setFormData(prev => ({
+      ...prev,
+      periodStart: period.startDate,
+      periodEnd: period.endDate,
+      batchCode: `PAY-${selectedYear}${String(selectedMonth + 1).padStart(2, '0')}-P${periodType}`
+    }));
+  }, [selectedYear, selectedMonth, periodType]);
+
+  // Recalculate payrolls when period changes (affects working days calculation)
+  useEffect(() => {
+    if (formData.selectedEmployees.length > 0) {
+      const updatedPayrolls = formData.selectedEmployees
+        .map(employeeId => calculatePayroll(employeeId))
+        .filter((p): p is PayrollFormData => p !== null);
+      
+      setFormData(prev => ({
+        ...prev,
+        payrolls: updatedPayrolls
+      }));
+    }
+  }, [selectedYear, selectedMonth, periodType, employees]);
+
   // Track form changes
   useEffect(() => {
     setIsDirty(true);
@@ -234,9 +268,13 @@ export default function RecordPayrollBatch({
     const employee = employees.find(e => e.employeeNumber === employeeId);
     if (!employee) return null;
 
-    const baseSalary = employee.payrollData.basicRate * 26; // Assuming ~26 working days per month
-    const allowances = employee.payrollData.totalMonthlyBenefits;
-    const deductions = employee.payrollData.totalMonthlyDeductions;
+    // Calculate based on semi-monthly period (15 days for Period 1, variable for Period 2)
+    const workingDays = periodType === 1 ? 15 : new Date(selectedYear, selectedMonth + 1, 0).getDate() - 15;
+    const baseSalary = employee.payrollData.basicRate * workingDays;
+    
+    // Pro-rate benefits and deductions for semi-monthly period
+    const allowances = employee.payrollData.totalMonthlyBenefits / 2;
+    const deductions = employee.payrollData.totalMonthlyDeductions / 2;
     const netPay = baseSalary + allowances - deductions;
 
     return {
@@ -396,37 +434,97 @@ export default function RecordPayrollBatch({
               {/* Period Dates */}
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="periodStart">
-                    Period Start <span style={{ color: 'red' }}>*</span>
+                  <label htmlFor="selectedYear">
+                    Year <span style={{ color: 'red' }}>*</span>
                   </label>
-                  <input
-                    type="date"
-                    id="periodStart"
-                    value={formData.periodStart}
-                    onChange={(e) => handleInputChange('periodStart', e.target.value)}
-                    onBlur={() => handleInputBlur('periodStart')}
-                    className={formErrors.periodStart ? 'invalid-input' : ''}
-                  />
-                  {formErrors.periodStart && (
-                    <div className="error-message">{formErrors.periodStart}</div>
-                  )}
+                  <select
+                    id="selectedYear"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    disabled={mode === 'edit'}
+                  >
+                    {[...Array(5)].map((_, i) => {
+                      const year = new Date().getFullYear() - 2 + i;
+                      return <option key={year} value={year}>{year}</option>;
+                    })}
+                  </select>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="periodEnd">
-                    Period End <span style={{ color: 'red' }}>*</span>
+                  <label htmlFor="selectedMonth">
+                    Month <span style={{ color: 'red' }}>*</span>
                   </label>
+                  <select
+                    id="selectedMonth"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                    disabled={mode === 'edit'}
+                  >
+                    {MONTHS.map((month, idx) => (
+                      <option key={idx} value={idx}>{month}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="periodType">
+                    Period <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <select
+                    id="periodType"
+                    value={periodType}
+                    onChange={(e) => setPeriodType(parseInt(e.target.value) as 1 | 2)}
+                    disabled={mode === 'edit'}
+                  >
+                    <option value={1}>Period 1 (1st-15th)</option>
+                    <option value={2}>Period 2 (16th-End of Month)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Display calculated dates (read-only) */}
+              <div className="form-row" style={{ opacity: 0.7 }}>
+                <div className="form-group">
+                  <label>Period Start Date</label>
                   <input
-                    type="date"
-                    id="periodEnd"
-                    value={formData.periodEnd}
-                    onChange={(e) => handleInputChange('periodEnd', e.target.value)}
-                    onBlur={() => handleInputBlur('periodEnd')}
-                    className={formErrors.periodEnd ? 'invalid-input' : ''}
+                    type="text"
+                    value={formatDate(formData.periodStart)}
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
                   />
-                  {formErrors.periodEnd && (
-                    <div className="error-message">{formErrors.periodEnd}</div>
-                  )}
+                </div>
+
+                <div className="form-group">
+                  <label>Period End Date</label>
+                  <input
+                    type="text"
+                    value={formatDate(formData.periodEnd)}
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                  />
+                </div>
+              </div>
+
+              {/* Period Info */}
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#e8f4fd',
+                border: '1px solid #b3d9f2',
+                borderRadius: '6px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '16px' }}>ℹ️</span>
+                  <strong>Semi-Monthly Payroll Period</strong>
+                </div>
+                <div style={{ fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
+                  {periodType === 1 
+                    ? '• Period 1: Covers 1st to 15th (15 working days)'
+                    : `• Period 2: Covers 16th to end of month (${new Date(selectedYear, selectedMonth + 1, 0).getDate() - 15} working days)`}
+                  <br />
+                  • All active employees will be included in this batch
+                  <br />
+                  • Benefits and deductions are pro-rated for the semi-monthly period
                 </div>
               </div>
 

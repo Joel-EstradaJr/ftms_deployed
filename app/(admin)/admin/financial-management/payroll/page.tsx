@@ -55,61 +55,73 @@ const PayrollPage = () => {
       }
       setError(null);
       
-      // Fetch HR payroll data from integration endpoint
+      // Fetch HR payroll data grouped by period from integration endpoint
       try {
-        const hrPayrollData = await payrollService.fetchHrPayroll();
+        const payrollBatches = await payrollService.fetchPayrollBatches();
         
-        // Transform HR payroll data to PayrollBatch format for display
-        // Group by employee for demonstration (you may want to group by period)
-        const transformedBatches: PayrollBatch[] = hrPayrollData.map((data, index) => {
-          const grossEarnings = payrollService.calculateGrossEarnings(data);
-          const totalDeductions = payrollService.calculateTotalDeductions(data);
-          const netPay = payrollService.calculateNetPay(data);
-          const presentDays = payrollService.getPresentDays(data);
+        // Transform grouped payroll data to PayrollBatch format for display
+        const transformedBatches: PayrollBatch[] = payrollBatches.map((batch, index) => {
+          // Calculate totals for the entire batch
+          let totalGross = 0;
+          let totalDeductions = 0;
+          let totalNet = 0;
+
+          const payrolls = batch.employees.map((employee) => {
+            const grossEarnings = payrollService.calculateGrossEarnings(employee);
+            const deductions = payrollService.calculateTotalDeductions(employee);
+            const netPay = payrollService.calculateNetPay(employee);
+            const presentDays = employee.present_days || 
+              employee.attendances.filter(a => a.status === 'Present').length;
+
+            totalGross += grossEarnings;
+            totalDeductions += deductions;
+            totalNet += netPay;
+
+            return {
+              id: `${batch.payroll_period_start}-${employee.employee_number}`,
+              batchId: `batch-${batch.payroll_period_start}`,
+              employeeId: employee.employee_number,
+              baseSalary: parseFloat(employee.basic_rate),
+              allowances: payrollService.getBenefitsByType(employee).size > 0 
+                ? Array.from(payrollService.getBenefitsByType(employee).values()).reduce((a, b) => a + b, 0)
+                : 0,
+              deductions: deductions,
+              netPay: netPay,
+              isDisbursed: false,
+              createdAt: new Date().toISOString(),
+              employee: {
+                employeeNumber: employee.employee_number,
+                firstName: employee.employee_name || employee.employee_number,
+                lastName: '',
+                department: 'N/A',
+                position: employee.rate_type,
+                status: 'active'
+              },
+              hrPayrollData: employee,
+              presentDays: presentDays
+            };
+          });
 
           return {
-            id: `batch-${index + 1}`,
-            payroll_period_code: `PAY-${data.payroll_period_start || new Date().toISOString().slice(0,7)}-${String(index + 1).padStart(3, '0')}`,
-            period_start: data.payroll_period_start || new Date().toISOString().split('T')[0],
-            period_end: data.payroll_period_end || new Date().toISOString().split('T')[0],
-            totalGross: grossEarnings,
+            id: `batch-${batch.payroll_period_start}`,
+            payroll_period_code: `PAY-${batch.payroll_period_start.replace(/-/g, '')}`,
+            period_start: batch.payroll_period_start,
+            period_end: batch.payroll_period_end,
+            totalGross: totalGross,
             totalDeductions: totalDeductions,
-            total_net: netPay,
-            total_employees: 1, // One employee per record
+            total_net: totalNet,
+            total_employees: batch.total_employees,
             status: 'PENDING',
             createdBy: 'Admin User',
             createdAt: new Date().toISOString(),
-            payrolls: [
-              {
-                id: `p${index + 1}`,
-                batchId: `batch-${index + 1}`,
-                employeeId: data.employee_number,
-                baseSalary: parseFloat(data.basic_rate),
-                allowances: payrollService.getBenefitsByType(data).size > 0 
-                  ? Array.from(payrollService.getBenefitsByType(data).values()).reduce((a, b) => a + b, 0)
-                  : 0,
-                deductions: totalDeductions,
-                netPay: netPay,
-                isDisbursed: false,
-                createdAt: new Date().toISOString(),
-                employee: {
-                  employeeNumber: data.employee_number,
-                  firstName: data.employee_number, // Replace with actual name if available
-                  lastName: '',
-                  department: 'N/A',
-                  position: data.rate_type,
-                  status: 'active'
-                },
-                hrPayrollData: data // Store the complete HR data
-              }
-            ]
+            payrolls: payrolls
           };
         });
         
         setBatches(transformedBatches);
         setTotalPages(Math.ceil(transformedBatches.length / pageSize));
         
-        console.log('✅ HR Payroll data loaded successfully:', transformedBatches.length, 'records');
+        console.log('✅ HR Payroll batches loaded successfully:', transformedBatches.length, 'batches with', transformedBatches.reduce((sum, b) => sum + b.total_employees, 0), 'total employees');
       } catch (apiError) {
         console.error('HR Payroll API error:', apiError);
         // Fallback to mock data if API fails
@@ -118,37 +130,17 @@ const PayrollPage = () => {
         const mockBatches: PayrollBatch[] = [
           {
             id: '1',
-            payroll_period_code: 'PAY-202511-001',
-            period_start: '2025-11-01',
-            period_end: '2025-11-30',
+            payroll_period_code: 'PAY-202601-P1',
+            period_start: '2026-01-01',
+            period_end: '2026-01-15',
             totalGross: 150000,
             totalDeductions: 30000,
             total_net: 120000,
-            total_employees: 5,
+            total_employees: 16,
             status: 'PENDING',
             createdBy: 'Admin User',
-            createdAt: '2025-11-20T10:00:00Z',
-            payrolls: [
-              {
-                id: 'p1',
-                batchId: '1',
-                employeeId: 'EMP-001',
-                baseSalary: 15600,
-                allowances: 2000,
-                deductions: 1500,
-                netPay: 16100,
-                isDisbursed: false,
-                createdAt: '2025-11-20T10:00:00Z',
-                employee: {
-                  employeeNumber: 'EMP-001',
-                  firstName: 'Juan',
-                  lastName: 'Dela Cruz',
-                  department: 'Operations',
-                  position: 'Driver',
-                  status: 'active'
-                }
-              }
-            ]
+            createdAt: '2026-01-10T10:00:00Z',
+            payrolls: []
           }
         ];
         

@@ -540,6 +540,9 @@ export default function ViewPayrollBatch({
                     {undisbursedCount > 0 && onDisburse && <th style={{ width: '40px' }}></th>}
                     <th>Employee</th>
                     <th>Base Salary</th>
+                    <th>Present Days</th>
+                    <th>Allowances</th>
+                    <th>Deductions</th>
                     <th>Net Pay</th>
                     <th>Status</th>
                     <th style={{ width: '120px' }}>Actions</th>
@@ -547,61 +550,88 @@ export default function ViewPayrollBatch({
                 </thead>
                 <tbody>
                   {batch.payrolls && batch.payrolls.length > 0 ? (
-                    batch.payrolls.map(payroll => (
-                      <tr key={payroll.id}>
-                        {undisbursedCount > 0 && onDisburse && (
+                    batch.payrolls.map(payroll => {
+                      const presentDays = payroll.presentDays || 0;
+                      const hasAttendance = presentDays > 0;
+                      
+                      return (
+                        <tr key={payroll.id} style={{ backgroundColor: !hasAttendance ? '#fff3cd' : undefined }}>
+                          {undisbursedCount > 0 && onDisburse && (
+                            <td>
+                              {!payroll.isDisbursed && hasAttendance && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPayrolls.includes(payroll.id)}
+                                  onChange={(e) => handleSelectPayroll(payroll.id, e.target.checked)}
+                                />
+                              )}
+                            </td>
+                          )}
                           <td>
-                            {!payroll.isDisbursed && (
-                              <input
-                                type="checkbox"
-                                checked={selectedPayrolls.includes(payroll.id)}
-                                onChange={(e) => handleSelectPayroll(payroll.id, e.target.checked)}
-                              />
+                            <div style={{ fontWeight: 500 }}>
+                              {payroll.employee?.firstName} {payroll.employee?.lastName}
+                              {!hasAttendance && (
+                                <span style={{ 
+                                  marginLeft: '8px', 
+                                  fontSize: '10px', 
+                                  color: '#856404',
+                                  backgroundColor: '#fff3cd',
+                                  padding: '2px 6px',
+                                  borderRadius: '3px',
+                                  border: '1px solid #ffeaa7'
+                                }}>
+                                  NO ATTENDANCE
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--secondary-text-color)' }}>
+                              {payroll.employeeId}
+                            </div>
+                          </td>
+                          <td>{formatMoney(payroll.baseSalary)}</td>
+                          <td>
+                            <strong style={{ color: hasAttendance ? 'var(--success-color)' : 'var(--warning-color)' }}>
+                              {presentDays}
+                            </strong>
+                          </td>
+                          <td>{formatMoney(payroll.allowances)}</td>
+                          <td>{formatMoney(payroll.deductions)}</td>
+                          <td style={{ fontWeight: 600, color: hasAttendance ? 'var(--primary-color)' : 'var(--warning-color)' }}>
+                            {formatMoney(payroll.netPay)}
+                          </td>
+                          <td>
+                            {payroll.isDisbursed ? (
+                              <span className="chip paid">Disbursed</span>
+                            ) : (
+                              <span className="chip pending">Pending</span>
                             )}
                           </td>
-                        )}
-                        <td>
-                          <div style={{ fontWeight: 500 }}>
-                            {payroll.employee?.firstName} {payroll.employee?.lastName}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--secondary-text-color)' }}>
-                            {payroll.employeeId}
-                          </div>
-                        </td>
-                        <td>{formatMoney(payroll.baseSalary)}</td>
-                        <td style={{ fontWeight: 600 }}>{formatMoney(payroll.netPay)}</td>
-                        <td>
-                          {payroll.isDisbursed ? (
-                            <span className="chip paid">Disbursed</span>
-                          ) : (
-                            <span className="chip pending">Pending</span>
-                          )}
-                        </td>
-                        <td className="actionButtons">
-                          <div className="actionButtonsContainer">
-                            <button
-                              className="viewBtn"
-                              onClick={() => setExpandedDetails(
-                                expandedDetails === payroll.id ? null : payroll.id
-                              )}
-                              title="View Details"
-                            >
-                              <i className={`ri-arrow-${expandedDetails === payroll.id ? 'up' : 'down'}-s-line`}></i>
-                            </button>
-                            <button
-                              className="exportBtn"
-                              onClick={() => handleViewPayslip(payroll)}
-                              title="View Payslip"
-                            >
-                              <i className="ri-file-text-line"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          <td className="actionButtons">
+                            <div className="actionButtonsContainer">
+                              <button
+                                className="viewBtn"
+                                onClick={() => setExpandedDetails(
+                                  expandedDetails === payroll.id ? null : payroll.id
+                                )}
+                                title="View Details"
+                              >
+                                <i className={`ri-arrow-${expandedDetails === payroll.id ? 'up' : 'down'}-s-line`}></i>
+                              </button>
+                              <button
+                                className="exportBtn"
+                                onClick={() => handleViewPayslip(payroll)}
+                                title="View Payslip"
+                              >
+                                <i className="ri-file-text-line"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={undisbursedCount > 0 && onDisburse ? 8 : 7} style={{ textAlign: 'center', padding: '20px' }}>
+                      <td colSpan={undisbursedCount > 0 && onDisburse ? 9 : 8} style={{ textAlign: 'center', padding: '20px' }}>
                         No payroll records found
                       </td>
                     </tr>

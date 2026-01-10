@@ -35,6 +35,7 @@ export interface Payroll {
   disbursedBy?: string;
   createdAt: string;
   updatedAt?: string;
+  presentDays?: number; // Number of days present for calculation
   // Relations
   batch?: PayrollBatch;
   employee?: CachedEmployee;
