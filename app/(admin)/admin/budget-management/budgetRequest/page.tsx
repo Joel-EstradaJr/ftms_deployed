@@ -423,6 +423,8 @@ const BudgetRequestPage = () => {
                 category: 'Operations', // You may want to add category to your form
                 requested_by: newRequest.requester_name,
                 request_date: newRequest.request_date,
+                department: newRequest.department || 'Operations',
+                requested_type: newRequest.requested_type || 'Regular',
                 approval_date: newRequest.approval_date,
                 approved_by: newRequest.approved_by,
                 rejection_reason: newRequest.rejection_reason,
