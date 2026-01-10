@@ -115,13 +115,14 @@ export const api = {
     return response.json();
   },
 
-  delete: async <T>(endpoint: string): Promise<T> => {
+  delete: async <T>(endpoint: string, data?: any): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
+      body: data ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
