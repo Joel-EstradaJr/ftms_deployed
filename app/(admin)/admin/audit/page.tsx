@@ -181,7 +181,8 @@ const ViewDetailsModal: React.FC<ViewModalProps> = ({ log, onClose }) => {
 const AuditPage = () => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // Input field value
+  const [search, setSearch] = useState(""); // Applied search filter (triggers fetch)
   const [tableFilter, setTableFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -196,6 +197,25 @@ const AuditPage = () => {
   const [sortField, setSortField] = useState<keyof AuditLog | null>('timestamp');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Handle search submission (Enter key or button click)
+  const handleSearchSubmit = () => {
+    setSearch(searchInput.trim());
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  // Handle Enter key press in search input
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit();
+    }
+  };
+
+  // Clear search
+  const handleClearSearch = () => {
+    setSearchInput("");
+    setSearch("");
+    setCurrentPage(1);
+  };
 
   // Available actions for filtering (matches Action column in table)
   const availableActions = [
@@ -618,13 +638,21 @@ const AuditPage = () => {
         <div className="settings">
           <div className="search-filter-container">
             <div className="searchBar">
-              <i className="ri-search-line" />
+              <i className="ri-search-line" onClick={handleSearchSubmit} style={{ cursor: 'pointer' }} />
               <input
                 type="text"
-                placeholder="  Search by Action, Table, Record ID, Performed By..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              /> 
+                placeholder="  Search by Action, Table, Record ID, Performed By... (Press Enter)"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+              />
+              {searchInput && (
+                <i 
+                  className="ri-close-line" 
+                  onClick={handleClearSearch} 
+                  style={{ cursor: 'pointer', marginLeft: '8px' }} 
+                />
+              )}
             </div>
             <FilterDropdown
               sections={filterSections}
