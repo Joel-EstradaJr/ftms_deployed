@@ -322,14 +322,6 @@ const Sidebar: React.FC = () => {
                   >
                     Asset Management
                   </Link>
-
-                  <Link
-                    href={getUrl("/disposal-approval")}
-                    className={`sub-item ${activeItem === "disposal-approval" ? "active" : ""}`}
-                    onClick={() => setActiveItem("disposal-approval")}
-                  >
-                    Disposal Approval
-                  </Link>
                 </div>
               )}
             </>
