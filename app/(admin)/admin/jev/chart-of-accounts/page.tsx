@@ -294,7 +294,7 @@ const ChartOfAccountsPage = () => {
     setSelectedAccount(account);
     setModalContent(
       <ViewAccountModal
-        account={account}
+        accountId={account.account_id}
         onClose={closeModal}
       />
     );
