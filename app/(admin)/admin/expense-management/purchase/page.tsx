@@ -424,16 +424,12 @@ const PurchaseExpensePage: React.FC = () => {
 
   // Prepare export data
   const exportData = expenses.map((exp) => ({
-    'Expense Code': exp.expense_code || exp.id,
-    'PR Number': exp.pr_number,
-    'DR Number': exp.dr_number || 'N/A',
-    'Description': exp.description,
-    'Supplier': exp.supplier || 'N/A',
-    'Category': exp.category || 'N/A',
-    'Amount': formatMoney(exp.amount),
-    'Payment Status': paymentStatuses[exp.id] || 'PENDING',
-    'Status': exp.status,
     'Date': formatDate(exp.date),
+    'Request Code': exp.pr_number,
+    'Expense/Expense Name': exp.description,
+    'Department': exp.category || 'N/A',
+    'Amount': formatMoney(exp.amount),
+    'Status': exp.status,
   }));
 
   if (loading) return <Loading />;
@@ -454,7 +450,7 @@ const PurchaseExpensePage: React.FC = () => {
               <input
                 className="searchInput"
                 type="text"
-                placeholder="Search by description, PR number, DR number, or supplier..."
+                placeholder="Search by date, request code, expense name, department, amount, or status..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -491,10 +487,11 @@ const PurchaseExpensePage: React.FC = () => {
             <table className="data-table purchase-table">
               <thead>
                 <tr>
-                  <th>Expense Code</th>
-                  <th>PR Number</th>
+                  <th>Date</th>
+                  <th>Request Code</th>
+                  <th>Expense/Expense Name</th>
+                  <th>Department</th>
                   <th>Amount</th>
-                  <th>Payment Status</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -502,21 +499,18 @@ const PurchaseExpensePage: React.FC = () => {
               <tbody>
                 {expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="no-data">
+                    <td colSpan={7} className="no-data">
                       No purchase expenses found
                     </td>
                   </tr>
                 ) : (
                   expenses.map((expense) => (
                     <tr key={expense.id} className="expense-row">
-                      <td>{expense.expense_code || expense.id}</td>
+                      <td>{formatDate(expense.date)}</td>
                       <td>{expense.pr_number}</td>
+                      <td>{expense.description}</td>
+                      <td>{expense.category || 'N/A'}</td>
                       <td className="amount-cell">{formatMoney(expense.amount)}</td>
-                      <td>
-                        <span className={`chip ${(paymentStatuses[expense.id] || 'pending').toLowerCase().replace('_', '-')}`}>
-                          {paymentStatuses[expense.id] || 'PENDING'}
-                        </span>
-                      </td>
                       <td>
                         <span className={`chip ${expense.status.toLowerCase()}`}>
                           {expense.status}
