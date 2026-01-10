@@ -26,6 +26,8 @@ interface BudgetRequest {
   category: string;
   requested_by: string;
   request_date: string;
+  department: string;
+  requested_type: 'Emergency' | 'Urgent' | 'Regular' | 'Project-Based';
   approval_date?: string;
   approved_by?: string;
   rejection_reason?: string;
@@ -138,6 +140,8 @@ const BudgetRequestPage = () => {
             category: 'Maintenance',
             requested_by: 'John Doe',
             request_date: '2024-03-15',
+            department: 'Maintenance',
+            requested_type: 'Regular',
             created_at: '2024-03-15T10:00:00Z'
           },
           {
@@ -149,6 +153,8 @@ const BudgetRequestPage = () => {
             category: 'Marketing',
             requested_by: 'Jane Smith',
             request_date: '2024-03-10',
+            department: 'Marketing',
+            requested_type: 'Regular',
             approval_date: '2024-03-12',
             approved_by: 'Finance Admin',
             created_at: '2024-03-10T14:30:00Z'
@@ -162,6 +168,8 @@ const BudgetRequestPage = () => {
             category: 'Training',
             requested_by: 'Mike Johnson',
             request_date: '2024-03-20',
+            department: 'Operations',
+            requested_type: 'Regular',
             created_at: '2024-03-20T09:15:00Z'
           },
           {
@@ -173,6 +181,8 @@ const BudgetRequestPage = () => {
             category: 'Equipment',
             requested_by: 'Sarah Wilson',
             request_date: '2024-03-08',
+            department: 'Operations',
+            requested_type: 'Project-Based',
             rejection_reason: 'Budget constraints for Q1',
             created_at: '2024-03-08T11:20:00Z'
           },
@@ -185,6 +195,8 @@ const BudgetRequestPage = () => {
             category: 'Infrastructure',
             requested_by: 'Tom Brown',
             request_date: '2024-02-25',
+            department: 'Infrastructure',
+            requested_type: 'Urgent',
             approval_date: '2024-02-28',
             approved_by: 'Finance Admin',
             created_at: '2024-02-25T16:45:00Z'
@@ -198,6 +210,8 @@ const BudgetRequestPage = () => {
             category: 'Operations',
             requested_by: 'David Lee',
             request_date: '2024-03-18',
+            department: 'Operations',
+            requested_type: 'Urgent',
             created_at: '2024-03-18T13:30:00Z'
           },
           {
@@ -209,6 +223,8 @@ const BudgetRequestPage = () => {
             category: 'Other',
             requested_by: 'Lisa Martinez',
             request_date: '2024-03-22',
+            department: 'Administration',
+            requested_type: 'Regular',
             created_at: '2024-03-22T08:45:00Z'
           },
           {
@@ -220,6 +236,8 @@ const BudgetRequestPage = () => {
             category: 'Equipment',
             requested_by: 'Robert Garcia',
             request_date: '2024-03-12',
+            department: 'Operations',
+            requested_type: 'Emergency',
             approval_date: '2024-03-14',
             approved_by: 'Operations Manager',
             created_at: '2024-03-12T10:20:00Z'
