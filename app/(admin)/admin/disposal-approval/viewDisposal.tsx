@@ -84,6 +84,11 @@ interface DisposalRecord {
   };
   
   // Revenue details
+  disposal_revenue?: {
+    disposal_value: number;
+    book_value: number;
+    gain_loss: number;
+  };
   revenue?: {
     disposalValue: number;
     bookValue: number;
