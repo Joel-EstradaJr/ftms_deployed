@@ -16,7 +16,7 @@ import RecordPayrollBatch from './recordPayrollBatch';
 import ViewPayrollBatch from './viewPayrollBatch';
 import ModalManager from '../../../../Components/modalManager';
 import ExportButton from '../../../../Components/ExportButton';
-import payrollService from '../../../../services/payrollService';
+import payrollService, { HrPayrollData } from '../../../../services/payrollService';
 
 const PayrollPage = () => {
   // State for payroll batches
@@ -71,7 +71,7 @@ const PayrollPage = () => {
           let totalDeductions = 0;
           let totalNet = 0;
 
-          const payrolls = batch.employees.map((employee) => {
+          const payrolls = batch.employees.map((employee: HrPayrollData) => {
             const grossEarnings = payrollService.calculateGrossEarnings(employee);
             const deductions = payrollService.calculateTotalDeductions(employee);
             const netPay = payrollService.calculateNetPay(employee);
