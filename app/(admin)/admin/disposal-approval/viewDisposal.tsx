@@ -17,14 +17,20 @@ interface DisposalRecord {
   
   // Stock details (if disposal type is stock)
   stock?: {
-    itemCode: string;
-    itemName: string;
-    unitOfMeasure: string;
-    category: string;
-    currentStock: number;
-    stockStatus: string;
-    stockRecordedDate: string;
-    description: string;
+    item_code: string;
+    item?: {
+      item_name: string;
+      unit?: {
+        unit_name: string;
+      };
+      category?: {
+        category_name: string;
+      };
+      description?: string;
+    };
+    current_stock: number;
+    status: string;
+    created_at: string;
   };
   
   // Batch details (if disposal type is batch)

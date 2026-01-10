@@ -24,14 +24,20 @@ interface DisposalRecord {
   
   // Stock details (if disposal type is stock)
   stock?: {
-    itemCode: string;
-    itemName: string;
-    unitOfMeasure: string;
-    category: string;
-    currentStock: number;
-    stockStatus: string;
-    stockRecordedDate: string;
-    description: string;
+    item_code: string;
+    item?: {
+      item_name: string;
+      unit?: {
+        unit_name: string;
+      };
+      category?: {
+        category_name: string;
+      };
+      description?: string;
+    };
+    current_stock: number;
+    status: string;
+    created_at: string;
   };
   
   // Batch details (if disposal type is batch)
@@ -259,38 +265,38 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <div className="form-row">
                 <div className="form-group">
                   <label>Item Code</label>
-                  <p>{disposal.stock.itemCode}</p>
+                  <p>{disposal.stock.item_code}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Item Name</label>
-                  <p>{disposal.stock.itemName}</p>
+                  <p>{disposal.stock.item?.item_name || '—'}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Unit of Measure</label>
-                  <p>{disposal.stock.unitOfMeasure}</p>
+                  <p>{disposal.stock.item?.unit?.unit_name || '—'}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Category</label>
-                  <p>{disposal.stock.category}</p>
+                  <p>{disposal.stock.item?.category?.category_name || '—'}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Current Stock</label>
-                  <p>{disposal.stock.currentStock}</p>
+                  <p>{disposal.stock.current_stock}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Stock Status</label>
                   <p>
-                    <span className={`chip ${disposal.stock.stockStatus.toLowerCase()}`}>
-                      {disposal.stock.stockStatus}
+                    <span className={`chip ${disposal.stock.status.toLowerCase()}`}>
+                      {disposal.stock.status}
                     </span>
                   </p>
                 </div>
@@ -299,13 +305,13 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <div className="form-row">
                 <div className="form-group">
                   <label>Stock Recorded Date</label>
-                  <p>{formatDate(disposal.stock.stockRecordedDate)}</p>
+                  <p>{formatDate(disposal.stock.created_at)}</p>
                 </div>
               </div>
 
               <div className="form-group">
                 <label>Stock Description</label>
-                <p>{disposal.stock.description || '—'}</p>
+                <p>{disposal.stock.item?.description || '—'}</p>
               </div>
             </div>
           </div>
