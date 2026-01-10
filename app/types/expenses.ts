@@ -208,6 +208,11 @@ export interface AdministrativeExpenseFilters {
     to?: string;
   };
   expense_type?: string;
+  status?: string;
+  amountRange?: {
+    min?: string;
+    max?: string;
+  };
 }
 
 export interface PurchaseExpenseFilters {

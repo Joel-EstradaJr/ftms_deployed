@@ -113,8 +113,8 @@ export async function fetchJournalEntries(
     // Add optional filters
     if (params.dateFrom) queryParams.dateFrom = params.dateFrom;
     if (params.dateTo) queryParams.dateTo = params.dateTo;
-    if (params.status && params.status !== '') queryParams.status = params.status;
-    if (params.entry_type && params.entry_type !== '') queryParams.entry_type = params.entry_type;
+    if (params.status && params.status !== '' as any) queryParams.status = params.status;
+    if (params.entry_type && params.entry_type !== '' as any) queryParams.entry_type = params.entry_type;
     if (params.code) queryParams.code = params.code;
     if (params.reference) queryParams.reference = params.reference;
     if (params.description) queryParams.description = params.description;

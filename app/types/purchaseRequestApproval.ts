@@ -104,7 +104,6 @@ export interface SupplierItem {
   item_code?: string;
   supplier_name?: string;
   item_name?: string;
-  unit_cost?: number;             // Alias for unit_cost
   status?: string;
 }
 
@@ -141,7 +140,6 @@ export interface PurchaseRequestItem {
   new_supplier_contact?: string;
   new_supplier_email?: string;
   new_supplier_address?: string;
-  new_unit_cost?: number;                 // Alias for new_unit_cost
   unit_cost?: number;                     // Computed from supplier_item
   total_amount?: number;                  // Computed from quantity * unit_cost
   

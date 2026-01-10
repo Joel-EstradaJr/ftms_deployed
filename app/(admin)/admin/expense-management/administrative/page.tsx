@@ -358,11 +358,11 @@ const AdministrativeExpensePage: React.FC = () => {
       }
 
       if (filters.amountRange?.min) {
-        filtered = filtered.filter((exp) => exp.amount >= Number(filters.amountRange.min));
+        filtered = filtered.filter((exp) => exp.amount >= Number(filters.amountRange!.min));
       }
 
       if (filters.amountRange?.max) {
-        filtered = filtered.filter((exp) => exp.amount <= Number(filters.amountRange.max));
+        filtered = filtered.filter((exp) => exp.amount <= Number(filters.amountRange!.max));
       }
 
       if (filters.dateRange?.from) {
