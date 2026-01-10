@@ -104,7 +104,6 @@ export interface SupplierItem {
   item_code?: string;
   supplier_name?: string;
   item_name?: string;
-  unit_cost?: number;             // Alias for unit_cost
   status?: string;
 }
 
