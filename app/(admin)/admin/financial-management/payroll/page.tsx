@@ -16,6 +16,7 @@ import RecordPayrollBatch from './recordPayrollBatch';
 import ViewPayrollBatch from './viewPayrollBatch';
 import ModalManager from '../../../../Components/modalManager';
 import ExportButton from '../../../../Components/ExportButton';
+import payrollService from '../../../../services/payrollService';
 
 const PayrollPage = () => {
   // State for payroll batches
@@ -54,49 +55,106 @@ const PayrollPage = () => {
       }
       setError(null);
       
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll/batches
-      console.warn('API integration pending - using mock payroll batch data');
-      
-      // Mock data for demonstration
-      const mockBatches: PayrollBatch[] = [
-        {
-          id: '1',
-          payroll_period_code: 'PAY-202511-001',
-          period_start: '2025-11-01',
-          period_end: '2025-11-30',
-          totalGross: 150000,
-          totalDeductions: 30000,
-          total_net: 120000,
-          total_employees: 5,
-          status: 'PENDING',
-          createdBy: 'Admin User',
-          createdAt: '2025-11-20T10:00:00Z',
-          payrolls: [
-            {
-              id: 'p1',
-              batchId: '1',
-              employeeId: 'EMP-001',
-              baseSalary: 15600,
-              allowances: 2000,
-              deductions: 1500,
-              netPay: 16100,
-              isDisbursed: false,
-              createdAt: '2025-11-20T10:00:00Z',
-              employee: {
-                employeeNumber: 'EMP-001',
-                firstName: 'Juan',
-                lastName: 'Dela Cruz',
-                department: 'Operations',
-                position: 'Driver',
-                status: 'active'
+      // Fetch HR payroll data from integration endpoint
+      try {
+        const hrPayrollData = await payrollService.fetchHrPayroll();
+        
+        // Transform HR payroll data to PayrollBatch format for display
+        // Group by employee for demonstration (you may want to group by period)
+        const transformedBatches: PayrollBatch[] = hrPayrollData.map((data, index) => {
+          const grossEarnings = payrollService.calculateGrossEarnings(data);
+          const totalDeductions = payrollService.calculateTotalDeductions(data);
+          const netPay = payrollService.calculateNetPay(data);
+          const presentDays = payrollService.getPresentDays(data);
+
+          return {
+            id: `batch-${index + 1}`,
+            payroll_period_code: `PAY-${data.payroll_period_start || new Date().toISOString().slice(0,7)}-${String(index + 1).padStart(3, '0')}`,
+            period_start: data.payroll_period_start || new Date().toISOString().split('T')[0],
+            period_end: data.payroll_period_end || new Date().toISOString().split('T')[0],
+            totalGross: grossEarnings,
+            totalDeductions: totalDeductions,
+            total_net: netPay,
+            total_employees: 1, // One employee per record
+            status: 'PENDING',
+            createdBy: 'Admin User',
+            createdAt: new Date().toISOString(),
+            payrolls: [
+              {
+                id: `p${index + 1}`,
+                batchId: `batch-${index + 1}`,
+                employeeId: data.employee_number,
+                baseSalary: parseFloat(data.basic_rate),
+                allowances: payrollService.getBenefitsByType(data).size > 0 
+                  ? Array.from(payrollService.getBenefitsByType(data).values()).reduce((a, b) => a + b, 0)
+                  : 0,
+                deductions: totalDeductions,
+                netPay: netPay,
+                isDisbursed: false,
+                createdAt: new Date().toISOString(),
+                employee: {
+                  employeeNumber: data.employee_number,
+                  firstName: data.employee_number, // Replace with actual name if available
+                  lastName: '',
+                  department: 'N/A',
+                  position: data.rate_type,
+                  status: 'active'
+                },
+                hrPayrollData: data // Store the complete HR data
               }
-            }
-          ]
-        }
-      ];
-      
-      setBatches(mockBatches);
-      setTotalPages(Math.ceil(mockBatches.length / pageSize));
+            ]
+          };
+        });
+        
+        setBatches(transformedBatches);
+        setTotalPages(Math.ceil(transformedBatches.length / pageSize));
+        
+        console.log('✅ HR Payroll data loaded successfully:', transformedBatches.length, 'records');
+      } catch (apiError) {
+        console.error('HR Payroll API error:', apiError);
+        // Fallback to mock data if API fails
+        console.warn('Using fallback mock data due to API error');
+        
+        const mockBatches: PayrollBatch[] = [
+          {
+            id: '1',
+            payroll_period_code: 'PAY-202511-001',
+            period_start: '2025-11-01',
+            period_end: '2025-11-30',
+            totalGross: 150000,
+            totalDeductions: 30000,
+            total_net: 120000,
+            total_employees: 5,
+            status: 'PENDING',
+            createdBy: 'Admin User',
+            createdAt: '2025-11-20T10:00:00Z',
+            payrolls: [
+              {
+                id: 'p1',
+                batchId: '1',
+                employeeId: 'EMP-001',
+                baseSalary: 15600,
+                allowances: 2000,
+                deductions: 1500,
+                netPay: 16100,
+                isDisbursed: false,
+                createdAt: '2025-11-20T10:00:00Z',
+                employee: {
+                  employeeNumber: 'EMP-001',
+                  firstName: 'Juan',
+                  lastName: 'Dela Cruz',
+                  department: 'Operations',
+                  position: 'Driver',
+                  status: 'active'
+                }
+              }
+            ]
+          }
+        ];
+        
+        setBatches(mockBatches);
+        setTotalPages(Math.ceil(mockBatches.length / pageSize));
+      }
       
       if (isSearch) {
         setSearchLoading(false);

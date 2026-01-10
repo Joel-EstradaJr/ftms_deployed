@@ -2,14 +2,27 @@
 // Payroll-specific types aligned with app/types/payroll.ts
 
 import { PayrollBatch, Payroll, CachedEmployee, CachedPayrollData } from '@/app/types/payroll';
+import { HrPayrollData } from '@/app/services/payrollService';
 
 // Re-export main types for convenience
 export type { PayrollBatch, Payroll, CachedEmployee, CachedPayrollData };
+
+// Re-export HR Payroll types
+export type { HrPayrollData };
 
 // Employee with payroll data for selection
 export interface EmployeeWithPayroll extends CachedEmployee {
   payrollData: CachedPayrollData;
   fullName: string;
+}
+
+// Employee with HR payroll data
+export interface EmployeeWithHrPayroll {
+  employee_number: string;
+  employee_name: string;
+  department: string;
+  position: string;
+  hrPayrollData: HrPayrollData;
 }
 
 // Form data for creating/editing payroll batch
@@ -49,3 +62,4 @@ export interface PayrollBatchApiResponse {
   error?: string;
   message?: string;
 }
+

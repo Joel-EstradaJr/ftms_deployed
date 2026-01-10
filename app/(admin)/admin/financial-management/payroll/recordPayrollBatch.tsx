@@ -5,6 +5,7 @@ import { PayrollBatchFormData, PayrollFormData, PayrollBatchFormErrors, Employee
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showWarning, showConfirmation, showSuccess, showError } from '../../../../utils/Alerts';
 import { validateField } from '../../../../utils/validation';
+import payrollService from '../../../../services/payrollService';
 import '@/styles/components/modal2.css';
 import '@/styles/components/forms.css';
 import '@/styles/components/chips.css';
@@ -69,11 +70,54 @@ export default function RecordPayrollBatch({
     const fetchEmployees = async () => {
       setLoadingEmployees(true);
       try {
-        // TODO: Replace with actual API call to ftms_backend
-        // const response = await fetch('/api/hr/employees-with-payroll');
-        // const data = await response.json();
+        // Fetch HR payroll data from integration endpoint
+        const hrPayrollData = await payrollService.fetchHrPayroll();
         
-        // Mock data for now
+        // Transform HR payroll data to EmployeeWithPayroll format
+        const transformedEmployees: EmployeeWithPayroll[] = hrPayrollData.map((data) => {
+          const basicRate = parseFloat(data.basic_rate);
+          const totalBenefits = data.benefits
+            .filter(b => b.is_active)
+            .reduce((sum, b) => sum + parseFloat(b.value), 0);
+          const totalDeductions = data.deductions
+            .filter(d => d.is_active)
+            .reduce((sum, d) => sum + parseFloat(d.value), 0);
+
+          // Map rate type from backend format
+          const rateTypeMap: Record<string, 'MONTHLY' | 'SEMI_MONTHLY' | 'WEEKLY'> = {
+            'Monthly': 'MONTHLY',
+            'Semi-Monthly': 'SEMI_MONTHLY',
+            'Weekly': 'WEEKLY',
+            'Daily': 'MONTHLY' // Default daily to monthly for this context
+          };
+
+          return {
+            employeeNumber: data.employee_number,
+            firstName: data.employee_number, // Using employee number as placeholder
+            middleName: '',
+            lastName: '',
+            suffix: '',
+            department: 'N/A',
+            position: data.rate_type,
+            status: 'active',
+            fullName: `Employee ${data.employee_number}`,
+            payrollData: {
+              employeeNumber: data.employee_number,
+              basicRate: basicRate,
+              totalMonthlyBenefits: totalBenefits,
+              totalMonthlyDeductions: totalDeductions,
+              payrollPeriod: rateTypeMap[data.rate_type] || 'MONTHLY'
+            }
+          };
+        });
+        
+        setEmployees(transformedEmployees);
+        console.log('✅ Loaded HR payroll data for', transformedEmployees.length, 'employees');
+      } catch (error) {
+        console.error('Failed to load HR payroll data:', error);
+        showError('Failed to load employee payroll data. Using fallback data.', 'Warning');
+        
+        // Fallback to mock data
         const mockEmployees: EmployeeWithPayroll[] = [
           {
             employeeNumber: 'EMP-001',
@@ -114,8 +158,6 @@ export default function RecordPayrollBatch({
         ];
         
         setEmployees(mockEmployees);
-      } catch (error) {
-        showError('Failed to load employee data', 'Error');
       } finally {
         setLoadingEmployees(false);
       }

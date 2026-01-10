@@ -38,6 +38,8 @@ export interface Payroll {
   // Relations
   batch?: PayrollBatch;
   employee?: CachedEmployee;
+  // HR Payroll Integration Data
+  hrPayrollData?: any; // HrPayrollData from payrollService
 }
 
 export interface CachedEmployee {

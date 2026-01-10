@@ -6,6 +6,7 @@ import { PayrollBatch, Payroll } from './types';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showConfirmation, showSuccess, showError } from '../../../../utils/Alerts';
 import ViewPayslipModal from './viewPayslip';
+import payrollService from '../../../../services/payrollService';
 import {
   calculateEarnings,
   calculateDeductions,
