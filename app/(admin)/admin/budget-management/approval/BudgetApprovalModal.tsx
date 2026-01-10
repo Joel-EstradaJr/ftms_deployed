@@ -35,7 +35,7 @@ export default function BudgetApprovalModal({
       item_name: item.item_name,
       quantity: item.quantity,
       unit_measure: item.unit_measure,
-      unit_price: item.unit_cost,
+      unit_cost: item.unit_cost,
       supplier_name: item.supplier,
       subtotal: item.subtotal
     }));

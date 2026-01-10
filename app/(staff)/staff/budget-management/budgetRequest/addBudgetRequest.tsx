@@ -55,44 +55,44 @@ const mockPurchaseRequests: MockPurchaseRequest[] = [
     code: 'PR-2026-001',
     department: 'Operations',
     items: [
-      { item_name: 'Diesel Fuel', quantity: 500, unit_measure: 'liters', unit_price: 65.50, supplier_name: 'Shell Gas Station', subtotal: 32750.00 },
-      { item_name: 'Engine Oil (15W-40)', quantity: 20, unit_measure: 'liters', unit_price: 450.00, supplier_name: 'Auto Parts Plus', subtotal: 9000.00 },
-      { item_name: 'Brake Pads Set', quantity: 10, unit_measure: 'sets', unit_price: 2500.00, supplier_name: 'Auto Parts Plus', subtotal: 25000.00 },
+      { item_name: 'Diesel Fuel', quantity: 500, unit_measure: 'liters', unit_cost: 65.50, supplier_name: 'Shell Gas Station', subtotal: 32750.00 },
+      { item_name: 'Engine Oil (15W-40)', quantity: 20, unit_measure: 'liters', unit_cost: 450.00, supplier_name: 'Auto Parts Plus', subtotal: 9000.00 },
+      { item_name: 'Brake Pads Set', quantity: 10, unit_measure: 'sets', unit_cost: 2500.00, supplier_name: 'Auto Parts Plus', subtotal: 25000.00 },
     ]
   },
   {
     code: 'PR-2026-002',
     department: 'Administration',
     items: [
-      { item_name: 'Printer Paper A4 (Ream)', quantity: 50, unit_measure: 'boxes', unit_price: 185.00, supplier_name: 'Office Depot', subtotal: 9250.00 },
-      { item_name: 'Ballpoint Pens (Box of 50)', quantity: 10, unit_measure: 'boxes', unit_price: 350.00, supplier_name: 'Office Depot', subtotal: 3500.00 },
-      { item_name: 'Stapler (Heavy Duty)', quantity: 15, unit_measure: 'pcs', unit_price: 425.00, supplier_name: 'Office Supplies Co.', subtotal: 6375.00 },
-      { item_name: 'File Folders (Pack of 100)', quantity: 5, unit_measure: 'pcs', unit_price: 650.00, supplier_name: 'Office Depot', subtotal: 3250.00 },
+      { item_name: 'Printer Paper A4 (Ream)', quantity: 50, unit_measure: 'boxes', unit_cost: 185.00, supplier_name: 'Office Depot', subtotal: 9250.00 },
+      { item_name: 'Ballpoint Pens (Box of 50)', quantity: 10, unit_measure: 'boxes', unit_cost: 350.00, supplier_name: 'Office Depot', subtotal: 3500.00 },
+      { item_name: 'Stapler (Heavy Duty)', quantity: 15, unit_measure: 'pcs', unit_cost: 425.00, supplier_name: 'Office Supplies Co.', subtotal: 6375.00 },
+      { item_name: 'File Folders (Pack of 100)', quantity: 5, unit_measure: 'pcs', unit_cost: 650.00, supplier_name: 'Office Depot', subtotal: 3250.00 },
     ]
   },
   {
     code: 'PR-2026-003',
     department: 'Maintenance',
     items: [
-      { item_name: 'Air Filter (Heavy Duty)', quantity: 25, unit_measure: 'pcs', unit_price: 850.00, supplier_name: 'Bus Parts Supplier', subtotal: 21250.00 },
-      { item_name: 'Tire (22.5 Radial)', quantity: 12, unit_measure: 'pcs', unit_price: 15500.00, supplier_name: 'Tire World', subtotal: 186000.00 },
+      { item_name: 'Air Filter (Heavy Duty)', quantity: 25, unit_measure: 'pcs', unit_cost: 850.00, supplier_name: 'Bus Parts Supplier', subtotal: 21250.00 },
+      { item_name: 'Tire (22.5 Radial)', quantity: 12, unit_measure: 'pcs', unit_cost: 15500.00, supplier_name: 'Tire World', subtotal: 186000.00 },
     ]
   },
   {
     code: 'PR-2026-004',
     department: 'Finance',
     items: [
-      { item_name: 'Accounting Software License (Annual)', quantity: 1, unit_measure: 'pcs', unit_price: 45000.00, supplier_name: 'SoftTech Solutions', subtotal: 45000.00 },
-      { item_name: 'Financial Calculator', quantity: 8, unit_measure: 'pcs', unit_price: 2500.00, supplier_name: 'Office Supplies Co.', subtotal: 20000.00 },
+      { item_name: 'Accounting Software License (Annual)', quantity: 1, unit_measure: 'pcs', unit_cost: 45000.00, supplier_name: 'SoftTech Solutions', subtotal: 45000.00 },
+      { item_name: 'Financial Calculator', quantity: 8, unit_measure: 'pcs', unit_cost: 2500.00, supplier_name: 'Office Supplies Co.', subtotal: 20000.00 },
     ]
   },
   {
     code: 'PR-2026-005',
     department: 'Operations',
     items: [
-      { item_name: 'GPS Tracking Device', quantity: 15, unit_measure: 'pcs', unit_price: 8500.00, supplier_name: 'Tech Innovations Inc.', subtotal: 127500.00 },
-      { item_name: 'Two-Way Radio Set', quantity: 20, unit_measure: 'sets', unit_price: 3500.00, supplier_name: 'Communications Corp', subtotal: 70000.00 },
-      { item_name: 'Fire Extinguisher (5kg)', quantity: 30, unit_measure: 'pcs', unit_price: 1200.00, supplier_name: 'Safety First Supplies', subtotal: 36000.00 },
+      { item_name: 'GPS Tracking Device', quantity: 15, unit_measure: 'pcs', unit_cost: 8500.00, supplier_name: 'Tech Innovations Inc.', subtotal: 127500.00 },
+      { item_name: 'Two-Way Radio Set', quantity: 20, unit_measure: 'sets', unit_cost: 3500.00, supplier_name: 'Communications Corp', subtotal: 70000.00 },
+      { item_name: 'Fire Extinguisher (5kg)', quantity: 30, unit_measure: 'pcs', unit_cost: 1200.00, supplier_name: 'Safety First Supplies', subtotal: 36000.00 },
     ]
   },
 ];
@@ -102,7 +102,7 @@ const budgetItemToItemField = (item: BudgetItem): ItemField => ({
   item_name: item.item_name,
   quantity: item.quantity,
   unit_measure: item.unit_measure,
-  unit_price: item.unit_cost,
+  unit_cost: item.unit_cost,
   supplier_name: item.supplier,
   subtotal: item.subtotal
 });
@@ -111,7 +111,7 @@ const itemFieldToBudgetItem = (item: ItemField): BudgetItem => ({
   item_name: item.item_name || '',
   quantity: item.quantity || 0,
   unit_measure: item.unit_measure || '',
-  unit_cost: item.unit_price || 0,
+  unit_cost: item.unit_cost || 0,
   supplier: item.supplier_name || '',
   subtotal: item.subtotal || 0
 });
@@ -655,7 +655,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                   title="Budget Items"
                   items={items.map(budgetItemToItemField)}
                   onSave={handleItemsSave}
-                  requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_price', 'supplier_name']}
+                  requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_cost', 'supplier_name']}
                   isLinkedToPurchaseRequest={isLinkedToPurchaseRequest}
                   embedded={true}
                 />

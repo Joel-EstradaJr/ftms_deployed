@@ -86,9 +86,9 @@ export default function PurchaseApprovalModal({
     item_name: item.item?.item_name || item.new_item || item.new_item_name || 'N/A',
     quantity: item.quantity,
     unit_measure: item.item?.unit?.unit_name || item.new_unit || 'N/A',
-    unit_cost: item.unit_cost || item.supplier_item?.unit_price || item.new_unit_price || item.new_unit_cost || 0,
+    unit_cost: item.unit_cost || item.supplier_item?.unit_cost || item.new_unit_cost || item.new_unit_cost || 0,
     supplier: item.supplier?.supplier_name || item.new_supplier || item.new_supplier_name || 'N/A',
-    subtotal: item.total_amount || (item.quantity * (item.unit_cost || item.supplier_item?.unit_price || item.new_unit_price || item.new_unit_cost || 0)),
+    subtotal: item.total_amount || (item.quantity * (item.unit_cost || item.supplier_item?.unit_cost || item.new_unit_cost || item.new_unit_cost || 0)),
     type: 'supply' as const
   }));
 

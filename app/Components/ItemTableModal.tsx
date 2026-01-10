@@ -21,17 +21,17 @@ import '@/styles/components/table.css';
  * - supplier_name           → items[].supplier.supplier_name OR items[].new_supplier
  * - supplier_unit_measure   → items[].supplier_item.supplier_unit.unit_name OR items[].new_unit
  * - conversion              → items[].supplier_item.conversion_amount
- * - unit_price              → items[].supplier_item.unit_price OR items[].new_unit_price
+ * - unit_cost              → items[].supplier_item.unit_cost OR items[].new_unit_cost
  * - quantity                → items[].quantity
- * - subtotal                → calculated (quantity * unit_price)
+ * - subtotal                → calculated (quantity * unit_cost)
  * 
  * When isLinkedToPurchaseRequest = false (Manual Entry Mode):
  * - quantity                → User input
  * - item_name               → User input
  * - unit_measure            → User input
- * - unit_price              → User input
+ * - unit_cost              → User input
  * - supplier_name           → User input
- * - subtotal                → Calculated (quantity * unit_price)
+ * - subtotal                → Calculated (quantity * unit_cost)
  */
 export interface ItemField {
   code?: string;
@@ -43,7 +43,7 @@ export interface ItemField {
   supplier_name?: string;
   supplier_unit_measure?: string;
   conversion?: number;
-  unit_price?: number;
+  unit_cost?: number;
   subtotal?: number;
   quantity?: number;
   [key: string]: any;
@@ -79,10 +79,10 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
   // Field visibility configuration based on purchase request link status
   const getVisibleFields = (): string[] => {
     if (!isLinkedToPurchaseRequest) {
-      return ['quantity', 'item_name', 'unit_measure', 'unit_price', 'supplier_name', 'subtotal'];
+      return ['quantity', 'item_name', 'unit_measure', 'unit_cost', 'supplier_name', 'subtotal'];
     }
     // PR-linked shows all fields
-    return ['code', 'department', 'item_code', 'item_name', 'unit_measure', 'supplier_code', 'supplier_name', 'supplier_unit_measure', 'conversion', 'unit_price', 'quantity', 'subtotal'];
+    return ['code', 'department', 'item_code', 'item_name', 'unit_measure', 'supplier_code', 'supplier_name', 'supplier_unit_measure', 'conversion', 'unit_cost', 'quantity', 'subtotal'];
   };
 
   const visibleFields = getVisibleFields();
@@ -103,7 +103,7 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
     supplier_name: '',
     supplier_unit_measure: '',
     conversion: 1,
-    unit_price: 0,
+    unit_cost: 0,
     subtotal: 0,
     quantity: 0
   });
@@ -113,11 +113,11 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
   }, [initialItems]);
 
   useEffect(() => {
-    const calculatedSubtotal = (formData.quantity || 0) * (formData.unit_price || 0);
+    const calculatedSubtotal = (formData.quantity || 0) * (formData.unit_cost || 0);
     if (formData.subtotal !== calculatedSubtotal) {
       setFormData(prev => ({ ...prev, subtotal: calculatedSubtotal }));
     }
-  }, [formData.quantity, formData.unit_price]);
+  }, [formData.quantity, formData.unit_cost]);
 
   const isReadOnly = (fieldName: string) => {
     return mode === 'view' || readOnlyFields.includes(fieldName);
@@ -149,7 +149,7 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
       supplier_name: '',
       supplier_unit_measure: '',
       conversion: 1,
-      unit_price: 0,
+      unit_cost: 0,
       subtotal: 0,
       quantity: 0
     });
@@ -268,8 +268,8 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
                   <input type="number" value={formData.conversion || 1} onChange={(e) => handleFieldChange('conversion', parseFloat(e.target.value) || 1)} disabled={isReadOnly('conversion')} min="0" step="0.01" />
                 </div>
                 <div className="form-group">
-                  <label>Unit Price {isRequired('unit_price') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="number" value={formData.unit_price || 0} onChange={(e) => handleFieldChange('unit_price', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_price')} min="0" step="0.01" />
+                  <label>Unit Price {isRequired('unit_cost') && <span style={{ color: 'red' }}>*</span>}</label>
+                  <input type="number" value={formData.unit_cost || 0} onChange={(e) => handleFieldChange('unit_cost', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_cost')} min="0" step="0.01" />
                 </div>
               </div>
 
@@ -304,8 +304,8 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
                   <input type="text" value={formData.unit_measure || ''} onChange={(e) => handleFieldChange('unit_measure', e.target.value)} disabled={isReadOnly('unit_measure')} placeholder="e.g., pcs, kg" />
                 </div>
                 <div className="form-group">
-                  <label>Unit Cost {isRequired('unit_price') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="number" value={formData.unit_price || 0} onChange={(e) => handleFieldChange('unit_price', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_price')} min="0" step="0.01" />
+                  <label>Unit Cost {isRequired('unit_cost') && <span style={{ color: 'red' }}>*</span>}</label>
+                  <input type="number" value={formData.unit_cost || 0} onChange={(e) => handleFieldChange('unit_cost', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_cost')} min="0" step="0.01" />
                 </div>
               </div>
 
@@ -372,7 +372,7 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
                         <>
                           <td>{item.item_name || 'N/A'}</td>
                           <td>{item.quantity || 0}</td>
-                          <td>₱{(item.unit_price || 0).toFixed(2)}</td>
+                          <td>₱{(item.unit_cost || 0).toFixed(2)}</td>
                           <td>₱{(item.subtotal || 0).toFixed(2)}</td>
                         </>
                       ) : (
@@ -380,7 +380,7 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
                           <td>{item.item_name || 'N/A'}</td>
                           <td>{item.quantity || 0}</td>
                           <td>{item.unit_measure || 'N/A'}</td>
-                          <td>₱{(item.unit_price || 0).toFixed(2)}</td>
+                          <td>₱{(item.unit_cost || 0).toFixed(2)}</td>
                           <td>{item.supplier_name || 'N/A'}</td>
                           <td>₱{(item.subtotal || 0).toFixed(2)}</td>
                         </>

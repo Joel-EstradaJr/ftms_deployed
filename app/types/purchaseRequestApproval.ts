@@ -94,7 +94,7 @@ export interface Supplier {
 }
 
 export interface SupplierItem {
-  unit_price?: number;             // Maps to unit_cost (optional for backward compatibility)
+  unit_cost?: number;             // Maps to unit_cost (optional for backward compatibility)
   supplier_unit?: Unit;            // Unit used by supplier (optional for backward compatibility)
   conversion_amount?: number;      // Conversion factor between units (optional for backward compatibility)
   
@@ -104,7 +104,7 @@ export interface SupplierItem {
   item_code?: string;
   supplier_name?: string;
   item_name?: string;
-  unit_cost?: number;             // Alias for unit_price
+  unit_cost?: number;             // Alias for unit_cost
   status?: string;
 }
 
@@ -129,7 +129,7 @@ export interface PurchaseRequestItem {
   new_item?: string;                      // Raw item name
   new_supplier?: string;                  // Raw supplier name
   new_unit?: string;                      // Raw unit name
-  new_unit_price?: number;                // Raw unit price
+  new_unit_cost?: number;                // Raw unit price
   
   // For backward compatibility
   purchase_request_item_id?: string;      // Alias for purchase_request_item_code
@@ -141,7 +141,7 @@ export interface PurchaseRequestItem {
   new_supplier_contact?: string;
   new_supplier_email?: string;
   new_supplier_address?: string;
-  new_unit_cost?: number;                 // Alias for new_unit_price
+  new_unit_cost?: number;                 // Alias for new_unit_cost
   unit_cost?: number;                     // Computed from supplier_item
   total_amount?: number;                  // Computed from quantity * unit_cost
   

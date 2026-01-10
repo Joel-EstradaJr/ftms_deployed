@@ -52,7 +52,7 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
 
   // Get unit price
   const getUnitPrice = (item: PurchaseRequestItem) => {
-    return item.supplier_item?.unit_price || item.new_unit_price || item.unit_cost || 0;
+    return item.supplier_item?.unit_cost || item.new_unit_cost || item.unit_cost || 0;
   };
 
   // Calculate total amount

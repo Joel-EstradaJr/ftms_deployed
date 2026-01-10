@@ -63,7 +63,7 @@ const AuditTrailPurchaseRequest: React.FC<AuditTrailPurchaseRequestProps> = ({
           new_value: 8
         },
         {
-          field: 'unit_price',
+          field: 'unit_cost',
           old_value: 450.00,
           new_value: 420.00
         },
@@ -246,7 +246,7 @@ const AuditTrailPurchaseRequest: React.FC<AuditTrailPurchaseRequestProps> = ({
     const fieldName = change.field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     
     // Handle different field types for purchase requests
-    if (change.field === 'unit_price' || change.field === 'total_amount') {
+    if (change.field === 'unit_cost' || change.field === 'total_amount') {
       return `${fieldName}: ₱${Number(change.old_value).toLocaleString()} → ₱${Number(change.new_value).toLocaleString()}`;
     }
     

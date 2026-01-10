@@ -133,7 +133,7 @@ export default function PurchaseApprovalTab({
             email: "sales@autoparts-express.ph"
           },
           supplier_item: {
-            unit_price: 3500.00,
+            unit_cost: 3500.00,
             supplier_unit: {
               unit_id: "unit_001",
               unit_code: "PCS",
@@ -180,7 +180,7 @@ export default function PurchaseApprovalTab({
             email: "sales@autoparts-express.ph"
           },
           supplier_item: {
-            unit_price: 450.00,
+            unit_cost: 450.00,
             supplier_unit: {
               unit_id: "unit_003",
               unit_code: "BOX",
@@ -205,7 +205,7 @@ export default function PurchaseApprovalTab({
           new_item: "Brake Pads - Heavy Duty Front Set",
           new_supplier: "Metro Auto Supplies",
           new_unit: "set",
-          new_unit_price: 740.00
+          new_unit_cost: 740.00
         }
       ]
     },
@@ -276,7 +276,7 @@ export default function PurchaseApprovalTab({
             email: "orders@techworld.ph"
           },
           supplier_item: {
-            unit_price: 35000.00,
+            unit_cost: 35000.00,
             supplier_unit: {
               unit_id: "unit_004",
               unit_code: "UNIT",
@@ -323,7 +323,7 @@ export default function PurchaseApprovalTab({
             email: "orders@techworld.ph"
           },
           supplier_item: {
-            unit_price: 8500.00,
+            unit_cost: 8500.00,
             supplier_unit: {
               unit_id: "unit_004",
               unit_code: "UNIT",
@@ -465,7 +465,7 @@ export default function PurchaseApprovalTab({
             email: "sales@netsolutions.ph"
           },
           supplier_item: {
-            unit_price: 4500.00,
+            unit_cost: 4500.00,
             supplier_unit: {
               unit_id: "unit_004",
               unit_code: "UNIT",
@@ -514,7 +514,7 @@ export default function PurchaseApprovalTab({
             email: "sales@netsolutions.ph"
           },
           supplier_item: {
-            unit_price: 42.50,
+            unit_cost: 42.50,
             supplier_unit: {
               unit_id: "unit_006",
               unit_code: "ROLL",
