@@ -6,6 +6,7 @@ import { formatDate } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
 import { validateField, isValidAmount, ValidationRule } from "../../../../utils/validation";
 import ModalHeader from '../../../../Components/ModalHeader';
+import ItemTableModal, { ItemField } from '../../../../Components/ItemTableModal';
 
 // Types
 interface BudgetItem {
@@ -42,6 +43,79 @@ interface AddBudgetRequestProps {
 
 type FieldName = 'title' | 'description' | 'total_amount' | 'start_date' | 'end_date' | 'budget_period';
 
+// Mock Purchase Request Data
+interface MockPurchaseRequest {
+  code: string;
+  department: string;
+  items: ItemField[];
+}
+
+const mockPurchaseRequests: MockPurchaseRequest[] = [
+  {
+    code: 'PR-2026-001',
+    department: 'Operations',
+    items: [
+      { item_name: 'Diesel Fuel', quantity: 500, unit_measure: 'liters', unit_cost: 65.50, supplier_name: 'Shell Gas Station', subtotal: 32750.00 },
+      { item_name: 'Engine Oil (15W-40)', quantity: 20, unit_measure: 'liters', unit_cost: 450.00, supplier_name: 'Auto Parts Plus', subtotal: 9000.00 },
+      { item_name: 'Brake Pads Set', quantity: 10, unit_measure: 'sets', unit_cost: 2500.00, supplier_name: 'Auto Parts Plus', subtotal: 25000.00 },
+    ]
+  },
+  {
+    code: 'PR-2026-002',
+    department: 'Administration',
+    items: [
+      { item_name: 'Printer Paper A4 (Ream)', quantity: 50, unit_measure: 'boxes', unit_cost: 185.00, supplier_name: 'Office Depot', subtotal: 9250.00 },
+      { item_name: 'Ballpoint Pens (Box of 50)', quantity: 10, unit_measure: 'boxes', unit_cost: 350.00, supplier_name: 'Office Depot', subtotal: 3500.00 },
+      { item_name: 'Stapler (Heavy Duty)', quantity: 15, unit_measure: 'pcs', unit_cost: 425.00, supplier_name: 'Office Supplies Co.', subtotal: 6375.00 },
+      { item_name: 'File Folders (Pack of 100)', quantity: 5, unit_measure: 'pcs', unit_cost: 650.00, supplier_name: 'Office Depot', subtotal: 3250.00 },
+    ]
+  },
+  {
+    code: 'PR-2026-003',
+    department: 'Maintenance',
+    items: [
+      { item_name: 'Air Filter (Heavy Duty)', quantity: 25, unit_measure: 'pcs', unit_cost: 850.00, supplier_name: 'Bus Parts Supplier', subtotal: 21250.00 },
+      { item_name: 'Tire (22.5 Radial)', quantity: 12, unit_measure: 'pcs', unit_cost: 15500.00, supplier_name: 'Tire World', subtotal: 186000.00 },
+    ]
+  },
+  {
+    code: 'PR-2026-004',
+    department: 'Finance',
+    items: [
+      { item_name: 'Accounting Software License (Annual)', quantity: 1, unit_measure: 'pcs', unit_cost: 45000.00, supplier_name: 'SoftTech Solutions', subtotal: 45000.00 },
+      { item_name: 'Financial Calculator', quantity: 8, unit_measure: 'pcs', unit_cost: 2500.00, supplier_name: 'Office Supplies Co.', subtotal: 20000.00 },
+    ]
+  },
+  {
+    code: 'PR-2026-005',
+    department: 'Operations',
+    items: [
+      { item_name: 'GPS Tracking Device', quantity: 15, unit_measure: 'pcs', unit_cost: 8500.00, supplier_name: 'Tech Innovations Inc.', subtotal: 127500.00 },
+      { item_name: 'Two-Way Radio Set', quantity: 20, unit_measure: 'sets', unit_cost: 3500.00, supplier_name: 'Communications Corp', subtotal: 70000.00 },
+      { item_name: 'Fire Extinguisher (5kg)', quantity: 30, unit_measure: 'pcs', unit_cost: 1200.00, supplier_name: 'Safety First Supplies', subtotal: 36000.00 },
+    ]
+  },
+];
+
+// Field mapping utilities
+const budgetItemToItemField = (item: BudgetItem): ItemField => ({
+  item_name: item.item_name,
+  quantity: item.quantity,
+  unit_measure: item.unit_measure,
+  unit_cost: item.unit_cost,
+  supplier_name: item.supplier,
+  subtotal: item.subtotal
+});
+
+const itemFieldToBudgetItem = (item: ItemField): BudgetItem => ({
+  item_name: item.item_name || '',
+  quantity: item.quantity || 0,
+  unit_measure: item.unit_measure || '',
+  unit_cost: item.unit_cost || 0,
+  supplier: item.supplier_name || '',
+  subtotal: item.subtotal || 0
+});
+
 const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   onClose,
   onAddBudgetRequest,
@@ -74,6 +148,11 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   const [showItems, setShowItems] = useState(false);
   const [supportingDocuments, setSupportingDocuments] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  
+  // PR-linked mode state
+  const [isLinkedToPurchaseRequest, setIsLinkedToPurchaseRequest] = useState(false);
+  const [selectedPRCode, setSelectedPRCode] = useState('');
+  const [prDepartment, setPrDepartment] = useState('');
 
   const validationRules: Record<FieldName, ValidationRule> = {
     title: { required: true, label: "Budget Title" },
@@ -99,11 +178,11 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
   // Update total amount when items change
   useEffect(() => {
-    if (showItems && items.length > 0) {
+    if (items.length > 0) {
       const itemsTotal = calculateTotalFromItems();
       setFormData(prev => ({ ...prev, total_amount: itemsTotal }));
     }
-  }, [items, showItems]);
+  }, [items]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -155,6 +234,58 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
       
       return updated;
     });
+  };
+
+  // PR selection handler
+  const handlePRSelection = (prCode: string) => {
+    setSelectedPRCode(prCode);
+    
+    if (prCode) {
+      const selectedPR = mockPurchaseRequests.find(pr => pr.code === prCode);
+      if (selectedPR) {
+        // Convert ItemField[] to BudgetItem[]
+        const prItems = selectedPR.items.map(itemFieldToBudgetItem);
+        setItems(prItems);
+        setPrDepartment(selectedPR.department);
+        setFormData(prev => ({ ...prev, department: selectedPR.department }));
+      }
+    } else {
+      setItems([]);
+      setPrDepartment('');
+    }
+  };
+
+  // PR checkbox toggle handler
+  const handlePRToggle = async (checked: boolean) => {
+    if (!checked && items.length > 0) {
+      const result = await showConfirmation(
+        'Switching to manual mode will clear current items. Continue?',
+        'Confirm Mode Switch'
+      );
+      if (!result.isConfirmed) return;
+    }
+
+    if (checked && items.length > 0) {
+      const result = await showConfirmation(
+        'Switching to PR-linked mode will clear current items. Continue?',
+        'Confirm Mode Switch'
+      );
+      if (!result.isConfirmed) return;
+    }
+
+    setIsLinkedToPurchaseRequest(checked);
+    setItems([]);
+    setSelectedPRCode('');
+    setPrDepartment('');
+    if (!checked) {
+      setFormData(prev => ({ ...prev, department: 'Operations' }));
+    }
+  };
+
+  // Handle items save from ItemTableModal
+  const handleItemsSave = (updatedItems: ItemField[]) => {
+    const budgetItems = updatedItems.map(itemFieldToBudgetItem);
+    setItems(budgetItems);
   };
 
   // File handling functions
@@ -233,8 +364,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
       }
     }
 
-    // Validate items if they exist
-    if (showItems && items.length > 0) {
+    // Validate items if they exist (skip validation for PR-linked items)
+    if (!isLinkedToPurchaseRequest && items.length > 0) {
       const invalidItems = items.filter(item => 
         !item.item_name || 
         item.quantity <= 0 || 
@@ -259,7 +390,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
         const payload: NewBudgetRequest = {
           ...formData,
           status: saveAsDraft ? 'Draft' : 'Pending Approval',
-          items: showItems && items.length > 0 ? items : undefined,
+          items: items.length > 0 ? items : undefined,
           supporting_documents: supportingDocuments.length > 0 ? supportingDocuments : undefined
         };
 
@@ -467,131 +598,67 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
               </div>
 
               {/* Items Section */}
+              <div className="sectionHeader">Budget Items (Optional)</div>
+              
               <div className="itemsSection">
-                <div className="itemsHeader">
-                  <h3>Budget Items (Optional)</h3>
-                  <button
-                    type="button"
-                    className="itemsToggle"
-                    onClick={() => setShowItems(!showItems)}
-                  >
-                    <i className={`ri-${showItems ? 'eye-off' : 'eye'}-line`} />
-                    {showItems ? 'Hide Items' : 'Add Items'}
-                  </button>
+                <div className="formRow">
+                  <div className="formField">
+                    <label className="checkboxLabel">
+                      <input
+                        type="checkbox"
+                        checked={isLinkedToPurchaseRequest}
+                        onChange={(e) => handlePRToggle(e.target.checked)}
+                      />
+                      <span>Link to Purchase Request</span>
+                    </label>
+                  </div>
                 </div>
 
-                {showItems && (
-                  <>
-                    {items.map((item, index) => (
-                      <div key={index} className="itemContainer">
-                        <button
-                          type="button"
-                          className="removeItemBtn"
-                          onClick={() => removeItem(index)}
-                          disabled={items.length === 1}
-                          title="Remove Item"
-                        >
-                          <i className="ri-close-line" />
-                        </button>
-
-                        <div className="itemGrid">
-                          <div className="itemField">
-                            <label>Item Name<span className='requiredTags'> *</span></label>
-                            <input
-                              type="text"
-                              value={item.item_name}
-                              onChange={(e) => updateItem(index, 'item_name', e.target.value)}
-                              placeholder="Enter item name"
-                              required={showItems}
-                            />
-                          </div>
-
-                          <div className="itemField">
-                            <label>Quantity<span className='requiredTags'> *</span></label>
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                              min="1"
-                              required={showItems}
-                            />
-                          </div>
-
-                          <div className="itemField">
-                            <label>Unit</label>
-                            <select
-                              value={item.unit_measure}
-                              onChange={(e) => updateItem(index, 'unit_measure', e.target.value)}
-                            >
-                              <option value="pcs">pcs</option>
-                              <option value="kg">kg</option>
-                              <option value="lbs">lbs</option>
-                              <option value="liters">liters</option>
-                              <option value="meters">meters</option>
-                              <option value="boxes">boxes</option>
-                              <option value="sets">sets</option>
-                              <option value="hours">hours</option>
-                              <option value="days">days</option>
-                            </select>
-                          </div>
-
-                          <div className="itemField">
-                            <label>Unit Cost<span className='requiredTags'> *</span></label>
-                            <input
-                              type="number"
-                              value={item.unit_cost}
-                              onChange={(e) => updateItem(index, 'unit_cost', parseFloat(e.target.value) || 0)}
-                              min="0"
-                              step="0.01"
-                              required={showItems}
-                            />
-                          </div>
-
-                          <div className="itemField">
-                            <label>Supplier<span className='requiredTags'> *</span></label>
-                            <input
-                              type="text"
-                              value={item.supplier}
-                              onChange={(e) => updateItem(index, 'supplier', e.target.value)}
-                              placeholder="Enter supplier name"
-                              required={showItems}
-                            />
-                          </div>
-
-                          <div className="itemField">
-                            <label>Subtotal</label>
-                            <div className="subtotalField">
-                              ₱{item.subtotal.toLocaleString(undefined, { 
-                                minimumFractionDigits: 2, 
-                                maximumFractionDigits: 2 
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    <button
-                      type="button"
-                      className="addItemBtn"
-                      onClick={addItem}
-                    >
-                      <i className="ri-add-line" /> Add Another Item
-                    </button>
-
-                    {items.length > 0 && (
-                      <div className="totalAmountDisplay">
-                        <h3>Total Amount from Items</h3>
-                        <div className="totalAmountValue">
-                          ₱{calculateTotalFromItems().toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </>
+                {isLinkedToPurchaseRequest && (
+                  <div className="formRow">
+                    <div className="formField formFieldHalf">
+                      <label htmlFor="pr_code">Purchase Request Code<span className='requiredTags'> *</span></label>
+                      <select
+                        id="pr_code"
+                        value={selectedPRCode}
+                        onChange={(e) => handlePRSelection(e.target.value)}
+                        className="formInput"
+                      >
+                        <option value="">Select Purchase Request</option>
+                        {mockPurchaseRequests.map(pr => (
+                          <option key={pr.code} value={pr.code}>
+                            {pr.code} - {pr.department}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="formField formFieldHalf">
+                      <label htmlFor="pr_department">Department</label>
+                      <input
+                        type="text"
+                        id="pr_department"
+                        value={prDepartment}
+                        readOnly
+                        className="formInput"
+                        style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                      />
+                      <span className="autofill-note">Auto-filled from Purchase Request</span>
+                    </div>
+                  </div>
                 )}
+
+                <ItemTableModal
+                  isOpen={true}
+                  onClose={() => {}}
+                  mode={isLinkedToPurchaseRequest ? 'view' : 'edit'}
+                  title="Budget Items"
+                  items={items.map(budgetItemToItemField)}
+                  onSave={handleItemsSave}
+                  requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_cost', 'supplier_name']}
+                  isLinkedToPurchaseRequest={isLinkedToPurchaseRequest}
+                  embedded={true}
+                />
               </div>
 
               {/* Supporting Documents Section */}

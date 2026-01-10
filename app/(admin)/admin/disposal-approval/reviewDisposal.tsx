@@ -23,51 +23,78 @@ interface DisposalRecord {
   
   // Stock details (if disposal type is stock)
   stock?: {
-    itemCode: string;
-    itemName: string;
-    unitOfMeasure: string;
-    category: string;
-    currentStock: number;
-    stockStatus: string;
-    stockRecordedDate: string;
-    description: string;
+    item_code: string;
+    item?: {
+      item_name: string;
+      unit?: {
+        unit_name: string;
+      };
+      category?: {
+        category_name: string;
+      };
+      description?: string;
+    };
+    current_stock: number;
+    status: string;
+    created_at: string;
   };
   
   // Batch details (if disposal type is batch)
   batch?: {
-    batchNumber: string;
-    itemCode: string;
-    itemName: string;
-    unitOfMeasure: string;
-    category: string;
+    batch_number: string;
+    stock?: {
+      item_code: string;
+      item?: {
+        item_name: string;
+        unit?: {
+          unit_name: string;
+        };
+        category?: {
+          category_name: string;
+        };
+      };
+    };
     quantity: number;
-    expirationDate?: string;
-    receivedDate: string;
+    expiration_date?: string;
+    received_date: string;
     remarks?: string;
   };
   
   // Bus details (if disposal type is bus)
   bus?: {
-    busCode: string;
-    plateNumber: string;
-    bodyNumber: string;
-    busType: string;
+    bus_code: string;
+    plate_number: string;
+    body_number: string;
+    bus_type: string;
     status: string;
     model: string;
-    yearModel: string;
+    year_model: string;
     condition: string;
-    acquisitionMethod: string;
-    manufacturer: string;
-    bodyBuilder: string;
-    chassisNumber: string;
-    engineNumber: string;
-    seatCapacity: number;
-    registrationStatus: string;
-    dealerName?: string;
-    previousOwner?: string;
+    acquisition_method: string;
+    manufacturer?: {
+      manufacturer_name: string;
+    };
+    body_builder?: {
+      body_builder_name: string;
+    };
+    chassis_number: string;
+    engine_number: string;
+    seat_capacity: number;
+    registration_status: string;
+    brand_new_details?: {
+      dealer_name: string;
+    };
+    second_hand_details?: {
+      previous_owner: string;
+    };
   };
   
   // Revenue details
+  disposal_revenue?: {
+    disposal_value: number;
+    book_value: number;
+    gain_loss: number;
+  };
   revenue?: {
     disposalValue: number;
     bookValue: number;
@@ -190,38 +217,38 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Item Code</label>
-                  <p>{disposal.stock.itemCode}</p>
+                  <p>{disposal.stock.item_code}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Item Name</label>
-                  <p>{disposal.stock.itemName}</p>
+                  <p>{disposal.stock.item?.item_name}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Unit of Measure</label>
-                  <p>{disposal.stock.unitOfMeasure}</p>
+                  <p>{disposal.stock.item?.unit?.unit_name}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Category</label>
-                  <p>{disposal.stock.category}</p>
+                  <p>{disposal.stock.item?.category?.category_name}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Current Stock</label>
-                  <p>{disposal.stock.currentStock}</p>
+                  <p>{disposal.stock.current_stock}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Stock Status</label>
                   <p>
-                    <span className={`chip ${disposal.stock.stockStatus.toLowerCase()}`}>
-                      {disposal.stock.stockStatus}
+                    <span className={`chip ${disposal.stock.status?.toLowerCase()}`}>
+                      {disposal.stock.status}
                     </span>
                   </p>
                 </div>
@@ -230,13 +257,13 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Stock Recorded Date</label>
-                  <p>{formatDate(disposal.stock.stockRecordedDate)}</p>
+                  <p>{formatDate(disposal.stock.created_at)}</p>
                 </div>
               </div>
 
               <div className="form-group">
-                <label>Stock Description</label>
-                <p>{disposal.stock.description || '—'}</p>
+                <label>Description</label>
+                <p>{disposal.stock.item?.description || '—'}</p>
               </div>
             </div>
           </div>
@@ -251,31 +278,31 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Batch Number</label>
-                  <p>{disposal.batch.batchNumber}</p>
+                  <p>{disposal.batch.batch_number}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Item Code</label>
-                  <p>{disposal.batch.itemCode}</p>
+                  <p>{disposal.batch.stock?.item_code}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Item Name</label>
-                  <p>{disposal.batch.itemName}</p>
+                  <p>{disposal.batch.stock?.item?.item_name}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Unit of Measure</label>
-                  <p>{disposal.batch.unitOfMeasure}</p>
+                  <p>{disposal.batch.stock?.item?.unit?.unit_name}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Category</label>
-                  <p>{disposal.batch.category}</p>
+                  <p>{disposal.batch.stock?.item?.category?.category_name}</p>
                 </div>
 
                 <div className="form-group">
@@ -285,16 +312,16 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               </div>
 
               <div className="form-row">
-                {disposal.batch.expirationDate && (
+                {disposal.batch.expiration_date && (
                   <div className="form-group">
                     <label>Expiration Date <span style={{ fontSize: '12px', color: '#666' }}>(For perishable items)</span></label>
-                    <p>{formatDate(disposal.batch.expirationDate)}</p>
+                    <p>{formatDate(disposal.batch.expiration_date)}</p>
                   </div>
                 )}
 
                 <div className="form-group">
                   <label>Received Date</label>
-                  <p>{formatDate(disposal.batch.receivedDate)}</p>
+                  <p>{formatDate(disposal.batch.received_date)}</p>
                 </div>
               </div>
 
@@ -317,24 +344,24 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Bus Code</label>
-                  <p>{disposal.bus.busCode}</p>
+                  <p>{disposal.bus.bus_code}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Plate Number</label>
-                  <p>{disposal.bus.plateNumber}</p>
+                  <p>{disposal.bus.plate_number}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Body Number</label>
-                  <p>{disposal.bus.bodyNumber}</p>
+                  <p>{disposal.bus.body_number}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Bus Type</label>
-                  <p>{disposal.bus.busType}</p>
+                  <p>{disposal.bus.bus_type}</p>
                 </div>
               </div>
 
@@ -342,7 +369,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
                 <div className="form-group">
                   <label>Status</label>
                   <p>
-                    <span className={`chip ${disposal.bus.status.toLowerCase()}`}>
+                    <span className={`chip ${disposal.bus.status?.toLowerCase()}`}>
                       {disposal.bus.status}
                     </span>
                   </p>
@@ -357,7 +384,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Year Model</label>
-                  <p>{disposal.bus.yearModel}</p>
+                  <p>{disposal.bus.year_model}</p>
                 </div>
 
                 <div className="form-group">
@@ -375,38 +402,38 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
                   <label>Acquisition Method</label>
                   <p>
                     <span className="chip normal">
-                      {disposal.bus.acquisitionMethod}
+                      {disposal.bus.acquisition_method}
                     </span>
                   </p>
                 </div>
 
                 <div className="form-group">
                   <label>Manufacturer</label>
-                  <p>{disposal.bus.manufacturer}</p>
+                  <p>{disposal.bus.manufacturer?.manufacturer_name}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Body Builder</label>
-                  <p>{disposal.bus.bodyBuilder}</p>
+                  <p>{disposal.bus.body_builder?.body_builder_name}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Chassis Number</label>
-                  <p>{disposal.bus.chassisNumber}</p>
+                  <p>{disposal.bus.chassis_number}</p>
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label>Engine Number</label>
-                  <p>{disposal.bus.engineNumber}</p>
+                  <p>{disposal.bus.engine_number}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Seat Capacity</label>
-                  <p>{disposal.bus.seatCapacity}</p>
+                  <p>{disposal.bus.seat_capacity}</p>
                 </div>
               </div>
 
@@ -415,26 +442,26 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
                   <label>Registration Status</label>
                   <p>
                     <span className="chip normal">
-                      {disposal.bus.registrationStatus}
+                      {disposal.bus.registration_status}
                     </span>
                   </p>
                 </div>
               </div>
 
-              {disposal.bus.dealerName && disposal.bus.acquisitionMethod === 'BRAND_NEW' && (
+              {disposal.bus.brand_new_details?.dealer_name && disposal.bus.acquisition_method === 'BRAND_NEW' && (
                 <div className="form-row">
                   <div className="form-group">
                     <label>Dealer Name <span style={{ fontSize: '12px', color: '#666' }}>(Optional, if BRAND_NEW)</span></label>
-                    <p>{disposal.bus.dealerName}</p>
+                    <p>{disposal.bus.brand_new_details.dealer_name}</p>
                   </div>
                 </div>
               )}
 
-              {disposal.bus.previousOwner && disposal.bus.acquisitionMethod === 'SECOND_HAND' && (
+              {disposal.bus.second_hand_details?.previous_owner && disposal.bus.acquisition_method === 'SECOND_HAND' && (
                 <div className="form-row">
                   <div className="form-group">
                     <label>Previous Owner <span style={{ fontSize: '12px', color: '#666' }}>(Optional, if SECOND_HAND)</span></label>
-                    <p>{disposal.bus.previousOwner}</p>
+                    <p>{disposal.bus.second_hand_details.previous_owner}</p>
                   </div>
                 </div>
               )}
@@ -443,7 +470,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
         )}
 
         {/* Disposal Value Section - Display if exists */}
-        {disposal.revenue && (
+        {disposal.disposal_revenue && (
           <div className="modal-content view">
             <h3 className="modal-subtitle">Financial Summary</h3>
             
@@ -451,12 +478,12 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Disposal Value</label>
-                  <p>{formatMoney(disposal.revenue.disposalValue)}</p>
+                  <p>{formatMoney(disposal.disposal_revenue.disposal_value)}</p>
                 </div>
 
                 <div className="form-group">
                   <label>Book Value</label>
-                  <p>{formatMoney(disposal.revenue.bookValue)}</p>
+                  <p>{formatMoney(disposal.disposal_revenue.book_value)}</p>
                 </div>
               </div>
 
@@ -464,10 +491,10 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
                 <div className="form-group">
                   <label>Gain or Loss</label>
                   <p style={{
-                    color: disposal.revenue.gainLoss >= 0 ? '#4CAF50' : '#FF4949',
+                    color: disposal.disposal_revenue.gain_loss >= 0 ? '#4CAF50' : '#FF4949',
                     fontWeight: '600'
                   }}>
-                    {formatMoney(disposal.revenue.gainLoss)}
+                    {formatMoney(disposal.disposal_revenue.gain_loss)}
                   </p>
                 </div>
               </div>

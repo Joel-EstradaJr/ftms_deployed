@@ -1,8 +1,9 @@
 /**
- * Chart of Accounts Service - MOCK DATA VERSION (UI-ONLY)
- * Provides mock data for chart of accounts without any API calls
+ * Chart of Accounts Service - Backend API Integration
+ * Connects to the FTMS backend API for chart of accounts management
  */
 
+import { api, ApiResponse } from '../lib/api';
 import { ChartOfAccount, NormalBalance, AccountType } from '../types/jev';
 
 /**
@@ -27,177 +28,116 @@ export interface PaginationResponse {
 }
 
 /**
- * Mock Chart of Accounts Data
+ * Backend response for a single chart of account item in list view
  */
-const MOCK_ACCOUNTS: ChartOfAccount[] = [
-  {
-    account_id: '1',
-    account_code: '1000',
-    account_name: 'Cash on Hand',
-    account_type: AccountType.ASSET,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Physical cash in office',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '2',
-    account_code: '1100',
-    account_name: 'Cash in Bank',
-    account_type: AccountType.ASSET,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Bank account deposits',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '3',
-    account_code: '1200',
-    account_name: 'Accounts Receivable',
-    account_type: AccountType.ASSET,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Customer receivables',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '4',
-    account_code: '1500',
-    account_name: 'Inventory',
-    account_type: AccountType.ASSET,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Spare parts and supplies',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '5',
-    account_code: '1800',
-    account_name: 'Property and Equipment',
-    account_type: AccountType.ASSET,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Fixed assets',
-    is_active: true,
-    is_system_account: true,
-  },
-  {
-    account_id: '6',
-    account_code: '2000',
-    account_name: 'Accounts Payable',
-    account_type: AccountType.LIABILITY,
-    normal_balance: 'CREDIT' as NormalBalance,
-    description: 'Supplier payables',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '7',
-    account_code: '2100',
-    account_name: 'Loans Payable',
-    account_type: AccountType.LIABILITY,
-    normal_balance: 'CREDIT' as NormalBalance,
-    description: 'Bank loans',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '8',
-    account_code: '3000',
-    account_name: "Owner's Equity",
-    account_type: AccountType.EQUITY,
-    normal_balance: 'CREDIT' as NormalBalance,
-    description: 'Capital contribution',
-    is_active: true,
-    is_system_account: true,
-  },
-  {
-    account_id: '9',
-    account_code: '3100',
-    account_name: 'Retained Earnings',
-    account_type: AccountType.EQUITY,
-    normal_balance: 'CREDIT' as NormalBalance,
-    description: 'Accumulated earnings',
-    is_active: true,
-    is_system_account: true,
-  },
-  {
-    account_id: '10',
-    account_code: '4000',
-    account_name: 'Service Revenue',
-    account_type: AccountType.REVENUE,
-    normal_balance: 'CREDIT' as NormalBalance,
-    description: 'Transportation service income',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '11',
-    account_code: '4100',
-    account_name: 'Charter Revenue',
-    account_type: AccountType.REVENUE,
-    normal_balance: 'CREDIT' as NormalBalance,
-    description: 'Charter trip income',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '12',
-    account_code: '5000',
-    account_name: 'Salaries Expense',
-    account_type: AccountType.EXPENSE,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Employee salaries',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '13',
-    account_code: '5100',
-    account_name: 'Fuel Expense',
-    account_type: AccountType.EXPENSE,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Diesel and gasoline',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '14',
-    account_code: '5200',
-    account_name: 'Maintenance Expense',
-    account_type: AccountType.EXPENSE,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Vehicle maintenance and repairs',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '15',
-    account_code: '5300',
-    account_name: 'Utilities Expense',
-    account_type: AccountType.EXPENSE,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'Electricity, water, etc.',
-    is_active: true,
-    is_system_account: false,
-  },
-  {
-    account_id: '16',
-    account_code: '9999',
-    account_name: 'Archived Test Account',
-    account_type: AccountType.EXPENSE,
-    normal_balance: 'DEBIT' as NormalBalance,
-    description: 'This is an archived account for testing',
-    is_active: false,
-    is_system_account: false,
-  },
-];
-
-// Simulated storage for newly created accounts
-const mockAccountsStorage = [...MOCK_ACCOUNTS];
-let nextId = 100;
+interface ChartOfAccountBackendItem {
+  id: number;
+  account_code: string;
+  account_name: string;
+  account_type_name: string; // Backend returns account_type.name
+  normal_balance: NormalBalance;
+  description: string | null;
+  status: 'Active' | 'Archived'; // Backend returns computed status
+  created_at: string;
+  updated_at: string;
+}
 
 /**
- * Fetch all chart of accounts with filtering and pagination (MOCK)
+ * Backend response for chart of accounts list
+ */
+interface ChartOfAccountsBackendResponse {
+  success: boolean;
+  data: ChartOfAccountBackendItem[];
+  pagination: PaginationResponse;
+  message: string;
+}
+
+/**
+ * Backend response for a single detailed chart of account
+ */
+interface ChartOfAccountDetailBackendResponse {
+  success: boolean;
+  data: {
+    id: number;
+    account_code: string;
+    account_name: string;
+    account_type_id: number;
+    account_type_name: string;
+    normal_balance: NormalBalance;
+    description: string | null;
+    status: 'Active' | 'Archived';
+    linked_entries_count: number;
+    created_at: string;
+    updated_at: string | null;
+    created_by: string | null;
+    updated_by: string | null;
+    archived_at: string | null;
+    archived_by: string | null;
+  };
+  message: string;
+}
+
+/**
+ * Extended chart of account details for view modal
+ */
+export interface ExtendedChartOfAccount {
+  account_id: string;
+  account_code: string;
+  account_name: string;
+  account_type: AccountType;
+  account_type_name: string;
+  normal_balance: NormalBalance;
+  description?: string;
+  is_active: boolean;
+  journal_entry_lines_count: number;
+  created_by?: string;
+  created_at?: string;
+  updated_by?: string;
+  updated_at?: string;
+  deleted_by?: string;
+  deleted_at?: string;
+}
+
+/**
+ * Map backend item to frontend ChartOfAccount type
+ */
+function mapBackendItemToFrontend(item: ChartOfAccountBackendItem): ChartOfAccount {
+  // Map account_type_name to AccountType enum
+  let accountType: AccountType;
+  switch (item.account_type_name.toUpperCase()) {
+    case 'ASSET':
+      accountType = AccountType.ASSET;
+      break;
+    case 'LIABILITY':
+      accountType = AccountType.LIABILITY;
+      break;
+    case 'EQUITY':
+      accountType = AccountType.EQUITY;
+      break;
+    case 'REVENUE':
+      accountType = AccountType.REVENUE;
+      break;
+    case 'EXPENSE':
+      accountType = AccountType.EXPENSE;
+      break;
+    default:
+      accountType = AccountType.ASSET; // Fallback
+  }
+
+  return {
+    account_id: String(item.id),
+    account_code: item.account_code,
+    account_name: item.account_name,
+    account_type: accountType,
+    normal_balance: item.normal_balance,
+    description: item.description || undefined,
+    is_active: item.status === 'Active',
+    is_system_account: false, // Not provided in list view
+  };
+}
+
+/**
+ * Fetch all chart of accounts with filtering and pagination
  */
 export async function fetchChartOfAccounts(
   params?: ChartOfAccountsQueryParams
@@ -205,140 +145,359 @@ export async function fetchChartOfAccounts(
   data: ChartOfAccount[];
   pagination: PaginationResponse;
 }> {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 300));
+  const queryParams: Record<string, any> = {
+    page: params?.page || 1,
+    limit: params?.limit || 10,
+    includeArchived: params?.includeArchived || false,
+  };
 
-  let filteredData = [...mockAccountsStorage];
-
-  // Apply filters
   if (params?.search) {
-    const searchLower = params.search.toLowerCase();
-    filteredData = filteredData.filter(
-      acc =>
-        acc.account_code.toLowerCase().includes(searchLower) ||
-        acc.account_name.toLowerCase().includes(searchLower)
-    );
+    queryParams.search = params.search;
   }
 
-  if (!params?.includeArchived) {
-    filteredData = filteredData.filter(acc => acc.is_active);
+  if (params?.accountTypeId) {
+    queryParams.accountTypeId = params.accountTypeId;
   }
 
-  // Calculate pagination
-  const page = params?.page || 1;
-  const limit = params?.limit || 10;
-  const total = filteredData.length;
-  const totalPages = Math.ceil(total / limit);
-  const startIndex = (page - 1) * limit;
-  const paginatedData = filteredData.slice(startIndex, startIndex + limit);
+  const response = await api.get<ChartOfAccountsBackendResponse>(
+    '/api/v1/admin/chart-of-accounts',
+    queryParams
+  );
+
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to fetch chart of accounts');
+  }
+
+  // Map backend data to frontend format
+  const mappedData = response.data.map(mapBackendItemToFrontend);
 
   return {
-    data: paginatedData,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages,
-    },
+    data: mappedData,
+    pagination: response.pagination,
   };
 }
 
 /**
- * Fetch a single chart of account by ID (MOCK)
+ * Fetch a single chart of account by ID
  */
 export async function fetchChartOfAccountById(id: string): Promise<ChartOfAccount | null> {
-  await new Promise(resolve => setTimeout(resolve, 200));
-  return mockAccountsStorage.find(acc => acc.account_id === id) || null;
+  try {
+    const response = await api.get<ChartOfAccountDetailBackendResponse>(
+      `/api/v1/admin/chart-of-accounts/${id}`
+    );
+
+    if (!response.success || !response.data) {
+      return null;
+    }
+
+    const item = response.data;
+
+    // Map account_type_name to AccountType enum
+    let accountType: AccountType;
+    switch (item.account_type_name.toUpperCase()) {
+      case 'ASSET':
+        accountType = AccountType.ASSET;
+        break;
+      case 'LIABILITY':
+        accountType = AccountType.LIABILITY;
+        break;
+      case 'EQUITY':
+        accountType = AccountType.EQUITY;
+        break;
+      case 'REVENUE':
+        accountType = AccountType.REVENUE;
+        break;
+      case 'EXPENSE':
+        accountType = AccountType.EXPENSE;
+        break;
+      default:
+        accountType = AccountType.ASSET; // Fallback
+    }
+
+    return {
+      account_id: String(item.id),
+      account_code: item.account_code,
+      account_name: item.account_name,
+      account_type: accountType,
+      normal_balance: item.normal_balance,
+      description: item.description || undefined,
+      is_active: item.status === 'Active',
+      is_system_account: false,
+    };
+  } catch (error) {
+    console.error('Error fetching chart of account by ID:', error);
+    return null;
+  }
 }
 
 /**
- * Create a new chart of account (MOCK)
+ * Fetch extended chart of account details by ID (for view modal)
+ * Includes audit fields and linked entries count
  */
-export async function createChartOfAccount(data: Partial<ChartOfAccount>): Promise<ChartOfAccount> {
-  await new Promise(resolve => setTimeout(resolve, 400));
+export async function fetchChartOfAccountDetailById(id: string): Promise<ExtendedChartOfAccount | null> {
+  try {
+    const response = await api.get<ChartOfAccountDetailBackendResponse>(
+      `/api/v1/admin/chart-of-accounts/${id}`
+    );
 
-  const newAccount: ChartOfAccount = {
-    account_id: String(nextId++),
-    account_code: data.account_code || '',
-    account_name: data.account_name || '',
-    account_type: data.account_type || AccountType.ASSET,
+    if (!response.success || !response.data) {
+      return null;
+    }
+
+    const item = response.data;
+
+    // Map account_type_name to AccountType enum
+    let accountType: AccountType;
+    switch (item.account_type_name.toUpperCase()) {
+      case 'ASSET':
+        accountType = AccountType.ASSET;
+        break;
+      case 'LIABILITY':
+        accountType = AccountType.LIABILITY;
+        break;
+      case 'EQUITY':
+        accountType = AccountType.EQUITY;
+        break;
+      case 'REVENUE':
+        accountType = AccountType.REVENUE;
+        break;
+      case 'EXPENSE':
+        accountType = AccountType.EXPENSE;
+        break;
+      default:
+        accountType = AccountType.ASSET; // Fallback
+    }
+
+    return {
+      account_id: String(item.id),
+      account_code: item.account_code,
+      account_name: item.account_name,
+      account_type: accountType,
+      account_type_name: item.account_type_name,
+      normal_balance: item.normal_balance,
+      description: item.description || undefined,
+      is_active: item.status === 'Active',
+      journal_entry_lines_count: item.linked_entries_count,
+      created_by: item.created_by || undefined,
+      created_at: item.created_at,
+      updated_by: item.updated_by || undefined,
+      updated_at: item.updated_at || undefined,
+      deleted_by: item.archived_by || undefined,
+      deleted_at: item.archived_at || undefined,
+    };
+  } catch (error) {
+    console.error('Error fetching chart of account detail by ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Create a new chart of account
+ */
+export async function createChartOfAccount(data: {
+  account_name: string;
+  account_type_id?: number;
+  account_type_code?: string;
+  normal_balance: NormalBalance;
+  description?: string;
+  custom_suffix?: number;
+}): Promise<ChartOfAccount> {
+  const response = await api.post<{
+    success: boolean;
+    data: any;
+    message: string;
+  }>('/api/v1/admin/chart-of-accounts', {
+    account_name: data.account_name,
+    account_type_id: data.account_type_id,
+    account_type_code: data.account_type_code,
     normal_balance: data.normal_balance,
     description: data.description,
-    is_active: true,
-    is_system_account: false,
-  };
+    custom_suffix: data.custom_suffix,
+  });
 
-  mockAccountsStorage.push(newAccount);
-  return newAccount;
-}
-
-/**
- * Update an existing chart of account (MOCK)
- */
-export async function updateChartOfAccount(id: string, data: Partial<ChartOfAccount>): Promise<ChartOfAccount> {
-  await new Promise(resolve => setTimeout(resolve, 400));
-
-  const index = mockAccountsStorage.findIndex(acc => acc.account_id === id);
-  if (index === -1) {
-    throw new Error('Account not found');
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to create chart of account');
   }
 
-  mockAccountsStorage[index] = {
-    ...mockAccountsStorage[index],
-    ...data,
+  // Map the created account to frontend format
+  const item = response.data;
+  return {
+    account_id: String(item.id),
+    account_code: item.account_code,
+    account_name: item.account_name,
+    account_type: item.account_type?.name?.toUpperCase() || AccountType.ASSET,
+    normal_balance: item.normal_balance,
+    description: item.description || undefined,
+    is_active: !item.is_deleted,
+    is_system_account: item.is_system_account || false,
   };
-
-  return mockAccountsStorage[index];
 }
 
 /**
- * Archive (soft delete) a chart of account (MOCK)
+ * Update an existing chart of account
+ */
+export async function updateChartOfAccount(
+  id: string,
+  data: {
+    account_code?: string;
+    account_name?: string;
+    account_type_id?: number;
+    normal_balance?: NormalBalance;
+    description?: string;
+  }
+): Promise<ChartOfAccount> {
+  const response = await api.patch<{
+    success: boolean;
+    data: any;
+    message: string;
+  }>(`/api/v1/admin/chart-of-accounts/${id}`, data);
+
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to update chart of account');
+  }
+
+  // Map the updated account to frontend format
+  const item = response.data;
+  return {
+    account_id: String(item.id),
+    account_code: item.account_code,
+    account_name: item.account_name,
+    account_type: item.account_type?.name?.toUpperCase() || AccountType.ASSET,
+    normal_balance: item.normal_balance,
+    description: item.description || undefined,
+    is_active: !item.is_deleted,
+    is_system_account: item.is_system_account || false,
+  };
+}
+
+/**
+ * Archive (soft delete) a chart of account
  */
 export async function archiveChartOfAccount(id: string): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, 300));
+  const response = await api.patch<{
+    success: boolean;
+    message: string;
+  }>(`/api/v1/admin/chart-of-accounts/${id}/archive`);
 
-  const index = mockAccountsStorage.findIndex(acc => acc.account_id === id);
-  if (index !== -1) {
-    mockAccountsStorage[index].is_active = false;
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to archive chart of account');
   }
 }
 
 /**
- * Restore an archived chart of account (MOCK)
+ * Restore an archived chart of account
  */
 export async function restoreChartOfAccount(id: string): Promise<ChartOfAccount> {
-  await new Promise(resolve => setTimeout(resolve, 300));
+  const response = await api.patch<{
+    success: boolean;
+    data: any;
+    message: string;
+  }>(`/api/v1/admin/chart-of-accounts/${id}/restore`);
 
-  const index = mockAccountsStorage.findIndex(acc => acc.account_id === id);
-  if (index === -1) {
-    throw new Error('Account not found');
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to restore chart of account');
   }
 
-  mockAccountsStorage[index].is_active = true;
-  return mockAccountsStorage[index];
+  // Map the restored account to frontend format
+  const item = response.data;
+  return {
+    account_id: String(item.id),
+    account_code: item.account_code,
+    account_name: item.account_name,
+    account_type: item.account_type?.name?.toUpperCase() || AccountType.ASSET,
+    normal_balance: item.normal_balance,
+    description: item.description || undefined,
+    is_active: !item.is_deleted,
+    is_system_account: item.is_system_account || false,
+  };
 }
 
 /**
- * Fetch all account types (MOCK)
+ * Hard delete a chart of account
  */
-export async function fetchAccountTypes(): Promise<any[]> {
-  await new Promise(resolve => setTimeout(resolve, 200));
+export async function deleteChartOfAccount(id: string): Promise<void> {
+  const response = await api.delete<{
+    success: boolean;
+    message: string;
+  }>(`/api/v1/admin/chart-of-accounts/${id}`);
 
-  return [
-    { id: 1, name: 'ASSET', label: 'Asset' },
-    { id: 2, name: 'LIABILITY', label: 'Liability' },
-    { id: 3, name: 'EQUITY', label: 'Equity' },
-    { id: 4, name: 'REVENUE', label: 'Revenue' },
-    { id: 5, name: 'EXPENSE', label: 'Expense' },
-  ];
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to delete chart of account');
+  }
+}
+
+/**
+ * Fetch all account types
+ */
+export async function fetchAccountTypes(): Promise<{
+  id: number;
+  name: string;
+  code: string;
+  description: string | null;
+}[]> {
+  try {
+    const response = await api.get<{
+      success: boolean;
+      data: {
+        id: number;
+        code: string;
+        name: string;
+        description: string | null;
+      }[];
+      message: string;
+    }>('/api/v1/admin/account-types');
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to fetch account types');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching account types:', error);
+    // Fallback to hardcoded values if API fails
+    return [
+      { id: 1, name: 'ASSET', code: '1', description: 'Resources owned by the company' },
+      { id: 2, name: 'LIABILITY', code: '2', description: 'Obligations owed to others' },
+      { id: 3, name: 'EQUITY', code: '3', description: "Owner's stake in the business" },
+      { id: 4, name: 'REVENUE', code: '4', description: 'Income from operations' },
+      { id: 5, name: 'EXPENSE', code: '5', description: 'Costs of doing business' },
+    ];
+  }
+}
+
+/**
+ * Get suggested account code for a given account type
+ */
+export async function getSuggestedAccountCode(accountTypeId: number): Promise<string> {
+  try {
+    const response = await api.get<{
+      success: boolean;
+      data: {
+        suggested_code: string;
+      };
+      message: string;
+    }>(`/api/v1/admin/chart-of-accounts/suggest-code/${accountTypeId}`);
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to get suggested account code');
+    }
+
+    return response.data.suggested_code;
+  } catch (error) {
+    console.error('Error fetching suggested account code:', error);
+    throw error;
+  }
 }
 
 export default {
   fetchChartOfAccounts,
   fetchChartOfAccountById,
+  fetchChartOfAccountDetailById,
   createChartOfAccount,
   updateChartOfAccount,
   archiveChartOfAccount,
   restoreChartOfAccount,
+  deleteChartOfAccount,
   fetchAccountTypes,
+  getSuggestedAccountCode,
 };

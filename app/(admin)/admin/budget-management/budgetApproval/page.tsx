@@ -14,7 +14,7 @@ import { formatDate, formatDateTime } from '../../../../utils/formatting';
 import Loading from '../../../../Components/loading';
 import { showSuccess, showError } from '../../../../utils/Alerts';
 import FilterDropdown, { FilterSection } from "../../../../Components/filter";
-import ViewBudgetRequest from '../budgetRequest/viewBudgetRequest';
+import ViewBudgetRequest from '../approval/viewBudgetRequest';
 import AuditTrailBudgetRequest from '../budgetRequest/auditTrailBudgetRequest';
 
 interface BudgetRequest {
@@ -26,6 +26,8 @@ interface BudgetRequest {
   category: string;
   requested_by: string;
   request_date: string;
+  department: string;
+  requested_type: 'Emergency' | 'Urgent' | 'Regular' | 'Project-Based';
   approval_date?: string;
   approved_by?: string;
   rejection_reason?: string;
@@ -138,6 +140,8 @@ const BudgetApprovalPage = () => {
             category: 'Maintenance',
             requested_by: 'John Doe',
             request_date: '2024-03-15',
+            department: 'Maintenance',
+            requested_type: 'Regular',
             created_at: '2024-03-15T10:00:00Z'
           },
           {
@@ -149,6 +153,8 @@ const BudgetApprovalPage = () => {
             category: 'Training',
             requested_by: 'Mike Johnson',
             request_date: '2024-03-12',
+            department: 'Operations',
+            requested_type: 'Regular',
             approval_date: '2024-03-14',
             approved_by: 'Finance Admin',
             created_at: '2024-03-12T14:30:00Z'
@@ -162,6 +168,8 @@ const BudgetApprovalPage = () => {
             category: 'Infrastructure',
             requested_by: 'Sarah Wilson',
             request_date: '2024-03-08',
+            department: 'Administration',
+            requested_type: 'Regular',
             rejection_reason: 'Budget constraints - project postponed to next fiscal year',
             approved_by: 'Finance Admin',
             created_at: '2024-03-08T11:00:00Z'
@@ -175,6 +183,8 @@ const BudgetApprovalPage = () => {
             category: 'Equipment',
             requested_by: 'Kevin Martinez',
             request_date: '2024-01-15',
+            department: 'Operations',
+            requested_type: 'Project-Based',
             approval_date: '2024-01-20',
             approved_by: 'Finance Admin',
             created_at: '2024-01-15T12:00:00Z'
@@ -188,6 +198,8 @@ const BudgetApprovalPage = () => {
             category: 'Operations',
             requested_by: 'David Lee',
             request_date: '2024-03-18',
+            department: 'Operations',
+            requested_type: 'Urgent',
             created_at: '2024-03-18T13:30:00Z'
           },
           {
@@ -199,6 +211,8 @@ const BudgetApprovalPage = () => {
             category: 'Equipment',
             requested_by: 'Robert Davis',
             request_date: '2024-03-16',
+            department: 'Operations',
+            requested_type: 'Emergency',
             approval_date: '2024-03-18',
             approved_by: 'Finance Admin',
             created_at: '2024-03-16T08:45:00Z'
@@ -212,6 +226,8 @@ const BudgetApprovalPage = () => {
             category: 'Infrastructure',
             requested_by: 'Anna Davis',
             request_date: '2024-03-22',
+            department: 'Security',
+            requested_type: 'Urgent',
             created_at: '2024-03-22T11:15:00Z'
           },
           {
@@ -223,6 +239,8 @@ const BudgetApprovalPage = () => {
             category: 'Marketing',
             requested_by: 'Jane Smith',
             request_date: '2024-03-10',
+            department: 'Marketing',
+            requested_type: 'Regular',
             rejection_reason: 'Campaign postponed due to scheduling conflicts',
             approved_by: 'Finance Admin',
             created_at: '2024-03-10T09:00:00Z'

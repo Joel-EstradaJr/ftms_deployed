@@ -7,6 +7,7 @@ import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showConfirmation } from "@/utils/Alerts";
 import { isValidAmount } from "@/utils/validation";
 import SearchableDropdown, { DropdownOption } from "@/Components/SearchableDropdown";
+import CustomDropdown from "@/Components/CustomDropdown";
 import TripSelectorModal from '@/Components/TripSelector';
 
 interface RecordOperationalExpenseModalProps {
@@ -400,39 +401,33 @@ export default function RecordOperationalExpenseModal({
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="expenseCategory" className="required">Expense Name</label>
-                  <select
-                    id="expenseCategory"
-                    name="expenseCategory"
+                  <CustomDropdown
+                    options={EXPENSE_CATEGORIES}
                     value={formData.expenseCategory}
-                    onChange={handleInputChange}
-                    onBlur={handleInputBlur}
+                    onChange={(value: string) => {
+                      setFormData(prev => ({ ...prev, expenseCategory: value }));
+                      if (touched.has('expenseCategory')) {
+                        setErrors(prev => ({
+                          ...prev,
+                          expenseCategory: validateFormField('expenseCategory', value)
+                        }));
+                      }
+                    }}
+                    onBlur={() => {
+                      setTouched(prev => new Set(prev).add('expenseCategory'));
+                      setErrors(prev => ({
+                        ...prev,
+                        expenseCategory: validateFormField('expenseCategory', formData.expenseCategory)
+                      }));
+                    }}
+                    placeholder="Select or enter expense"
                     className={errors.expenseCategory && touched.has('expenseCategory') ? 'input-error' : ''}
-                    required
-                  >
-                    <option value="">Select Expense</option>
-                    {EXPENSE_CATEGORIES.map(cat => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
-                    ))}
-                  </select>
-                  <small className="field-note">Typable dropdown - checks DB for similar inputs (NO_DB_COLUMN)</small>
+                    showDescription={false}
+                    allowCustomInput={true}
+                  />
                   {errors.expenseCategory && touched.has('expenseCategory') && (
                     <span className="error-message">{errors.expenseCategory}</span>
                   )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="expenseSubcategory">Expense Subcategory</label>
-                  <input
-                    type="text"
-                    id="expenseSubcategory"
-                    name="expenseSubcategory"
-                    value={formData.expenseSubcategory || ''}
-                    onChange={handleInputChange}
-                    onBlur={handleInputBlur}
-                    placeholder="e.g., Diesel, Premium Gasoline"
-                    disabled
-                    className="input-disabled"
-                  />
                 </div>
               </div>
 

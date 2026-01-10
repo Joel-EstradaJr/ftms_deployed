@@ -6,8 +6,13 @@ import { ChartOfAccount, AccountType, AccountSubType, NormalBalance } from '@/ap
 import { formatDate } from '@/app/utils/formatting';
 import '@/app/styles/components/forms.css';
 
+// Extended interface to include audit fields
+interface ExtendedChartOfAccount extends ChartOfAccount {
+  journal_entry_lines_count?: number;
+}
+
 interface RecordChartOfAccountProps {
-  account?: ChartOfAccount;
+  account?: ExtendedChartOfAccount;
   mode: 'add' | 'edit' | 'view';
   accounts: ChartOfAccount[];
   onClose: () => void;
@@ -25,72 +30,20 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
   const isEditMode = mode === 'edit';
   const isAddMode = mode === 'add';
 
+  // Check if account has linked journal entries (prevents editing in edit mode)
+  const hasLinkedEntries = isEditMode && (account?.journal_entry_lines_count ?? 0) > 0;
+  const isFieldDisabled = isEditMode && hasLinkedEntries;
+
   const [formData, setFormData] = useState<Partial<ChartOfAccount>>({
     account_code: account?.account_code || '',
     account_name: account?.account_name || '',
     account_type: account?.account_type || AccountType.ASSET,
-    category: account?.category || undefined,
     normal_balance: account?.normal_balance || NormalBalance.DEBIT,
-    expense_category: account?.expense_category || undefined,
-    statement_section: account?.statement_section || undefined,
-    display_order: account?.display_order || 0,
     is_active: account?.is_active ?? true,
     description: account?.description || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Category options based on account type
-  const getCategoryOptions = () => {
-    switch (formData.account_type) {
-      case AccountType.ASSET:
-        return [
-          { value: AccountSubType.CURRENT_ASSET, label: 'Current Asset' },
-          { value: AccountSubType.NON_CURRENT_ASSET, label: 'Non-Current Asset' },
-        ];
-      case AccountType.LIABILITY:
-        return [
-          { value: AccountSubType.CURRENT_LIABILITY, label: 'Current Liability' },
-          { value: AccountSubType.NON_CURRENT_LIABILITY, label: 'Non-Current Liability' },
-        ];
-      case AccountType.EQUITY:
-        return [
-          { value: AccountSubType.CAPITAL, label: 'Capital' },
-          { value: AccountSubType.RETAINED_EARNINGS, label: 'Retained Earnings' },
-        ];
-      case AccountType.REVENUE:
-        return [
-          { value: AccountSubType.OPERATING_REVENUE, label: 'Operating Revenue' },
-          { value: AccountSubType.NON_OPERATING_REVENUE, label: 'Non-Operating Revenue' },
-        ];
-      case AccountType.EXPENSE:
-        return [
-          { value: AccountSubType.OPERATING_EXPENSE, label: 'Operating Expense' },
-          { value: AccountSubType.NON_OPERATING_EXPENSE, label: 'Non-Operating Expense' },
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const expenseCategoryOptions = [
-    { value: 'salaries_wages', label: 'Salaries & Wages' },
-    { value: 'fuel', label: 'Fuel' },
-    { value: 'maintenance', label: 'Maintenance' },
-    { value: 'utilities', label: 'Utilities' },
-    { value: 'depreciation', label: 'Depreciation' },
-    { value: 'insurance', label: 'Insurance' },
-    { value: 'administrative', label: 'Administrative' },
-    { value: 'other', label: 'Other' },
-  ];
-
-  const statementSectionOptions = [
-    { value: 'balance_sheet_current', label: 'Balance Sheet - Current' },
-    { value: 'balance_sheet_non_current', label: 'Balance Sheet - Non-Current' },
-    { value: 'income_statement_revenue', label: 'Income Statement - Revenue' },
-    { value: 'income_statement_expense', label: 'Income Statement - Expense' },
-    { value: 'statement_of_equity', label: 'Statement of Equity' },
-  ];
 
   // Account code guidelines
   const getAccountCodeGuidelines = () => [
@@ -240,18 +193,6 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
       }
     }
 
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    }
-
-    if (formData.account_type === AccountType.EXPENSE && !formData.expense_category) {
-      newErrors.expense_category = 'Expense category is required for expense accounts';
-    }
-
-    if (!formData.statement_section) {
-      newErrors.statement_section = 'Statement section is required';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -305,6 +246,21 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
           <i className="ri-close-line"></i>
         </button>
       </div>
+
+      {/* Warning for accounts with linked entries in edit mode */}
+      {isEditMode && hasLinkedEntries && (
+        <>
+          <div className="modal-content add" style={{ marginTop: '1rem' }}>
+            <div className="info-box" style={{ padding: '16px', backgroundColor: 'var(--error-chip-bg-color)', borderLeft: '4px solid var(--error-color)' }}>
+              <i className="ri-alert-line" style={{ marginRight: '8px', color: 'var(--error-color)' }}></i>
+              <span style={{ color: 'var(--error-chip-text-color)' }}>
+                <strong>This account cannot be edited</strong> because it has {account?.journal_entry_lines_count} linked journal {account?.journal_entry_lines_count === 1 ? 'entry' : 'entries'}. 
+                All fields are read-only.
+              </span>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Account Code Guidelines */}
       {!isViewMode && (
@@ -371,7 +327,7 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                     placeholder="e.g., 1010"
                     maxLength={4}
                     className={errors.account_code ? 'invalid-input' : ''}
-                    disabled={isEditMode && account?.is_system_account}
+                    disabled={isFieldDisabled}
                   />
                   {!errors.account_code && formData.account_type && (
                     <small className="hint-message">
@@ -404,6 +360,7 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                     }}
                     placeholder="Enter account name"
                     className={errors.account_name ? 'invalid-input' : ''}
+                    disabled={isFieldDisabled}
                   />
                   {errors.account_name && <p className="add-error-message">{errors.account_name}</p>}
                 </>
@@ -425,7 +382,7 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                   id="account_type"
                   value={formData.account_type}
                   onChange={(e) => handleInputChange('account_type', e.target.value as AccountType)}
-                  disabled={isEditMode && account?.is_system_account}
+                  disabled={isFieldDisabled}
                 >
                   <option value={AccountType.ASSET}>Asset</option>
                   <option value={AccountType.LIABILITY}>Liability</option>
@@ -433,30 +390,6 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                   <option value={AccountType.REVENUE}>Revenue</option>
                   <option value={AccountType.EXPENSE}>Expense</option>
                 </select>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="category">
-                Category<span className="requiredTags"> *</span>
-              </label>
-              {isViewMode ? (
-                <div className="value-display">{formData.category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-              ) : (
-                <>
-                  <select
-                    id="category"
-                    value={formData.category || ''}
-                    onChange={(e) => handleInputChange('category', e.target.value as AccountSubType)}
-                    className={errors.category ? 'invalid-input' : ''}
-                  >
-                    <option value="">Select category...</option>
-                    {getCategoryOptions().map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  {errors.category && <p className="add-error-message">{errors.category}</p>}
-                </>
               )}
             </div>
           </div>
@@ -472,128 +405,15 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 placeholder="Enter account description"
                 rows={3}
+                disabled={isFieldDisabled}
               />
             )}
           </div>
         </form>
       </div>
 
-      {/* II. Classification & Hierarchy */}
-      <p className="details-title">II. Classification & Hierarchy</p>
-      <div className="modal-content add">
-        <form className="add-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="normal_balance">Normal Balance</label>
-              {isViewMode ? (
-                <div className="value-display">
-                  <span className={`chip ${formData.normal_balance?.toLowerCase()}`}>
-                    {formData.normal_balance}
-                  </span>
-                </div>
-              ) : (
-                <select
-                  id="normal_balance"
-                  value={formData.normal_balance}
-                  onChange={(e) => handleInputChange('normal_balance', e.target.value as NormalBalance)}
-                  disabled
-                  title="Auto-determined based on account type"
-                >
-                  <option value={NormalBalance.DEBIT}>Debit</option>
-                  <option value={NormalBalance.CREDIT}>Credit</option>
-                </select>
-              )}
-              {!isViewMode && (
-                <small className="hint-message">Auto-determined based on account type</small>
-              )}
-            </div>
-          </div>
-
-          {formData.account_type === AccountType.EXPENSE && (
-            <div className="form-group">
-              <label htmlFor="expense_category">
-                Expense Category<span className="requiredTags"> *</span>
-              </label>
-              {isViewMode ? (
-                <div className="value-display">
-                  {expenseCategoryOptions.find(opt => opt.value === formData.expense_category)?.label || formData.expense_category}
-                </div>
-              ) : (
-                <>
-                  <select
-                    id="expense_category"
-                    value={formData.expense_category || ''}
-                    onChange={(e) => handleInputChange('expense_category', e.target.value)}
-                    className={errors.expense_category ? 'invalid-input' : ''}
-                  >
-                    <option value="">Select expense category...</option>
-                    {expenseCategoryOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  {errors.expense_category && <p className="add-error-message">{errors.expense_category}</p>}
-                </>
-              )}
-            </div>
-          )}
-        </form>
-      </div>
-
-      {/* III. Financial Statement Mapping */}
-      <p className="details-title">III. Financial Statement Mapping</p>
-      <div className="modal-content add">
-        <form className="add-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="statement_section">
-                Statement Section<span className="requiredTags"> *</span>
-              </label>
-              {isViewMode ? (
-                <div className="value-display">
-                  {statementSectionOptions.find(opt => opt.value === formData.statement_section)?.label || formData.statement_section}
-                </div>
-              ) : (
-                <>
-                  <select
-                    id="statement_section"
-                    value={formData.statement_section || ''}
-                    onChange={(e) => handleInputChange('statement_section', e.target.value)}
-                    className={errors.statement_section ? 'invalid-input' : ''}
-                  >
-                    <option value="">Select statement section...</option>
-                    {statementSectionOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  {errors.statement_section && <p className="add-error-message">{errors.statement_section}</p>}
-                </>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="display_order">Display Order</label>
-              {isViewMode ? (
-                <div className="value-display">{formData.display_order}</div>
-              ) : (
-                <input
-                  type="number"
-                  id="display_order"
-                  value={formData.display_order}
-                  onChange={(e) => handleInputChange('display_order', parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                  min="0"
-                />
-              )}
-              {!isViewMode && (
-                <small className="hint-message">Order in financial statements (lower appears first)</small>
-              )}
-            </div>
-          </div>
-        </form>
-      </div>
-
-      {/* IV. Status */}
-      <p className="details-title">IV. Status</p>
+      {/* II. Status */}
+      <p className="details-title">II. Status</p>
       <div className="modal-content add">
         <form className="add-form">
           <div className="form-group checkbox-group">
@@ -609,13 +429,13 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
                   type="checkbox"
                   checked={formData.is_active}
                   onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                  disabled={account?.is_system_account}
+                  disabled={isFieldDisabled}
                 />
               )}
               <span>Active</span>
             </label>
-            {!isViewMode && account?.is_system_account && (
-              <small className="hint-message">System accounts cannot be deactivated</small>
+            {!isViewMode && hasLinkedEntries && (
+              <small className="hint-message">Cannot edit account with linked journal entries</small>
             )}
           </div>
 
@@ -627,19 +447,6 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
           )}
         </form>
       </div>
-
-      {/* V. Transaction History (View Only) */}
-      {isViewMode && (
-        <>
-          <p className="details-title">V. Transaction History</p>
-          <div className="modal-content add">
-            <div className="info-box">
-              <i className="ri-information-line"></i>
-              <span>Transaction history and balance trends will be displayed here once backend integration is complete.</span>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* Action Buttons */}
       <div className="modal-actions">
@@ -655,6 +462,8 @@ const RecordChartOfAccount: React.FC<RecordChartOfAccountProps> = ({
             type="submit"
             className="submit-btn"
             onClick={handleSubmit}
+            disabled={isFieldDisabled}
+            title={hasLinkedEntries ? 'Cannot edit account with linked journal entries' : ''}
           >
             {isAddMode ? 'Add Account' : 'Update Account'}
           </button>

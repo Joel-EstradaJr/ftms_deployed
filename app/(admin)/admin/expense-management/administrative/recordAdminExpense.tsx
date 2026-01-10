@@ -17,7 +17,7 @@ import {
 } from "@/app/types/expenses";
 import { generateScheduleDates, generateScheduleItems, validateSchedule } from "@/app/utils/expenseScheduleCalculations";
 import ExpenseScheduleTable from "@/Components/ExpenseScheduleTable";
-import ItemsTable, { Item } from "@/Components/itemTable";
+import CustomDropdown from "@/Components/CustomDropdown";
 
 interface RecordAdminExpenseModalProps {
   mode: "add" | "edit";
@@ -40,12 +40,23 @@ interface FormErrors {
   numberOfPayments: string;
   startDate: string;
   remarks: string;
+  accountingCode: string;
 }
 
 const EXPENSE_CATEGORIES = Object.values(AdministrativeExpenseType).map(type => ({
   value: type,
   label: type.replace(/_/g, ' ')
 }));
+
+// Sample Chart of Accounts - In production, this should be fetched from API
+const CHART_OF_ACCOUNTS = [
+  { account_id: '5010', account_code: '5010', account_name: 'Office Supplies Expense' },
+  { account_id: '5020', account_code: '5020', account_name: 'Utilities Expense' },
+  { account_id: '5030', account_code: '5030', account_name: 'Professional Fees' },
+  { account_id: '5040', account_code: '5040', account_name: 'Insurance Expense' },
+  { account_id: '5050', account_code: '5050', account_name: 'Licensing and Permits' },
+  { account_id: '5060', account_code: '5060', account_name: 'General Administrative Expense' },
+];
 
 export default function RecordAdminExpenseModal({ 
   mode, 
@@ -86,19 +97,6 @@ export default function RecordAdminExpenseModal({
 
   const [scheduleItems, setScheduleItems] = useState<ExpenseScheduleItem[]>(existingData?.scheduleItems || []);
   const [numberOfPayments, setNumberOfPayments] = useState<number>(existingData?.scheduleItems?.length || 2);
-  const [items, setItems] = useState<Item[]>(
-    existingData?.items?.map(item => ({
-      item_name: item.item_name || '',
-      quantity: item.quantity || 1,
-      unit_measure: item.unit_measure || 'pcs',
-      unit_cost: item.unit_cost || 0,
-      supplier: item.supplier || '',
-      subtotal: item.subtotal || 0,
-      type: item.type || 'supply'
-    })) || []
-  );
-  const [showItems, setShowItems] = useState<boolean>(!!existingData?.items && existingData.items.length > 0);
-  const [itemsValid, setItemsValid] = useState(true);
 
   const [formErrors, setFormErrors] = useState<FormErrors>({
     date: '',
@@ -112,7 +110,8 @@ export default function RecordAdminExpenseModal({
     referenceNo: '',
     numberOfPayments: '',
     startDate: '',
-    remarks: ''
+    remarks: '',
+    accountingCode: ''
   });
 
   const [isDirty, setIsDirty] = useState(false);
@@ -198,6 +197,9 @@ export default function RecordAdminExpenseModal({
           }
         }
         break;
+      case 'accountingCode':
+        if (!value) errorMessage = 'Accounting Code is required';
+        break;
     }
 
     setFormErrors(prev => ({ ...prev, [fieldName]: errorMessage }));
@@ -223,12 +225,6 @@ export default function RecordAdminExpenseModal({
     setFormData(prev => ({ ...prev, scheduleItems: newItems }));
   };
 
-  const handleItemsChange = (newItems: Item[]) => {
-    setItems(newItems);
-    const totalAmount = newItems.reduce((sum, item) => sum + item.subtotal, 0);
-    setFormData(prev => ({ ...prev, amount: totalAmount, items: newItems as any[] }));
-  };
-
   const handleSubmit = (e?: React.FormEvent) => {
     if (e && typeof (e as any).preventDefault === 'function') (e as any).preventDefault();
 
@@ -245,17 +241,12 @@ export default function RecordAdminExpenseModal({
       referenceNo: '',
       numberOfPayments: validateFormField('numberOfPayments', numberOfPayments),
       startDate: validateFormField('startDate', formData.startDate),
-      remarks: ''
+      remarks: '',
+      accountingCode: validateFormField('accountingCode', formData.category)
     };
 
     if (Object.values(errors).some(err => err !== '')) {
       showError('Please fix the errors in the form','error');
-      return;
-    }
-
-    // Validate items if any are present
-    if (showItems && items.length > 0 && !itemsValid) {
-      showError('Please fix the errors in expense items', 'error');
       return;
     }
 
@@ -286,119 +277,83 @@ export default function RecordAdminExpenseModal({
       <p className="details-title">I. Expense Information</p>
       <div className={`modal-content ${mode}`}>
         <form className={`${mode}-form`}>
-          {/* Row: Date + Category */}
+          {/* Row: Expense Code + Date Recorded */}
           <div className="form-row">
             <div className="form-group">
-              <label>Date <span className="requiredTags">*</span></label>
+              <label>Expense Code</label>
+              <input
+                type="text"
+                value={formData.id || 'Auto-generated'}
+                readOnly
+                className="readonly-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Date Recorded <span className="requiredTags">*</span></label>
               <input
                 type="date"
                 name="date"
                 value={formData.date}
                 onChange={handleInputChange}
                 className={formErrors.date ? 'error' : ''}
+                readOnly={mode === 'edit'}
               />
               {formErrors.date && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.date}</p>}
             </div>
-            <div className="form-group">
-              <label>Category <span className="requiredTags">*</span></label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className={formErrors.category ? 'error' : ''}
-              >
-                <option value="">Select Category</option>
-                {EXPENSE_CATEGORIES.map(cat => (
-                  <option key={cat.value} value={cat.value}>{cat.label}</option>
-                ))}
-              </select>
-              {formErrors.category && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.category}</p>}
-            </div>
           </div>
 
-          {/* Row: Subcategory + Amount */}
+          {/* Row: Expense Name + Amount */}
           <div className="form-row">
             <div className="form-group">
-              <label>Subcategory</label>
-              <input
-                type="text"
-                name="subcategory"
-                value={formData.subcategory}
-                onChange={handleInputChange}
-                placeholder="e.g. Office Supplies, Internet"
-              />
-            </div>
-            <div className="form-group">
-              <label>Amount <span className="requiredTags">*</span></label>
-              <div className="form-row" style={{ alignItems: 'center' }}>
-                <input
-                  type="text"
-                  value={formatMoney(formData.amount)}
-                  readOnly
-                  className="readonly-input"
-                  style={{ fontWeight: 'bold', color: '#961C1E' }}
-                />
-              </div>
-              <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>Auto-calculated from expense items</p>
-            </div>
-          </div>
-
-          {/* Row: Vendor + Invoice */}
-          <div className="form-row">
-            <div className="form-group">
-              <label>Vendor / Payee <span className="requiredTags">*</span></label>
-              <input
-                type="text"
-                name="vendor"
-                value={formData.vendor}
-                onChange={handleInputChange}
-                className={formErrors.vendor ? 'error' : ''}
+              <label>Expense Name <span className="requiredTags">*</span></label>
+              <CustomDropdown
+                options={EXPENSE_CATEGORIES}
+                value={formData.vendor || ''}
+                onChange={(val) => setFormData(prev => ({ ...prev, vendor: val }))}
+                placeholder="Select or type expense name"
+                allowCustomInput={true}
               />
               {formErrors.vendor && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.vendor}</p>}
             </div>
             <div className="form-group">
-              <label>Invoice / Ref No.</label>
+              <label>Amount <span className="requiredTags">*</span></label>
               <input
-                type="text"
-                name="invoice_number"
-                value={formData.invoice_number}
+                type="number"
+                name="amount"
+                value={formData.amount}
                 onChange={handleInputChange}
+                className={formErrors.amount ? 'error' : ''}
+                step="0.01"
+                min="0"
               />
+              {formErrors.amount && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.amount}</p>}
             </div>
           </div>
 
-          {/* Row: Description (full width) */}
+          {/* Row: Payment Method */}
           <div className="form-row">
-            <div className="form-group full-width">
-              <label>Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
+            <div className="form-group">
+              <label>Payment Method</label>
+              <select
+                name="paymentMethod"
+                value={formData.paymentMethod}
                 onChange={handleInputChange}
-                rows={2}
-              />
+              >
+                <option value="">Select Payment Method</option>
+                <option value="CASH">Cash</option>
+                <option value="CHECK">Check</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="CREDIT_CARD">Credit Card</option>
+                <option value="OTHERS">Others</option>
+              </select>
             </div>
           </div>
         </form>
 
       </div>
 
-      {/* II. Expense Items */}
-      <p className="details-title">II. Expense Items (Optional)</p>
-      <div className={`modal-content ${mode}`}>
-        <ItemsTable
-          items={items}
-          onItemsChange={handleItemsChange}
-          showItems={showItems}
-          onToggleItems={() => setShowItems(!showItems)}
-          readOnly={false}
-          title="Expense Items"
-          onValidityChange={setItemsValid}
-        />
-      </div>
-
-      {/* III. Payment Schedule */}
-      <p className="details-title">III. Payment Schedule</p>
+      {/* II. Payables */}
+      <p className="details-title">II. Payables</p>
       <div className={`modal-content ${mode}`}>
         <form className={`${mode}-form`}>
           {/* Prepaid / Payable Section */}
@@ -413,7 +368,7 @@ export default function RecordAdminExpenseModal({
                   onChange={handleInputChange}
                 />
                 <label htmlFor="isPrepaid" style={{ fontWeight: '600' }}>
-                  Mark as Prepaid / Payable (Schedule Payments)
+                  Payables? (Schedule Payments)
                 </label>
               </div>
             </div>
@@ -483,8 +438,8 @@ export default function RecordAdminExpenseModal({
           </form>
       </div>
 
-      {/* IV. Additional Info */}
-      <p className="details-title">IV. Additional Info</p>
+      {/* III. Additional Info */}
+      <p className="details-title">III. Additional Info</p>
       <div className={`modal-content ${mode}`}>
         <form className={`${mode}-form`}>
 
@@ -498,6 +453,32 @@ export default function RecordAdminExpenseModal({
                 onChange={handleInputChange}
                 rows={2}
               />
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* IV. Accounting Details */}
+      <p className="details-title">IV. Accounting Details</p>
+      <div className={`modal-content ${mode}`}>
+        <form className={`${mode}-form`}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Accounting Code <span className="requiredTags">*</span></label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                className={formErrors.accountingCode ? 'error' : ''}
+              >
+                <option value="">Select Account</option>
+                {CHART_OF_ACCOUNTS.map(account => (
+                  <option key={account.account_id} value={account.account_code}>
+                    {account.account_code} - {account.account_name}
+                  </option>
+                ))}
+              </select>
+              {formErrors.accountingCode && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.accountingCode}</p>}
             </div>
           </div>
         </form>

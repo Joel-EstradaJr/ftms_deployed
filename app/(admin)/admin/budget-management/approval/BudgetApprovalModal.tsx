@@ -2,45 +2,12 @@
 
 import React, { useState } from 'react';
 import ModalHeader from '../../../../Components/ModalHeader';
-import ItemTableModal, { ItemField } from '../../../../Components/ItemTableModal';
+import ItemTableModal, { ItemField } from '@/Components/ItemTableModal';
 import { formatMoney, formatDate } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
+import { BudgetItem, BudgetRequest } from './viewBudgetRequest';
 import '../../../../styles/components/modal.css';
 import '../../../../styles/components/table.css';
-
-interface BudgetItem {
-  item_name: string;
-  quantity: number;
-  unit_measure: string;
-  unit_cost: number;
-  supplier: string;
-  subtotal: number;
-  type: 'supply' | 'service';
-}
-
-interface BudgetRequest {
-  request_id: string;
-  title: string;
-  description: string;
-  requested_amount: number;
-  approved_amount?: number;
-  status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
-  category: string;
-  requested_by: string;
-  request_date: string;
-  department: string;
-  requested_type: 'Emergency' | 'Urgent' | 'Regular' | 'Project-Based';
-  approval_date?: string;
-  approved_by?: string;
-  rejection_reason?: string;
-  created_at: string;
-  updated_at?: string;
-  requester_position?: string;
-  budget_period?: string;
-  start_date?: string;
-  end_date?: string;
-  items?: BudgetItem[];
-}
 
 interface BudgetApprovalModalProps {
   request: BudgetRequest;
@@ -60,6 +27,19 @@ export default function BudgetApprovalModal({
   const [approveAmount, setApproveAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showItemsModal, setShowItemsModal] = useState(false);
+
+  // Helper to convert BudgetItem[] to ItemField[]
+  const mapItemsToTableFormat = (items?: BudgetItem[]): ItemField[] => {
+    if (!items || items.length === 0) return [];
+    return items.map(item => ({
+      item_name: item.item_name,
+      quantity: item.quantity,
+      unit_measure: item.unit_measure,
+      unit_cost: item.unit_cost,
+      supplier_name: item.supplier,
+      subtotal: item.subtotal
+    }));
+  };
 
   const handleApprove = async () => {
     // Validate approve amount
@@ -136,57 +116,34 @@ export default function BudgetApprovalModal({
           title={`${action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Review'} Budget Request`}
           onClose={onClose}
         />
-
         <div className="modalContent">
           {!action ? (
-            // Initial review screen
-            <>
-              <div className="sectionTitle">Request Details</div>
-
-              <div className="formFieldsHorizontal">
-                <div className="formField full-width">
-                  <label>Request ID</label>
-                  <div className="viewField">{request.request_id}</div>
+            <div className="displayInputs">
+              <div className="sectionHeader">Request Information</div>
+              <div className="displayRow">
+                <div className="displayField displayFieldHalf">
+                  <label>Request Code</label>
+                  <div className="displayValue highlightValue">{request.request_id}</div>
                 </div>
-
-                <div className="formField full-width">
-                  <label>Title</label>
-                  <div className="viewField">{request.title}</div>
+                <div className="displayField displayFieldHalf">
+                  <label>Date of Request</label>
+                  <div className="displayValue">{formatDate(request.request_date)}</div>
                 </div>
-
-                <div className="formField full-width">
-                  <label>Description</label>
-                  <div className="viewField">{request.description}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Category</label>
-                  <div className="viewField">{request.category}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Requested Amount</label>
-                  <div className="viewField">{formatMoney(request.requested_amount)}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Requested By</label>
-                  <div className="viewField">{request.requested_by}</div>
-                </div>
-
-                <div className="formField">
-                  <label>Request Date</label>
-                  <div className="viewField">{formatDate(request.request_date)}</div>
-                </div>
-
-                <div className="formField">
+              </div>
+              <div className="displayRow">
+                <div className="displayField displayFieldHalf">
                   <label>Department</label>
-                  <div className="viewField">{request.department || 'N/A'}</div>
+                  <div className="displayValue">{request.department || 'Operations'}</div>
                 </div>
-
-                <div className="formField">
-                  <label>Requested Type</label>
-                  <div className="viewField">
+                <div className="displayField displayFieldHalf">
+                  <label>Requested By</label>
+                  <div className="displayValue">{request.requested_by}</div>
+                </div>
+              </div>
+              <div className="displayRow">
+                <div className="displayField displayFieldHalf">
+                  <label>Request Type</label>
+                  <div className="displayValue">
                     <span className={`chip ${
                       request.requested_type === 'Emergency' ? 'emergency' : 
                       request.requested_type === 'Urgent' ? 'urgent' : 
@@ -196,28 +153,45 @@ export default function BudgetApprovalModal({
                     </span>
                   </div>
                 </div>
+                <div className="displayField displayFieldHalf">
+                  <label>Category</label>
+                  <div className="displayValue">{request.category}</div>
+                </div>
               </div>
-
-              {/* Budget Items Button */}
+              <div className="sectionHeader">Budget Details</div>
+              <div className="displayField">
+                <label>Budget Title / Project Name</label>
+                <div className="displayValue highlightValue">{request.title}</div>
+              </div>
+              <div className="displayField">
+                <label>Description</label>
+                <div className="displayValue displayValueTextarea">{request.description}</div>
+              </div>
+              <div className="displayRow">
+                <div className="displayField displayFieldHalf">
+                  <label>Budget Period</label>
+                  <div className="displayValue">{request.budget_period || 'One Time Use'}</div>
+                </div>
+                <div className="displayField displayFieldHalf">
+                  <label>Requested Amount</label>
+                  <div className="displayValue highlightValue">{formatMoney(request.requested_amount)}</div>
+                </div>
+              </div>
               {request.items && request.items.length > 0 && (
-                <>
-                  <div className="sectionTitle">Budget Items</div>
-                  <div className="formFieldsHorizontal">
-                    <div className="formField full-width">
-                      <button
-                        type="button"
-                        className="submit-btn"
-                        onClick={() => setShowItemsModal(true)}
-                      >
-                        <i className="ri-list-check" />
-                        View Budget Items ({request.items.length})
-                      </button>
-                    </div>
-                  </div>
-                </>
+                <div className="itemsDisplaySection">
+                  <div className="sectionHeader">Budget Items ({request.items.length})</div>
+                  <ItemTableModal
+                    isOpen={true}
+                    onClose={() => {}}
+                    mode="view"
+                    title="Budget Items"
+                    items={mapItemsToTableFormat(request.items)}
+                    isLinkedToPurchaseRequest={false}
+                    embedded={true}
+                  />
+                </div>
               )}
-
-              <div className="modalButtons">
+              <div className="modalButtons" style={{ marginTop: '20px' }}>
                 <button
                   className="approveButton"
                   onClick={() => {
@@ -245,7 +219,7 @@ export default function BudgetApprovalModal({
                   Cancel
                 </button>
               </div>
-            </>
+            </div>
           ) : action === 'approve' ? (
             // Approval confirmation
             <>
@@ -339,25 +313,6 @@ export default function BudgetApprovalModal({
           )}
         </div>
       </div>
-
-      {/* ItemTableModal for viewing budget items */}
-      {showItemsModal && request.items && (
-        <ItemTableModal
-          isOpen={showItemsModal}
-          onClose={() => setShowItemsModal(false)}
-          mode="view"
-          title="Budget Items"
-          items={request.items.map((item): ItemField => ({
-            item_name: item.item_name,
-            quantity: item.quantity,
-            unit_measure: item.unit_measure,
-            unit_price: item.unit_cost,
-            supplier_name: item.supplier,
-            subtotal: item.subtotal
-          }))}
-          isLinkedToPurchaseRequest={false}
-        />
-      )}
     </div>
   );
 }

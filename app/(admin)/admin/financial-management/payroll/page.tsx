@@ -16,6 +16,7 @@ import RecordPayrollBatch from './recordPayrollBatch';
 import ViewPayrollBatch from './viewPayrollBatch';
 import ModalManager from '../../../../Components/modalManager';
 import ExportButton from '../../../../Components/ExportButton';
+import payrollService, { HrPayrollData } from '../../../../services/payrollService';
 
 const PayrollPage = () => {
   // State for payroll batches
@@ -54,49 +55,103 @@ const PayrollPage = () => {
       }
       setError(null);
       
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/payroll/batches
-      console.warn('API integration pending - using mock payroll batch data');
-      
-      // Mock data for demonstration
-      const mockBatches: PayrollBatch[] = [
-        {
-          id: '1',
-          payroll_period_code: 'PAY-202511-001',
-          period_start: '2025-11-01',
-          period_end: '2025-11-30',
-          totalGross: 150000,
-          totalDeductions: 30000,
-          total_net: 120000,
-          total_employees: 5,
-          status: 'PENDING',
-          createdBy: 'Admin User',
-          createdAt: '2025-11-20T10:00:00Z',
-          payrolls: [
-            {
-              id: 'p1',
-              batchId: '1',
-              employeeId: 'EMP-001',
-              baseSalary: 15600,
-              allowances: 2000,
-              deductions: 1500,
-              netPay: 16100,
+      // Fetch HR payroll data grouped by period from integration endpoint
+      try {
+        // Get current date for default filtering
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth(); // 0-based (0 = January)
+        
+        const payrollBatches = await payrollService.fetchPayrollBatches(currentYear, currentMonth);
+        
+        // Transform grouped payroll data to PayrollBatch format for display
+        const transformedBatches: PayrollBatch[] = payrollBatches.map((batch, index) => {
+          // Calculate totals for the entire batch
+          let totalGross = 0;
+          let totalDeductions = 0;
+          let totalNet = 0;
+
+          const payrolls = batch.employees.map((employee: HrPayrollData) => {
+            const grossEarnings = payrollService.calculateGrossEarnings(employee);
+            const deductions = payrollService.calculateTotalDeductions(employee);
+            const netPay = payrollService.calculateNetPay(employee);
+            const presentDays = employee.present_days || 
+              employee.attendances.filter(a => a.status === 'Present').length;
+
+            totalGross += grossEarnings;
+            totalDeductions += deductions;
+            totalNet += netPay;
+
+            return {
+              id: `${batch.payroll_period_start}-${employee.employee_number}`,
+              batchId: `batch-${batch.payroll_period_start}`,
+              employeeId: employee.employee_number,
+              baseSalary: parseFloat(employee.basic_rate),
+              allowances: payrollService.getBenefitsByType(employee).size > 0 
+                ? Array.from(payrollService.getBenefitsByType(employee).values()).reduce((a, b) => a + b, 0)
+                : 0,
+              deductions: deductions,
+              netPay: netPay,
               isDisbursed: false,
-              createdAt: '2025-11-20T10:00:00Z',
+              createdAt: new Date().toISOString(),
               employee: {
-                employeeNumber: 'EMP-001',
-                firstName: 'Juan',
-                lastName: 'Dela Cruz',
-                department: 'Operations',
-                position: 'Driver',
+                employeeNumber: employee.employee_number,
+                firstName: employee.employee_name || employee.employee_number,
+                lastName: '',
+                department: 'N/A',
+                position: employee.rate_type,
                 status: 'active'
-              }
-            }
-          ]
-        }
-      ];
-      
-      setBatches(mockBatches);
-      setTotalPages(Math.ceil(mockBatches.length / pageSize));
+              },
+              hrPayrollData: employee,
+              presentDays: presentDays
+            };
+          });
+
+          return {
+            id: `batch-${batch.payroll_period_start}`,
+            payroll_period_code: `PAY-${batch.payroll_period_start.replace(/-/g, '')}`,
+            period_start: batch.payroll_period_start,
+            period_end: batch.payroll_period_end,
+            totalGross: totalGross,
+            totalDeductions: totalDeductions,
+            total_net: totalNet,
+            total_employees: batch.total_employees,
+            status: 'PENDING',
+            createdBy: 'Admin User',
+            createdAt: new Date().toISOString(),
+            payrolls: payrolls
+          };
+        });
+        
+        setBatches(transformedBatches);
+        setTotalPages(Math.ceil(transformedBatches.length / pageSize));
+        
+        console.log('✅ HR Payroll batches loaded successfully:', transformedBatches.length, 'batches with', transformedBatches.reduce((sum, b) => sum + b.total_employees, 0), 'total employees');
+      } catch (apiError) {
+        console.error('HR Payroll API error:', apiError);
+        // Fallback to mock data if API fails
+        console.warn('Using fallback mock data due to API error');
+        
+        const mockBatches: PayrollBatch[] = [
+          {
+            id: '1',
+            payroll_period_code: 'PAY-202601-P1',
+            period_start: '2026-01-01',
+            period_end: '2026-01-15',
+            totalGross: 150000,
+            totalDeductions: 30000,
+            total_net: 120000,
+            total_employees: 16,
+            status: 'PENDING',
+            createdBy: 'Admin User',
+            createdAt: '2026-01-10T10:00:00Z',
+            payrolls: []
+          }
+        ];
+        
+        setBatches(mockBatches);
+        setTotalPages(Math.ceil(mockBatches.length / pageSize));
+      }
       
       if (isSearch) {
         setSearchLoading(false);

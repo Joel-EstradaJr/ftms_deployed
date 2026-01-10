@@ -913,11 +913,11 @@ const AdminOtherRevenuePage = () => {
       }
 
       // Apply date range filter
-      if (activeFilters.dateRange.from || activeFilters.dateRange.to) {
+      if (activeFilters.dateRange?.from || activeFilters.dateRange?.to) {
         filteredData = filteredData.filter(item => {
           const itemDate = new Date(item.date_recorded);
-          const fromDate = activeFilters.dateRange.from ? new Date(activeFilters.dateRange.from) : null;
-          const toDate = activeFilters.dateRange.to ? new Date(activeFilters.dateRange.to) : null;
+          const fromDate = activeFilters.dateRange?.from ? new Date(activeFilters.dateRange.from) : null;
+          const toDate = activeFilters.dateRange?.to ? new Date(activeFilters.dateRange.to) : null;
 
           if (fromDate && itemDate < fromDate) return false;
           if (toDate && itemDate > toDate) return false;
@@ -926,11 +926,11 @@ const AdminOtherRevenuePage = () => {
       }
 
       // Apply amount range filter
-      if (activeFilters.amountRange.from || activeFilters.amountRange.to) {
+      if (activeFilters.amountRange?.from || activeFilters.amountRange?.to) {
         filteredData = filteredData.filter(item => {
           const amount = item.amount;
-          const fromAmount = activeFilters.amountRange.from ? parseFloat(activeFilters.amountRange.from) : null;
-          const toAmount = activeFilters.amountRange.to ? parseFloat(activeFilters.amountRange.to) : null;
+          const fromAmount = activeFilters.amountRange?.from ? parseFloat(activeFilters.amountRange.from) : null;
+          const toAmount = activeFilters.amountRange?.to ? parseFloat(activeFilters.amountRange.to) : null;
 
           if (fromAmount && amount < fromAmount) return false;
           if (toAmount && amount > toAmount) return false;

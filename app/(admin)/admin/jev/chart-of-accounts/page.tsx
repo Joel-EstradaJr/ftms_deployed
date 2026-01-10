@@ -15,17 +15,24 @@ import RecordChartOfAccount from './recordChartOfAccount';
 import AddAccountModal from './AddAccountModal';
 import ValidateBalanceModal from './ValidateBalanceModal';
 import AuditTrailModal from './AuditTrailModal';
+import ViewAccountModal from './ViewAccountModal';
 
 import { ChartOfAccount, AccountType, AccountFormData} from '@/app/types/jev';
-import { fetchChartOfAccounts, createChartOfAccount, ChartOfAccountsQueryParams, PaginationResponse } from '@/app/services/chartOfAccountsService';
+import { 
+  fetchChartOfAccounts, 
+  createChartOfAccount, 
+  archiveChartOfAccount,
+  restoreChartOfAccount,
+  ChartOfAccountsQueryParams, 
+  PaginationResponse 
+} from '@/app/services/chartOfAccountsService';
 import {getAccountTypeClass, 
-        canArchiveAccount,
-        getNormalBalance} from '@/app/lib/jev/accountHelpers';
+        canArchiveAccount} from '@/app/lib/jev/accountHelpers';
 
 // import '@/app/styles/JEV/chart-of-accounts.css';
 import '@/app/styles/components/table.css'; 
 import '@/app/styles/components/chips.css';
-import '@/app/styles/JEV/JEV_table.css'; 
+
 
 const ChartOfAccountsPage = () => {
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
@@ -91,11 +98,16 @@ const ChartOfAccountsPage = () => {
       const hasAccountTypeFilter = accountTypeFilters.length > 0;
       const trimmedSearch = debouncedSearch.trim();
 
+      // Determine if we need client-side filtering
+      // We need client-side filtering when:
+      // 1. There's an account type filter (backend doesn't support accountTypeId array filter)
+      // 2. Status filter is 'archived' (backend returns all when includeArchived=true, but we need only archived)
+      const needsClientSideFiltering = hasAccountTypeFilter || statusFilter === 'archived';
+
       const params: ChartOfAccountsQueryParams = {
-        page: hasAccountTypeFilter ? 1 : currentPage,
-        // fetch more when we need to paginate client-side to avoid truncation
-        limit: hasAccountTypeFilter ? 10000 : pageSize,
-        includeArchived: statusFilter !== 'active', // true for archived/all, false for active
+        page: needsClientSideFiltering ? 1 : currentPage,
+        limit: needsClientSideFiltering ? 10000 : pageSize,
+        includeArchived: statusFilter === 'archived' || statusFilter === 'all',
       };
 
       if (trimmedSearch) {
@@ -110,27 +122,33 @@ const ChartOfAccountsPage = () => {
       // Frontend filters
       let filteredData = result.data;
 
+      // Apply account type filter (client-side only)
       if (hasAccountTypeFilter) {
         const typeSet = new Set(accountTypeFilters.map(String));
         filteredData = filteredData.filter(acc => typeSet.has(String(acc.account_type)));
       }
 
+      // Apply status filter (client-side for additional filtering)
+      // Backend includeArchived returns both active and archived when true
+      // We need to filter further based on statusFilter
       if (statusFilter === 'active') {
         filteredData = filteredData.filter(acc => acc.is_active);
       } else if (statusFilter === 'archived') {
         filteredData = filteredData.filter(acc => !acc.is_active);
       }
-      // statusFilter === 'all' -> no extra filtering
+      // statusFilter === 'all' -> no additional filtering needed
 
       // Pagination
       let paginatedData = filteredData;
       let total = filteredData.length;
       let calculatedTotalPages = Math.ceil(total / pageSize);
 
-      if (hasAccountTypeFilter) {
+      if (needsClientSideFiltering) {
+        // Client-side pagination
         const startIndex = (currentPage - 1) * pageSize;
         paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
       } else {
+        // Use backend pagination only when no client-side filtering
         total = result.pagination.total;
         calculatedTotalPages = result.pagination.totalPages;
       }
@@ -138,6 +156,11 @@ const ChartOfAccountsPage = () => {
       setAccounts(paginatedData);
       setTotalPages(Math.max(1, calculatedTotalPages));
       setTotalItems(total);
+      
+      // Auto-adjust current page if it exceeds new total pages
+      if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
+        setCurrentPage(calculatedTotalPages);
+      }
       
       // Mark loading as complete
       setLoading(false);
@@ -208,7 +231,7 @@ const ChartOfAccountsPage = () => {
         'Account Code': account.account_code,
         'Account Name': account.account_name,
         'Account Type': account.account_type,
-        'Normal Balance': getNormalBalance(account.account_type),
+        'Normal Balance': account.normal_balance || 'N/A',
         'Description': account.description || '-',
         'Status': account.is_active ? 'Active' : 'Archived'
       }));
@@ -270,12 +293,9 @@ const ChartOfAccountsPage = () => {
   const openViewModal = (account: ChartOfAccount) => {
     setSelectedAccount(account);
     setModalContent(
-      <RecordChartOfAccount
-        account={account}
-        mode="view"
-        accounts={accounts} // Using current page accounts
+      <ViewAccountModal
+        accountId={account.account_id}
         onClose={closeModal}
-        onSave={async () => {}} // No-op for view mode
       />
     );
     setIsModalOpen(true);
@@ -354,9 +374,6 @@ const ChartOfAccountsPage = () => {
       return;
     }
     
-    // Note: Child count check removed as we need all accounts to calculate this
-    // Backend should validate this on archive attempt
-    
     const result = await showConfirmation(
       `Are you sure you want to archive "${account.account_name}"?<br/>
       <span style="color: #666; font-size: 0.9em;">This account will no longer appear in active listings.</span>`,
@@ -364,8 +381,18 @@ const ChartOfAccountsPage = () => {
     );
 
     if (result.isConfirmed) {
-      await showSuccess('Account archived successfully', 'Success');
-      loadAccountsFromApi();
+      try {
+        await archiveChartOfAccount(account.account_id);
+        await showSuccess('Account archived successfully', 'Success');
+        loadAccountsFromApi();
+      } catch (error) {
+        console.error('Error archiving account:', error);
+        if (error instanceof Error) {
+          await showError(error.message, 'Archive Failed');
+        } else {
+          await showError('Failed to archive account', 'Error');
+        }
+      }
     }
   };
 
@@ -376,16 +403,26 @@ const ChartOfAccountsPage = () => {
     );
 
     if (result.isConfirmed) {
-      await showSuccess('Account restored successfully', 'Success');
-      loadAccountsFromApi();
+      try {
+        await restoreChartOfAccount(account.account_id);
+        await showSuccess('Account restored successfully', 'Success');
+        loadAccountsFromApi();
+      } catch (error) {
+        console.error('Error restoring account:', error);
+        if (error instanceof Error) {
+          await showError(error.message, 'Restore Failed');
+        } else {
+          await showError('Failed to restore account', 'Error');
+        }
+      }
     }
   };
 
   const renderActionButtons = (account: ChartOfAccount) => {
-    // Determine deleted state: prefer `is_deleted` if available, fallback to inverse of `is_active`
-    const isDeleted = (account as any).is_deleted ?? !account.is_active;
+    // Use is_active to determine archived state (is_active = false means archived)
+    const isArchived = !account.is_active;
 
-    if (isDeleted) {
+    if (isArchived) {
       // Archived: show only View + Unarchive
       return (
         <div className="actionButtonsContainer">
@@ -397,9 +434,9 @@ const ChartOfAccountsPage = () => {
             <i className="ri-eye-line" />
           </button>
           <button
-            className="successBtn"
+            className="restoreBtn"
             onClick={() => handleRestore(account)}
-            title="Unarchive Account"
+            title="Restore Account"
           >
             <i className="ri-refresh-line" />
           </button>
@@ -514,13 +551,12 @@ const ChartOfAccountsPage = () => {
               <thead>
                 <tr>
                   <th style={{ width: 60,  minWidth: 60,  textAlign: 'center' }}>No.</th>
-                  <th style={{ width: 140, minWidth: 140, textAlign: 'center' as const }}>Account Code</th>
-                  <th className="account-name" style={{ minWidth: 150, textAlign: 'left' }}>Account Name</th>
+                  <th style={{ minWidth: 140, textAlign: 'center' as const }}>Account Code</th>
+                  <th className="account-name" style={{ textAlign: 'center' }}>Account Name</th>
                   <th style={{ minWidth: 140, textAlign: 'center' }}>Account Type</th>
-                  <th style={{ width: 120, minWidth: 120, textAlign: 'center' }}>Normal Balance</th>
-                  <th style={{ minWidth: 250, textAlign: 'left' }}>Description</th>
-                  <th style={{ width: 120, minWidth: 120, textAlign: 'center' }}>Status</th>
-                  <th style={{ width: 140, minWidth: 140, textAlign: 'center' }}>Actions</th>
+                  <th style={{ minWidth: 120, textAlign: 'center' }}>Normal Balance</th>
+                  <th style={{ minWidth: 120, textAlign: 'center' }}>Status</th>
+                  <th style={{ minWidth: 140, textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -549,18 +585,7 @@ const ChartOfAccountsPage = () => {
                       </td>
 
                       {/* Normal Balance */}
-                      <td>{getNormalBalance(account.account_type)}</td>
-
-                      {/* Description */}
-                      <td>
-                        {account.description ? (
-                          <span title={account.description}>
-                            {account.description.length > 50 
-                              ? `${account.description.substring(0, 50)}...` 
-                              : account.description}
-                          </span>
-                        ) : '-'}
-                      </td>
+                      <td>{account.normal_balance || 'N/A'}</td>
 
                       {/* Status - Single value centered */}
                       <td className="table-status">

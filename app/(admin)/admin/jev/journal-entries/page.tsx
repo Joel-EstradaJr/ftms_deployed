@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { JournalEntry, JournalEntryFormData, ChartOfAccount, EntryType, JournalStatus, AccountType, NormalBalance } from '@/app/types/jev';
+import { fetchJournalEntries, fetchJournalEntryById } from '@/app/services/journalEntryService';
 
 import { getEntryTypeClass, getStatusClass } from '@/app/lib/jev/journalHelpers';
 
@@ -313,72 +314,58 @@ export default function JournalEntriesPage() {
     try {
       setLoading(true);
       setError(null);
+      setErrorCode(null);
       
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/jev/journal-entries');
-      // const data = await response.json();
+      // Fetch from backend API
+      const { entries: fetchedEntries, pagination } = await fetchJournalEntries({
+        page: currentPage,
+        limit: pageSize,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        status: statusFilter || undefined,
+        entry_type: entryTypeFilter || undefined,
+        code: searchQuery || undefined,
+      });
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setEntries(fetchedEntries);
+      setTotalPages(pagination.totalPages);
       
-      setEntries(mockEntries);
-      setFilteredEntries(mockEntries);
+      // Set mock accounts (or fetch from chart of accounts API if needed)
       setAccounts(mockAccounts);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching entries:', err);
-      setError('Failed to load journal entries');
-      setErrorCode(500);
+      setError(err.message || 'Failed to load journal entries');
+      setErrorCode(err.status || 500);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, pageSize, dateFrom, dateTo, statusFilter, entryTypeFilter, searchQuery]);
 
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
 
-  // Apply filters
+  // Trigger fetch when filters change
   useEffect(() => {
-    let filtered = [...entries];
+    fetchEntries();
+  }, [fetchEntries]);
 
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(entry =>
-        entry.code.toLowerCase().includes(query) ||
-        entry.description.toLowerCase().includes(query) ||
-        entry.reference?.toLowerCase().includes(query)
-      );
-    }
+  // Debounce search query - reset page when search changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    // Date range filter
-    if (dateFrom) {
-      filtered = filtered.filter(entry => entry.date >= dateFrom);
-    }
-    if (dateTo) {
-      filtered = filtered.filter(entry => entry.date <= dateTo);
-    }
+  // Apply client-side filters if needed (for immediate UI feedback)
+  useEffect(() => {
+    // Since we're using server-side filtering, just use the entries as-is
+    setFilteredEntries(entries);
+  }, [entries]);
 
-    // Entry type filter
-    if (entryTypeFilter) {
-      filtered = filtered.filter(entry => entry.entry_type === entryTypeFilter);
-    }
-
-    // Status filter
-    if (statusFilter) {
-      filtered = filtered.filter(entry => entry.status === statusFilter);
-    }
-
-    setFilteredEntries(filtered);
-    setTotalPages(Math.ceil(filtered.length / pageSize));
-    setCurrentPage(1);
-  }, [entries, searchQuery, dateFrom, dateTo, entryTypeFilter, statusFilter, pageSize]);
-
-  // Paginate data
-  const paginatedEntries = filteredEntries.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  // Paginate data - Backend handles pagination, so we use entries directly
+  const paginatedEntries = entries;
 
   // Handle save new entry
   const handleSaveNewEntry = async (formData: JournalEntryFormData) => {
@@ -409,15 +396,22 @@ export default function JournalEntriesPage() {
   };
 
   // Handle view entry
-  const handleViewEntry = (entry: JournalEntry) => {
-    setSelectedEntry(entry);
-    setModalContent(
-      <ViewJournalEntryModal
-        entry={entry}
-        onClose={() => setIsModalOpen(false)}
-      />
-    );
-    setIsModalOpen(true);
+  const handleViewEntry = async (entry: JournalEntry) => {
+    try {
+      // Fetch full details from backend
+      const fullEntry = await fetchJournalEntryById(entry.journal_entry_id);
+      setSelectedEntry(fullEntry);
+      setModalContent(
+        <ViewJournalEntryModal
+          entry={fullEntry}
+          onClose={() => setIsModalOpen(false)}
+        />
+      );
+      setIsModalOpen(true);
+    } catch (error: any) {
+      console.error('Error fetching entry details:', error);
+      showError(error.message || 'Failed to load entry details', 'Error');
+    }
   };
 
   // Handle add entry
@@ -537,6 +531,7 @@ export default function JournalEntriesPage() {
     setDateTo('');
     setEntryTypeFilter('');
     setStatusFilter('');
+    setCurrentPage(1); // Reset to first page when filters are cleared
   };
 
   // Filter sections for FilterDropdown
@@ -584,6 +579,7 @@ export default function JournalEntriesPage() {
     setDateTo(filterValues.dateRange?.to || '');
     setEntryTypeFilter(filterValues.entry_type || '');
     setStatusFilter(filterValues.status || '');
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   if (loading) {

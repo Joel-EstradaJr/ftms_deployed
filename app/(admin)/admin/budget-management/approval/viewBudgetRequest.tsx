@@ -4,9 +4,10 @@ import React from 'react';
 import "../../../../styles/budget-management/viewBudgetRequest.css";
 import { formatDate, formatDateTime } from '../../../../utils/formatting';
 import ModalHeader from '../../../../Components/ModalHeader';
+import ItemTableModal, { ItemField } from '../../../../Components/ItemTableModal';
 
 // Types - using the same as your existing BudgetRequest interface
-interface BudgetItem {
+export interface BudgetItem {
   item_name: string;
   quantity: number;
   unit_measure: string;
@@ -15,28 +16,43 @@ interface BudgetItem {
   subtotal: number;
 }
 
-interface BudgetRequest {
+export interface BudgetRequest {
   request_id: string;
   title: string;
   description: string;
   requested_amount: number;
-  status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed';
+  approved_amount?: number;
+  status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Closed' | 'APPROVED' | 'REJECTED';
   category: string;
   requested_by: string;
   request_date: string;
+  department: string;
+  requested_type: 'Emergency' | 'Urgent' | 'Regular' | 'Project-Based';
   approval_date?: string;
   approved_by?: string;
   rejection_reason?: string;
   created_at: string;
   updated_at?: string;
   // Extended fields that would come from your database
-  department?: string;
   requester_position?: string;
   budget_period?: string;
   start_date?: string;
   end_date?: string;
   items?: BudgetItem[];
   supporting_documents?: File[] | string[]; // Could be File objects or file URLs
+  // Additional fields for comprehensive display
+  request_code?: string;
+  department_name?: string;
+  department_id?: string;
+  requested_for?: string;
+  request_type?: string;
+  pr_reference_code?: string;
+  purpose?: string;
+  remarks?: string;
+  total_amount?: number;
+  approved_at?: string;
+  rejected_at?: string;
+  rejected_by?: string;
 }
 
 interface ViewBudgetRequestProps {
@@ -54,18 +70,29 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
   onExport,
   showActions = true 
 }) => {
+  // Helper to convert BudgetItem[] to ItemField[]
+  const mapItemsToTableFormat = (items?: BudgetItem[]): ItemField[] => {
+    if (!items || items.length === 0) return [];
+    return items.map(item => ({
+      item_name: item.item_name,
+      quantity: item.quantity,
+      unit_measure: item.unit_measure,
+      unit_cost: item.unit_cost,
+      supplier_name: item.supplier,
+      subtotal: item.subtotal
+    }));
+  };
   
   // Status badge component (reuse from your main page)
   const StatusBadge = ({ status }: { status: string }) => {
     const getStatusClass = (status: string) => {
-      switch (status) {
-        case 'Draft': return 'Draft';
-        case 'Pending Approval': return 'pending-approval';
-        case 'Approved': return 'Approved';
-        case 'Rejected': return 'Rejected';
-        case 'Closed': return 'Closed';
-        default: return 'Draft';
-      }
+      const normalizedStatus = status.toLowerCase();
+      if (normalizedStatus === 'draft') return 'Draft';
+      if (normalizedStatus === 'pending approval' || normalizedStatus === 'pending') return 'pending-approval';
+      if (normalizedStatus === 'approved') return 'Approved';
+      if (normalizedStatus === 'rejected') return 'Rejected';
+      if (normalizedStatus === 'closed') return 'Closed';
+      return 'Draft';
     };
 
     return (
@@ -107,20 +134,20 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
       }
     ];
 
-    if (request.status === 'Approved' && request.approval_date && request.approved_by) {
+    if ((request.status === 'Approved' || request.status === 'APPROVED') && (request.approval_date || request.approved_at) && request.approved_by) {
       history.push({
         action: 'Request Approved',
         user: request.approved_by,
-        date: request.approval_date,
+        date: request.approval_date || request.approved_at || '',
         details: 'Budget request approved and funds allocated'
       });
     }
 
-    if (request.status === 'Rejected' && request.approved_by) {
+    if ((request.status === 'Rejected' || request.status === 'REJECTED') && (request.approved_by || request.rejected_by)) {
       history.push({
         action: 'Request Rejected',
-        user: request.approved_by,
-        date: request.approval_date || request.updated_at || '',
+        user: request.rejected_by || request.approved_by || '',
+        date: request.rejected_at || request.approval_date || request.updated_at || '',
         details: request.rejection_reason || 'No reason provided'
       });
     }
@@ -167,8 +194,8 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
             
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
-                <label>Request ID</label>
-                <div className="displayValue highlightValue">{request.request_id}</div>
+                <label>Request Code</label>
+                <div className="displayValue highlightValue">{request.request_code || request.request_id}</div>
               </div>
               
               <div className="displayField displayFieldHalf">
@@ -180,24 +207,24 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
                 <label>Department</label>
-                <div className="displayValue">{request.department || 'Operations'}</div>
+                <div className="displayValue">{request.department_name || request.department_id || request.department || 'Operations'}</div>
               </div>
               
               <div className="displayField displayFieldHalf">
-                <label>Requester Name</label>
-                <div className="displayValue">{request.requested_by}</div>
+                <label>Requested For</label>
+                <div className="displayValue">{request.requested_for || request.requested_by}</div>
               </div>
             </div>
 
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
-                <label>Requester Position</label>
-                <div className="displayValue">{request.requester_position || 'Not specified'}</div>
+                <label>Request Type</label>
+                <div className="displayValue">{request.request_type || request.requested_type || request.category}</div>
               </div>
               
               <div className="displayField displayFieldHalf">
-                <label>Category</label>
-                <div className="displayValue">{request.category}</div>
+                <label>PR Reference Code</label>
+                <div className="displayValue">{request.pr_reference_code || <span className="displayValueEmpty">Not linked to PR</span>}</div>
               </div>
             </div>
 
@@ -211,9 +238,9 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
               </div>
               
               <div className="displayField displayFieldHalf">
-                <label>Requested Amount</label>
+                <label>Total Amount</label>
                 <div className="displayValue highlightValue">
-                  ₱{request.requested_amount.toLocaleString(undefined, { 
+                  ₱{(request.total_amount || request.requested_amount).toLocaleString(undefined, { 
                     minimumFractionDigits: 2, 
                     maximumFractionDigits: 2 
                   })}
@@ -227,9 +254,16 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
             </div>
 
             <div className="displayField">
-              <label>Description</label>
-              <div className="displayValue displayValueTextarea">{request.description}</div>
+              <label>Purpose</label>
+              <div className="displayValue displayValueTextarea">{request.purpose || request.description}</div>
             </div>
+
+            {request.remarks && (
+              <div className="displayField">
+                <label>Remarks</label>
+                <div className="displayValue displayValueTextarea">{request.remarks}</div>
+              </div>
+            )}
 
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
@@ -252,66 +286,16 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
             {/* Items Section */}
             {request.items && request.items.length > 0 && (
               <div className="itemsDisplaySection">
-                <div className="itemsDisplayHeader">
-                  <h3>Budget Items</h3>
-                  <div className="itemsCount">{request.items.length} item{request.items.length !== 1 ? 's' : ''}</div>
-                </div>
-
-                {request.items.map((item, index) => (
-                  <div key={index} className="itemDisplayContainer">
-                    <div className="itemDisplayGrid">
-                      <div className="itemDisplayField">
-                        <label>Item Name</label>
-                        <div className="itemDisplayValue">{item.item_name}</div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Quantity</label>
-                        <div className="itemDisplayValue">{item.quantity}</div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Unit</label>
-                        <div className="itemDisplayValue">{item.unit_measure}</div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Unit Cost</label>
-                        <div className="itemDisplayValue">
-                          ₱{item.unit_cost.toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Supplier</label>
-                        <div className="itemDisplayValue">{item.supplier}</div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Subtotal</label>
-                        <div className="subtotalDisplayField">
-                          ₱{item.subtotal.toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="totalAmountDisplayView">
-                  <h3>Total Amount from Items</h3>
-                  <div className="totalAmountValueView">
-                    ₱{calculateItemsTotal().toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
-                    })}
-                  </div>
-                </div>
+                <div className="sectionHeader">Budget Items ({request.items.length})</div>
+                <ItemTableModal
+                  isOpen={true}
+                  onClose={() => {}}
+                  mode="view"
+                  title="Budget Items"
+                  items={mapItemsToTableFormat(request.items)}
+                  isLinkedToPurchaseRequest={!!request.pr_reference_code}
+                  embedded={true}
+                />
               </div>
             )}
 

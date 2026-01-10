@@ -344,15 +344,25 @@ const AdministrativeExpensePage: React.FC = () => {
       if (searchTerm) {
         filtered = filtered.filter(
           (exp) =>
-            exp.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            exp.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            exp.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             exp.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            exp.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase())
+            exp.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            exp.date?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            exp.paymentStatus?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(exp.amount).includes(searchTerm)
         );
       }
 
-      if (filters.expense_type) {
-        filtered = filtered.filter((exp) => exp.expense_type === filters.expense_type);
+      if (filters.status) {
+        filtered = filtered.filter((exp) => exp.paymentStatus === filters.status);
+      }
+
+      if (filters.amountRange?.min) {
+        filtered = filtered.filter((exp) => exp.amount >= Number(filters.amountRange!.min));
+      }
+
+      if (filters.amountRange?.max) {
+        filtered = filtered.filter((exp) => exp.amount <= Number(filters.amountRange!.max));
       }
 
       if (filters.dateRange?.from) {
@@ -376,7 +386,8 @@ const AdministrativeExpensePage: React.FC = () => {
   const handleFilterApply = (appliedFilters: any) => {
     const converted: AdministrativeExpenseFilters = {
       dateRange: appliedFilters.dateRange,
-      expense_type: appliedFilters.expense_type,
+      status: appliedFilters.status,
+      amountRange: appliedFilters.amountRange,
     };
     setFilters(converted);
     setCurrentPage(1);
@@ -610,23 +621,27 @@ const AdministrativeExpensePage: React.FC = () => {
   const filterSections: FilterSection[] = [
     {
       id: 'dateRange',
-      title: 'Date Range',
+      title: 'Date',
       type: 'dateRange',
       defaultValue: { from: '', to: '' }
     },
     {
-      id: 'expense_type',
-      title: 'Expense Type',
+      id: 'amountRange',
+      title: 'Amount',
+      type: 'numberRange',
+      defaultValue: { min: '', max: '' }
+    },
+    {
+      id: 'status',
+      title: 'Status',
       type: 'radio',
       options: [
-        { id: '', label: 'All Types' },
-        { id: 'OFFICE_SUPPLIES', label: 'Office Supplies' },
-        { id: 'UTILITIES', label: 'Utilities' },
-        { id: 'PROFESSIONAL_FEES', label: 'Professional Fees' },
-        { id: 'INSURANCE', label: 'Insurance' },
-        { id: 'LICENSING', label: 'Licensing' },
-        { id: 'PERMITS', label: 'Permits' },
-        { id: 'GENERAL_ADMIN', label: 'General Admin' }
+        { id: '', label: 'All Status' },
+        { id: 'PENDING', label: 'Pending' },
+        { id: 'PARTIALLY_PAID', label: 'Partially Paid' },
+        { id: 'PAID', label: 'Paid' },
+        { id: 'OVERDUE', label: 'Overdue' },
+        { id: 'CANCELLED', label: 'Cancelled' }
       ],
       defaultValue: ''
     }
@@ -668,7 +683,7 @@ const AdministrativeExpensePage: React.FC = () => {
               <input
                 className="searchInput"
                 type="text"
-                placeholder="Search by description, department, vendor, or invoice..."
+                placeholder="Search by request code, expense name, department..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -679,14 +694,17 @@ const AdministrativeExpensePage: React.FC = () => {
               sections={filterSections}
               onApply={(filterValues) => {
                 const dateRange = filterValues.dateRange as { from: string; to: string } || { from: '', to: '' };
+                const amountRange = filterValues.amountRange as { min: string; max: string } || { min: '', max: '' };
                 handleFilterApply({
                   dateRange,
-                  expense_type: (filterValues.expense_type as string) || '',
+                  amountRange,
+                  status: (filterValues.status as string) || '',
                 });
               }}
               initialValues={{
                 dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
-                expense_type: filters.expense_type || '',
+                amountRange: filters.amountRange ? { min: filters.amountRange.min || '', max: filters.amountRange.max || '' } : { min: '', max: '' },
+                status: filters.status || '',
               }}
             />
           </div>
@@ -713,9 +731,9 @@ const AdministrativeExpensePage: React.FC = () => {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Category</th>
-                  <th>Subcategory</th>
-                  <th>Vendor</th>
+                  <th>Request Code</th>
+                  <th>Expense/Expense Name</th>
+                  <th>Department</th>
                   <th>Amount</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -740,13 +758,9 @@ const AdministrativeExpensePage: React.FC = () => {
                       title="View Expense"
                     >
                       <td>{formatDate(expense.date)}</td>
-                      <td>
-                        <span className={`chip ${expense.expense_type.toLowerCase()}`}>
-                          {expense.category || expense.expense_type.replace(/_/g, ' ')}
-                        </span>
-                      </td>
-                      <td>{expense.subcategory || '-'}</td>
-                      <td>{expense.vendor}</td>
+                      <td>{expense.id}</td>
+                      <td>{expense.vendor || '-'}</td>
+                      <td>{expense.department || '-'}</td>
                       <td>{formatMoney(expense.amount)}</td>
                       <td>
                         {expense.paymentStatus ? (

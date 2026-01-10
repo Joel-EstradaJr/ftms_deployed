@@ -7,7 +7,6 @@ import "@/styles/components/chips.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { AdministrativeExpense, ExpenseScheduleItem, PaymentStatus } from "@/app/types/expenses";
 import ExpenseScheduleTable from "@/Components/ExpenseScheduleTable";
-import ItemsTable, { Item } from "@/Components/itemTable";
 
 interface ViewAdminExpenseModalProps {
   data: AdministrativeExpense;
@@ -56,23 +55,23 @@ export default function ViewAdminExpenseModal({
       <p className="details-title">I. Expense Information</p>
       <div className="modal-content view">
         <form className="view-form">
-          {/* Row: Date + Category */}
+          {/* Row: Expense Code + Date Recorded */}
           <div className="form-row">
             <div className="form-group">
-              <label>Date</label>
-              <p>{formatDate(data.date)}</p>
+              <label>Expense Code</label>
+              <p>{data.id}</p>
             </div>
             <div className="form-group">
-              <label>Category</label>
-              <p>{data.category}</p>
+              <label>Date Recorded</label>
+              <p>{formatDate(data.date)}</p>
             </div>
           </div>
 
-          {/* Row: Subcategory + Amount */}
+          {/* Row: Expense Name + Amount */}
           <div className="form-row">
             <div className="form-group">
-              <label>Subcategory</label>
-              <p>{data.subcategory || '-'}</p>
+              <label>Expense Name</label>
+              <p>{data.vendor || '-'}</p>
             </div>
             <div className="form-group">
               <label>Amount</label>
@@ -80,72 +79,22 @@ export default function ViewAdminExpenseModal({
             </div>
           </div>
 
-          {/* Row: Vendor + Invoice */}
+          {/* Row: Payment Method */}
           <div className="form-row">
             <div className="form-group">
-              <label>Vendor / Payee</label>
-              <p>{data.vendor}</p>
-            </div>
-            <div className="form-group">
-              <label>Invoice / Ref No.</label>
-              <p>{data.invoice_number || '-'}</p>
+              <label>Payment Method</label>
+              <p>{data.paymentMethod || '-'}</p>
             </div>
           </div>
-
-          {/* Row: Description (full width) */}
-          {data.description && (
-            <div className="form-row">
-              <div className="form-group full-width">
-                <label>Description</label>
-                <p>{data.description}</p>
-              </div>
-            </div>
-          )}
         </form>
       </div>
 
-      {/* II. Expense Items */}
-      {data.items && data.items.length > 0 && (
-        <>
-          <p className="details-title">II. Expense Items</p>
-          <div className="modal-content view" style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
-            <ItemsTable
-              items={data.items.map(item => ({
-                item_name: item.item_name || '',
-                quantity: item.quantity || 1,
-                unit_measure: item.unit_measure || 'pcs',
-                unit_cost: item.unit_cost || 0,
-                supplier: item.supplier || '',
-                subtotal: item.subtotal || 0,
-                type: item.type || 'supply'
-              }))}
-              onItemsChange={() => {}}
-              showItems={true}
-              onToggleItems={() => {}}
-              readOnly={true}
-              title="Expense Items"
-            />
-          </div>
-        </>
-      )}
-
-      {/* III. Payment Schedule */}
+      {/* II. Payables */}
       {data.isPrepaid && data.scheduleItems && data.scheduleItems.length > 0 && (
         <>
-          <p className="details-title">III. Payment Schedule</p>
+          <p className="details-title">II. Payables</p>
           <div className="modal-content view">
             <form className="view-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Frequency</label>
-                  <p>{data.frequency}</p>
-                </div>
-                <div className="form-group">
-                  <label>Start Date</label>
-                  <p>{formatDate(data.startDate || '')}</p>
-                </div>
-              </div>
-              
               <div className="form-row">
                 <div className="form-group full-width">
                   <label>Payment Schedule</label>
@@ -170,8 +119,8 @@ export default function ViewAdminExpenseModal({
         </>
       )}
 
-      {/* IV. Additional Info */}
-      <p className="details-title">IV. Additional Info</p>
+      {/* III. Additional Information */}
+      <p className="details-title">III. Additional Information</p>
       <div className="modal-content view">
         <form className="view-form">
           <div className="form-row">
@@ -183,8 +132,21 @@ export default function ViewAdminExpenseModal({
         </form>
       </div>
 
-      {/* V. Audit Trail */}
-      <p className="details-title">V. Audit Trail</p>
+      {/* IV. Accounting Details */}
+      <p className="details-title">IV. Accounting Details</p>
+      <div className="modal-content view">
+        <form className="view-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label>Accounting Code</label>
+              <p>{data.category ? `${data.category}` : '-'}</p>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* V. Audit */}
+      <p className="details-title">V. Audit</p>
       <div className="modal-content view">
         <form className="view-form">
           <div className="form-row">
@@ -193,7 +155,7 @@ export default function ViewAdminExpenseModal({
               <p>{data.created_by}</p>
             </div>
             <div className="form-group">
-              <label>Created At</label>
+              <label>Created On</label>
               <p>{new Date(data.created_at).toLocaleString()}</p>
             </div>
           </div>
@@ -201,15 +163,7 @@ export default function ViewAdminExpenseModal({
       </div>
 
       <div className="modal-actions">
-        {onEdit && (
-          <button 
-            onClick={() => onEdit(data)} 
-            className="submit-btn"
-            style={{ marginRight: 'auto', backgroundColor: 'var(--info-color)' }}
-          >
-            <i className="ri-pencil-line"></i> Edit Expense
-          </button>
-        )}
+        
         {data.isPrepaid && data.scheduleItems && data.scheduleItems.length > 0 && (
           <button 
             onClick={() => {
