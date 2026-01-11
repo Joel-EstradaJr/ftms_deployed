@@ -162,6 +162,15 @@ export default function CashAdvanceApprovalModal({
                         </span>
                       </p>
                     </div>
+
+                    <div className="form-group">
+                      <label>Priority</label>
+                      <p className="chip-container">
+                        <span className={`chip ${getRequestTypeClass(request.request_priority)}`}>
+                          {request.request_priority}
+                        </span>
+                      </p>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -215,6 +224,34 @@ export default function CashAdvanceApprovalModal({
                       <label>Purpose</label>
                       <p>{request.purpose}</p>
                     </div>
+                  </div>
+                </form>
+              </div>
+
+              <p className="details-title">Repayment Details</p>
+              <div className="modal-content view">
+                <form className="view-form">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Repayment Method</label>
+                      <p>{request.repayment_method === 'DEDUCTION_FROM_NEXT_PAYROLL' ? 'Deduction from Next Payroll' : 
+                          request.repayment_method === 'DEDUCTION_OVER_PERIODS' ? 'Deduction Over Periods' : 
+                          request.repayment_method || 'N/A'}</p>
+                    </div>
+
+                    {request.repayment_method !== 'DEDUCTION_FROM_NEXT_PAYROLL' && (
+                      <>
+                        <div className="form-group">
+                          <label>Repayment Frequency</label>
+                          <p>{request.repayment_frequency || 'N/A'}</p>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Number of Periods</label>
+                          <p>{request.number_of_repayment_periods ?? 'N/A'}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </form>
               </div>
