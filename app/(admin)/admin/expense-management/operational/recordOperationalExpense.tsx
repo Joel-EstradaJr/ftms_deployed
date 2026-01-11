@@ -710,7 +710,7 @@ export default function RecordOperationalExpenseModal({
 
                 <div className="info-box">
                   <i className="ri-information-line"></i>
-                  <span>The reimbursement amount will be automatically set to match the expense amount (₱{formatMoney(formData.amount)})</span>
+                  <span>The reimbursement amount will be automatically set to match the expense amount ({formatMoney(formData.amount)})</span>
                 </div>
               </div>
             </div>
