@@ -8,7 +8,7 @@
  * This component handles the recording and editing of trip revenue remittances.
  * It automatically converts to receivables when:
  * 1. The remittance is late (past the late deadline)
- * 2. The deadline for remittance has been exceeded (converted to receivable)
+ * 2. The amount remitted is less than the expected remittance (shortage)
  * 
  * DATA REQUIREMENTS FROM BACKEND:
  * The tripData prop must include:
@@ -21,32 +21,51 @@
  * - Minimum wage calculation (1 * MINIMUM_WAGE for driver only, 2 * MINIMUM_WAGE for both)
  * 
  * DATA SUBMITTED TO BACKEND:
- * The onSave callback receives formData with structure:
+ * The onSave callback receives submissionData with structure:
  * {
  *   assignment_id: string,
- *   dateRecorded: string,
- *   amount: number,
- *   remarks: string,
- *   remittanceDueDate: string,
- *   durationToLate: number,
- *   durationToReceivable: number,
- *   remittanceStatus: string,
+ *   bus_trip_id: string,
+ *   date_recorded: string,           // Maps to revenue.date_recorded
+ *   amount: number,                   // Maps to revenue.amount
+ *   description: string,              // Maps to revenue.description
+ *   date_expected: string,            // Maps to revenue.date_expected
+ *   duration_to_late: number,
+ *   duration_to_receivable: number,
+ *   remittance_status: string,
  *   status: 'remitted' | 'receivable',
- *   receivable?: {  // Only included when shouldCreateReceivable() returns true
- *     totalAmount: number,
- *     dueDate: string,
- *     conductorId?: string,  // Only when hasConductor() is true
- *     conductorShare?: number,  // Only when hasConductor() is true
- *     driverId: string,
- *     driverShare: number
+ *   
+ *   // Driver receivable - only when shouldCreateReceivable() returns true
+ *   driverReceivable?: {
+ *     debtor_name: string,            // Maps to receivable.debtor_name
+ *     description: string,            // Maps to receivable.description
+ *     total_amount: number,           // Maps to receivable.total_amount
+ *     due_date: string,               // Maps to receivable.due_date
+ *     employee_id: string,
+ *     employee_number: string,
+ *     installment_plan: string,       // Maps to receivable.installment_plan
+ *     expected_installment: number,   // Maps to receivable.expected_installment
+ *     installments: [{                // Maps to revenue_installment_schedule
+ *       installment_number: number,
+ *       due_date: string,
+ *       amount_due: number,
+ *       amount_paid: number,
+ *       balance: number,
+ *       status: string
+ *     }]
+ *   },
+ *   
+ *   // Conductor receivable - only when hasConductor() is true
+ *   conductorReceivable?: {           // Same structure as driverReceivable
+ *     ...
  *   }
  * }
  * 
  * BACKEND RESPONSIBILITIES:
  * 1. Update Model Revenue table with remittance details
- * 2. If receivable object exists, create receivable records
- * 3. Create separate receivable entries for conductor (if exists) and driver
- * 4. Ensure atomic transaction (all-or-nothing)
+ * 2. If driverReceivable exists, create receivable record and link via driver_receivable_id
+ * 3. If conductorReceivable exists, create receivable record and link via conductor_receivable_id
+ * 4. Create revenue_installment_schedule entries for each receivable
+ * 5. Ensure atomic transaction (all-or-nothing)
  * 
  * ============================================================================
  */
@@ -423,20 +442,21 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     }
   };
 
-  // Calculate remittance status based on duration from assigned date (in hours)
+  // Calculate remittance status based on due date
   const calculateRemittanceStatus = (): 'PENDING' | 'ON_TIME' | 'LATE' | 'CONVERTED_TO_RECEIVABLE' => {
     const now = new Date();
-    const assignedDate = new Date(tripData.date_assigned);
+    now.setHours(0, 0, 0, 0); // Start of today
     
-    // Use the remittanceDueDate if set, otherwise calculate from assigned date
-    const dueDate = formData.remittanceDueDate 
-      ? new Date(formData.remittanceDueDate + 'T23:59:59') // End of due date
-      : new Date(assignedDate.getTime() + formData.durationToReceivable * 60 * 60 * 1000);
+    // Use the remittanceDueDate if set
+    if (!formData.remittanceDueDate) {
+      return 'PENDING';
+    }
     
-    const lateDate = new Date(assignedDate.getTime() + formData.durationToLate * 60 * 60 * 1000);
+    const dueDate = new Date(formData.remittanceDueDate);
+    dueDate.setHours(23, 59, 59, 999); // End of due date
     
-    // Check if late deadline has passed - converted to receivable
-    if (now >= lateDate) {
+    // Check if due date has passed - converted to receivable
+    if (now > dueDate) {
       return 'CONVERTED_TO_RECEIVABLE';
     }
     
@@ -458,7 +478,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     }));
   }, [tripData]);
 
-  // Auto-set amount to 0 when status becomes CONVERTED_TO_RECEIVABLE
+  // Auto-set amount to 0 when status becomes CONVERTED_TO_RECEIVABLE, allow manual entry when status reverts to PENDING
   useEffect(() => {
     const status = calculateRemittanceStatus();
     if (status === 'CONVERTED_TO_RECEIVABLE' && formData.amount !== 0) {
@@ -467,7 +487,9 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
         amount: 0
       }));
     }
-  }, [formData.durationToReceivable, formData.remittanceDueDate, tripData.date_assigned]);
+    // When status reverts from receivable to pending, allow amount entry again
+    // Amount will remain at whatever value it was (0 or user-entered)
+  }, [formData.remittanceDueDate]);
 
   // Update receivable amount when remitted amount changes or when conversion to receivable detected
   useEffect(() => {
@@ -535,6 +557,27 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     return suffix ? `${name}, ${suffix}` : name;
   };
 
+  // Check if any payments have been made on driver or conductor receivables
+  const hasPaymentsMade = (): boolean => {
+    // Check driver installments
+    if (tripData.driver_installments?.installments) {
+      const hasDriverPayment = tripData.driver_installments.installments.some(
+        installment => installment.paidAmount > 0
+      );
+      if (hasDriverPayment) return true;
+    }
+    
+    // Check conductor installments
+    if (tripData.conductor_installments?.installments) {
+      const hasConductorPayment = tripData.conductor_installments.installments.some(
+        installment => installment.paidAmount > 0
+      );
+      if (hasConductorPayment) return true;
+    }
+    
+    return false;
+  };
+
   // Calculate expected remittance amount
   const calculateExpectedRemittance = (): number => {
     if (tripData.assignment_type === 'Boundary') {
@@ -547,12 +590,21 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     }
   };
 
-  // Check if receivable should be created (when late)
+  // Check if receivable should be created (when amount is less than expected OR when late)
   const shouldCreateReceivable = (): boolean => {
     const status = calculateRemittanceStatus();
+    const expectedRemittance = calculateExpectedRemittance();
     
-    // Create receivable if status is CONVERTED_TO_RECEIVABLE (late)
-    return status === 'CONVERTED_TO_RECEIVABLE';
+    // In edit mode: if original status was receivable but now status is PENDING (due date changed to future)
+    // Don't show receivable section - it will be deleted on save
+    if (mode === 'edit' && tripData.status === 'receivable' && status === 'PENDING') {
+      return false;
+    }
+    
+    // Create receivable if:
+    // 1. Status is CONVERTED_TO_RECEIVABLE (deadline exceeded)
+    // 2. Amount remitted is less than expected remittance (shortage)
+    return status === 'CONVERTED_TO_RECEIVABLE' || formData.amount < expectedRemittance;
   };
 
   // Calculate maximum remittance amount (when condition isn't met)
@@ -831,43 +883,85 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
 
     // Determine the final status based on receivable conversion
     let finalStatus = 'remitted';
+    let shouldDeleteReceivables = false;
+    
     if (shouldCreateReceivable()) {
-      // Converted to receivable (late remittance)
+      // Converted to receivable (late remittance or shortage)
       finalStatus = 'receivable';
+    } else if (mode === 'edit' && tripData.status === 'receivable') {
+      // Was a receivable but now reverted to remitted/pending (due date changed to future)
+      // Signal to backend to delete existing receivable records
+      shouldDeleteReceivables = true;
     }
 
     // Prepare data for submission
-    const submissionData = {
+    const submissionData: any = {
       assignment_id: tripData.assignment_id,
-      dateRecorded: formData.dateRecorded,
+      bus_trip_id: tripData.bus_trip_id,
+      date_recorded: formData.dateRecorded,
       amount: formData.amount,
-      remarks: formData.remarks,
-      remittanceDueDate: formData.remittanceDueDate,
-      durationToLate: formData.durationToLate,
-      durationToReceivable: formData.durationToReceivable,
-      remittanceStatus: remittanceStatus,
+      description: formData.remarks,
+      date_expected: formData.remittanceDueDate,
+      duration_to_late: formData.durationToLate,
+      duration_to_receivable: formData.durationToReceivable,
+      remittance_status: remittanceStatus,
       status: finalStatus,
-      
-      // Include receivable data if applicable (when late)
-      ...(shouldCreateReceivable() && {
-        receivable: {
-          totalAmount: formData.receivableAmount,
-          dueDate: formData.receivableDueDate,
-          frequency: formData.frequency,
-          numberOfPayments: formData.numberOfPayments,
-          startDate: formData.startDate,
-          // Only include conductor data if there's a conductor
-          ...(hasConductor() && {
-            conductorId: tripData.conductorId,
-            conductorShare: formData.conductorShare,
-            conductorInstallments: formData.conductorInstallments,
-          }),
-          driverId: tripData.driverId,
-          driverShare: formData.driverShare,
-          driverInstallments: formData.driverInstallments,
-        }
-      })
+      delete_receivables: shouldDeleteReceivables,
     };
+    
+    // Include separate receivable data for driver and conductor if applicable
+    if (shouldCreateReceivable()) {
+      // Format driver name for debtor_name
+      const driverFullName = tripData.driverName || 
+        `${tripData.driverFirstName || ''} ${tripData.driverMiddleName || ''} ${tripData.driverLastName || ''}`.trim() +
+        (tripData.driverSuffix ? `, ${tripData.driverSuffix}` : '');
+      
+      // Driver receivable - always created when receivable is needed
+      submissionData.driverReceivable = {
+        debtor_name: driverFullName,
+        description: `Trip Deficit - ${tripData.body_number} (${formatDate(tripData.date_assigned)})`,
+        total_amount: formData.driverShare,
+        due_date: formData.receivableDueDate,
+        employee_id: tripData.driverId,
+        employee_number: tripData.driverId, // Will be replaced with actual employee_number from payload
+        installment_plan: formData.frequency,
+        expected_installment: formData.driverShare / formData.numberOfPayments,
+        installments: formData.driverInstallments.map(inst => ({
+          installment_number: inst.installmentNumber,
+          due_date: inst.currentDueDate,
+          amount_due: inst.currentDueAmount,
+          amount_paid: inst.paidAmount,
+          balance: inst.currentDueAmount - inst.paidAmount,
+          status: inst.paymentStatus
+        }))
+      };
+      
+      // Conductor receivable - only if conductor exists
+      if (hasConductor()) {
+        const conductorFullName = tripData.conductorName || 
+          `${tripData.conductorFirstName || ''} ${tripData.conductorMiddleName || ''} ${tripData.conductorLastName || ''}`.trim() +
+          (tripData.conductorSuffix ? `, ${tripData.conductorSuffix}` : '');
+        
+        submissionData.conductorReceivable = {
+          debtor_name: conductorFullName,
+          description: `Trip Deficit - ${tripData.body_number} (${formatDate(tripData.date_assigned)})`,
+          total_amount: formData.conductorShare,
+          due_date: formData.receivableDueDate,
+          employee_id: tripData.conductorId,
+          employee_number: tripData.conductorId, // Will be replaced with actual employee_number from payload
+          installment_plan: formData.frequency,
+          expected_installment: formData.conductorShare / formData.numberOfPayments,
+          installments: formData.conductorInstallments.map(inst => ({
+            installment_number: inst.installmentNumber,
+            due_date: inst.currentDueDate,
+            amount_due: inst.currentDueAmount,
+            amount_paid: inst.paidAmount,
+            balance: inst.currentDueAmount - inst.paidAmount,
+            status: inst.paymentStatus
+          }))
+        };
+      }
+    }
 
     onSave(submissionData, mode);
   };
@@ -1071,11 +1165,17 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                         onChange={(e) => handleInputChange('remittanceDueDate', e.target.value)}
                         onBlur={() => handleInputBlur('remittanceDueDate')}
                         className={formErrors.remittanceDueDate ? 'invalid-input' : ''}
+                        disabled={mode === 'edit' && hasPaymentsMade()}
                         required
                     />
                     {formData.remittanceDueDate && (
                       <small className="formatted-date-preview">
                         {formatDate(formData.remittanceDueDate)}
+                      </small>
+                    )}
+                    {mode === 'edit' && hasPaymentsMade() && (
+                      <small className="error-message">
+                        ⚠️ Cannot change due date - payments have been recorded
                       </small>
                     )}
                     <p className="add-error-message">{formErrors.remittanceDueDate}</p>

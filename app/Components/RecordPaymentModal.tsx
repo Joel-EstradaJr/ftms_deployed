@@ -34,6 +34,9 @@ interface RecordPaymentModalProps {
   onPaymentRecorded: (paymentData: PaymentRecordData) => Promise<void>;
   onClose: () => void;
   processCascadePayment: (amount: number, items: any[], startIndex: number) => any;
+  // Employee information for revenue payments
+  employeeNumber?: string;
+  employeeName?: string;
 }
 
 const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
@@ -46,7 +49,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   currentUser,
   onPaymentRecorded,
   onClose,
-  processCascadePayment
+  processCascadePayment,
+  employeeNumber,
+  employeeName
 }) => {
   const [amountToPay, setAmountToPay] = useState<number>(0);
 
@@ -60,10 +65,16 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   const [paymentDate, setPaymentDate] = useState<string>(getLocalDateInputValue());
   const [paymentMethodId, setPaymentMethodId] = useState<number>(0);
-  const [referenceNumber, setReferenceNumber] = useState<string>('');
-  const [remarks, setRemarks] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Filter payment methods to only Cash and Online Payment for revenue
+  const filteredPaymentMethods = entityType === 'revenue' 
+    ? paymentMethods.filter(method => {
+        const name = method.methodName.toLowerCase().trim();
+        return name === 'cash' || name === 'online payment';
+      })
+    : paymentMethods;
 
   const currentIndex = scheduleItems.findIndex(item => item.id === selectedInstallment.id);
   const currentBalance = (selectedInstallment.currentDueAmount + selectedInstallment.carriedOverAmount) - selectedInstallment.paidAmount;
@@ -153,8 +164,6 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
         paymentDate,
         paymentMethodId,
         paymentMethod: selectedMethod?.methodName || '',
-        referenceNumber: referenceNumber || undefined,
-        remarks: remarks || undefined,
         recordedBy: currentUser,
         cascadeBreakdown: cascadePreview?.affectedInstallments.map((affected: any) => ({
           installmentNumber: affected.installmentNumber,
@@ -206,10 +215,23 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <div className="modal-content add">
               <div className="add-form">
                 <div style={{ padding: '12px', border: '2px solid var(--primary-color)', borderRadius: '6px', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span><strong>{entityType === 'expense' ? 'Expense Ref:' : 'Revenue Code:'}</strong></span>
-                    <span>{recordRef || recordId}</span>
-                  </div>
+                  {entityType === 'revenue' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span><strong>Employee ID:</strong></span>
+                        <span>{employeeNumber || 'N/A'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span><strong>Driver Name:</strong></span>
+                        <span>{employeeName || 'N/A'}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span><strong>Expense Ref:</strong></span>
+                      <span>{recordRef || recordId}</span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Installment:</strong></span>
                     <span>#{selectedInstallment.installmentNumber}</span>
@@ -218,28 +240,13 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     <span><strong>Due Date:</strong></span>
                     <span>{formatDate(selectedInstallment.currentDueDate)}</span>
                   </div>
-                  {selectedInstallment.carriedOverAmount > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span><strong>Carried Over from Balances:</strong></span>
-                      <span>+ {formatMoney(selectedInstallment.carriedOverAmount)}</span>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span><strong>Amount Due (this installment):</strong></span>
+                    <span style={{ color: '#FF4949', fontWeight: '600' }}>{formatMoney(currentBalance)}</span>
+                  </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div>
-                      <div><strong>Amount due (this installment):</strong></div>
-                      <div style={{ color: '#FF4949', fontWeight: '600' }}>
-                        {formatMoney(currentBalance)}
-                        {selectedInstallment.carriedOverAmount > 0 && (
-                          <small style={{ display: 'block', fontSize: '0.85em', color: '#666', fontWeight: 'normal' }}>
-                            (₱{formatMoney(selectedInstallment.currentDueAmount).replace('₱ ', '')} + ₱{formatMoney(selectedInstallment.carriedOverAmount).replace('₱ ', '')} carried)
-                          </small>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div><strong>Total balance (all installments):</strong></div>
-                      <div style={{ color: '#FF4949', fontWeight: '600' }}>{formatMoney(totalOutstanding)}</div>
-                    </div>
+                    <span><strong>Total Balance (all installments):</strong></span>
+                    <span style={{ color: '#FF4949', fontWeight: '600' }}>{formatMoney(totalOutstanding)}</span>
                   </div>
                 </div>
 
@@ -279,22 +286,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     <label>Payment Method<span className="requiredTags"> *</span></label>
                     <select value={paymentMethodId} onChange={(e) => setPaymentMethodId(parseInt(e.target.value) || 0)} required disabled={isProcessing}>
                       <option value={0}>Select Payment Method</option>
-                      {paymentMethods.map(method => (<option key={method.id} value={method.id}>{method.methodName}</option>))}
+                      {filteredPaymentMethods.map(method => (<option key={method.id} value={method.id}>{method.methodName}</option>))}
                     </select>
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Reference Number</label>
-                    <input type="text" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="e.g., CHK-12345" disabled={isProcessing} />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Remarks</label>
-                    <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={3} placeholder="Optional payment notes..." disabled={isProcessing} />
                   </div>
                 </div>
 
@@ -310,7 +303,6 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Installment</th>
                         <th>Due Date</th>
                         <th>Amount</th>
                         <th>Paid</th>
@@ -331,11 +323,6 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                               fontWeight: isAffected ? '600' : 'normal'
                             }}
                           >
-                            <td>
-                              <span className="chip normal">
-                                {item.installmentNumber} of {previewItems.length}
-                              </span>
-                            </td>
                             <td>{formatDate(item.currentDueDate)}</td>
                             <td>{formatMoney(item.currentDueAmount)}</td>
                             <td>{formatMoney(item.paidAmount)}</td>

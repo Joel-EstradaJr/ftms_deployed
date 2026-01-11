@@ -33,6 +33,7 @@ interface TripReceivablePaymentModalProps {
     
     // Driver details
     driverId?: string;
+    driverEmployeeNumber?: string; // employee_number from operations payload
     driverFirstName?: string;
     driverMiddleName?: string;
     driverLastName?: string;
@@ -41,6 +42,7 @@ interface TripReceivablePaymentModalProps {
     
     // Conductor details
     conductorId?: string;
+    conductorEmployeeNumber?: string; // employee_number from operations payload
     conductorFirstName?: string;
     conductorMiddleName?: string;
     conductorLastName?: string;
@@ -63,7 +65,7 @@ interface TripReceivablePaymentModalProps {
   };
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   currentUser: string;
-  onPaymentRecorded: (paymentData: PaymentRecordData & { employeeType: 'driver' | 'conductor'; employeeId: string }) => Promise<void>;
+  onPaymentRecorded: (paymentData: PaymentRecordData & { employeeType: 'driver' | 'conductor'; employeeId: string; employeeNumber?: string }) => Promise<void>;
   onCloseReceivable?: (assignmentId: string) => Promise<void>;
   onClose: () => void;
 }
@@ -199,10 +201,15 @@ export default function TripReceivablePaymentModal({
       ? tripData.driverId || '' 
       : tripData.conductorId || '';
     
+    const employeeNumber = selectedEmployee === 'driver'
+      ? tripData.driverEmployeeNumber
+      : tripData.conductorEmployeeNumber;
+    
     await onPaymentRecorded({
       ...paymentData,
       employeeType: selectedEmployee,
-      employeeId
+      employeeId,
+      employeeNumber
     });
 
     // Reset selected installment after payment
@@ -320,6 +327,11 @@ export default function TripReceivablePaymentModal({
                 {getEmployeeStatus(tripData.driverInstallments, driverShare, driverTotal.totalPaid)}
               </span>
             </div>
+            {tripData.driverEmployeeNumber && (
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
+                ID: {tripData.driverEmployeeNumber}
+              </div>
+            )}
             <div style={{ color: '#666', marginBottom: '8px' }}>{driverName}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Share: {formatMoney(driverTotal.totalDue)}</span>
@@ -357,6 +369,11 @@ export default function TripReceivablePaymentModal({
                   {getEmployeeStatus(tripData.conductorInstallments, conductorShare, conductorTotal.totalPaid)}
                 </span>
               </div>
+              {tripData.conductorEmployeeNumber && (
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
+                  ID: {tripData.conductorEmployeeNumber}
+                </div>
+              )}
               <div style={{ color: '#666', marginBottom: '8px' }}>{conductorName}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Share: {formatMoney(conductorTotal.totalDue)}</span>
@@ -372,72 +389,6 @@ export default function TripReceivablePaymentModal({
             </div>
           )}
         </div>
-
-        {/* Installment Schedule for Selected Employee */}
-        {scheduleItems.length > 0 ? (
-          <>
-            <p style={{ fontWeight: '600', marginBottom: '12px' }}>
-              {selectedEmployee === 'driver' ? 'Driver' : 'Conductor'} Installment Schedule
-            </p>
-            <div className="table-wrapper" style={{ maxHeight: '300px' }}>
-              <table className="modal-table">
-                <thead className="modal-table-heading">
-                  <tr>
-                    <th>#</th>
-                    <th>Due Date</th>
-                    <th>Amount Due</th>
-                    <th>Paid</th>
-                    <th>Balance</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody className="modal-table-body">
-                  {scheduleItems.map((item, index) => {
-                    const balance = item.currentDueAmount - item.paidAmount;
-                    const canPay = item.paymentStatus !== 'PAID' && 
-                                   item.paymentStatus !== 'CANCELLED' && 
-                                   item.paymentStatus !== 'WRITTEN_OFF';
-
-                    return (
-                      <tr key={item.id || index}>
-                        <td>{item.installmentNumber}</td>
-                        <td>{formatDate(item.currentDueDate)}</td>
-                        <td>{formatMoney(item.currentDueAmount)}</td>
-                        <td>{formatMoney(item.paidAmount)}</td>
-                        <td style={{ color: balance > 0 ? '#FF4949' : '#4CAF50', fontWeight: '600' }}>
-                          {formatMoney(balance)}
-                        </td>
-                        <td>
-                          <span className={`chip ${item.paymentStatus.toLowerCase().replace('_', '-')}`}>
-                            {item.paymentStatus.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td>
-                          {canPay && (
-                            <button
-                              onClick={() => setSelectedInstallment(item)}
-                              className="recordBtn"
-                              title="Record Payment"
-                              style={{ width: '34px', height: '34px' }}
-                            >
-                              <i className="ri-money-dollar-circle-line"></i>
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
-          <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-            <i className="ri-file-list-line" style={{ fontSize: '32px', marginBottom: '8px', display: 'block' }}></i>
-            No installment schedule found for {selectedEmployee === 'driver' ? 'driver' : 'conductor'}.
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}
