@@ -274,7 +274,8 @@ const Sidebar: React.FC = () => {
               className={`nav-item ${activeItem === "approval" ? "active" : ""}`}
               onClick={() => setActiveItem("approval")}
             >
-              Approvals
+              <i className="ri-checkbox-circle-line" />
+              <span>Approvals</span>
             </Link>
           )}
 
