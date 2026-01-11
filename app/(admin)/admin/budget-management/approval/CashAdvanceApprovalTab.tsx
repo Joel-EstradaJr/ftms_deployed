@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import PaginationComponent from "@/Components/pagination";
 import ModalManager from "@/Components/modalManager";
 import { showSuccess, showError } from "@/utils/Alerts";
 import { formatDate, formatMoney } from "@/utils/formatting";
+import api from "@/app/lib/api";
 
 // Import modal components
 import ViewCashAdvanceModal, { CashAdvanceRequest } from "./ViewCashAdvanceModal";
@@ -39,7 +40,8 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     department: 'Operations',
     requested_amount: 5000,
     approved_amount: null,
-    request_type: 'Regular',
+    request_type: 'Travel Advance',
+    request_priority: 'Regular',
     status: 'Pending',
     purpose: 'Emergency medical expenses for family member',
     request_date: '2026-01-05',
@@ -57,7 +59,8 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     department: 'Operations',
     requested_amount: 3000,
     approved_amount: 3000,
-    request_type: 'Urgent',
+    request_type: 'Emergency',
+    request_priority: 'Urgent',
     status: 'Approved',
     purpose: 'School enrollment fees for children',
     request_date: '2026-01-03',
@@ -75,7 +78,8 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     department: 'Maintenance',
     requested_amount: 10000,
     approved_amount: null,
-    request_type: 'Emergency',
+    request_type: 'Medical Advance',
+    request_priority: 'Emergency',
     status: 'Pending',
     purpose: 'Hospitalization expenses due to accident',
     request_date: '2026-01-06',
@@ -94,6 +98,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 8000,
     approved_amount: null,
     request_type: 'Regular',
+    request_priority: 'Regular',
     status: 'Rejected',
     purpose: 'Home renovation expenses',
     request_date: '2026-01-02',
@@ -113,6 +118,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 2500,
     approved_amount: 2500,
     request_type: 'Urgent',
+    request_priority: 'Urgent',
     status: 'Disbursed',
     purpose: 'Urgent travel expenses for family emergency',
     request_date: '2025-12-28',
@@ -131,6 +137,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 15000,
     approved_amount: 12000,
     request_type: 'Emergency',
+    request_priority: 'Emergency',
     status: 'Approved',
     purpose: 'Medical procedure for dependent',
     request_date: '2026-01-04',
@@ -149,6 +156,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 7500,
     approved_amount: null,
     request_type: 'Regular',
+    request_priority: 'Regular',
     status: 'Pending',
     purpose: 'Educational assistance for professional development course',
     request_date: '2026-01-06',
@@ -167,6 +175,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 4000,
     approved_amount: 4000,
     request_type: 'Urgent',
+    request_priority: 'Urgent',
     status: 'Disbursed',
     purpose: 'Emergency house repair due to storm damage',
     request_date: '2025-12-20',
@@ -185,6 +194,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 6000,
     approved_amount: null,
     request_type: 'Regular',
+    request_priority: 'Regular',
     status: 'Rejected',
     purpose: 'Purchase of personal computer equipment',
     request_date: '2025-12-15',
@@ -204,6 +214,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 3500,
     approved_amount: null,
     request_type: 'Emergency',
+    request_priority: 'Emergency',
     status: 'Pending',
     purpose: 'Emergency dental procedure',
     request_date: '2026-01-06',
@@ -222,6 +233,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 5500,
     approved_amount: 5500,
     request_type: 'Urgent',
+    request_priority: 'Urgent',
     status: 'Approved',
     purpose: 'Urgent medication for chronic illness',
     request_date: '2026-01-05',
@@ -240,6 +252,7 @@ const MOCK_CASH_ADVANCE_REQUESTS: CashAdvanceRequest[] = [
     requested_amount: 2000,
     approved_amount: 2000,
     request_type: 'Regular',
+    request_priority: 'Regular',
     status: 'Disbursed',
     purpose: 'School supplies for children',
     request_date: '2025-12-10',
@@ -267,24 +280,77 @@ export default function CashAdvanceApprovalTab({
   const [sortField, setSortField] = useState<keyof CashAdvanceRequest>('request_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Load mock data
-  useEffect(() => {
-    const fetchData = async () => {
-      onLoadingChange(true);
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setData(MOCK_CASH_ADVANCE_REQUESTS);
+  // Fetch cash advance requests from API
+  const fetchCashAdvances = useCallback(async (showLoading = true) => {
+    if (showLoading) onLoadingChange(true);
+    try {
+      const response = await api.get<{
+        success: boolean;
+        data: any[];
+      }>('/api/integration/approval/cash-advance');
+      
+      if (response.success && response.data) {
+        // Map backend data to frontend interface
+        const mappedData: CashAdvanceRequest[] = response.data.map((item: any) => ({
+          request_id: item.request_number,
+          employee_number: item.employee_id,
+          employee_name: item.employee_name || 'Unknown',
+          contact_number: item.employee_phone || null,
+          email: null,
+          position: item.employee_position || 'N/A',
+          department: item.employee_department || 'N/A',
+          requested_amount: parseFloat(item.amount) || 0,
+          approved_amount: item.approved_amount ? parseFloat(item.approved_amount) : null,
+          request_type: item.request_type_name || 'Regular',
+          request_priority: item.request_priority_name || 'Regular',
+          status: mapStatus(item.status),
+          purpose: item.purpose || '',
+          request_date: item.created_at?.split('T')[0] || '',
+          reviewed_at: item.reviewed_at || null,
+          reviewed_by: item.reviewed_by || null,
+          rejection_reason: item.rejection_reason || undefined,
+          created_at: item.created_at || '',
+          // Repayment fields
+          repayment_method: item.repayment_method || null,
+          repayment_frequency: item.repayment_frequency || null,
+          number_of_repayment_periods: item.number_of_repayment_periods ?? null,
+        }));
+        
+        setData(mappedData);
         onError(null);
-      } catch (err) {
-        onError('Failed to load cash advance requests');
-      } finally {
-        onLoadingChange(false);
       }
-    };
-
-    fetchData();
+    } catch (err: any) {
+      console.error('Failed to fetch cash advance requests:', err);
+      onError('Failed to load cash advance requests');
+    } finally {
+      if (showLoading) onLoadingChange(false);
+    }
   }, [onLoadingChange, onError]);
+
+  // Map backend status to frontend status
+  const mapStatus = (status: string): 'Pending' | 'Approved' | 'Rejected' | 'Disbursed' => {
+    switch (status?.toUpperCase()) {
+      case 'PENDING': return 'Pending';
+      case 'APPROVED': return 'Approved';
+      case 'REJECTED': return 'Rejected';
+      case 'DISBURSED': return 'Disbursed';
+      default: return 'Pending';
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchCashAdvances();
+  }, [fetchCashAdvances]);
+
+  // Polling for real-time updates (every 10 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchCashAdvances(false); // Silent refresh (no loading indicator)
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchCashAdvances]);
 
   // Reset pagination when filters or search change
   useEffect(() => {
@@ -421,38 +487,55 @@ export default function CashAdvanceApprovalTab({
     openModal('approve', request);
   };
 
-  // Handle approve from modal
-  const handleApprove = (request: CashAdvanceRequest, approvedAmount: number) => {
-    setData(prevData =>
-      prevData.map(item =>
-        item.request_id === request.request_id
-          ? {
-              ...item,
-              status: 'Approved' as const,
-              approved_amount: approvedAmount,
-              reviewed_at: new Date().toISOString(),
-              reviewed_by: 'Current User'
-            }
-          : item
-      )
-    );
+  // Handle approve from modal - calls API
+  const handleApprove = async (request: CashAdvanceRequest, approvedAmount: number) => {
+    try {
+      // Find the backend ID (we need to get it from the request_id which is request_number)
+      const backendData = await api.get<{ success: boolean; data: any[] }>('/api/integration/approval/cash-advance');
+      const backendRequest = backendData.data?.find((item: any) => item.request_number === request.request_id);
+      
+      if (!backendRequest) {
+        showError('Request not found', 'Error');
+        return;
+      }
+
+      await api.put(`/api/integration/approval/cash-advance/${backendRequest.id}/status`, {
+        status: 'APPROVED',
+        approvedAmount,
+        reviewedBy: 'Finance Admin',
+      });
+      
+      showSuccess('Cash advance approved successfully', 'Approved!');
+      fetchCashAdvances(); // Refresh data
+      closeModal();
+    } catch (err: any) {
+      showError(err.message || 'Failed to approve cash advance', 'Error');
+    }
   };
 
-  // Handle reject from modal
-  const handleReject = (request: CashAdvanceRequest, reason: string) => {
-    setData(prevData =>
-      prevData.map(item =>
-        item.request_id === request.request_id
-          ? {
-              ...item,
-              status: 'Rejected' as const,
-              rejection_reason: reason,
-              reviewed_at: new Date().toISOString(),
-              reviewed_by: 'Current User'
-            }
-          : item
-      )
-    );
+  // Handle reject from modal - calls API
+  const handleReject = async (request: CashAdvanceRequest, reason: string) => {
+    try {
+      const backendData = await api.get<{ success: boolean; data: any[] }>('/api/integration/approval/cash-advance');
+      const backendRequest = backendData.data?.find((item: any) => item.request_number === request.request_id);
+      
+      if (!backendRequest) {
+        showError('Request not found', 'Error');
+        return;
+      }
+
+      await api.put(`/api/integration/approval/cash-advance/${backendRequest.id}/status`, {
+        status: 'REJECTED',
+        rejectionReason: reason,
+        reviewedBy: 'Finance Admin',
+      });
+      
+      showSuccess('Cash advance rejected', 'Rejected');
+      fetchCashAdvances(); // Refresh data
+      closeModal();
+    } catch (err: any) {
+      showError(err.message || 'Failed to reject cash advance', 'Error');
+    }
   };
 
   // Get status class for styling
