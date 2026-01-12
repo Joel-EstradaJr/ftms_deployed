@@ -1,6 +1,7 @@
 "use client";
-import React from "react";
+import React, { useState, useMemo } from "react";
 import FinancialPositionCharts from "./charts/FinancialPositionCharts";
+import PaginationComponent from "../../../Components/pagination";
 
 // Types for Financial Position / Trial Balance
 export type FinancialPositionLine = {
@@ -99,11 +100,68 @@ export const mockFinancialPositionData: FinancialPositionData = {
 
 type FinancialPositionReportProps = {
   data?: FinancialPositionData;
+  allData?: FinancialPositionData;
+  paginatedItems?: any[];
+  allItems?: any[];
+  currentPage?: number;
+  totalPages?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 };
 
-const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({ 
-  data = mockFinancialPositionData 
+const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
+  data = mockFinancialPositionData,
+  allData,
+  paginatedItems,
+  allItems,
+  currentPage,
+  totalPages,
+  pageSize,
+  onPageChange,
+  onPageSizeChange
 }) => {
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  // Handle sorting
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Sort data
+  const sortedData = useMemo(() => {
+    if (!sortConfig || !paginatedItems) return data;
+
+    // Create a copy of the data with sorted items
+    const sortedItems = [...paginatedItems].sort((a, b) => {
+      if (sortConfig.key === 'accountName') {
+        return sortConfig.direction === 'asc'
+          ? a.accountName.localeCompare(b.accountName)
+          : b.accountName.localeCompare(a.accountName);
+      }
+      if (sortConfig.key === 'amount') {
+        return sortConfig.direction === 'asc' ? a.amount - b.amount : b.amount - a.amount;
+      }
+      return 0;
+    });
+
+    // Reconstruct data structure with sorted items
+    const reconstructed: FinancialPositionData = {
+      ...data,
+      currentAssets: { ...data.currentAssets, items: sortedItems.filter(i => i.section === 'currentAssets') },
+      nonCurrentAssets: { ...data.nonCurrentAssets, items: sortedItems.filter(i => i.section === 'nonCurrentAssets') },
+      currentLiabilities: { ...data.currentLiabilities, items: sortedItems.filter(i => i.section === 'currentLiabilities') },
+      longTermLiabilities: { ...data.longTermLiabilities, items: sortedItems.filter(i => i.section === 'longTermLiabilities') },
+      equity: { ...data.equity, items: sortedItems.filter(i => i.section === 'equity') }
+    };
+
+    return reconstructed;
+  }, [data, paginatedItems, sortConfig]);
   // Format currency
   const formatCurrency = (amount: number): string => {
     const isNegative = amount < 0;
@@ -111,7 +169,7 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Math.abs(amount));
-    
+
     return isNegative ? `(${formatted})` : formatted;
   };
 
@@ -152,24 +210,41 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
       <div className="table-wrapper financial-statement-wrapper">
         <div className="tableContainer">
           <table className="financial-statement-table balance-sheet-table">
+            <thead>
+              <tr>
+                <th 
+                  onClick={() => handleSort('accountName')} 
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Account Name {sortConfig?.key === 'accountName' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  onClick={() => handleSort('amount')} 
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  Amount {sortConfig?.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
             <tbody>
               {/* ASSETS Section */}
               <tr className="major-section-header">
                 <td className="major-section-title" colSpan={3}>ASSETS</td>
               </tr>
-              
+
               {/* Current Assets */}
-              {renderSection(data.currentAssets)}
-              
+              {renderSection(sortedData.currentAssets)}
+
               {/* Empty Row */}
               <tr className="empty-row"><td colSpan={3}></td></tr>
-              
+
               {/* Non-Current Assets */}
-              {renderSection(data.nonCurrentAssets)}
-              
+              {renderSection(sortedData.nonCurrentAssets)}
+
               {/* Empty Row */}
               <tr className="empty-row"><td colSpan={3}></td></tr>
-              
+
               {/* Total Assets */}
               <tr className="total-row">
                 <td className="total-label">TOTAL ASSETS</td>
@@ -190,19 +265,19 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
               <tr className="empty-row"><td colSpan={3}></td></tr>
 
               {/* Current Liabilities */}
-              {renderSection(data.currentLiabilities)}
+              {renderSection(sortedData.currentLiabilities)}
 
               {/* Empty Row */}
               <tr className="empty-row"><td colSpan={3}></td></tr>
 
               {/* Long-term Liabilities */}
-              {renderSection(data.longTermLiabilities)}
+              {renderSection(sortedData.longTermLiabilities)}
 
               {/* Empty Row */}
               <tr className="empty-row"><td colSpan={3}></td></tr>
 
               {/* Equity */}
-              {renderSection(data.equity)}
+              {renderSection(sortedData.equity)}
 
               {/* Empty Row */}
               <tr className="empty-row"><td colSpan={3}></td></tr>
@@ -229,8 +304,19 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
         )}
       </div>
 
-      {/* Visual Data Charts */}
-      <FinancialPositionCharts data={data} />
+      {/* Pagination - Above Visual Data Analysis */}
+      {totalPages && onPageChange && onPageSizeChange && (
+        <PaginationComponent
+          currentPage={currentPage || 1}
+          totalPages={totalPages}
+          pageSize={pageSize || 10}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
+      )}
+
+      {/* Visual Data Charts - Uses all data, not paginated */}
+      <FinancialPositionCharts data={allData || data} />
     </div>
   );
 };

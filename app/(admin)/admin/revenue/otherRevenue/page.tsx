@@ -496,14 +496,10 @@ const AdminOtherRevenuePage = () => {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState(""); // For debouncing
   const [activeFilters, setActiveFilters] = useState<{
-    sources: string[];
-    paymentMethods: string[];
     paymentStatuses: string[];
     dateRange: { from: string; to: string };
     amountRange: { from: string; to: string };
   }>({
-    sources: [],
-    paymentMethods: [],
     paymentStatuses: [],
     dateRange: { from: '', to: '' },
     amountRange: { from: '', to: '' }
@@ -847,14 +843,6 @@ const AdminOtherRevenuePage = () => {
       }
 
       // Add filter parameters
-      if (activeFilters.sources && Array.isArray(activeFilters.sources) && activeFilters.sources.length > 0) {
-        params.append('sources', activeFilters.sources.join(','));
-      }
-
-      if (activeFilters.paymentMethods && Array.isArray(activeFilters.paymentMethods) && activeFilters.paymentMethods.length > 0) {
-        params.append('paymentMethods', activeFilters.paymentMethods.join(','));
-      }
-
       if (activeFilters.dateRange && typeof activeFilters.dateRange === 'object') {
         const dateRange = activeFilters.dateRange as { from: string; to: string };
         if (dateRange.from) {
@@ -895,20 +883,6 @@ const AdminOtherRevenuePage = () => {
           (item.status && item.status.toLowerCase().includes(searchLower)) ||
           (item.revenue_status && item.revenue_status.toLowerCase().includes(searchLower)) ||
           (item.receivable_status && item.receivable_status.toLowerCase().includes(searchLower))
-        );
-      }
-
-      // Apply source filter
-      if (activeFilters.sources.length > 0) {
-        filteredData = filteredData.filter(item =>
-          activeFilters.sources.includes(item.source.name)
-        );
-      }
-
-      // Apply payment method filter
-      if (activeFilters.paymentMethods.length > 0) {
-        filteredData = filteredData.filter(item =>
-          activeFilters.paymentMethods.includes(item.paymentMethod.methodName)
         );
       }
 
@@ -1039,8 +1013,6 @@ const AdminOtherRevenuePage = () => {
 
   // Handle filter apply
   const handleFilterApply = (filterValues: {
-    sources: string[];
-    paymentMethods: string[];
     paymentStatuses: string[];
     dateRange: { from: string; to: string };
     amountRange: { from: string; to: string };
@@ -1246,14 +1218,6 @@ const AdminOtherRevenuePage = () => {
 
             {/* Filter button right next to search bar */}
             <RevenueFilter
-              sources={revenueSources.map(source => ({
-                id: source.id.toString(),
-                label: source.name
-              }))}
-              paymentMethods={paymentMethods.map(method => ({
-                id: method.id.toString(),
-                label: method.methodName
-              }))}
               paymentStatuses={[
                 { id: PaymentStatus.PENDING, label: 'Pending' },
                 { id: PaymentStatus.PAID, label: 'Paid' },

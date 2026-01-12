@@ -164,9 +164,9 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
         {/* Company Header with Logo */}
         <div className="companyHeader">
           <div className="companyLogoContainer">
-            <img 
-              src="/agilaLogo.png" 
-              alt="Agila Bus Transport Corp." 
+            <img
+              src="/agilaLogo.png"
+              alt="Agila Bus Transport Corp."
               className="companyLogo"
             />
             <h1 className="companyName">Agila Bus Transport Corp.</h1>
@@ -191,7 +191,7 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
               <strong>Employee:</strong> {employeeName}
             </div>
             <div className="empDetails">
-              <strong>ID:</strong> {employee?.employeeNumber}
+              <strong>Employee Number:</strong> {employee?.employeeNumber}
             </div>
             <div className="empDetails">
               <strong>Department:</strong> {employee?.department || 'N/A'}
@@ -213,7 +213,7 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
           {/* Earnings Table */}
           <div>
             <h3 className="sectionHeading">
-              EARNINGS
+              BENEFITS
             </h3>
             <table className="payslipTable">
               <tbody>
@@ -302,14 +302,6 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
             <div>
               <strong>Absent Count:</strong>
               <div className="attendanceValue attendanceValueAbsent">{attendance.absentCount}</div>
-            </div>
-            <div>
-              <strong>Late Count:</strong>
-              <div className="attendanceValue attendanceValueLate">{attendance.lateCount}</div>
-            </div>
-            <div>
-              <strong>Total Overtime Hours:</strong>
-              <div className="attendanceValue attendanceValueOvertime">{attendance.overtimeHours}</div>
             </div>
           </div>
         </div>

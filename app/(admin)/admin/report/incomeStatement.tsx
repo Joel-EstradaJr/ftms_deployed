@@ -1,6 +1,8 @@
 "use client";
 import React from "react";
 import IncomeStatementCharts from "./charts/IncomeStatementCharts";
+import PaginationComponent from "../../../Components/pagination";
+
 
 // Types for Income Statement
 export type IncomeStatementLine = {
@@ -97,10 +99,26 @@ export const mockIncomeStatementData: IncomeStatementData = {
 
 type IncomeStatementReportProps = {
   data?: IncomeStatementData;
+  allData?: IncomeStatementData;
+  paginatedItems?: any[];
+  allItems?: any[];
+  currentPage?: number;
+  totalPages?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 };
 
-const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({ 
-  data = mockIncomeStatementData 
+const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
+  data = mockIncomeStatementData,
+  allData,
+  paginatedItems,
+  allItems,
+  currentPage,
+  totalPages,
+  pageSize,
+  onPageChange,
+  onPageSizeChange
 }) => {
   // Format currency
   const formatCurrency = (amount: number, showParentheses: boolean = false): string => {
@@ -108,7 +126,7 @@ const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Math.abs(amount));
-    
+
     if (showParentheses && amount < 0) {
       return `(${formatted})`;
     }
@@ -128,6 +146,14 @@ const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
       <div className="table-wrapper financial-statement-wrapper">
         <div className="tableContainer">
           <table className="financial-statement-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Account Name</th>
+                <th>Amount</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
             <tbody>
               {/* Revenue Section */}
               <tr className="section-header-row">
@@ -236,7 +262,7 @@ const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
 
               {/* Net Income */}
               <tr className="total-row net-income-row">
-                <td colSpan={2} className="total-label">NET INCOME</td>
+                <td colSpan={2} className="total-label" style={{color: 'black !important'}}>NET INCOME</td>
                 <td></td>
                 <td className="total-amount">{formatCurrency(data.netIncome)}</td>
               </tr>
@@ -245,8 +271,19 @@ const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
         </div>
       </div>
 
-      {/* Visual Data Charts */}
-      <IncomeStatementCharts data={data} />
+      {/* Pagination - Above Visual Data Analysis */}
+      {totalPages && onPageChange && onPageSizeChange && (
+        <PaginationComponent
+          currentPage={currentPage || 1}
+          totalPages={totalPages}
+          pageSize={pageSize || 10}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
+      )}
+
+      {/* Visual Data Charts - Uses all data, not paginated */}
+      <IncomeStatementCharts data={allData || data} />
     </div>
   );
 };

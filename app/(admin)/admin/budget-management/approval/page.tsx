@@ -24,10 +24,12 @@ import "@/styles/components/modal.css";
 import "@/styles/budget-management/approval.css";
 
 // Import tab components
+import BudgetApprovalTab from "./BudgetApprovalTab";
 import PurchaseApprovalTab from "./PurchaseApprovalTab";
 import CashAdvanceApprovalTab from "./CashAdvanceApprovalTab";
 
 export default function ApprovalsPage() {
+  // const [activeTab, setActiveTab] = useState<'budget' | 'purchase' | 'cash-advance'>('budget');
   const [activeTab, setActiveTab] = useState<'purchase' | 'cash-advance'>('purchase');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,12 @@ export default function ApprovalsPage() {
 
   // Tab configuration
   const tabs: ApprovalTab[] = [
+    // {
+    //   id: 'budget',
+    //   title: 'Budget Approvals',
+    //   icon: 'ri-money-dollar-circle-line',
+    //   count: 0 // Will be populated from data
+    // },
     {
       id: 'purchase',
       title: 'Purchase Request Approvals',
@@ -52,6 +60,18 @@ export default function ApprovalsPage() {
   ];
 
   // Export column configurations
+  const budgetExportColumns = [
+    { header: 'Request ID', key: 'request_id' },
+    { header: 'Title', key: 'title' },
+    { header: 'Category', key: 'category' },
+    { header: 'Requested Amount', key: 'requested_amount' },
+    { header: 'Status', key: 'status' },
+    { header: 'Requested By', key: 'requested_by' },
+    { header: 'Request Date', key: 'request_date' },
+    { header: 'Approval Date', key: 'approval_date' },
+    { header: 'Approved By', key: 'approved_by' }
+  ];
+
   const purchaseExportColumns = [
     { header: 'PR Number', key: 'purchase_request_code' },
     { header: 'Department', key: 'department_name' },
@@ -101,7 +121,8 @@ export default function ApprovalsPage() {
   ];
 
   // Handle tab switching
-  const handleTabChange = (tabId: 'purchase' | 'cash-advance') => {
+  // const handleTabChange = (tabId: 'budget' | 'purchase' | 'cash-advance') => {
+  const handleTabChange = (tabId:'purchase' | 'cash-advance') => {
     setActiveTab(tabId);
     // Reset tab-specific state when switching
     setSharedFilters({});
@@ -164,7 +185,7 @@ export default function ApprovalsPage() {
             <button
               key={tab.id}
               className={`approval-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => handleTabChange(tab.id as 'purchase' | 'cash-advance')}
+              onClick={() => handleTabChange(tab.id)}
             >
               {tab.icon && <i className={`approval-tab-icon ${tab.icon}`} />}
               <span>{tab.title}</span>
@@ -181,6 +202,7 @@ export default function ApprovalsPage() {
               <input
                 className="searchInput"
                 type="text"
+                // placeholder={`Search ${activeTab === 'budget' ? 'budget requests' : activeTab === 'purchase' ? 'purchase requests' : 'cash advance requests'}...`}
                 placeholder={`Search ${activeTab === 'purchase' ? 'purchase requests' : 'cash advance requests'}...`}
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -203,6 +225,8 @@ export default function ApprovalsPage() {
             <ExportButton
               data={exportData}
               filename={`${activeTab}_approvals`}
+              // columns={activeTab === 'budget' ? budgetExportColumns : activeTab === 'purchase' ? purchaseExportColumns : cashAdvanceExportColumns}
+              // title={`${activeTab === 'budget' ? 'Budget' : activeTab === 'purchase' ? 'Purchase Request' : 'Cash Advance'} Approvals Report`}
               columns={activeTab === 'purchase' ? purchaseExportColumns : cashAdvanceExportColumns}
               title={`${activeTab === 'purchase' ? 'Purchase Request' : 'Cash Advance'} Approvals Report`}
               logo="/agilaLogo.png"
@@ -212,6 +236,19 @@ export default function ApprovalsPage() {
 
         {/* Tab Content */}
         <div className="tab-content">
+          {/* Budget Approval Tab */}
+          {/* <div className={`tab-panel ${activeTab === 'budget' ? 'active' : ''}`}>
+            <BudgetApprovalTab
+              filters={sharedFilters}
+              searchTerm={searchTerm}
+              loading={loading}
+              onLoadingChange={setLoading}
+              onError={setError}
+              onExport={handleExport}
+              onDataUpdate={handleExportDataUpdate}
+            />
+          </div> */}
+
           {/* Purchase Approval Tab */}
           <div className={`tab-panel ${activeTab === 'purchase' ? 'active' : ''}`}>
             <PurchaseApprovalTab

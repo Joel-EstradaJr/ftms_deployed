@@ -9,6 +9,7 @@ import { isValidAmount } from "@/utils/validation";
 import { OtherRevenueData } from "./page";
 import { RevenueScheduleFrequency, RevenueScheduleItem } from "@/app/types/revenue";
 import { generateScheduleDates, generateScheduleItems, validateSchedule } from "@/utils/revenueScheduleCalculations";
+import SearchableDropdown, { DropdownOption } from "@/Components/CustomDropdown";
 // Reference number format validation removed — allowing any characters or empty value for other revenue
 import PaymentScheduleTable from "@/Components/PaymentScheduleTable";
 
@@ -24,6 +25,7 @@ interface RecordOtherRevenueModalProps {
 
 interface FormErrors {
   date_recorded: string;
+  name: string;
   description: string;
   amount: string;
   payment_reference: string;
@@ -35,13 +37,13 @@ interface FormErrors {
   remarks: string;
 }
 
-const OTHER_REVENUE_CATEGORIES = [
-  { value: 'ASSET_SALE', label: 'Asset Sale' },
-  { value: 'INTEREST', label: 'Interest' },
-  { value: 'PENALTIES', label: 'Penalties' },
-  { value: 'INSURANCE', label: 'Insurance' },
-  { value: 'DONATIONS', label: 'Donations' },
-  { value: 'OTHER', label: 'Other' },
+const OTHER_REVENUE_CATEGORIES: DropdownOption[] = [
+  { value: 'Asset Sale', label: 'Asset Sale', description: 'Revenue from selling company assets' },
+  { value: 'Interest', label: 'Interest', description: 'Interest income from investments or deposits' },
+  { value: 'Penalties', label: 'Penalties', description: 'Penalty fees collected' },
+  { value: 'Insurance', label: 'Insurance', description: 'Insurance claims and reimbursements' },
+  { value: 'Donations', label: 'Donations', description: 'Donations and contributions received' },
+  { value: 'Other', label: 'Other', description: 'Other miscellaneous revenue' },
 ];
 
 export default function RecordOtherRevenueModal({ 
@@ -64,7 +66,7 @@ export default function RecordOtherRevenueModal({
   const [formData, setFormData] = useState<OtherRevenueData>({
     id: existingData?.id,
     code: existingData?.code || generateRevenueCode(),
-    name: existingData?.name || 'OTHER',
+    name: existingData?.name || '',
     date_recorded: existingData?.date_recorded || new Date().toISOString().split('T')[0],
     description: existingData?.description || '',
     amount: existingData?.amount || 0,
@@ -90,6 +92,7 @@ export default function RecordOtherRevenueModal({
 
   const [formErrors, setFormErrors] = useState<FormErrors>({
     date_recorded: '',
+    name: '',
     description: '',
     amount: '',
     payment_reference: '',
@@ -167,10 +170,14 @@ export default function RecordOtherRevenueModal({
         }
         break;
 
-      case 'description':
+      case 'name':
         if (!value || value.trim() === '') {
-          errorMessage = 'Revenue category/source is required';
+          errorMessage = 'Revenue type is required';
         }
+        break;
+
+      case 'description':
+        // Description is now optional since name (revenue type) is required
         break;
 
       case 'amount':
@@ -262,7 +269,7 @@ export default function RecordOtherRevenueModal({
   // Validate entire form
   const validateForm = (): { isValid: boolean; errors: string[] } => {
     const dateErr = validateFormField('date_recorded', formData.date_recorded);
-    const categoryErr = validateFormField('description', formData.description);
+    const nameErr = validateFormField('name', formData.name);
     const amountErr = validateFormField('amount', formData.amount);
     const deptErr = validateFormField('department', formData.department);
     const paymentMethodErr = validateFormField('payment_method', formData.payment_method);
@@ -291,7 +298,7 @@ export default function RecordOtherRevenueModal({
 
     const errors: string[] = [];
     if (dateErr) errors.push(dateErr);
-    if (categoryErr) errors.push(categoryErr);
+    if (nameErr) errors.push(nameErr);
     if (amountErr) errors.push(amountErr);
     if (deptErr) errors.push(deptErr);
     if (paymentMethodErr) errors.push(paymentMethodErr);
@@ -306,12 +313,12 @@ export default function RecordOtherRevenueModal({
   useEffect(() => {
     const isValid = 
       formData.date_recorded !== '' &&
-      formData.description !== '' &&
+      formData.name !== '' &&
       formData.amount > 0 &&
       formData.department !== '' &&
       formData.payment_method !== '' &&
       formErrors.date_recorded === '' &&
-      formErrors.description === '' &&
+      formErrors.name === '' &&
       formErrors.amount === '' &&
       formErrors.department === '' &&
       formErrors.payment_method === '' &&
@@ -459,13 +466,21 @@ export default function RecordOtherRevenueModal({
 
             {/* Revenue Type */}
             <div className="form-group">
-              <label>Revenue Type</label>
-              <input
-                type="text"
-                value={formData.name || 'OTHER'}
-                disabled
-                className="disabled-field"
+              <label>
+                Revenue Type<span className="requiredTags"> *</span>
+              </label>
+              <SearchableDropdown
+                options={OTHER_REVENUE_CATEGORIES}
+                value={formData.name}
+                onChange={(value: string) => handleInputChange('name', value)}
+                onBlur={() => handleInputBlur('name')}
+                placeholder="Select Revenue Type"
+                className={formErrors.name ? 'invalid-input' : ''}
+                disabled={mode === 'edit'}
+                showDescription={true}
+                allowCustomInput={false}
               />
+              <p className="add-error-message">{formErrors.name}</p>
             </div>
           </div>
 
@@ -493,26 +508,18 @@ export default function RecordOtherRevenueModal({
               <p className="add-error-message">{formErrors.date_recorded}</p>
             </div>
 
-            {/* Revenue Category/Source */}
+            {/* Description (Optional) */}
             <div className="form-group">
               <label>
-                Revenue Category/Source<span className="requiredTags"> *</span>
+                Description
               </label>
-              <select
+              <input
+                type="text"
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                onBlur={() => handleInputBlur('description')}
-                className={formErrors.description ? 'invalid-input' : ''}
-                required
-              >
-                <option value="">Select Category</option>
-                {OTHER_REVENUE_CATEGORIES.map(cat => (
-                  <option key={cat.value} value={cat.label}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-              <p className="add-error-message">{formErrors.description}</p>
+                placeholder="Additional details (optional)"
+              />
+              <small className="hint-message">Optional additional information</small>
             </div>
           </div>
 
