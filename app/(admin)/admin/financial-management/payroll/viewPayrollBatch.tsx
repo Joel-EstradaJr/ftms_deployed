@@ -36,7 +36,7 @@ export default function ViewPayrollBatch({
   onDisburse,
   currentUser
 }: ViewPayrollBatchProps) {
-  
+
   const [selectedPayrolls, setSelectedPayrolls] = useState<string[]>([]);
   const [disbursing, setDisbursing] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState<string | null>(null);
@@ -221,9 +221,9 @@ export default function ViewPayrollBatch({
           {/* Company Header */}
           <div className="companyHeader">
             <div className="companyLogoContainer">
-              <img 
-                src="/agilaLogo.png" 
-                alt="Agila Bus Transport Corp." 
+              <img
+                src="/agilaLogo.png"
+                alt="Agila Bus Transport Corp."
                 className="companyLogo"
               />
               <h1 className="companyName">Agila Bus Transport Corp.</h1>
@@ -404,7 +404,7 @@ export default function ViewPayrollBatch({
 
           {/* Modal Content */}
           <div className="modal-content view">
-            
+
             {/* Batch Summary Section */}
             <div className="details-title">Batch Summary</div>
             <div className="form-row">
@@ -440,14 +440,14 @@ export default function ViewPayrollBatch({
               </div>
               <div className="form-group">
                 <label>Undisbursed</label>
-                <input 
-                  type="text" 
-                  value={undisbursedCount} 
-                  readOnly 
-                  style={{ 
+                <input
+                  type="text"
+                  value={undisbursedCount}
+                  readOnly
+                  style={{
                     color: undisbursedCount > 0 ? 'var(--warning-color)' : 'var(--success-color)',
                     fontWeight: 600
-                  }} 
+                  }}
                 />
               </div>
             </div>
@@ -463,10 +463,10 @@ export default function ViewPayrollBatch({
               </div>
               <div className="form-group">
                 <label>Total Net</label>
-                <input 
-                  type="text" 
-                  value={formatMoney(batch.total_net)} 
-                  readOnly 
+                <input
+                  type="text"
+                  value={formatMoney(batch.total_net)}
+                  readOnly
                   style={{ fontWeight: 600, color: 'var(--primary-color)' }}
                 />
               </div>
@@ -501,11 +501,11 @@ export default function ViewPayrollBatch({
               Employee Payroll Records
             </div>
 
-            {/* Disbursement Action */}
+            {/* Disbursement Action
             {undisbursedCount > 0 && onDisburse && (
-              <div style={{ 
-                marginBottom: '15px', 
-                padding: '12px', 
+              <div style={{
+                marginBottom: '15px',
+                padding: '12px',
                 backgroundColor: 'var(--table-row-hover-color)',
                 borderRadius: '4px',
                 display: 'flex',
@@ -530,19 +530,18 @@ export default function ViewPayrollBatch({
                   {disbursing ? 'Disbursing...' : `Disburse Selected (${selectedPayrolls.length})`}
                 </button>
               </div>
-            )}
+            )} */}
 
             {/* Payroll Records Table */}
             <div className="tableContainer">
               <table className="data-table" style={{ fontSize: '13px' }}>
                 <thead>
                   <tr>
-                    {undisbursedCount > 0 && onDisburse && <th style={{ width: '40px' }}></th>}
                     <th>Employee</th>
                     <th>Base Salary</th>
                     <th>Present Days</th>
-                    <th>Allowances</th>
-                    <th>Deductions</th>
+                    <th>Total Benefits</th>
+                    <th>Total Deductions</th>
                     <th>Net Pay</th>
                     <th>Status</th>
                     <th style={{ width: '120px' }}>Actions</th>
@@ -553,10 +552,10 @@ export default function ViewPayrollBatch({
                     batch.payrolls.map(payroll => {
                       const presentDays = payroll.presentDays || 0;
                       const hasAttendance = presentDays > 0;
-                      
+
                       return (
                         <tr key={payroll.id} style={{ backgroundColor: !hasAttendance ? '#fff3cd' : undefined }}>
-                          {undisbursedCount > 0 && onDisburse && (
+                          {/* {undisbursedCount > 0 && onDisburse && (
                             <td>
                               {!payroll.isDisbursed && hasAttendance && (
                                 <input
@@ -566,14 +565,19 @@ export default function ViewPayrollBatch({
                                 />
                               )}
                             </td>
-                          )}
+                          )} */}
                           <td>
                             <div style={{ fontWeight: 500 }}>
-                              {payroll.employee?.firstName} {payroll.employee?.lastName}
+                              {/* Full name: firstName + middleName + lastName */}
+                              {[
+                                payroll.employee?.firstName,
+                                payroll.employee?.middleName,
+                                payroll.employee?.lastName
+                              ].filter(Boolean).join(' ') || payroll.employeeId}
                               {!hasAttendance && (
-                                <span style={{ 
-                                  marginLeft: '8px', 
-                                  fontSize: '10px', 
+                                <span style={{
+                                  marginLeft: '8px',
+                                  fontSize: '10px',
                                   color: '#856404',
                                   backgroundColor: '#fff3cd',
                                   padding: '2px 6px',
@@ -585,7 +589,7 @@ export default function ViewPayrollBatch({
                               )}
                             </div>
                             <div style={{ fontSize: '11px', color: 'var(--secondary-text-color)' }}>
-                              {payroll.employeeId}
+                              {payroll.employee?.employeeNumber || payroll.employeeId}
                             </div>
                           </td>
                           <td>{formatMoney(payroll.baseSalary)}</td>
@@ -608,7 +612,7 @@ export default function ViewPayrollBatch({
                           </td>
                           <td className="actionButtons">
                             <div className="actionButtonsContainer">
-                              <button
+                              {/* <button
                                 className="viewBtn"
                                 onClick={() => setExpandedDetails(
                                   expandedDetails === payroll.id ? null : payroll.id
@@ -616,7 +620,7 @@ export default function ViewPayrollBatch({
                                 title="View Details"
                               >
                                 <i className={`ri-arrow-${expandedDetails === payroll.id ? 'up' : 'down'}-s-line`}></i>
-                              </button>
+                              </button> */}
                               <button
                                 className="exportBtn"
                                 onClick={() => handleViewPayslip(payroll)}
@@ -642,9 +646,9 @@ export default function ViewPayrollBatch({
 
             {/* Expanded Details */}
             {expandedDetails && batch.payrolls && (
-              <div style={{ 
-                marginTop: '15px', 
-                padding: '15px', 
+              <div style={{
+                marginTop: '15px',
+                padding: '15px',
                 backgroundColor: 'var(--table-row-hover-color)',
                 borderRadius: '4px',
                 border: '1px solid var(--border-color)'
@@ -664,9 +668,9 @@ export default function ViewPayrollBatch({
                           onClick={() => handleViewPayslip(payroll)}
                           onMouseEnter={() => setHoveredBtn(payroll.id)}
                           onMouseLeave={() => setHoveredBtn(null)}
-                          style={{ 
-                            padding: '6px 12px', 
-                            fontSize: '13px', 
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '13px',
                             color: 'var(--primary-color)',
                             cursor: 'pointer',
                             transform: hoveredBtn === payroll.id ? 'scale(1.03)' : 'scale(1)',
@@ -705,10 +709,10 @@ export default function ViewPayrollBatch({
                         </div>
                         <div className="form-group">
                           <label>Net Pay</label>
-                          <input 
-                            type="text" 
-                            value={formatMoney(payroll.netPay)} 
-                            readOnly 
+                          <input
+                            type="text"
+                            value={formatMoney(payroll.netPay)}
+                            readOnly
                             style={{ fontWeight: 600, color: 'var(--primary-color)' }}
                           />
                         </div>
@@ -716,18 +720,18 @@ export default function ViewPayrollBatch({
                       <div className="form-row">
                         <div className="form-group">
                           <label>Benefits Breakdown</label>
-                          <input 
-                            type="text" 
-                            value={`Rice: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).riceAllowance)}, Transport: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).transportationAllowance)}`} 
-                            readOnly 
+                          <input
+                            type="text"
+                            value={`Rice: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).riceAllowance)}, Transport: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).transportationAllowance)}`}
+                            readOnly
                           />
                         </div>
                         <div className="form-group">
                           <label>Deductions Breakdown</label>
-                          <input 
-                            type="text" 
-                            value={`Tax: ${formatMoney(calculateDeductions(payroll.deductions).withholdingTax)}, SSS: ${formatMoney(calculateDeductions(payroll.deductions).sssContribution)}`} 
-                            readOnly 
+                          <input
+                            type="text"
+                            value={`Tax: ${formatMoney(calculateDeductions(payroll.deductions).withholdingTax)}, SSS: ${formatMoney(calculateDeductions(payroll.deductions).sssContribution)}`}
+                            readOnly
                           />
                         </div>
                       </div>
@@ -753,9 +757,9 @@ export default function ViewPayrollBatch({
 
           {/* Modal Actions */}
           <div className="modal-actions">
-            <button 
-              type="button" 
-              className="cancel-btn" 
+            <button
+              type="button"
+              className="cancel-btn"
               onClick={onClose}
             >
               <i className="ri-close-line" /> Close
@@ -774,8 +778,8 @@ export default function ViewPayrollBatch({
             )}
 
             {undisbursedCount > 0 && selectedPayrolls.length > 0 && (
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="submit-btn"
                 onClick={handleDisburse}
                 disabled={disbursing}
