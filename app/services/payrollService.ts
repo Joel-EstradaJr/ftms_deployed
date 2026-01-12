@@ -475,6 +475,45 @@ const payrollService = {
 
     return deductionMap;
   },
+
+  /**
+   * Release payroll batch
+   * 1. Syncs data to ensure DB record exists
+   * 2. Processes the payroll (changes status to PROCESSED)
+   * 3. Calls admin endpoint to release (triggers webhook)
+   */
+  releasePayrollBatch: async (periodStart: string, periodEnd: string): Promise<boolean> => {
+    try {
+      // 1. Sync first to get the ID
+      const syncResponse = await api.post<{ success: boolean; periodId: number }>(
+        '/api/integration/hr_payroll/fetch-and-sync',
+        { period_start: periodStart, period_end: periodEnd }
+      );
+
+      if (!syncResponse.success || !syncResponse.periodId) {
+        throw new Error('Failed to sync payroll data before release');
+      }
+
+      const periodId = syncResponse.periodId;
+
+      // 2. Process the payroll (required before release)
+      await api.post<{ success: boolean }>(
+        `/api/v1/admin/payroll-periods/${periodId}/process`,
+        { period_start: periodStart, period_end: periodEnd }
+      );
+
+      // 3. Call release endpoint (triggers webhook)
+      const releaseResponse = await api.post<{ success: boolean }>(
+        `/api/v1/admin/payroll-periods/${periodId}/release`,
+        {}
+      );
+
+      return releaseResponse.success;
+    } catch (error) {
+      console.error('Error releasing payroll batch:', error);
+      throw error;
+    }
+  },
 };
 
 export default payrollService;
