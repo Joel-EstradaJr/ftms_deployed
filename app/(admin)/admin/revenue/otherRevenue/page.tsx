@@ -1218,6 +1218,8 @@ const AdminOtherRevenuePage = () => {
 
             {/* Filter button right next to search bar */}
             <RevenueFilter
+              sources={revenueSources.map(s => ({ id: s.sourceCode, label: s.name }))}
+              paymentMethods={paymentMethods.map(p => ({ id: p.methodCode, label: p.methodName }))}
               paymentStatuses={[
                 { id: PaymentStatus.PENDING, label: 'Pending' },
                 { id: PaymentStatus.PAID, label: 'Paid' },
