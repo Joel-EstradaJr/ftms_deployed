@@ -12,11 +12,11 @@ import ExportButton from '../../../../Components/ExportButton';
 import ModalManager from '../../../../Components/modalManager';
 import RecordOperationalExpenseModal, { OperationalExpenseData } from './recordOperationalExpense';
 import ViewOperationalExpenseModal from './viewOperationalExpense';
-import { 
-  OperationalExpense, 
-  OperationalExpenseFilters, 
+import {
+  OperationalExpense,
+  OperationalExpenseFilters,
   OperationalExpenseType,
-  ExpenseStatus 
+  ExpenseStatus
 } from '../../../../types/expenses';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
@@ -537,12 +537,12 @@ const OperationalExpensePage = () => {
     if (mode === 'view' && rowData) {
       // Find payment method name
       const paymentMethodName = MOCK_PAYMENT_METHODS.find(pm => pm.id === 1)?.methodName || 'Cash';
-      
+
       // Find account details if exists
       const accountDetails = MOCK_CHART_OF_ACCOUNTS.find(acc => acc.id === 1);
 
-      const expenseData: OperationalExpenseData & { 
-        paymentMethodName?: string; 
+      const expenseData: OperationalExpenseData & {
+        paymentMethodName?: string;
         accountCode?: string;
         accountName?: string;
       } = {
@@ -597,9 +597,9 @@ const OperationalExpensePage = () => {
       // const endpoint = mode === 'add' 
       //   ? 'http://localhost:4000/api/admin/expenses/operational'
       //   : `http://localhost:4000/api/admin/expenses/operational/${formData.id}`;
-      
+
       // const method = mode === 'add' ? 'POST' : 'PUT';
-      
+
       // const response = await fetch(endpoint, {
       //   method: method,
       //   headers: { 'Content-Type': 'application/json' },
@@ -922,183 +922,175 @@ const OperationalExpensePage = () => {
 
   return (
     <div className="card">
-        <div className="elements">
-          <div className="title">
-            <h1>Operational Expenses</h1>
-          </div>
-
-          <div className="settings">
-            
-            {/* Search bar with Filter button inline */}
-            <div className="search-filter-container">
-              <div className="searchBar">
-                <i className="ri-search-line" />
-                <input
-                  className="searchInput"
-                  type="text"
-                  placeholder="Search description, bus, employee, receipt..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              {/* Filter button right next to search bar */}
-              <FilterDropdown
-                sections={filterSections}
-                onApply={(filterValues) => {
-                  const dateRange = filterValues.dateRange as { from: string; to: string } || { from: '', to: '' };
-                  handleFilterApply({
-                    dateRange,
-                    expense_type: (filterValues.expense_type as string) || '',
-                    status: (filterValues.status as string) || ''
-                  });
-                }}
-                initialValues={{
-                  dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
-                  expense_type: filters.expense_type || '',
-                  status: filters.status || ''
-                }}
-              />
-            </div>
-
-            <div className="filters">
-              <ExportButton
-                data={exportData}
-                filename="operational-expenses"
-                title="Operational Expenses Report"
-              />
-              {/* Add New Button */}
-              <button className="addButton" onClick={handleAdd}>
-                <i className="ri-add-line"/> Record Expense
-              </button>
-
-            </div>
-          </div>
-
-          <div className="table-wrapper">
-            <div className="tableContainer">
-              <table className="data-table operational-expense-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Expense</th>
-                    <th>Body Number</th>
-                    <th>Amount</th>
-                    <th>Reimbursable</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={7} className="loading-cell">Loading...</td>
-                    </tr>
-                  ) : data.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="empty-cell">No operational expenses found.</td>
-                    </tr>
-                  ) : (
-                    data.map((expense) => (
-                      <tr key={expense.id} className={activeRow === Number(expense.id) ? 'active-row' : ''}>
-                        <td>{formatDate(expense.date_assigned)}</td>
-                        <td>
-                          <span className={`chip ${expense.expense_type.toLowerCase()}`}>
-                            {expense.expense_type.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td>{expense.body_number || '-'}</td>
-                        <td className="expense-amount">{formatMoney(expense.amount)}</td>
-                        <td>
-                          {expense.payable_id ? (
-                            <span className="chip reimbursable">Yes</span>
-                          ) : (
-                            <span className="chip not-reimbursable">No</span>
-                          )}
-                        </td>
-                        <td>
-                          <span className={`chip ${expense.status.toLowerCase()}`}>
-                            {expense.status}
-                          </span>
-                        </td>
-                        <td className="actionButtons">
-                          <div className="actionButtonsContainer">
-                            {/* View button - always visible */}
-                            <button
-                              className="viewBtn"
-                              onClick={() => handleView(expense.id)}
-                              title="View Details"
-                            >
-                              <i className="ri-eye-line"></i>
-                            </button>
-
-                            {/* Status-based action buttons */}
-                              <>
-                                <button
-                                  className="approveBtn"
-                                  onClick={() => handleApprove(expense.id)}
-                                  title="Approve Expense"
-                                  disabled= {expense.status !== ExpenseStatus.PENDING}
-                                >
-                                  <i className="ri-check-line"></i>
-                                </button>
-                              </>
-
-                              <>
-                                <button
-                                  className="editBtn"
-                                  onClick={() => handleEdit(expense.id)}
-                                  title="Edit Expense"
-                                  disabled={expense.status !== ExpenseStatus.REJECTED}
-                                >
-                                  <i className="ri-edit-line"></i>
-                                </button>
-                              </>
-
-                              <>
-                                <button
-                                  className="rejectBtn"
-                                  onClick={() => handleRollback(expense.id)}
-                                  title="Rollback to Pending"
-                                  disabled={expense.status !== ExpenseStatus.APPROVED}
-                                >
-                                  <i className="ri-arrow-go-back-line"></i>
-                                </button>
-
-                                <button
-                                  className="submitBtn"
-                                  onClick={() => handlePost(expense.id)}
-                                  title="Post to JEV"
-                                  disabled={expense.status !== ExpenseStatus.APPROVED}
-                                >
-                                  <i className="ri-send-plane-line"></i>
-                                </button>
-                              </>
-
-                            {/* POSTED status - only view button visible (already rendered above) */}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <PaginationComponent
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
+      <div className="elements">
+        <div className="title">
+          <h1>Operational Expenses</h1>
         </div>
 
-        {/* ModalManager for centralized modal handling */}
-        <ModalManager isOpen={isModalOpen} onClose={closeModal} modalContent={modalContent} />
+        <div className="settings">
+
+          {/* Search bar with Filter button inline */}
+          <div className="search-filter-container">
+            <div className="searchBar">
+              <i className="ri-search-line" />
+              <input
+                className="searchInput"
+                type="text"
+                placeholder="Search description, bus, employee, receipt..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Filter button right next to search bar */}
+            <FilterDropdown
+              sections={filterSections}
+              onApply={(filterValues) => {
+                const dateRange = filterValues.dateRange as { from: string; to: string } || { from: '', to: '' };
+                handleFilterApply({
+                  dateRange,
+                  expense_type: (filterValues.expense_type as string) || '',
+                  status: (filterValues.status as string) || ''
+                });
+              }}
+              initialValues={{
+                dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
+                expense_type: filters.expense_type || '',
+                status: filters.status || ''
+              }}
+            />
+          </div>
+
+          <div className="filters">
+            <ExportButton
+              data={exportData}
+              filename="operational-expenses"
+              title="Operational Expenses Report"
+            />
+            {/* Add New Button */}
+            <button className="addButton" onClick={handleAdd}>
+              <i className="ri-add-line" /> Record Expense
+            </button>
+
+          </div>
+        </div>
+
+        <div className="table-wrapper">
+          <div className="tableContainer">
+            <table className="data-table operational-expense-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Expense</th>
+                  <th>Body Number</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="loading-cell">Loading...</td>
+                  </tr>
+                ) : data.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="empty-cell">No operational expenses found.</td>
+                  </tr>
+                ) : (
+                  data.map((expense) => (
+                    <tr key={expense.id} className={activeRow === Number(expense.id) ? 'active-row' : ''}>
+                      <td>{formatDate(expense.date_assigned)}</td>
+                      <td>
+                        <span className={`chip ${expense.expense_type.toLowerCase()}`}>
+                          {expense.expense_type.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td>{expense.body_number || '-'}</td>
+                      <td className="expense-amount">{formatMoney(expense.amount)}</td>
+                      <td>
+                        <span className={`chip ${expense.status.toLowerCase()}`}>
+                          {expense.status}
+                        </span>
+                      </td>
+                      <td className="actionButtons">
+                        <div className="actionButtonsContainer">
+                          {/* View button - always visible */}
+                          <button
+                            className="viewBtn"
+                            onClick={() => handleView(expense.id)}
+                            title="View Details"
+                          >
+                            <i className="ri-eye-line"></i>
+                          </button>
+
+                          {/* Status-based action buttons */}
+                          <>
+                            <button
+                              className="approveBtn"
+                              onClick={() => handleApprove(expense.id)}
+                              title="Approve Expense"
+                              disabled={expense.status !== ExpenseStatus.PENDING}
+                            >
+                              <i className="ri-check-line"></i>
+                            </button>
+                          </>
+
+                          <>
+                            <button
+                              className="editBtn"
+                              onClick={() => handleEdit(expense.id)}
+                              title="Edit Expense"
+                              disabled={expense.status !== ExpenseStatus.REJECTED}
+                            >
+                              <i className="ri-edit-line"></i>
+                            </button>
+                          </>
+
+                          <>
+                            {/* <button
+                              className="rejectBtn"
+                              onClick={() => handleRollback(expense.id)}
+                              title="Rollback to Pending"
+                              disabled={expense.status !== ExpenseStatus.APPROVED}
+                            >
+                              <i className="ri-arrow-go-back-line"></i>
+                            </button> */}
+
+                            {/* <button
+                              className="submitBtn"
+                              onClick={() => handlePost(expense.id)}
+                              title="Post to JEV"
+                              disabled={expense.status !== ExpenseStatus.APPROVED}
+                            >
+                              <i className="ri-send-plane-line"></i>
+                            </button> */}
+                          </>
+
+                          {/* POSTED status - only view button visible (already rendered above) */}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <PaginationComponent
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
-    );
+
+      {/* ModalManager for centralized modal handling */}
+      <ModalManager isOpen={isModalOpen} onClose={closeModal} modalContent={modalContent} />
+    </div>
+  );
 };
 
 export default OperationalExpensePage;
