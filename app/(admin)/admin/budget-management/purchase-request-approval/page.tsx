@@ -38,6 +38,9 @@ import "../../../../styles/components/loading.css";
 import "../../../../styles/expense/expense.css";
 import "../../../../styles/purchase-approval/purchase-approval.css";
 
+// API Base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+
 // Sample data matching complete structure with requestor and items - moved outside component
 const sampleApprovalData: PurchaseRequestApproval[] = [
     {
@@ -1163,22 +1166,44 @@ export default function PurchaseRequestApproval() {
 
   const handleApprove = (request: PurchaseRequestApproval) => {
     const handleApprovalSubmit = async (updatedRequest: PurchaseRequestApproval, comments?: string) => {
-      const updatedData = data.map(item =>
-        item.id === request.id
-          ? {
-              ...updatedRequest,
-              purchase_request_status: ApprovalStatus.APPROVED,
-              approved_by: "Current User", // In real app, get from auth
-              approved_date: new Date().toISOString().split('T')[0],
-              updated_at: new Date().toISOString(),
-              updated_by: "Current User",
-              finance_remarks: comments || updatedRequest.finance_remarks
-            }
-          : item
-      );
-      setData(updatedData);
-      showSuccess("Purchase request has been approved successfully.", "Request Approved");
-      closeModal();
+      try {
+        // Call the PATCH API endpoint
+        const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'APPROVED',
+            finance_remarks: comments || 'Approved by Finance',
+            updated_by: 'Current User', // TODO: Get actual user from auth context
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to approve');
+        }
+
+        // Update local state after successful API call
+        const updatedData = data.map(item =>
+          item.id === request.id
+            ? {
+                ...updatedRequest,
+                purchase_request_status: ApprovalStatus.APPROVED,
+                approved_by: "Current User",
+                approved_date: new Date().toISOString().split('T')[0],
+                updated_at: new Date().toISOString(),
+                updated_by: "Current User",
+                finance_remarks: comments || updatedRequest.finance_remarks
+              }
+            : item
+        );
+        setData(updatedData);
+        showSuccess("Purchase request has been approved successfully.", "Request Approved");
+        closeModal();
+      } catch (error: any) {
+        console.error('Error approving request:', error);
+        showError(error.message || "Failed to approve purchase request", "Error");
+      }
     };
 
     openModal(
@@ -1193,22 +1218,44 @@ export default function PurchaseRequestApproval() {
 
   const handleReject = (request: PurchaseRequestApproval) => {
     const handleRejectionSubmit = async (rejectionReason: string) => {
-      const updatedData = data.map(item =>
-        item.id === request.id
-          ? {
-              ...item,
-              purchase_request_status: ApprovalStatus.REJECTED,
-              rejected_by: "Current User",
-              rejected_date: new Date().toISOString().split('T')[0],
-              rejection_reason: rejectionReason,
-              updated_at: new Date().toISOString(),
-              updated_by: "Current User"
-            }
-          : item
-      );
-      setData(updatedData);
-      showSuccess("Purchase request has been rejected.", "Request Rejected");
-      closeModal();
+      try {
+        // Call the PATCH API endpoint
+        const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'REJECTED',
+            finance_remarks: rejectionReason,
+            updated_by: 'Current User', // TODO: Get actual user from auth context
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to reject');
+        }
+
+        // Update local state after successful API call
+        const updatedData = data.map(item =>
+          item.id === request.id
+            ? {
+                ...item,
+                purchase_request_status: ApprovalStatus.REJECTED,
+                rejected_by: "Current User",
+                rejected_date: new Date().toISOString().split('T')[0],
+                rejection_reason: rejectionReason,
+                updated_at: new Date().toISOString(),
+                updated_by: "Current User"
+              }
+            : item
+        );
+        setData(updatedData);
+        showSuccess("Purchase request has been rejected.", "Request Rejected");
+        closeModal();
+      } catch (error: any) {
+        console.error('Error rejecting request:', error);
+        showError(error.message || "Failed to reject purchase request", "Error");
+      }
     };
 
     openModal(
@@ -1234,23 +1281,45 @@ export default function PurchaseRequestApproval() {
     );
     
     if (result.isConfirmed) {
-      const updatedData = data.map(item =>
-        item.id === request.id
-          ? {
-              ...item,
-              purchase_request_status: ApprovalStatus.PENDING,
-              approved_by: undefined,
-              approved_date: undefined,
-              rejected_by: undefined,
-              rejected_date: undefined,
-              rejection_reason: undefined,
-              updated_at: new Date().toISOString(),
-              updated_by: "Current User"
-            }
-          : item
-      );
-      setData(updatedData);
-      showSuccess("Purchase request has been rolled back to pending status.", "Request Rolled Back");
+      try {
+        // Call the PATCH API endpoint to set status back to PENDING
+        const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'PENDING',
+            finance_remarks: 'Rolled back to pending status',
+            updated_by: 'Current User', // TODO: Get actual user from auth context
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to rollback');
+        }
+
+        // Update local state after successful API call
+        const updatedData = data.map(item =>
+          item.id === request.id
+            ? {
+                ...item,
+                purchase_request_status: ApprovalStatus.PENDING,
+                approved_by: undefined,
+                approved_date: undefined,
+                rejected_by: undefined,
+                rejected_date: undefined,
+                rejection_reason: undefined,
+                updated_at: new Date().toISOString(),
+                updated_by: "Current User"
+              }
+            : item
+        );
+        setData(updatedData);
+        showSuccess("Purchase request has been rolled back to pending status.", "Request Rolled Back");
+      } catch (error: any) {
+        console.error('Error rolling back request:', error);
+        showError(error.message || "Failed to rollback purchase request", "Error");
+      }
     }
   };
 

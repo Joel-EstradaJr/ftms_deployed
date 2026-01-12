@@ -178,13 +178,13 @@ const Sidebar: React.FC = () => {
 
           {openSubMenu === "expense-management" && (
             <div className="sub-menu active">
-              <Link
+              {/* <Link
                 href={getUrl("/expense-management/operational")}
                 className={`sub-item ${activeItem === "operational-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("operational-expense")}
               >
                 Operational Expenses
-              </Link>
+              </Link> */}
               <Link
                 href={getUrl("/expense-management/purchase")}
                 className={`sub-item ${activeItem === "purchase-expense" ? "active" : ""}`}
@@ -315,7 +315,7 @@ const Sidebar: React.FC = () => {
           )}
 
           {/* Asset Management - Admin only */}
-          {userRole === 'admin' && (
+          {/*userRole === 'admin' && (
             <Link
               href={getUrl("/asset-management")}
               className={`nav-item ${activeItem === "asset-management" ? "active" : ""}`}
@@ -324,10 +324,10 @@ const Sidebar: React.FC = () => {
               <i className="ri-archive-line" />
               <span>Asset Management</span>
             </Link>
-          )}
+          )*/}
 
-          {/* Disposal Approval - Admin only */}
-          {userRole === 'admin' && (
+         {/* Disposal Approval - Admin only */}
+          {/*userRole === 'admin' && (
             <Link
               href={getUrl("/disposal-approval")}
               className={`nav-item ${activeItem === "disposal-approval" ? "active" : ""}`}
@@ -336,7 +336,7 @@ const Sidebar: React.FC = () => {
               <i className="ri-delete-bin-line" />
               <span>Disposal Approval</span>
             </Link>
-          )}
+          )*/}
 
           {/* Audit Logs - Admin only */}
           {userRole === 'admin' && (

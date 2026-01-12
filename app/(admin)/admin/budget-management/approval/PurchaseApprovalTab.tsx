@@ -903,15 +903,16 @@ export default function PurchaseApprovalTab({
     setSelectedRequest(null);
   };
 
-  // Action handlers - call backend API
+  // Action handlers - call backend API using PATCH endpoint
   const handleApprove = async (request: PurchaseRequestApproval, comments?: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}/approve`, {
-        method: 'PUT',
+      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          financeRemarks: comments || 'Approved by Finance',
-          approvedBy: 'Current User', // TODO: Get actual user from auth context
+          status: 'APPROVED',
+          finance_remarks: comments || 'Approved by Finance',
+          updated_by: 'Current User', // TODO: Get actual user from auth context
         }),
       });
 
@@ -931,13 +932,13 @@ export default function PurchaseApprovalTab({
 
   const handleReject = async (request: PurchaseRequestApproval, reason: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}/reject`, {
-        method: 'PUT',
+      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          rejectionReason: reason,
-          financeRemarks: reason,
-          rejectedBy: 'Current User', // TODO: Get actual user from auth context
+          status: 'REJECTED',
+          finance_remarks: reason,
+          updated_by: 'Current User', // TODO: Get actual user from auth context
         }),
       });
 
