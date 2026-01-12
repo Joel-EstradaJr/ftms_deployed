@@ -4,11 +4,14 @@ import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 
-// Installment schedule interface
+// Installment schedule interface - matches RevenueScheduleItem
 interface InstallmentSchedule {
-  due_date: string;
-  amount_due: number;
-  status: string;
+  id?: string;
+  installmentNumber: number;
+  currentDueDate: string;
+  currentDueAmount: number;
+  paidAmount: number;
+  paymentStatus: string;
 }
 
 // Employee installment data interface
@@ -153,7 +156,7 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
     } else if (tripData.status === 'receivable') {
       remittanceStatus = 'RECEIVABLE';
     } else if (hoursDiff > config.durationToReceivable) {
-      remittanceStatus = 'CONVERTED TO RECEIVABLE';
+      remittanceStatus = 'CONVERTED_TO_RECEIVABLE';
     } else if (hoursDiff > config.durationToLate) {
       remittanceStatus = 'LATE';
     } else {
@@ -162,7 +165,13 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
 
     // Calculate receivable details if applicable
     const amount = tripData.amount || 0;
-    const showReceivableSection = tripData.status === 'receivable' || remittanceStatus === 'CONVERTED TO RECEIVABLE';
+    // Show receivable section if status is 'receivable' OR amount is less than expected
+    const expectedRemittanceAmount = tripData.assignment_type === 'Boundary' 
+      ? tripData.assignment_value + tripData.trip_fuel_expense 
+      : (tripData.trip_revenue * (tripData.assignment_value / 100)) + tripData.trip_fuel_expense;
+    const showReceivableSection = tripData.status === 'receivable' || 
+      remittanceStatus === 'CONVERTED_TO_RECEIVABLE' || 
+      (amount > 0 && amount < expectedRemittanceAmount);
     
     let receivableAmount = 0;
     let receivableInterest = 0;
@@ -359,8 +368,13 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
 
             {/* Company Share (calculated amount) */}
             <div className="form-group">
-              <label>Company Share</label>
-              <p>{formatMoney(tripData.assignment_value)}</p>
+              <label>Company Share (Amount)</label>
+              <p>
+                {tripData.assignment_type === 'Boundary' 
+                  ? formatMoney(tripData.assignment_value) 
+                  : formatMoney(tripData.trip_revenue * (tripData.assignment_value / 100))
+                }
+              </p>
             </div>
           </div>
         </form>
@@ -487,19 +501,7 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
                     <span style={{ fontWeight: '600', flex: '1' }}>Total Receivable:</span>
                     <span style={{ fontWeight: '700', fontSize: '1.1em', textAlign: 'right', minWidth: '120px' }}>{formatMoney(calculatedData.totalReceivableAmount)}</span>
                   </div>
-                  
-                  <p style={{ fontWeight: '600', marginTop: '28px', marginBottom: '12px' }}>Receivable Distribution:</p>
-                  {tripData.conductorName && tripData.conductorName !== 'N/A' && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e0e0e0', gap: '60px' }}>
-                      <span style={{ flex: '1' }}>Conductor Share ({config.defaultConductorShare}%):</span>
-                      <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>{formatMoney(calculatedData.conductorShare)}</span>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', gap: '60px' }}>
-                    <span style={{ flex: '1' }}>Driver Share ({tripData.conductorName && tripData.conductorName !== 'N/A' ? `${config.defaultDriverShare}%` : '100%'}):</span>
-                    <span style={{ fontWeight: '500', textAlign: 'right', minWidth: '120px' }}>{formatMoney(calculatedData.driverShare)}</span>
-                  </div>
-                </div>
+                 </div>
               </details>
 
               {/* Total Receivable Amount and Due Date */}
@@ -578,11 +580,11 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
                     {tripData.conductor_installments?.installments && tripData.conductor_installments.installments.length > 0 ? (
                       tripData.conductor_installments.installments.map((installment, index) => (
                         <tr key={index}>
-                          <td>{formatDate(installment.due_date)}</td>
-                          <td>{formatMoney(installment.amount_due)}</td>
+                          <td>{formatDate(installment.currentDueDate)}</td>
+                          <td>{formatMoney(installment.currentDueAmount)}</td>
                           <td>
-                            <span className={`chip ${installment.status === 'paid' ? 'completed' : 'pending'}`}>
-                              {installment.status}
+                            <span className={`chip ${installment.paymentStatus === 'paid' ? 'completed' : 'pending'}`}>
+                              {installment.paymentStatus}
                             </span>
                           </td>
                         </tr>
@@ -617,11 +619,11 @@ export default function ViewTripRevenueModal({ tripData, onClose }: ViewTripReve
                 {tripData.driver_installments?.installments && tripData.driver_installments.installments.length > 0 ? (
                   tripData.driver_installments.installments.map((installment, index) => (
                     <tr key={index}>
-                      <td>{formatDate(installment.due_date)}</td>
-                      <td>{formatMoney(installment.amount_due)}</td>
+                      <td>{formatDate(installment.currentDueDate)}</td>
+                      <td>{formatMoney(installment.currentDueAmount)}</td>
                       <td>
-                        <span className={`chip ${installment.status === 'paid' ? 'completed' : 'pending'}`}>
-                          {installment.status}
+                        <span className={`chip ${installment.paymentStatus === 'paid' ? 'completed' : 'pending'}`}>
+                          {installment.paymentStatus}
                         </span>
                       </td>
                     </tr>

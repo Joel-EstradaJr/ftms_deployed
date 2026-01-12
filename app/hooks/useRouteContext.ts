@@ -15,7 +15,6 @@ export const useRouteContext = (): RouteContext => {
   const pathname = usePathname();
 
   const context = useMemo(() => {
-    console.log('[useRouteContext] pathname:', pathname);
     
     // Check if we're in a role-based route
     if (pathname.startsWith('/admin')) {
@@ -43,7 +42,6 @@ export const useRouteContext = (): RouteContext => {
     
     if (isKnownRolePath) {
       // Default to admin for known role-based paths without prefix
-      console.warn('[useRouteContext] Detected role-based path without prefix:', pathname, '- defaulting to admin');
       return {
         userRole: 'admin' as UserRole,
         baseUrl: '/admin',
@@ -66,35 +64,17 @@ export const useNavigationUrl = () => {
   const pathname = usePathname();
   const { baseUrl, isRoleBasedRoute, userRole } = useRouteContext();
   
-  console.log('[useNavigationUrl] Context:', {
-    pathname,
-    baseUrl,
-    isRoleBasedRoute,
-    userRole
-  });
-
   const getUrl = (path: string): string => {
     // Remove leading slash if present to avoid double slashes
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-    
-    console.log('[getUrl DEBUG]', {
-      path,
-      cleanPath,
-      isRoleBasedRoute,
-      baseUrl,
-      userRole,
-      currentPathname: pathname
-    });
-    
+
     if (isRoleBasedRoute) {
       const finalUrl = `${baseUrl}/${cleanPath}`;
-      console.log('[getUrl DEBUG] Returning role-based URL:', finalUrl);
       return finalUrl;
     }
     
     // Fallback to original path if not in role-based route
     const finalUrl = `/${cleanPath}`;
-    console.log('[getUrl DEBUG] Returning regular URL:', finalUrl);
     return finalUrl;
   };
 

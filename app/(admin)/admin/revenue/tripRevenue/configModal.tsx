@@ -298,7 +298,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -313,10 +313,31 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
       driver_share: 100 - formData.conductor_share // Recalculate to ensure consistency
     };
 
-    console.log('ConfigModal: Submitting final data:', finalData);
-    onSave(finalData);
-    showSuccess('Configuration saved successfully', 'Success');
-    onClose();
+    try {
+      // Call API to save configuration
+      const response = await fetch('/api/admin/revenue/config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(finalData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        showError(result.error || 'Failed to save configuration', 'Error');
+        return;
+      }
+
+      console.log('ConfigModal: Configuration saved via API:', result.data);
+      onSave(finalData);
+      showSuccess('Configuration saved successfully', 'Success');
+      onClose();
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      showError('Failed to save configuration. Please try again.', 'Error');
+    }
   };
 
   return (

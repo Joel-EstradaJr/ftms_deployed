@@ -1,18 +1,9 @@
 "use client";
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import Modal from '@/Components/modal2';
 import { Payroll } from './types';
-import {
-  calculateEarnings,
-  calculateDeductions,
-  generateAttendanceData,
-  calculateGrossPay,
-  calculateTotalDeductions,
-  formatRateType,
-  getEmployeeName,
-  RateType,
-} from '@/utils/payrollCalculations';
+import { HrPayrollData } from '@/app/services/payrollService';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import '@/styles/components/modal2.css';
 import '@/styles/components/forms.css';
@@ -27,6 +18,35 @@ interface ViewPayslipModalProps {
   batchPeriodEnd: string;
 }
 
+/**
+ * Format rate type for display
+ */
+function formatRateType(rateType: string): string {
+  switch (rateType?.toLowerCase()) {
+    case 'monthly': return 'Monthly';
+    case 'weekly': return 'Weekly';
+    case 'daily': return 'Daily';
+    case 'semi-monthly': return 'Semi-Monthly';
+    default: return rateType || 'Weekly';
+  }
+}
+
+/**
+ * Get employee name from employee object
+ */
+function getEmployeeName(employee: any): string {
+  if (!employee) return 'Unknown Employee';
+  
+  const parts = [
+    employee.firstName,
+    employee.middleName,
+    employee.lastName,
+    employee.suffix
+  ].filter(Boolean);
+  
+  return parts.join(' ') || employee.employeeNumber || 'Unknown Employee';
+}
+
 const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
   isOpen,
   onClose,
@@ -36,10 +56,73 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
 }) => {
   const payslipRef = useRef<HTMLDivElement>(null);
 
-  // Calculate breakdowns (moved before hooks to avoid conditional hook issues)
-  const rateType: RateType = 'monthly';
+  // Get HR data from payroll
+  const hrData: HrPayrollData | null = payroll?.hrPayrollData || null;
   const employee = payroll?.employee;
   const employeeName = employee ? getEmployeeName(employee) : '';
+
+  // Calculate actual values from HR data
+  const calculations = useMemo(() => {
+    if (!hrData || !payroll) {
+      return {
+        basicRate: 0,
+        presentDays: 0,
+        basicPay: 0,
+        benefits: [] as { name: string; value: number }[],
+        deductions: [] as { name: string; value: number }[],
+        totalBenefits: 0,
+        totalDeductions: 0,
+        grossPay: 0,
+        netPay: 0,
+        attendances: { present: 0, absent: 0 },
+      };
+    }
+
+    const basicRate = parseFloat(hrData.basic_rate) || 0;
+    const presentDays = hrData.present_days || 
+      hrData.attendances?.filter(a => a.status === 'Present').length || 0;
+    const basicPay = basicRate * presentDays;
+
+    // Get actual benefits from HR data
+    const benefits = (hrData.benefits || [])
+      .filter(b => b.is_active)
+      .map(b => ({
+        name: b.name || b.benefit_type?.name || 'Unknown Benefit',
+        value: parseFloat(b.value) || 0,
+      }));
+
+    // Get actual deductions from HR data
+    const deductions = (hrData.deductions || [])
+      .filter(d => d.is_active)
+      .map(d => ({
+        name: d.name || d.deduction_type?.name || 'Unknown Deduction',
+        value: parseFloat(d.value) || 0,
+      }));
+
+    const totalBenefits = benefits.reduce((sum, b) => sum + b.value, 0);
+    const totalDeductions = deductions.reduce((sum, d) => sum + d.value, 0);
+    const grossPay = basicPay + totalBenefits;
+    const netPay = grossPay - totalDeductions;
+
+    // Calculate attendance counts
+    const attendances = {
+      present: hrData.attendances?.filter(a => a.status === 'Present').length || 0,
+      absent: hrData.attendances?.filter(a => a.status === 'Absent').length || 0,
+    };
+
+    return {
+      basicRate,
+      presentDays,
+      basicPay,
+      benefits,
+      deductions,
+      totalBenefits,
+      totalDeductions,
+      grossPay,
+      netPay,
+      attendances,
+    };
+  }, [hrData, payroll]);
 
   // Use react-to-print hook
   const handlePrint = useReactToPrint({
@@ -137,19 +220,11 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
         }
         .attendanceValuePresent { color: #4caf50 !important; }
         .attendanceValueAbsent { color: #f44336 !important; }
-        .attendanceValueLate { color: #ff9800 !important; }
-        .attendanceValueOvertime { color: #2196f3 !important; }
       }
     `,
   });
 
   if (!payroll || !payroll.employee) return null;
-
-  const earnings = calculateEarnings(payroll.baseSalary, payroll.allowances, rateType);
-  const deductions = calculateDeductions(payroll.deductions);
-  const attendance = generateAttendanceData(payroll.isDisbursed);
-  const grossPay = calculateGrossPay(earnings);
-  const totalDeductions = calculateTotalDeductions(deductions);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -164,9 +239,9 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
         {/* Company Header with Logo */}
         <div className="companyHeader">
           <div className="companyLogoContainer">
-            <img 
-              src="/agilaLogo.png" 
-              alt="Agila Bus Transport Corp." 
+            <img
+              src="/agilaLogo.png"
+              alt="Agila Bus Transport Corp."
               className="companyLogo"
             />
             <h1 className="companyName">Agila Bus Transport Corp.</h1>
@@ -191,7 +266,7 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
               <strong>Employee:</strong> {employeeName}
             </div>
             <div className="empDetails">
-              <strong>ID:</strong> {employee?.employeeNumber}
+              <strong>Employee Number:</strong> {employee?.employeeNumber}
             </div>
             <div className="empDetails">
               <strong>Department:</strong> {employee?.department || 'N/A'}
@@ -200,10 +275,10 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
               <strong>Position:</strong> {employee?.position || 'N/A'}
             </div>
             <div className="empDetails">
-              <strong>Basic Rate:</strong> {formatMoney(payroll.baseSalary)}
+              <strong>Basic Rate:</strong> {formatMoney(calculations.basicRate)} ({formatRateType(hrData?.rate_type || '')})
             </div>
             <div className="empDetails">
-              <strong>Rate Type:</strong> {formatRateType(rateType)}
+              <strong>Present Days:</strong> {calculations.presentDays}
             </div>
           </div>
         </div>
@@ -217,26 +292,30 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
             </h3>
             <table className="payslipTable">
               <tbody>
+                {/* Basic Pay */}
                 <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Basic Pay ({formatRateType(rateType)})</td>
-                  <td className="payslipTableCellAmount">{formatMoney(earnings.basicPay)}</td>
+                  <td className="payslipTableCell">
+                    Basic Pay ({calculations.presentDays} days × {formatMoney(calculations.basicRate)})
+                  </td>
+                  <td className="payslipTableCellAmount">{formatMoney(calculations.basicPay)}</td>
                 </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Overtime Pay ({attendance.overtimeHours} hrs @ 125%)</td>
-                  <td className="payslipTableCellAmount">{formatMoney(earnings.overtimePay)}</td>
-                </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Rice Allowance</td>
-                  <td className="payslipTableCellAmount">{formatMoney(earnings.riceAllowance)}</td>
-                </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Transportation Allowance</td>
-                  <td className="payslipTableCellAmount">{formatMoney(earnings.transportationAllowance)}</td>
-                </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Other Allowances</td>
-                  <td className="payslipTableCellAmount">{formatMoney(earnings.otherAllowances)}</td>
-                </tr>
+                
+                {/* Benefits from HR data */}
+                {calculations.benefits.length > 0 ? (
+                  calculations.benefits.map((benefit, index) => (
+                    <tr key={`benefit-${index}`} className="payslipTableRow">
+                      <td className="payslipTableCell">{benefit.name}</td>
+                      <td className="payslipTableCellAmount">{formatMoney(benefit.value)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell" style={{ color: '#999', fontStyle: 'italic' }}>
+                      No additional benefits
+                    </td>
+                    <td className="payslipTableCellAmount">₱ 0.00</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -248,26 +327,21 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
             </h3>
             <table className="payslipTable">
               <tbody>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Withholding Tax</td>
-                  <td className="payslipTableCellAmount">{formatMoney(deductions.withholdingTax)}</td>
-                </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Social Security Contribution</td>
-                  <td className="payslipTableCellAmount">{formatMoney(deductions.sssContribution)}</td>
-                </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">PhilHealth Contribution</td>
-                  <td className="payslipTableCellAmount">{formatMoney(deductions.philhealthContribution)}</td>
-                </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Pag-IBIG Contribution</td>
-                  <td className="payslipTableCellAmount">{formatMoney(deductions.pagibigContribution)}</td>
-                </tr>
-                <tr className="payslipTableRow">
-                  <td className="payslipTableCell">Other Deductions</td>
-                  <td className="payslipTableCellAmount">{formatMoney(deductions.otherDeductions)}</td>
-                </tr>
+                {calculations.deductions.length > 0 ? (
+                  calculations.deductions.map((deduction, index) => (
+                    <tr key={`deduction-${index}`} className="payslipTableRow">
+                      <td className="payslipTableCell">{deduction.name}</td>
+                      <td className="payslipTableCellAmount">{formatMoney(deduction.value)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="payslipTableRow">
+                    <td className="payslipTableCell" style={{ color: '#999', fontStyle: 'italic' }}>
+                      No deductions
+                    </td>
+                    <td className="payslipTableCellAmount">₱ 0.00</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -277,15 +351,15 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
         <div className="totalsSection">
           <div className="totalRow">
             <span><strong>Total Gross Pay:</strong></span>
-            <span>{formatMoney(grossPay)}</span>
+            <span>{formatMoney(calculations.grossPay)}</span>
           </div>
           <div className="totalRow">
             <span><strong>Total Deductions:</strong></span>
-            <span>({formatMoney(totalDeductions)})</span>
+            <span>({formatMoney(calculations.totalDeductions)})</span>
           </div>
           <div className="netPayRow">
             <span>NET PAY:</span>
-            <span>{formatMoney(payroll.netPay)}</span>
+            <span>{formatMoney(calculations.netPay)}</span>
           </div>
         </div>
 
@@ -297,19 +371,11 @@ const ViewPayslipModal: React.FC<ViewPayslipModalProps> = ({
           <div className="attendanceGrid">
             <div>
               <strong>Present Count:</strong>
-              <div className="attendanceValue attendanceValuePresent">{attendance.presentCount}</div>
+              <div className="attendanceValue attendanceValuePresent">{calculations.attendances.present}</div>
             </div>
             <div>
               <strong>Absent Count:</strong>
-              <div className="attendanceValue attendanceValueAbsent">{attendance.absentCount}</div>
-            </div>
-            <div>
-              <strong>Late Count:</strong>
-              <div className="attendanceValue attendanceValueLate">{attendance.lateCount}</div>
-            </div>
-            <div>
-              <strong>Total Overtime Hours:</strong>
-              <div className="attendanceValue attendanceValueOvertime">{attendance.overtimeHours}</div>
+              <div className="attendanceValue attendanceValueAbsent">{calculations.attendances.absent}</div>
             </div>
           </div>
         </div>

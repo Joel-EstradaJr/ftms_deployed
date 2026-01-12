@@ -9,9 +9,9 @@ import { showError } from '@/utils/Alerts';
 
 interface DisposalRecord {
   id: number;
-  disposalCode: string;
-  disposalMethod: string;
-  disposalDate: string;
+  disposal_code: string;
+  disposal_method: string;
+  disposal_date: string;
   quantity: number;
   description: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -91,6 +91,11 @@ interface DisposalRecord {
   };
   
   // Revenue details
+  disposal_revenue?: {
+    disposal_value: number;
+    book_value: number;
+    gain_loss: number;
+  };
   revenue?: {
     disposalValue: number;
     bookValue: number;
@@ -108,10 +113,10 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
   // Editable fields state
   const [status, setStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>(disposal.status);
   const [disposalValue, setDisposalValue] = useState<string>(
-    disposal.revenue?.disposalValue?.toString() || '0'
+    disposal.disposal_revenue?.disposal_value?.toString() || disposal.revenue?.disposalValue?.toString() || '0'
   );
   const [bookValue, setBookValue] = useState<string>(
-    disposal.revenue?.bookValue?.toString() || '0'
+    disposal.disposal_revenue?.book_value?.toString() || disposal.revenue?.bookValue?.toString() || '0'
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ disposalValue?: string; bookValue?: string }>({});
@@ -201,7 +206,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <label>Disposal Code</label>
               <input
                 type="text"
-                value={disposal.disposalCode}
+                value={disposal.disposal_code}
                 disabled
                 className="disabled-input"
               />
@@ -228,7 +233,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <label>Disposal Method</label>
               <input
                 type="text"
-                value={disposal.disposalMethod}
+                value={disposal.disposal_method}
                 disabled
                 className="disabled-input"
               />
@@ -239,7 +244,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <label>Disposal Date</label>
               <input
                 type="text"
-                value={formatDate(disposal.disposalDate)}
+                value={formatDate(disposal.disposal_date)}
                 disabled
                 className="disabled-input"
               />

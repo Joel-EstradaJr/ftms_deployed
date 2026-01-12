@@ -53,14 +53,12 @@ interface BusTripRecord {
   body_builder: string; // Same as bus_brand (for modal compatibility)
   
   // Status tracking (from Model Revenue table)
-  dateRecorded: string | null;
-  date_recorded: string | null; // Same as dateRecorded (for modal compatibility)
-  amount: number | null;
-  total_amount: number | null; // Receivable total (for modal compatibility)
-  status: string; // 'remitted' or 'pending'
-  remarks: string | null;
-  dueDate?: string | null; // receivable due date (for receivable status)
-  due_date: string | null; // Same as dueDate (for modal compatibility)
+  date_recorded: string | null; // Maps to revenue.date_recorded
+  amount: number | null; // Maps to revenue.amount
+  total_amount: number | null; // Maps to receivable.total_amount
+  status: string; // 'remitted', 'pending', or 'receivable' - Maps to revenue.status
+  remarks: string | null; // Maps to revenue.description
+  due_date: string | null; // Maps to receivable.due_date
   
   // receivable payment details (for receivable status)
   receivableDetails?: {
@@ -206,7 +204,7 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     assignment_id: "ASSIGN-001",
     bus_trip_id: "TRIP-001",
     bus_route: "S. Palay to Sta. Cruz, S. Palay to PITX",
-    date_assigned: "2025-11-10",
+    date_assigned: "2026-1-11",
     trip_fuel_expense: 2500.00,
     trip_revenue: 15000.00,
     assignment_type: "Boundary",
@@ -224,14 +222,13 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "001",
     bus_brand: "Hilltop",
     body_builder: "Hilltop",
-    dateRecorded: "2025-11-11",
-    date_recorded: "2025-11-11",
-    date_expected: "2025-11-14",
+    date_recorded: "2026-1-11",
+    date_expected: "2026-1-14",
     amount: 15000.00,
     total_amount: null,
     due_date: null,
-    status: "remitted",
-    remarks: "On-time remittance, no issues",
+    status: "pending",
+    remarks: "",
     driverName: "Juan Santos Dela Cruz",
     conductorName: "Pedro Reyes Santos",
     // Driver details
@@ -269,7 +266,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "002",
     bus_brand: "Agila",
     body_builder: "Agila",
-    dateRecorded: null,
     date_recorded: null,
     date_expected: null,
     amount: null,
@@ -314,7 +310,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "003",
     bus_brand: "DARJ",
     body_builder: "DARJ",
-    dateRecorded: "2025-11-10",
     date_recorded: "2025-11-10",
     date_expected: "2025-11-13",
     amount: 18000.00,
@@ -360,7 +355,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "004",
     bus_brand: "Hilltop",
     body_builder: "Hilltop",
-    dateRecorded: "2025-11-05",
     date_recorded: "2025-11-05",
     date_expected: "2025-11-05",
     total_amount: 8300.00,
@@ -423,7 +417,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "005",
     bus_brand: "Agila",
     body_builder: "Agila",
-    dateRecorded: "",
     date_recorded: "",
     date_expected: "",
     status: "pending",
@@ -450,7 +443,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     bus_trip_id: "TRIP-006",
     bus_route: "PITX to S. Palay",
     date_assigned: "2025-11-03",
-    dateRecorded: "2025-11-03",
     date_expected: "2025-11-07",
     trip_fuel_expense: 2100.00,
     trip_revenue: 11000.00,
@@ -532,7 +524,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "007",
     bus_brand: "Hilltop",
     body_builder: "Hilltop",
-    dateRecorded: "2025-11-11",
     date_recorded: "2025-11-11",
     date_expected: "2025-11-14",
     amount: 5000.00,
@@ -596,7 +587,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "008",
     bus_brand: "Hilltop",
     body_builder: "Hilltop",
-    dateRecorded: null,
     date_recorded: null,
     date_expected: null,
     amount: null,
@@ -637,7 +627,6 @@ const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
     body_number: "009",
     bus_brand: "Agila",
     body_builder: "Agila",
-    dateRecorded: "2025-11-08",
     date_recorded: "2025-11-08",
     date_expected: "2025-11-08",
     amount: 0,
@@ -951,39 +940,72 @@ const AdminTripRevenuePage = () => {
       // Base update for all cases
       const updatedItem: BusTripRecord = {
         ...item,
-        dateRecorded: formData.dateRecorded,
-        date_recorded: formData.dateRecorded,
+        date_recorded: formData.date_recorded,
         amount: formData.amount,
         status: formData.status || 'remitted',
-        remarks: formData.remarks
+        remarks: formData.description
       };
       
-      // Handle receivable case with installments
-      if (formData.status === 'receivable' && formData.receivable) {
-        const receivable = formData.receivable;
-        const hasConductor = !!receivable.conductorId;
+      // Handle receivable case with separate driver and conductor receivables
+      if (formData.status === 'receivable') {
+        const hasConductor = !!formData.conductorReceivable;
+        const driverReceivable = formData.driverReceivable;
+        const conductorReceivable = formData.conductorReceivable;
         
-        updatedItem.total_amount = receivable.totalAmount;
-        updatedItem.dueDate = receivable.dueDate;
-        updatedItem.due_date = receivable.dueDate;
+        // Calculate total amount from both receivables
+        const totalAmount = (driverReceivable?.total_amount || 0) + (conductorReceivable?.total_amount || 0);
+        
+        updatedItem.total_amount = totalAmount;
+        updatedItem.due_date = driverReceivable?.due_date || null;
         updatedItem.receivableDetails = {
-          totalAmount: receivable.totalAmount,
-          dueDate: receivable.dueDate,
-          createdDate: formData.dateRecorded,
-          driverShare: receivable.driverShare,
+          totalAmount,
+          dueDate: driverReceivable?.due_date || '',
+          createdDate: formData.date_recorded,
+          driverShare: driverReceivable?.total_amount || 0,
           driverPaid: 0,
           driverStatus: 'Pending',
           driverPayments: [],
           ...(hasConductor && {
-            conductorShare: receivable.conductorShare,
+            conductorShare: conductorReceivable?.total_amount || 0,
             conductorPaid: 0,
             conductorStatus: 'Pending',
             conductorPayments: []
           }),
           overallStatus: 'Pending'
         };
-        updatedItem.driverInstallments = receivable.driverInstallments;
-        updatedItem.conductorInstallments = hasConductor ? receivable.conductorInstallments : undefined;
+        
+        // Convert installments from API format to internal format
+        if (driverReceivable?.installments) {
+          updatedItem.driverInstallments = driverReceivable.installments.map((inst: any, index: number) => ({
+            id: `driver-inst-${Date.now()}-${index}`,
+            installmentNumber: inst.installment_number,
+            originalDueDate: inst.due_date,
+            currentDueDate: inst.due_date,
+            originalDueAmount: inst.amount_due,
+            currentDueAmount: inst.amount_due,
+            paidAmount: inst.amount_paid || 0,
+            carriedOverAmount: 0,
+            paymentStatus: inst.status || PaymentStatus.PENDING,
+            isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
+            isEditable: inst.status !== PaymentStatus.PAID
+          }));
+        }
+        
+        if (hasConductor && conductorReceivable?.installments) {
+          updatedItem.conductorInstallments = conductorReceivable.installments.map((inst: any, index: number) => ({
+            id: `conductor-inst-${Date.now()}-${index}`,
+            installmentNumber: inst.installment_number,
+            originalDueDate: inst.due_date,
+            currentDueDate: inst.due_date,
+            originalDueAmount: inst.amount_due,
+            currentDueAmount: inst.amount_due,
+            paidAmount: inst.amount_paid || 0,
+            carriedOverAmount: 0,
+            paymentStatus: inst.status || PaymentStatus.PENDING,
+            isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
+            isEditable: inst.status !== PaymentStatus.PAID
+          }));
+        }
       }
       
       return updatedItem;
@@ -1072,12 +1094,10 @@ const AdminTripRevenuePage = () => {
       return {
         ...record,
         status: 'receivable', // Deadline exceeded, converted to receivable
-        dateRecorded: dateRecorded, // Set current date as dateRecorded
-        date_recorded: dateRecorded, // Alias for modal compatibility
+        date_recorded: dateRecorded, // Set current date as date_recorded
         amount: 0, // No payment made, amount is 0
         total_amount: totalAmount, // Total receivable amount
-        dueDate: dueDateStr, // Calculate due date based on config
-        due_date: dueDateStr, // Alias for modal compatibility
+        due_date: dueDateStr, // Calculate due date based on config
         remarks: `Automatically converted to receivable - Deadline exceeded with no remittance. Due: ${formatDate(dueDateStr)}`,
         receivableDetails: {
           totalAmount,
@@ -1236,6 +1256,28 @@ const AdminTripRevenuePage = () => {
   // Fetch filter options on mount
   useEffect(() => {
     fetchFilterOptions();
+  }, []);
+
+  // Fetch configuration from API on mount
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/admin/revenue/config');
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          console.log('Loaded config from API:', result.data);
+          setConfig(result.data);
+        } else {
+          console.warn('Failed to load config from API, using defaults:', result.error);
+        }
+      } catch (error) {
+        console.error('Error fetching config:', error);
+        // Keep using default config values
+      }
+    };
+    
+    fetchConfig();
   }, []);
 
   // Fetch data when dependencies change
@@ -1439,7 +1481,7 @@ const AdminTripRevenuePage = () => {
                         </span>
                       </td>
                       <td>
-                        {item.status === 'receivable' ? getReceivableDueDate(item.dateRecorded) : '-'}
+                        {item.status === 'receivable' ? getReceivableDueDate(item.date_recorded) : '-'}
                       </td>
                       <td className="actionButtons">
                         <div className="actionButtonsContainer">
@@ -1452,6 +1494,7 @@ const AdminTripRevenuePage = () => {
                           </button>
 
                           {item.status === 'pending' && (
+                            <>
                             <button
                               className="editBtn"
                               onClick={() => openModal("add", item)}
@@ -1459,6 +1502,16 @@ const AdminTripRevenuePage = () => {
                             >
                               <i className="ri-cash-line" />
                             </button>
+
+                            <button
+                              className="editBtn"
+                              onClick={() => openModal("edit", item)}
+                              title="Edit Receivable Details"
+                              disabled={true}
+                            >
+                              <i className="ri-edit-line" />
+                            </button>
+                            </>
                           )}
 
                           {item.status === 'receivable' && (

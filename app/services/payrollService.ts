@@ -1,53 +1,111 @@
 /**
  * Payroll Service - Backend API Integration
  * Connects to the FTMS backend API for payroll data retrieval
- * Supports semi-monthly period-based payroll batches
+ * Supports weekly payroll periods (Monday → Saturday)
  */
 
 import { api } from '../lib/api';
 
-/**
- * Semi-monthly payroll period helper
- */
-export function getSemiMonthlyPeriod(date: Date): { period: number; start: string; end: string } {
-  const day = date.getDate();
-  const year = date.getFullYear();
-  const month = date.getMonth();
+// ============================================================================
+// WEEKLY PERIOD HELPERS
+// ============================================================================
 
-  if (day <= 15) {
-    // Period 1: 1st to 15th
-    const start = new Date(year, month, 1);
-    const end = new Date(year, month, 15);
+/**
+ * Get the Monday of the week containing the given date
+ */
+export function getWeekMonday(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Get the Saturday of the week containing the given date
+ */
+export function getWeekSaturday(date: Date): Date {
+  const monday = getWeekMonday(date);
+  const saturday = new Date(monday);
+  saturday.setDate(monday.getDate() + 5);
+  saturday.setHours(23, 59, 59, 999);
+  return saturday;
+}
+
+/**
+ * Format date as YYYY-MM-DD string
+ */
+function formatDateString(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * Get weekly period for a given date
+ */
+export function getWeeklyPeriod(date: Date): { period: number; start: string; end: string } {
+  const monday = getWeekMonday(date);
+  const saturday = getWeekSaturday(date);
+
+  // Calculate week number in the year
+  const startOfYear = new Date(date.getFullYear(), 0, 1);
+  const weekNumber = Math.ceil(((date.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+
+  return {
+    period: weekNumber,
+    start: formatDateString(monday),
+    end: formatDateString(saturday),
+  };
+}
+
+/**
+ * Get current weekly period
+ */
+export function getCurrentWeeklyPeriod(): { period: number; start: string; end: string } {
+  return getWeeklyPeriod(new Date());
+}
+
+// ============================================================================
+// SEMI-MONTHLY PERIOD HELPERS
+// ============================================================================
+
+/**
+ * Get semi-monthly period dates for a given year, month, and period type
+ * @param year - The year
+ * @param month - The month (0-indexed, 0 = January)
+ * @param periodType - 1 for 1st-15th, 2 for 16th-end of month
+ */
+export function getSemiMonthlyPeriod(
+  year: number,
+  month: number,
+  periodType: 1 | 2
+): { startDate: string; endDate: string } {
+  if (periodType === 1) {
+    // First half: 1st to 15th
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month, 15);
     return {
-      period: 1,
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      startDate: formatDateString(startDate),
+      endDate: formatDateString(endDate),
     };
   } else {
-    // Period 2: 16th to end of month
-    const start = new Date(year, month, 16);
-    const end = new Date(year, month + 1, 0); // Last day of month
+    // Second half: 16th to end of month
+    const startDate = new Date(year, month, 16);
+    const endDate = new Date(year, month + 1, 0); // Last day of the month
     return {
-      period: 2,
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      startDate: formatDateString(startDate),
+      endDate: formatDateString(endDate),
     };
   }
 }
 
-/**
- * Get current semi-monthly period
- */
-export function getCurrentSemiMonthlyPeriod(): { period: number; start: string; end: string } {
-  return getSemiMonthlyPeriod(new Date());
-}
+// ============================================================================
+// HR PAYROLL DATA TYPES
+// ============================================================================
 
-/**
- * HR Payroll Data Types (from backend integration endpoint)
- */
 export interface HrPayrollAttendance {
   date: string;
-  status: 'Present' | 'Absent' | 'Leave';
+  status: 'Present' | 'Absent' | 'Leave' | 'Late' | 'Overtime';
 }
 
 export interface HrPayrollBenefitType {
@@ -56,12 +114,13 @@ export interface HrPayrollBenefitType {
 }
 
 export interface HrPayrollBenefit {
+  name?: string;  // Flat structure from new HR API
   value: string;
-  frequency: 'Once' | 'Monthly' | 'Daily' | 'Weekly' | 'Yearly';
+  frequency: 'Once' | 'Daily' | 'Weekly' | 'Monthly' | 'Annually';
   effective_date: string;
   end_date: string | null;
   is_active: boolean;
-  benefit_type: HrPayrollBenefitType;
+  benefit_type?: HrPayrollBenefitType;  // Legacy format
 }
 
 export interface HrPayrollDeductionType {
@@ -70,12 +129,13 @@ export interface HrPayrollDeductionType {
 }
 
 export interface HrPayrollDeduction {
+  name?: string;  // Flat structure from new HR API
   value: string;
-  frequency: 'Once' | 'Monthly' | 'Daily' | 'Weekly' | 'Yearly';
+  frequency: 'Once' | 'Daily' | 'Weekly' | 'Monthly' | 'Annually';
   effective_date: string;
   end_date: string | null;
   is_active: boolean;
-  deduction_type: HrPayrollDeductionType;
+  deduction_type?: HrPayrollDeductionType;  // Legacy format
 }
 
 export interface HrPayrollData {
@@ -84,7 +144,7 @@ export interface HrPayrollData {
   employee_number: string;
   employee_name?: string;
   basic_rate: string;
-  rate_type: 'Monthly' | 'Daily' | 'Weekly' | 'Semi-Monthly';
+  rate_type: 'Daily' | 'Weekly' | 'Monthly' | 'Semi-Monthly';
   present_days?: number;
   attendances: HrPayrollAttendance[];
   benefits: HrPayrollBenefit[];
@@ -111,10 +171,93 @@ export interface HrPayrollQueryParams {
   grouped?: boolean | string;
 }
 
+// ============================================================================
+// FREQUENCY CALCULATION HELPERS
+// ============================================================================
+
+type PayrollFrequency = 'Once' | 'Daily' | 'Weekly' | 'Monthly' | 'Annually';
+
 /**
- * Payroll Service
+ * Check if a date falls within a range
  */
+function isDateInRange(date: Date, startDate: Date, endDate: Date): boolean {
+  return date >= startDate && date <= endDate;
+}
+
+/**
+ * Parse date string to Date object
+ */
+function parseDateString(dateStr: string): Date {
+  return new Date(dateStr + 'T00:00:00');
+}
+
+/**
+ * Determine if a benefit/deduction should be applied for a given payroll week
+ */
+function shouldApplyItemForWeek(
+  item: { frequency: PayrollFrequency; effective_date: string; end_date: string | null; is_active: boolean },
+  periodStart: Date,
+  periodEnd: Date
+): boolean {
+  if (!item.is_active) return false;
+
+  const effectiveDate = parseDateString(item.effective_date);
+  const endDate = item.end_date ? parseDateString(item.end_date) : null;
+
+  if (endDate && endDate < periodStart) return false;
+  if (effectiveDate > periodEnd) return false;
+
+  switch (item.frequency) {
+    case 'Once':
+      return isDateInRange(effectiveDate, periodStart, periodEnd);
+    case 'Daily':
+    case 'Weekly':
+      return true;
+    case 'Monthly':
+      // Apply if effective date's day-of-month matches any day in period
+      const effectiveDay = effectiveDate.getDate();
+      for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+        if (d.getDate() === effectiveDay) return true;
+      }
+      return false;
+    case 'Annually':
+      const thisYearEffective = new Date(periodStart.getFullYear(), effectiveDate.getMonth(), effectiveDate.getDate());
+      return isDateInRange(thisYearEffective, periodStart, periodEnd);
+    default:
+      return false;
+  }
+}
+
+/**
+ * Calculate frequency multiplier
+ */
+function calculateFrequencyMultiplier(
+  frequency: PayrollFrequency,
+  presentDays: number
+): number {
+  switch (frequency) {
+    case 'Daily':
+      return presentDays;
+    case 'Once':
+    case 'Weekly':
+    case 'Monthly':
+    case 'Annually':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+// ============================================================================
+// PAYROLL SERVICE
+// ============================================================================
+
 const payrollService = {
+  /**
+   * Get semi-monthly period dates for a given year, month, and period type
+   */
+  getSemiMonthlyPeriod,
+
   /**
    * Fetch HR payroll data from integration endpoint
    * GET /api/integration/hr_payroll
@@ -135,17 +278,18 @@ const payrollService = {
 
   /**
    * Fetch HR payroll data grouped by period
+   * Uses current week's Monday to Saturday for strict weekly periods
    * GET /api/integration/hr_payroll?grouped=true
    */
-  fetchPayrollBatches: async (year: number, month: number): Promise<any[]> => {
+  fetchPayrollBatches: async (year?: number, month?: number): Promise<PayrollBatchGroup[]> => {
     try {
-      const monthStr = String(month + 1).padStart(2, '0');
-      const yearStr = String(year);
-      
-      const response = await api.get<any[]>('/api/integration/hr_payroll', {
+      // Get current week's Monday to Saturday for strict weekly periods
+      const currentPeriod = payrollService.getCurrentWeeklyPeriod();
+
+      const response = await api.get<PayrollBatchGroup[]>('/api/integration/hr_payroll', {
         grouped: 'true',
-        year: yearStr,
-        month: monthStr
+        payroll_period_start: currentPeriod.start,
+        payroll_period_end: currentPeriod.end,
       });
       return response;
     } catch (error) {
@@ -155,15 +299,65 @@ const payrollService = {
   },
 
   /**
-   * Fetch available payroll periods
+   * Fetch payroll for a specific weekly period
+   */
+  fetchPayrollForWeek: async (periodStart: string, periodEnd: string): Promise<PayrollBatchGroup[]> => {
+    try {
+      const response = await api.get<PayrollBatchGroup[]>('/api/integration/hr_payroll', {
+        grouped: 'true',
+        payroll_period_start: periodStart,
+        payroll_period_end: periodEnd,
+      });
+      return response;
+    } catch (error) {
+      console.error('Error fetching payroll for week:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Re-fetch payroll data from HR API (manual trigger)
+   * POST /api/integration/hr_payroll/refetch
+   */
+  refetchFromHR: async (periodStart: string, periodEnd: string): Promise<{ success: boolean; synced: number; errors: string[] }> => {
+    try {
+      const response = await api.post<{ success: boolean; synced: number; errors: string[] }>(
+        '/api/integration/hr_payroll/refetch',
+        { period_start: periodStart, period_end: periodEnd }
+      );
+      return response;
+    } catch (error) {
+      console.error('Error re-fetching from HR:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch and sync payroll data from HR
+   * POST /api/integration/hr_payroll/fetch-and-sync
+   */
+  fetchAndSync: async (periodStart: string, periodEnd: string): Promise<{ success: boolean; synced: number; errors: string[] }> => {
+    try {
+      const response = await api.post<{ success: boolean; synced: number; errors: string[] }>(
+        '/api/integration/hr_payroll/fetch-and-sync',
+        { period_start: periodStart, period_end: periodEnd }
+      );
+      return response;
+    } catch (error) {
+      console.error('Error fetching and syncing from HR:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch available weekly payroll periods
    * GET /api/integration/hr_payroll/periods
    */
   fetchPayrollPeriods: async (year: number, month: number): Promise<any> => {
     try {
-      const monthStr = String(month + 1).padStart(2, '0');
       const response = await api.get<any>('/api/integration/hr_payroll/periods', {
         year: String(year),
-        month: monthStr
+        month: String(month),
       });
       return response;
     } catch (error) {
@@ -173,103 +367,107 @@ const payrollService = {
   },
 
   /**
-   * Get semi-monthly period details
+   * Get weekly periods for a given month
    */
-  getSemiMonthlyPeriod: (year: number, month: number, period: 1 | 2): { startDate: string; endDate: string; workingDays: number } => {
-    const startDay = period === 1 ? 1 : 16;
-    const endDay = period === 1 ? 15 : new Date(year, month + 1, 0).getDate();
-    
-    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
-    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
-    const workingDays = endDay - startDay + 1;
-    
-    return { startDate, endDate, workingDays };
+  getWeeklyPeriodsForMonth: (year: number, month: number): Array<{ start: string; end: string; weekNumber: number }> => {
+    const periods: Array<{ start: string; end: string; weekNumber: number }> = [];
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    let currentMonday = getWeekMonday(firstDay);
+    let weekNumber = 1;
+
+    while (currentMonday <= lastDay) {
+      const saturday = getWeekSaturday(currentMonday);
+
+      if (saturday >= firstDay && currentMonday <= lastDay) {
+        periods.push({
+          start: formatDateString(currentMonday),
+          end: formatDateString(saturday),
+          weekNumber,
+        });
+      }
+
+      currentMonday.setDate(currentMonday.getDate() + 7);
+      weekNumber++;
+    }
+
+    return periods;
   },
 
   /**
-   * Get current semi-monthly period
+   * Get current weekly period
    */
-  getCurrentSemiMonthlyPeriod: (): { year: number; month: number; period: 1 | 2 } => {
+  getCurrentWeeklyPeriod: (): { year: number; month: number; weekNumber: number; start: string; end: string } => {
     const now = new Date();
-    const day = now.getDate();
+    const period = getWeeklyPeriod(now);
     return {
       year: now.getFullYear(),
       month: now.getMonth(),
-      period: day <= 15 ? 1 : 2
+      weekNumber: period.period,
+      start: period.start,
+      end: period.end,
     };
   },
 
   /**
    * Calculate gross earnings based on attendance, base salary, and benefits
+   * Uses weekly calculation: Basic Pay = basic_rate × Present days
    */
   calculateGrossEarnings: (payrollData: HrPayrollData): number => {
     const basicRate = parseFloat(payrollData.basic_rate);
-    const presentDays = payrollData.present_days || 
+    const presentDays = payrollData.present_days ||
       payrollData.attendances.filter(a => a.status === 'Present').length;
-    
-    // If zero attendance, return zero pay
-    if (presentDays === 0) {
-      return 0;
-    }
 
-    // Basic pay calculation based on rate type (semi-monthly = 15 working days)
-    let basicPay = 0;
-    switch (payrollData.rate_type) {
-      case 'Daily':
-        basicPay = basicRate * presentDays;
-        break;
-      case 'Weekly':
-        // Assuming 5 working days per week
-        basicPay = (basicRate / 5) * presentDays;
-        break;
-      case 'Semi-Monthly':
-        // Semi-monthly: 15 working days per period
-        basicPay = (basicRate / 15) * presentDays;
-        break;
-      case 'Monthly':
-        // Monthly: 22 working days per month, divide by 2 for semi-monthly
-        basicPay = (basicRate / 22) * presentDays;
-        break;
-    }
+    if (presentDays === 0) return 0;
 
-    // Add benefits (only active ones)
+    // Basic pay = daily rate × present days
+    const basicPay = basicRate * presentDays;
+
+    // Calculate benefits with frequency rules
+    const periodStart = parseDateString(payrollData.payroll_period_start);
+    const periodEnd = parseDateString(payrollData.payroll_period_end);
+
     const totalBenefits = payrollData.benefits
-      .filter(b => b.is_active)
-      .reduce((sum, benefit) => sum + parseFloat(benefit.value), 0);
+      .filter(b => b.is_active && shouldApplyItemForWeek(b, periodStart, periodEnd))
+      .reduce((sum, benefit) => {
+        const value = parseFloat(benefit.value);
+        const multiplier = calculateFrequencyMultiplier(benefit.frequency, presentDays);
+        return sum + (value * multiplier);
+      }, 0);
 
     return basicPay + totalBenefits;
   },
 
   /**
-   * Calculate total deductions from HR payroll data
-   * Returns 0 if no attendance
+   * Calculate total deductions from HR payroll data with frequency rules
    */
   calculateTotalDeductions: (payrollData: HrPayrollData): number => {
-    const presentDays = payrollData.present_days || 
+    const presentDays = payrollData.present_days ||
       payrollData.attendances.filter(a => a.status === 'Present').length;
-    
-    // If zero attendance, no deductions
-    if (presentDays === 0) {
-      return 0;
-    }
+
+    if (presentDays === 0) return 0;
+
+    const periodStart = parseDateString(payrollData.payroll_period_start);
+    const periodEnd = parseDateString(payrollData.payroll_period_end);
 
     return payrollData.deductions
-      .filter(d => d.is_active)
-      .reduce((sum, deduction) => sum + parseFloat(deduction.value), 0);
+      .filter(d => d.is_active && shouldApplyItemForWeek(d, periodStart, periodEnd))
+      .reduce((sum, deduction) => {
+        const value = parseFloat(deduction.value);
+        const multiplier = calculateFrequencyMultiplier(deduction.frequency, presentDays);
+        return sum + (value * multiplier);
+      }, 0);
   },
 
   /**
    * Calculate net pay from HR payroll data
-   * Returns 0 if no attendance
    */
   calculateNetPay: (payrollData: HrPayrollData): number => {
-    const presentDays = payrollData.present_days || 
+    const presentDays = payrollData.present_days ||
       payrollData.attendances.filter(a => a.status === 'Present').length;
-    
-    // If zero attendance, net pay is zero
-    if (presentDays === 0) {
-      return 0;
-    }
+
+    if (presentDays === 0) return 0;
 
     const gross = payrollService.calculateGrossEarnings(payrollData);
     const deductions = payrollService.calculateTotalDeductions(payrollData);
@@ -284,35 +482,76 @@ const payrollService = {
   },
 
   /**
-   * Get benefits by type
+   * Get benefits by type (name)
    */
   getBenefitsByType: (payrollData: HrPayrollData): Map<string, number> => {
     const benefitMap = new Map<string, number>();
-    
+
     payrollData.benefits
       .filter(b => b.is_active)
       .forEach(benefit => {
-        const current = benefitMap.get(benefit.benefit_type.name) || 0;
-        benefitMap.set(benefit.benefit_type.name, current + parseFloat(benefit.value));
+        const name = benefit.name || benefit.benefit_type?.name || 'Unknown';
+        const current = benefitMap.get(name) || 0;
+        benefitMap.set(name, current + parseFloat(benefit.value));
       });
 
     return benefitMap;
   },
 
   /**
-   * Get deductions by type
+   * Get deductions by type (name)
    */
   getDeductionsByType: (payrollData: HrPayrollData): Map<string, number> => {
     const deductionMap = new Map<string, number>();
-    
+
     payrollData.deductions
       .filter(d => d.is_active)
       .forEach(deduction => {
-        const current = deductionMap.get(deduction.deduction_type.name) || 0;
-        deductionMap.set(deduction.deduction_type.name, current + parseFloat(deduction.value));
+        const name = deduction.name || deduction.deduction_type?.name || 'Unknown';
+        const current = deductionMap.get(name) || 0;
+        deductionMap.set(name, current + parseFloat(deduction.value));
       });
 
     return deductionMap;
+  },
+
+  /**
+   * Release payroll batch
+   * 1. Syncs data to ensure DB record exists
+   * 2. Processes the payroll (changes status to PROCESSED)
+   * 3. Calls admin endpoint to release (triggers webhook)
+   */
+  releasePayrollBatch: async (periodStart: string, periodEnd: string): Promise<boolean> => {
+    try {
+      // 1. Sync first to get the ID
+      const syncResponse = await api.post<{ success: boolean; periodId: number }>(
+        '/api/integration/hr_payroll/fetch-and-sync',
+        { period_start: periodStart, period_end: periodEnd }
+      );
+
+      if (!syncResponse.success || !syncResponse.periodId) {
+        throw new Error('Failed to sync payroll data before release');
+      }
+
+      const periodId = syncResponse.periodId;
+
+      // 2. Process the payroll (required before release)
+      await api.post<{ success: boolean }>(
+        `/api/v1/admin/payroll-periods/${periodId}/process`,
+        { period_start: periodStart, period_end: periodEnd }
+      );
+
+      // 3. Call release endpoint (triggers webhook)
+      const releaseResponse = await api.post<{ success: boolean }>(
+        `/api/v1/admin/payroll-periods/${periodId}/release`,
+        {}
+      );
+
+      return releaseResponse.success;
+    } catch (error) {
+      console.error('Error releasing payroll batch:', error);
+      throw error;
+    }
   },
 };
 

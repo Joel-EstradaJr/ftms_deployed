@@ -21,18 +21,12 @@ import ReviewDisposal from './reviewDisposal';
 // Types
 interface DisposalRecord {
   id: number;
-  disposalCode: string;
-  disposalMethod: string;
-  disposalDate: string;
+  disposal_code: string;
+  disposal_method: string;
+  disposal_date: string;
   quantity: number;
   description: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  
-  // Legacy fields for backward compatibility
-  gainLoss?: number;
-  itemCode?: string;
-  batchNumber?: string;
-  busCode?: string;
   
   // Stock details (if disposal type is stock)
   stock?: {
@@ -103,6 +97,17 @@ interface DisposalRecord {
   };
   
   // Revenue details
+  disposal_revenue?: {
+    disposal_value: number;
+    book_value: number;
+    gain_loss: number;
+  };
+  
+  // Legacy fields for backward compatibility
+  gainLoss?: number;
+  itemCode?: string;
+  batchNumber?: string;
+  busCode?: string;
   revenue?: {
     disposalValue: number;
     bookValue: number;
@@ -120,94 +125,253 @@ interface FilterValues {
 
 // Mock data
 const MOCK_DISPOSAL_DATA: DisposalRecord[] = [
+  // 1. STOCK DISPOSAL - Office Equipment
   {
     id: 1,
-    disposalCode: 'DISP-2024-001',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-12-15',
-    quantity: 5,
-    gainLoss: 5000,
-    itemCode: 'ITEM-001',
+    disposal_code: 'DISP-2026-001',
+    disposal_method: 'FOR_SALE',
+    disposal_date: '2026-01-15',
+    quantity: 8,
     status: 'PENDING',
-    description: 'Old office furniture disposal'
+    description: 'Disposal of obsolete office computers and monitors - end of useful life',
+    
+    // Stock details with nested item information
+    stock: {
+      item_code: 'IT-COMP-001',
+      item: {
+        item_name: 'Desktop Computer - Dell OptiPlex 7040',
+        unit: {
+          unit_name: 'Units'
+        },
+        category: {
+          category_name: 'IT Equipment'
+        },
+        description: 'Desktop computer with Intel i5 processor, 8GB RAM, 500GB HDD'
+      },
+      current_stock: 25,
+      status: 'ACTIVE',
+      created_at: '2020-03-15'
+    },
+    
+    // Revenue details
+    disposal_revenue: {
+      disposal_value: 32000.00,
+      book_value: 48000.00,
+      gain_loss: -16000.00
+    }
   },
+
+  // 2. BATCH DISPOSAL - Expired Medical Supplies
   {
     id: 2,
-    disposalCode: 'DISP-2024-002',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-12-18',
-    quantity: 100,
-    gainLoss: -2000,
-    batchNumber: 'BATCH-123',
+    disposal_code: 'DISP-2026-002',
+    disposal_method: 'DONATION',
+    disposal_date: '2026-01-10',
+    quantity: 250,
     status: 'PENDING',
-    description: 'Expired inventory batch'
+    description: 'Disposal of near-expiry first aid supplies - donation to local health centers',
+    
+    // Batch details with nested stock and item information
+    batch: {
+      batch_number: 'BATCH-2024-MED-089',
+      stock: {
+        item_code: 'MED-FAK-003',
+        item: {
+          item_name: 'First Aid Kit - Complete Set',
+          unit: {
+            unit_name: 'Boxes'
+          },
+          category: {
+            category_name: 'Medical Supplies'
+          }
+        }
+      },
+      quantity: 250,
+      expiration_date: '2026-03-31',
+      received_date: '2024-04-15',
+      remarks: 'Nearing expiration date - suitable for donation before expiry'
+    },
+    
+    // Revenue details
+    disposal_revenue: {
+      disposal_value: 0.00,
+      book_value: 187500.00,
+      gain_loss: -187500.00
+    }
   },
+
+  // 3. BUS DISPOSAL - Brand New Acquisition (Retired Bus)
   {
     id: 3,
-    disposalCode: 'DISP-2024-003',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-12-20',
+    disposal_code: 'DISP-2026-003',
+    disposal_method: 'FOR_SALE',
+    disposal_date: '2026-01-08',
     quantity: 1,
-    gainLoss: 15000,
-    busCode: 'BUS-456',
     status: 'APPROVED',
-    description: 'Retired bus unit'
+    description: 'Disposal of bus unit due to excessive repair costs and age - replaced with newer model',
+    
+    // Bus details with nested manufacturer and body builder information
+    bus: {
+      bus_code: 'BUS-2015-045',
+      plate_number: 'ABC-1234',
+      body_number: 'BN-2015-045',
+      bus_type: 'AIRCONDITIONED',
+      status: 'OUT_OF_SERVICE',
+      model: 'Fuso Rosa',
+      year_model: '2015',
+      condition: 'FAIR',
+      acquisition_method: 'BRAND_NEW',
+      
+      // Nested manufacturer details
+      manufacturer: {
+        manufacturer_name: 'Mitsubishi Fuso Truck and Bus Corporation'
+      },
+      
+      // Nested body builder details
+      body_builder: {
+        body_builder_name: 'Santarosa Motor Works Inc.'
+      },
+      
+      chassis_number: 'MHFFE8B00FK123456',
+      engine_number: '4P10-T123456',
+      seat_capacity: 29,
+      registration_status: 'REGISTERED',
+      
+      // Brand new acquisition details
+      brand_new_details: {
+        dealer_name: 'Diamond Motor Corporation - Cebu Branch'
+      }
+    },
+    
+    // Revenue details
+    disposal_revenue: {
+      disposal_value: 850000.00,
+      book_value: 1200000.00,
+      gain_loss: -350000.00
+    }
   },
+
+  // 4. BUS DISPOSAL - Second Hand Acquisition
   {
     id: 4,
-    disposalCode: 'DISP-2024-004',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-12-10',
-    quantity: 3,
-    gainLoss: -5000,
-    itemCode: 'ITEM-045',
-    status: 'REJECTED',
-    description: 'Damaged equipment disposal'
+    disposal_code: 'DISP-2026-004',
+    disposal_method: 'FOR_SALE',
+    disposal_date: '2025-12-20',
+    quantity: 1,
+    status: 'APPROVED',
+    description: 'Disposal of older bus unit acquired second-hand - retiring from service',
+    
+    // Bus details with second-hand acquisition
+    bus: {
+      bus_code: 'BUS-2012-018',
+      plate_number: 'XYZ-5678',
+      body_number: 'BN-2012-018',
+      bus_type: 'NON_AIRCONDITIONED',
+      status: 'OUT_OF_SERVICE',
+      model: 'Isuzu NQR',
+      year_model: '2012',
+      condition: 'POOR',
+      acquisition_method: 'SECOND_HAND',
+      
+      // Nested manufacturer details
+      manufacturer: {
+        manufacturer_name: 'Isuzu Motors Limited'
+      },
+      
+      // Nested body builder details
+      body_builder: {
+        body_builder_name: 'Centro Manufacturing Corporation'
+      },
+      
+      chassis_number: 'JALC4B16007123789',
+      engine_number: '4HK1-TC456789',
+      seat_capacity: 33,
+      registration_status: 'REGISTERED',
+      
+      // Second-hand acquisition details
+      second_hand_details: {
+        previous_owner: 'Metro Manila Transport Services Inc.'
+      }
+    },
+    
+    // Revenue details
+    disposal_revenue: {
+      disposal_value: 320000.00,
+      book_value: 280000.00,
+      gain_loss: 40000.00
+    }
   },
+
+  // 5. STOCK DISPOSAL - Spare Parts with Gain
   {
     id: 5,
-    disposalCode: 'DISP-2024-005',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-12-12',
-    quantity: 50,
-    gainLoss: 8000,
-    batchNumber: 'BATCH-089',
-    status: 'PENDING',
-    description: 'Surplus inventory sale'
+    disposal_code: 'DISP-2025-089',
+    disposal_date: '2025-12-15',
+    disposal_method: 'FOR_SALE',
+    quantity: 15,
+    status: 'APPROVED',
+    description: 'Sale of excess spare parts inventory - compatible with multiple bus models',
+    
+    stock: {
+      item_code: 'BUS-ENG-FILTER-007',
+      item: {
+        item_name: 'Engine Oil Filter - Universal Type',
+        unit: {
+          unit_name: 'Pieces'
+        },
+        category: {
+          category_name: 'Bus Spare Parts'
+        },
+        description: 'High-quality engine oil filter compatible with Isuzu, Mitsubishi, and Hino models'
+      },
+      current_stock: 45,
+      status: 'ACTIVE',
+      created_at: '2023-06-20'
+    },
+    
+    disposal_revenue: {
+      disposal_value: 18000.00,
+      book_value: 12000.00,
+      gain_loss: 6000.00
+    }
   },
+
+  // 6. BATCH DISPOSAL - Food Supplies Near Expiry
   {
     id: 6,
-    disposalCode: 'DISP-2024-006',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-11-28',
-    quantity: 1,
-    gainLoss: 25000,
-    busCode: 'BUS-234',
-    status: 'APPROVED',
-    description: 'Old bus unit disposal'
-  },
-  {
-    id: 7,
-    disposalCode: 'DISP-2024-007',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-11-25',
-    quantity: 10,
-    gainLoss: -3000,
-    itemCode: 'ITEM-078',
-    status: 'PENDING',
-    description: 'Obsolete spare parts'
-  },
-  {
-    id: 8,
-    disposalCode: 'DISP-2024-008',
-    disposalMethod: 'FOR_SALE',
-    disposalDate: '2024-11-20',
-    quantity: 75,
-    gainLoss: 12000,
-    batchNumber: 'BATCH-156',
-    status: 'APPROVED',
-    description: 'Excess stock disposal'
-  },
+    disposal_code: 'DISP-2025-112',
+    disposal_method: 'DONATION',
+    disposal_date: '2025-11-28',
+    quantity: 500,
+    status: 'REJECTED',
+    description: 'Proposed disposal of canned goods batch - donation to charity organizations',
+    
+    batch: {
+      batch_number: 'BATCH-2023-FOOD-156',
+      stock: {
+        item_code: 'FOOD-CANNED-012',
+        item: {
+          item_name: 'Canned Sardines - 155g',
+          unit: {
+            unit_name: 'Cans'
+          },
+          category: {
+            category_name: 'Food Supplies'
+          }
+        }
+      },
+      quantity: 500,
+      expiration_date: '2026-02-15',
+      received_date: '2023-08-10',
+      remarks: 'Still within safe consumption period - proposed for employee welfare distribution instead'
+    },
+    
+    disposal_revenue: {
+      disposal_value: 0.00,
+      book_value: 17500.00,
+      gain_loss: -17500.00
+    }
+  }
 ];
 
 const DisposalApproval = () => {
@@ -252,7 +416,7 @@ const DisposalApproval = () => {
   const [pageSize, setPageSize] = useState(10);
   
   // Sorting states
-  const [sortField, setSortField] = useState<string | null>('disposalDate');
+  const [sortField, setSortField] = useState<string | null>('disposal_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // Modal states
@@ -267,10 +431,17 @@ const DisposalApproval = () => {
     if (searchInput.trim()) {
       const search = searchInput.toLowerCase();
       filtered = filtered.filter((item) =>
-        item.disposalCode.toLowerCase().includes(search) ||
-        item.disposalMethod.toLowerCase().includes(search) ||
+        item.disposal_code.toLowerCase().includes(search) ||
+        item.disposal_method.toLowerCase().includes(search) ||
         item.description.toLowerCase().includes(search) ||
         item.status.toLowerCase().includes(search) ||
+        item.stock?.item_code?.toLowerCase().includes(search) ||
+        item.stock?.item?.item_name?.toLowerCase().includes(search) ||
+        item.batch?.batch_number?.toLowerCase().includes(search) ||
+        item.batch?.stock?.item?.item_name?.toLowerCase().includes(search) ||
+        item.bus?.bus_code?.toLowerCase().includes(search) ||
+        item.bus?.plate_number?.toLowerCase().includes(search) ||
+        item.bus?.model?.toLowerCase().includes(search) ||
         item.itemCode?.toLowerCase().includes(search) ||
         item.batchNumber?.toLowerCase().includes(search) ||
         item.busCode?.toLowerCase().includes(search)
@@ -279,22 +450,22 @@ const DisposalApproval = () => {
 
     // Apply date range filter
     if (activeFilters.dateFrom) {
-      filtered = filtered.filter(item => new Date(item.disposalDate) >= new Date(activeFilters.dateFrom!));
+      filtered = filtered.filter(item => new Date(item.disposal_date) >= new Date(activeFilters.dateFrom!));
     }
     if (activeFilters.dateTo) {
-      filtered = filtered.filter(item => new Date(item.disposalDate) <= new Date(activeFilters.dateTo!));
+      filtered = filtered.filter(item => new Date(item.disposal_date) <= new Date(activeFilters.dateTo!));
     }
 
     // Apply gain/loss range filter
     if (activeFilters.gainLossMin !== undefined) {
       filtered = filtered.filter(item => {
-        const gainLoss = item.revenue?.gainLoss ?? item.gainLoss ?? 0;
+        const gainLoss = item.disposal_revenue?.gain_loss ?? item.revenue?.gainLoss ?? item.gainLoss ?? 0;
         return gainLoss >= activeFilters.gainLossMin!;
       });
     }
     if (activeFilters.gainLossMax !== undefined) {
       filtered = filtered.filter(item => {
-        const gainLoss = item.revenue?.gainLoss ?? item.gainLoss ?? 0;
+        const gainLoss = item.disposal_revenue?.gain_loss ?? item.revenue?.gainLoss ?? item.gainLoss ?? 0;
         return gainLoss <= activeFilters.gainLossMax!;
       });
     }
@@ -316,15 +487,15 @@ const DisposalApproval = () => {
       let bVal: any = b[sortField as keyof DisposalRecord];
 
       // Handle date sorting
-      if (sortField === 'disposalDate') {
+      if (sortField === 'disposal_date') {
         aVal = new Date(aVal).getTime();
         bVal = new Date(bVal).getTime();
       }
 
       // Handle numeric sorting
       if (sortField === 'gainLoss') {
-        aVal = Number(aVal);
-        bVal = Number(bVal);
+        aVal = a.disposal_revenue?.gain_loss ?? a.revenue?.gainLoss ?? a.gainLoss ?? 0;
+        bVal = b.disposal_revenue?.gain_loss ?? b.revenue?.gainLoss ?? b.gainLoss ?? 0;
       }
 
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -555,19 +726,19 @@ const DisposalApproval = () => {
               <thead>
                 <tr>
                   <th
-                    onClick={() => handleSort('disposalCode')}
+                    onClick={() => handleSort('disposal_code')}
                     className="sortable-header"
                     title="Click to sort by Disposal Code"
                   >
-                    Disposal Code{getSortIndicator('disposalCode')}
+                    Disposal Code{getSortIndicator('disposal_code')}
                   </th>
                   <th>Disposal Method</th>
                   <th
-                    onClick={() => handleSort('disposalDate')}
+                    onClick={() => handleSort('disposal_date')}
                     className="sortable-header"
                     title="Click to sort by Disposal Date"
                   >
-                    Disposal Date{getSortIndicator('disposalDate')}
+                    Disposal Date{getSortIndicator('disposal_date')}
                   </th>
                   <th
                     onClick={() => handleSort('gainLoss')}
@@ -597,21 +768,21 @@ const DisposalApproval = () => {
                 ) : (
                   filteredTableRows.map((row) => (
                     <tr key={row.id}>
-                      <td>{row.disposalCode}</td>
+                      <td>{row.disposal_code}</td>
                       <td>
-                        <span className="chip normal">{row.disposalMethod}</span>
+                        <span className="chip normal">{row.disposal_method}</span>
                       </td>
-                      <td>{formatDate(row.disposalDate)}</td>
+                      <td>{formatDate(row.disposal_date)}</td>
                       <td>
                         <span style={{
-                          color: (row.revenue?.gainLoss ?? row.gainLoss ?? 0) >= 0 ? '#4CAF50' : '#FF4949',
+                          color: (row.disposal_revenue?.gain_loss ?? row.revenue?.gainLoss ?? row.gainLoss ?? 0) >= 0 ? '#4CAF50' : '#FF4949',
                           fontWeight: '600'
                         }}>
-                          {formatMoney(row.revenue?.gainLoss ?? row.gainLoss ?? 0)}
+                          {formatMoney(row.disposal_revenue?.gain_loss ?? row.revenue?.gainLoss ?? row.gainLoss ?? 0)}
                         </span>
                       </td>
                       <td>
-                        {row.itemCode || row.batchNumber || row.busCode || '—'}
+                        {row.stock?.item?.item_name || row.batch?.batch_number || row.bus?.plate_number || row.itemCode || row.batchNumber || row.busCode || '—'}
                       </td>
                       <td>
                         <span className={getStatusClass(row.status)}>

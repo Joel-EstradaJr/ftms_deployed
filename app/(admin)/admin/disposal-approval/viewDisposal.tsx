@@ -8,9 +8,9 @@ import { formatDate, formatMoney } from '@/utils/formatting';
 
 interface DisposalRecord {
   id: number;
-  disposalCode: string;
-  disposalMethod: string;
-  disposalDate: string;
+  disposal_code: string;
+  disposal_method: string;
+  disposal_date: string;
   quantity: number;
   description: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -89,11 +89,6 @@ interface DisposalRecord {
     book_value: number;
     gain_loss: number;
   };
-  revenue?: {
-    disposalValue: number;
-    bookValue: number;
-    gainLoss: number;
-  };
   
   // Legacy fields for backward compatibility
   gainLoss?: number;
@@ -146,12 +141,12 @@ const ViewDisposal: React.FC<ViewDisposalProps> = ({ disposal, onClose }) => {
           <div className="form-row">
             <div className="form-group">
               <label>Disposal Code</label>
-              <p>{disposal.disposalCode}</p>
+              <p>{disposal.disposal_code}</p>
             </div>
 
             <div className="form-group">
               <label>Status</label>
-              <p>
+              <p className='chip-container'>
                 <span className={getStatusClass(disposal.status)}>
                   {disposal.status}
                 </span>
@@ -162,16 +157,16 @@ const ViewDisposal: React.FC<ViewDisposalProps> = ({ disposal, onClose }) => {
           <div className="form-row">
             <div className="form-group">
               <label>Disposal Method</label>
-              <p>
+              <p className='chip-container'>
                 <span className="chip normal">
-                  {disposal.disposalMethod}
+                  {disposal.disposal_method}
                 </span>
               </p>
             </div>
 
             <div className="form-group">
               <label>Disposal Date</label>
-              <p>{formatDate(disposal.disposalDate)}</p>
+              <p>{formatDate(disposal.disposal_date)}</p>
             </div>
           </div>
 
@@ -370,7 +365,7 @@ const ViewDisposal: React.FC<ViewDisposalProps> = ({ disposal, onClose }) => {
 
               <div className="form-group">
                 <label>Condition</label>
-                <p>
+                <p className='chip-container'>
                   <span className="chip normal">
                     {disposal.bus.condition}
                   </span>
@@ -381,7 +376,7 @@ const ViewDisposal: React.FC<ViewDisposalProps> = ({ disposal, onClose }) => {
             <div className="form-row">
               <div className="form-group">
                 <label>Acquisition Method</label>
-                <p>
+                <p className='chip-container'>
                   <span className="chip normal">
                     {disposal.bus.acquisition_method}
                   </span>
@@ -421,7 +416,7 @@ const ViewDisposal: React.FC<ViewDisposalProps> = ({ disposal, onClose }) => {
             <div className="form-row">
               <div className="form-group">
                 <label>Registration Status</label>
-                <p>
+                <p className='chip-container'>
                   <span className="chip normal">
                     {disposal.bus.registration_status}
                   </span>
@@ -506,7 +501,7 @@ const ViewDisposal: React.FC<ViewDisposalProps> = ({ disposal, onClose }) => {
         <div className="view-form">
           <div className="form-group">
             <label>Disposal Type</label>
-            <p>
+            <p className='chip-container'>
               <span className="chip normal">
                 {disposalType.toUpperCase()}
               </span>

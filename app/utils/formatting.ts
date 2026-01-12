@@ -81,8 +81,8 @@ export function formatMoney(
   const fixed = Math.abs(num).toFixed(2); // string like "49339.28"
   const [intPartRaw, decPart] = fixed.split('.');
 
-  // Insert spaces as thousands separators
-  const intPart = intPartRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  // Insert commas as thousands separators
+  const intPart = intPartRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
   const sign = num < 0 ? '-' : '';
 

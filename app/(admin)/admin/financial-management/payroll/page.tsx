@@ -1,7 +1,7 @@
 // financial-management\payroll\page.tsx
 "use client";
 
-import React, { useState, useEffect, useCallback} from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "../../../../styles/payroll/payroll.css";
 import "../../../../styles/components/table.css";
 import "../../../../styles/components/chips.css"
@@ -45,6 +45,9 @@ const PayrollPage = () => {
   // Current user (TODO: Get from auth context)
   const currentUser = 'Admin User';
 
+  // Refetch loading state
+  const [refetchLoading, setRefetchLoading] = useState(false);
+
   // Fetch payroll batches from API
   const fetchPayrollBatches = useCallback(async (isSearch = false) => {
     try {
@@ -54,16 +57,16 @@ const PayrollPage = () => {
         setLoading(true);
       }
       setError(null);
-      
+
       // Fetch HR payroll data grouped by period from integration endpoint
       try {
         // Get current date for default filtering
         const now = new Date();
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth(); // 0-based (0 = January)
-        
+
         const payrollBatches = await payrollService.fetchPayrollBatches(currentYear, currentMonth);
-        
+
         // Transform grouped payroll data to PayrollBatch format for display
         const transformedBatches: PayrollBatch[] = payrollBatches.map((batch, index) => {
           // Calculate totals for the entire batch
@@ -72,37 +75,44 @@ const PayrollPage = () => {
           let totalNet = 0;
 
           const payrolls = batch.employees.map((employee: HrPayrollData) => {
-            const grossEarnings = payrollService.calculateGrossEarnings(employee);
-            const deductions = payrollService.calculateTotalDeductions(employee);
-            const netPay = payrollService.calculateNetPay(employee);
-            const presentDays = employee.present_days || 
-              employee.attendances.filter(a => a.status === 'Present').length;
+            // Enrich employee with batch period dates for correct calculations
+            const enrichedEmployee: HrPayrollData = {
+              ...employee,
+              payroll_period_start: batch.payroll_period_start,
+              payroll_period_end: batch.payroll_period_end,
+            };
+            
+            const grossEarnings = payrollService.calculateGrossEarnings(enrichedEmployee);
+            const deductions = payrollService.calculateTotalDeductions(enrichedEmployee);
+            const netPay = payrollService.calculateNetPay(enrichedEmployee);
+            const presentDays = enrichedEmployee.present_days ||
+              enrichedEmployee.attendances.filter(a => a.status === 'Present').length;
 
             totalGross += grossEarnings;
             totalDeductions += deductions;
             totalNet += netPay;
 
             return {
-              id: `${batch.payroll_period_start}-${employee.employee_number}`,
+              id: `${batch.payroll_period_start}-${enrichedEmployee.employee_number}`,
               batchId: `batch-${batch.payroll_period_start}`,
-              employeeId: employee.employee_number,
-              baseSalary: parseFloat(employee.basic_rate),
-              allowances: payrollService.getBenefitsByType(employee).size > 0 
-                ? Array.from(payrollService.getBenefitsByType(employee).values()).reduce((a, b) => a + b, 0)
+              employeeId: enrichedEmployee.employee_number,
+              baseSalary: parseFloat(enrichedEmployee.basic_rate),
+              allowances: payrollService.getBenefitsByType(enrichedEmployee).size > 0
+                ? Array.from(payrollService.getBenefitsByType(enrichedEmployee).values()).reduce((a, b) => a + b, 0)
                 : 0,
               deductions: deductions,
               netPay: netPay,
               isDisbursed: false,
               createdAt: new Date().toISOString(),
               employee: {
-                employeeNumber: employee.employee_number,
-                firstName: employee.employee_name || employee.employee_number,
+                employeeNumber: enrichedEmployee.employee_number,
+                firstName: enrichedEmployee.employee_name || enrichedEmployee.employee_number,
                 lastName: '',
-                department: 'N/A',
-                position: employee.rate_type,
+                department: (enrichedEmployee as any).department || 'N/A',
+                position: (enrichedEmployee as any).position || enrichedEmployee.rate_type,
                 status: 'active'
               },
-              hrPayrollData: employee,
+              hrPayrollData: enrichedEmployee,
               presentDays: presentDays
             };
           });
@@ -122,16 +132,16 @@ const PayrollPage = () => {
             payrolls: payrolls
           };
         });
-        
+
         setBatches(transformedBatches);
         setTotalPages(Math.ceil(transformedBatches.length / pageSize));
-        
+
         console.log('✅ HR Payroll batches loaded successfully:', transformedBatches.length, 'batches with', transformedBatches.reduce((sum, b) => sum + b.total_employees, 0), 'total employees');
       } catch (apiError) {
         console.error('HR Payroll API error:', apiError);
         // Fallback to mock data if API fails
         console.warn('Using fallback mock data due to API error');
-        
+
         const mockBatches: PayrollBatch[] = [
           {
             id: '1',
@@ -148,11 +158,11 @@ const PayrollPage = () => {
             payrolls: []
           }
         ];
-        
+
         setBatches(mockBatches);
         setTotalPages(Math.ceil(mockBatches.length / pageSize));
       }
-      
+
       if (isSearch) {
         setSearchLoading(false);
       } else {
@@ -288,17 +298,17 @@ const PayrollPage = () => {
 
     // Status filter (from FilterDropdown)
     const statusValues = filterValues.status || [];
-    const matchesStatus = statusValues.length === 0 || 
+    const matchesStatus = statusValues.length === 0 ||
       statusValues.includes(batch.status.toLowerCase());
 
     // Individual Period Start filter
     const periodStartFilter = filterValues.period_start;
-    const matchesPeriodStart = !periodStartFilter || 
+    const matchesPeriodStart = !periodStartFilter ||
       new Date(batch.period_start) >= new Date(periodStartFilter);
 
     // Individual Period End filter
     const periodEndFilter = filterValues.period_end;
-    const matchesPeriodEnd = !periodEndFilter || 
+    const matchesPeriodEnd = !periodEndFilter ||
       new Date(batch.period_end) <= new Date(periodEndFilter);
 
     // Total Employees range filter
@@ -321,20 +331,20 @@ const PayrollPage = () => {
     if (dateRange.from || dateRange.to) {
       const periodStart = new Date(batch.period_start);
       const periodEnd = new Date(batch.period_end);
-      
+
       if (dateRange.from) {
         const fromDate = new Date(dateRange.from);
         matchesDateRange = matchesDateRange && (periodStart >= fromDate || periodEnd >= fromDate);
       }
-      
+
       if (dateRange.to) {
         const toDate = new Date(dateRange.to);
         matchesDateRange = matchesDateRange && (periodStart <= toDate || periodEnd <= toDate);
       }
     }
 
-    return matchesSearch && matchesStatus && matchesPeriodStart && matchesPeriodEnd && 
-           matchesTotalEmployees && matchesTotalNet && matchesDateRange;
+    return matchesSearch && matchesStatus && matchesPeriodStart && matchesPeriodEnd &&
+      matchesTotalEmployees && matchesTotalNet && matchesDateRange;
   });
 
   // Handle save (add/edit) payroll batch
@@ -343,10 +353,10 @@ const PayrollPage = () => {
       // TODO: Replace with actual API call to ftms_backend
       console.warn('Save payroll batch API call pending');
       console.log('Form data:', formData);
-      
+
       // Mock success
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       await fetchPayrollBatches(false);
       setRecordModalOpen(false);
       setSelectedBatch(null);
@@ -358,16 +368,18 @@ const PayrollPage = () => {
   // Handle disbursement
   const handleDisburse = async (batchId: string, payrollIds: string[]) => {
     try {
-      // TODO: Replace with actual API call to ftms_backend
-      console.warn('Disburse payroll API call pending');
-      console.log('Disbursing payrolls:', payrollIds, 'in batch:', batchId);
+      const batch = batches.find(b => b.id === batchId);
+      if (!batch) throw new Error('Batch not found');
+
+      console.log('Releasing payroll batch:', batch.payroll_period_code);
       
-      // Mock success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await payrollService.releasePayrollBatch(batch.period_start, batch.period_end);
       
+      showSuccess('Payroll disbursed successfully', 'Success');
       await fetchPayrollBatches(false);
     } catch (error) {
-      throw new Error('Failed to disburse payroll');
+      console.error('Disbursement error:', error);
+      showError('Failed to disburse payroll', 'Error');
     }
   };
 
@@ -382,7 +394,7 @@ const PayrollPage = () => {
       try {
         // TODO: Replace with actual API call to ftms_backend
         console.warn('Delete payroll batch API call pending');
-        
+
         await fetchPayrollBatches(false);
         showSuccess('Payroll batch deleted successfully', 'Success');
       } catch (error) {
@@ -394,7 +406,7 @@ const PayrollPage = () => {
   // Handle release all pending
   const handleReleaseAll = async () => {
     const pendingBatches = filteredData.filter(b => b.status.toLowerCase() === 'pending');
-    
+
     if (pendingBatches.length === 0) {
       showError('No pending payroll batches to release', 'No Pending Batches');
       return;
@@ -407,11 +419,23 @@ const PayrollPage = () => {
 
     if (confirmed.isConfirmed) {
       try {
-        // TODO: Replace with ftms_backend API call
-        console.warn('API integration pending - mock release all');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        showSuccess(`${pendingBatches.length} payroll batch(es) released successfully`, 'Success');
-        fetchPayrollBatches(false);
+        let successCount = 0;
+        
+        for (const batch of pendingBatches) {
+          try {
+            await payrollService.releasePayrollBatch(batch.period_start, batch.period_end);
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to release batch ${batch.payroll_period_code}:`, err);
+          }
+        }
+
+        if (successCount > 0) {
+          showSuccess(`${successCount} payroll batch(es) released successfully`, 'Success');
+          fetchPayrollBatches(false);
+        } else {
+          showError('Failed to release payroll batches', 'Error');
+        }
       } catch (error) {
         showError('Failed to release payroll batches', 'Error');
       }
@@ -524,19 +548,39 @@ const PayrollPage = () => {
               <i className="ri-check-double-line" /> Release All Pending
             </button>
 
+            <button
+              className="refetchBtn"
+              onClick={async () => {
+                const currentPeriod = payrollService.getCurrentWeeklyPeriod();
+                const confirmed = await showConfirmation(
+                  `Re-fetch payroll data from HR for current week (${currentPeriod.start} to ${currentPeriod.end})?`,
+                  'Confirm Re-fetch'
+                );
+                if (confirmed.isConfirmed) {
+                  try {
+                    setRefetchLoading(true);
+                    await payrollService.refetchFromHR(currentPeriod.start, currentPeriod.end);
+                    showSuccess('Payroll data re-fetched from HR successfully', 'Success');
+                    fetchPayrollBatches(false);
+                  } catch (error) {
+                    showError('Failed to re-fetch from HR', 'Error');
+                  } finally {
+                    setRefetchLoading(false);
+                  }
+                }
+              }}
+              disabled={refetchLoading}
+              style={{ backgroundColor: '#4A90A4', color: 'white' }}
+            >
+              <i className="ri-refresh-line" /> {refetchLoading ? 'Fetching...' : 'Re-fetch from HR'}
+            </button>
+
             <ExportButton
               data={exportData}
               filename="Payroll_Report"
               columns={exportColumns}
               title="Payroll Management Report"
             />
-            
-            <button
-              className="addButton"
-              onClick={handleOpenAddModal}
-            >
-              <i className="ri-add-line" /> Add Payroll Batch
-            </button>
           </div>
         </div>
 
@@ -558,7 +602,7 @@ const PayrollPage = () => {
               </thead>
               <tbody>
                 {filteredData.map((batch, index) => (
-                  <tr 
+                  <tr
                     key={batch.id}
                     style={{ cursor: "pointer" }}
                     onClick={() => handleOpenViewModal(batch)}
@@ -586,28 +630,7 @@ const PayrollPage = () => {
                         >
                           <i className="ri-eye-line" />
                         </button>
-                        {batch.status === 'PENDING' && (
-                          <button
-                            className="editBtn"
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleOpenEditModal(batch);
-                            }}
-                            title="Edit Batch"
-                          >
-                            <i className="ri-edit-line" />
-                          </button>
-                        )}
-                        <button
-                          className="deleteBtn"
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleDeleteBatch(batch.id);
-                          }}
-                          title="Delete Batch"
-                        >
-                          <i className="ri-delete-bin-line" />
-                        </button>
+                        {/* Edit button removed - payroll data is read-only from HR */}
                       </div>
                     </td>
                   </tr>

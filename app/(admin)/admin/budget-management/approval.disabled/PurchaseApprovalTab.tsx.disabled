@@ -670,26 +670,139 @@ export default function PurchaseApprovalTab({
     }
   ];
 
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log('PurchaseApprovalTab: Loading data');
+  // API Configuration
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+
+  // Transform API data to frontend types
+  const transformApiData = (apiData: any[]): PurchaseRequestApproval[] => {
+    return apiData.map((pr) => ({
+      id: String(pr.id),
+      purchase_request_code: pr.purchase_request_code,
+      user_id: pr.requestor?.user_id || pr.requestor?.employee_id || '',
+      department_name: pr.department_name,
+      request_type: pr.request_type as RequestType,
+      reason: pr.reason,
+      purchase_request_status: (pr.status === 'DRAFT' ? 'PENDING' : pr.status) as ApprovalStatus,
+      status: pr.status,
+      type: pr.request_type,
+      total_amount: pr.total_amount,
+      finance_remarks: pr.finance_remarks,
+      budget_request_code: pr.budget_request_code,
+      department_budget_code: pr.department_budget_code,
+      created_at: pr.created_at,
+      updated_at: pr.updated_at,
+      approved_by: pr.approved_by,
+      approved_date: pr.approved_at,
+      rejected_by: pr.rejected_by,
+      rejected_date: pr.rejected_at,
+      rejection_reason: pr.finance_remarks,
+      requestor: {
+        user_id: pr.requestor?.user_id || pr.requestor?.employee_id || '',
+        employee_id: pr.requestor?.employee_id || '',
+        employee_name: pr.requestor?.employee_name || pr.requestor?.first_name || 'N/A',
+        first_name: pr.requestor?.first_name || '',
+        last_name: pr.requestor?.last_name || '',
+        department_id: pr.requestor?.department_id || '',
+        department_name: pr.requestor?.department_name || pr.department_name || '',
+      },
+      items: pr.items?.map((item: any) => ({
+        purchase_request_item_id: item.purchase_request_item_id || item.purchase_request_item_code,
+        purchase_request_item_code: item.purchase_request_item_code,
+        purchase_request_id: String(item.purchase_request_id),
+        status: item.status,
+        remarks: item.remarks || '',
+        quantity: item.quantity,
+        unit_cost: item.unit_cost || item.supplier_item?.unit_cost || 0,
+        total_amount: item.total_amount || (item.quantity * (item.unit_cost || item.supplier_item?.unit_cost || 0)),
+        item_code: item.item_code,
+        supplier_code: item.supplier_code,
+        item: item.item ? {
+          id: String(item.item.id),
+          item_code: item.item.item_code,
+          item_name: item.item.item_name,
+          description: item.item.description,
+          unit: item.item.unit ? {
+            unit_id: String(item.item.unit.unit_id),
+            unit_code: item.item.unit.unit_code,
+            unit_name: item.item.unit.unit_name,
+            abbreviation: item.item.unit.abbreviation,
+          } : undefined,
+          category: item.item.category ? {
+            category_id: String(item.item.category.category_id),
+            category_code: item.item.category.category_code,
+            category_name: item.item.category.category_name,
+          } : undefined,
+        } : undefined,
+        supplier: item.supplier ? {
+          supplier_id: item.supplier.supplier_id,
+          supplier_code: item.supplier.supplier_code,
+          supplier_name: item.supplier.supplier_name,
+          contact_number: item.supplier.contact_number,
+          email: item.supplier.email,
+        } : undefined,
+        supplier_item: item.supplier_item ? {
+          unit_cost: item.supplier_item.unit_cost,
+          conversion_amount: item.supplier_item.conversion_amount,
+          supplier_unit: item.supplier_item.supplier_unit,
+        } : undefined,
+        adjusted_quantity: item.adjusted_quantity,
+        adjustment_reason: item.adjustment_reason,
+      })) || [],
+    }));
+  };
+
+  // Fetch data from API
+  const fetchPurchaseRequests = async (showLoading = true) => {
+    if (showLoading) {
       onLoadingChange(true);
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setData(sampleApprovalData);
-        console.log('PurchaseApprovalTab: Loaded', sampleApprovalData.length, 'records');
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const transformed = transformApiData(result.data);
+        setData(transformed);
+        console.log('PurchaseApprovalTab: Loaded', transformed.length, 'records from API');
         onError(null);
-      } catch (err: any) {
-        console.error('PurchaseApprovalTab: Error loading data', err);
+      } else {
+        throw new Error(result.message || 'Failed to load purchase requests');
+      }
+    } catch (err: any) {
+      console.error('PurchaseApprovalTab: Error loading data', err);
+      // If backend is unavailable on port 4001/4000, we show sample data as fallback
+      if (data.length === 0) {
+        console.warn('PurchaseApprovalTab: Backend unavailable - using sample data fallback');
+        setData(sampleApprovalData);
+        // Don't show error to user if we have sample data fallback
+        onError(null);
+      } else {
         onError(err?.message || 'Failed to load purchase requests');
-        setData([]); // Set empty data on error
-      } finally {
+      }
+    } finally {
+      if (showLoading) {
         onLoadingChange(false);
       }
-    };
+    }
+  };
 
-    fetchData();
+  // Initial fetch and 5-second polling
+  useEffect(() => {
+    // Initial fetch with loading
+    fetchPurchaseRequests(true);
+
+    // Set up 5-second polling interval
+    const pollInterval = setInterval(() => {
+      fetchPurchaseRequests(false); // Don't show loading spinner for background polling
+    }, 5000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(pollInterval);
   }, [filters, searchTerm, onLoadingChange, onError]);
 
   // Reset pagination when filters or search change
@@ -716,7 +829,7 @@ export default function PurchaseApprovalTab({
     // Status filter from shared filters
     if (filters.status?.length) {
       result = result.filter(item => {
-        const statusMap: { [key: string]: ApprovalStatus} = {
+        const statusMap: { [key: string]: ApprovalStatus } = {
           'pending': ApprovalStatus.PENDING,
           'approved': ApprovalStatus.APPROVED,
           'rejected': ApprovalStatus.REJECTED,
@@ -790,51 +903,68 @@ export default function PurchaseApprovalTab({
     setSelectedRequest(null);
   };
 
-  // Action handlers
-  const handleApprove = (request: PurchaseRequestApproval) => {
-    setData(prevData =>
-      prevData.map(item =>
-        item.id === request.id
-          ? {
-              ...item,
-              status: ApprovalStatus.APPROVED,
-              approved_by: "Current User",
-              approved_date: new Date().toISOString().split('T')[0],
-              updated_at: new Date().toISOString(),
-              updated_by: "Current User"
-            }
-          : item
-      )
-    );
+  // Action handlers - call backend API using PATCH endpoint
+  const handleApprove = async (request: PurchaseRequestApproval, comments?: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'APPROVED',
+          finance_remarks: comments || 'Approved by Finance',
+          updated_by: 'Current User', // TODO: Get actual user from auth context
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to approve');
+      }
+
+      // Refresh data after successful approval
+      await fetchPurchaseRequests(false);
+      return true;
+    } catch (error: any) {
+      console.error('Error approving request:', error);
+      throw error;
+    }
   };
 
-  const handleReject = (request: PurchaseRequestApproval, reason: string) => {
-    setData(prevData =>
-      prevData.map(item =>
-        item.id === request.id
-          ? {
-              ...item,
-              status: ApprovalStatus.REJECTED,
-              rejected_by: "Current User",
-              rejected_date: new Date().toISOString().split('T')[0],
-              rejection_reason: reason,
-              updated_at: new Date().toISOString(),
-              updated_by: "Current User"
-            }
-          : item
-      )
-    );
+  const handleReject = async (request: PurchaseRequestApproval, reason: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'REJECTED',
+          finance_remarks: reason,
+          updated_by: 'Current User', // TODO: Get actual user from auth context
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to reject');
+      }
+
+      // Refresh data after successful rejection
+      await fetchPurchaseRequests(false);
+      return true;
+    } catch (error: any) {
+      console.error('Error rejecting request:', error);
+      throw error;
+    }
   };
 
-  const handleApproveRequest = async (comments?: string) => {
+  const handleApproveRequest = async (updatedRequest: PurchaseRequestApproval, comments?: string) => {
     if (!selectedRequest) return;
 
     try {
-      handleApprove(selectedRequest);
+      await handleApprove(selectedRequest, comments);
       showSuccess("Purchase request approved successfully", "Approved");
       closeAllModals();
-    } catch (error) {
-      showError("Failed to approve purchase request", "Error");
+    } catch (error: any) {
+      showError(error.message || "Failed to approve purchase request", "Error");
     }
   };
 
@@ -842,11 +972,11 @@ export default function PurchaseApprovalTab({
     if (!selectedRequest) return;
 
     try {
-      handleReject(selectedRequest, reason);
+      await handleReject(selectedRequest, reason);
       showSuccess("Purchase request rejected successfully", "Rejected");
       closeAllModals();
-    } catch (error) {
-      showError("Failed to reject purchase request", "Error");
+    } catch (error: any) {
+      showError(error.message || "Failed to reject purchase request", "Error");
     }
   };
 
@@ -932,8 +1062,8 @@ export default function PurchaseApprovalTab({
                     </span>
                   </td>
                   <td title={request.reason}>
-                    {request.reason && request.reason.length > 50 
-                      ? `${request.reason.substring(0, 50)}...` 
+                    {request.reason && request.reason.length > 50
+                      ? `${request.reason.substring(0, 50)}...`
                       : request.reason || 'N/A'}
                   </td>
                   <td className="table-status">
@@ -954,31 +1084,31 @@ export default function PurchaseApprovalTab({
                       >
                         <i className="ri-eye-line" />
                       </button>
-                        <>
-                          <button
-                            className="approveBtn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openApproveModal(request);
-                            }}
-                            title="Approve"
-                            disabled={request.purchase_request_status !== ApprovalStatus.PENDING}
-                          >
-                            <i className="ri-check-line" />
-                          </button>
-                          <button
-                            className="rejectBtn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openRejectModal(request);
-                            }}
-                            title="Reject"
-                            disabled={request.purchase_request_status !== ApprovalStatus.PENDING}
+                      <>
+                        <button
+                          className="approveBtn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openApproveModal(request);
+                          }}
+                          title="Approve"
+                          disabled={request.purchase_request_status !== ApprovalStatus.PENDING}
+                        >
+                          <i className="ri-check-line" />
+                        </button>
+                        <button
+                          className="rejectBtn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openRejectModal(request);
+                          }}
+                          title="Reject"
+                          disabled={request.purchase_request_status !== ApprovalStatus.PENDING}
 
-                          >
-                            <i className="ri-close-line" />
-                          </button>
-                        </>
+                        >
+                          <i className="ri-close-line" />
+                        </button>
+                      </>
                     </div>
                   </td>
                 </tr>

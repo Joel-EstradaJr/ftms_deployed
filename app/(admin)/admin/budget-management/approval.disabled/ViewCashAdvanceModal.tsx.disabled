@@ -15,7 +15,8 @@ export interface CashAdvanceRequest {
   department: string;
   requested_amount: number;
   approved_amount: number | null;
-  request_type: 'Regular' | 'Urgent' | 'Emergency';
+  request_type: string;  // e.g. "Travel Advance", "Emergency"
+  request_priority: string;  // e.g. "Regular", "Urgent"
   status: 'Pending' | 'Approved' | 'Rejected' | 'Disbursed';
   purpose: string;
   request_date: string;
@@ -23,6 +24,10 @@ export interface CashAdvanceRequest {
   reviewed_by: string | null;
   rejection_reason?: string;
   created_at: string;
+  // Repayment fields
+  repayment_method?: string;
+  repayment_frequency?: string | null;
+  number_of_repayment_periods?: number | null;
 }
 
 interface ViewCashAdvanceModalProps {
@@ -139,6 +144,15 @@ export default function ViewCashAdvanceModal({ request, onClose }: ViewCashAdvan
                 </span>
               </p>
             </div>
+
+            <div className="form-group">
+              <label>Priority</label>
+              <p className="chip-container">
+                <span className={`chip ${getRequestTypeClass(request.request_priority)}`}>
+                  {request.request_priority}
+                </span>
+              </p>
+            </div>
           </div>
         </form>
       </div>
@@ -200,10 +214,39 @@ export default function ViewCashAdvanceModal({ request, onClose }: ViewCashAdvan
         </form>
       </div>
 
-      {/* III. Review Details (only show if reviewed) */}
+      {/* III. Repayment Details */}
+      <p className="details-title">III. Repayment Details</p>
+      <div className="modal-content view">
+        <form className="view-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label>Repayment Method</label>
+              <p>{request.repayment_method === 'DEDUCTION_FROM_NEXT_PAYROLL' ? 'Deduction from Next Payroll' : 
+                  request.repayment_method === 'DEDUCTION_OVER_PERIODS' ? 'Deduction Over Periods' : 
+                  request.repayment_method || 'N/A'}</p>
+            </div>
+
+            {request.repayment_method !== 'DEDUCTION_FROM_NEXT_PAYROLL' && (
+              <>
+                <div className="form-group">
+                  <label>Repayment Frequency</label>
+                  <p>{request.repayment_frequency || 'N/A'}</p>
+                </div>
+
+                <div className="form-group">
+                  <label>Number of Periods</label>
+                  <p>{request.number_of_repayment_periods ?? 'N/A'}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* IV. Review Details (only show if reviewed) */}
       {(request.reviewed_at || request.reviewed_by || request.rejection_reason) && (
         <>
-          <p className="details-title">III. Review Details</p>
+          <p className="details-title">IV. Review Details</p>
           <div className="modal-content view">
             <form className="view-form">
               <div className="form-row">
