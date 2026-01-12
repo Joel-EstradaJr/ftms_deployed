@@ -503,16 +503,17 @@ export interface SyncStatusResult {
  * @param source - Optional: 'operational' | 'rental' to sync specific source, or omit for full sync
  */
 export async function syncExpenses(source?: 'operational' | 'rental'): Promise<FullSyncResult> {
-    const queryParams: Record<string, string> = {};
+    // Build URL with query params
+    let url = `${EXPENSE_API_BASE}/sync`;
     if (source) {
-        queryParams.source = source;
+        url += `?source=${source}`;
     }
 
     const response = await api.post<{
         success: boolean;
         message: string;
         data: FullSyncResult | SyncIngestionResult;
-    }>(`${EXPENSE_API_BASE}/sync`, {}, { params: queryParams });
+    }>(url, {});
 
     if (!response.success) {
         throw new Error(response.message || 'Failed to sync expenses');
