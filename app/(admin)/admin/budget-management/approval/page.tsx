@@ -24,7 +24,6 @@ import "@/styles/components/modal.css";
 import "@/styles/budget-management/approval.css";
 
 // Import tab components
-import BudgetApprovalTab from "./BudgetApprovalTab";
 import PurchaseApprovalTab from "./PurchaseApprovalTab";
 import CashAdvanceApprovalTab from "./CashAdvanceApprovalTab";
 
