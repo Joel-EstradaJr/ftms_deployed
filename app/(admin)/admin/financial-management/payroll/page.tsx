@@ -108,8 +108,8 @@ const PayrollPage = () => {
                 employeeNumber: enrichedEmployee.employee_number,
                 firstName: enrichedEmployee.employee_name || enrichedEmployee.employee_number,
                 lastName: '',
-                department: 'N/A',
-                position: enrichedEmployee.rate_type,
+                department: (enrichedEmployee as any).department || 'N/A',
+                position: (enrichedEmployee as any).position || enrichedEmployee.rate_type,
                 status: 'active'
               },
               hrPayrollData: enrichedEmployee,
@@ -368,16 +368,18 @@ const PayrollPage = () => {
   // Handle disbursement
   const handleDisburse = async (batchId: string, payrollIds: string[]) => {
     try {
-      // TODO: Replace with actual API call to ftms_backend
-      console.warn('Disburse payroll API call pending');
-      console.log('Disbursing payrolls:', payrollIds, 'in batch:', batchId);
+      const batch = batches.find(b => b.id === batchId);
+      if (!batch) throw new Error('Batch not found');
 
-      // Mock success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      console.log('Releasing payroll batch:', batch.payroll_period_code);
+      
+      await payrollService.releasePayrollBatch(batch.period_start, batch.period_end);
+      
+      showSuccess('Payroll disbursed successfully', 'Success');
       await fetchPayrollBatches(false);
     } catch (error) {
-      throw new Error('Failed to disburse payroll');
+      console.error('Disbursement error:', error);
+      showError('Failed to disburse payroll', 'Error');
     }
   };
 
@@ -417,11 +419,23 @@ const PayrollPage = () => {
 
     if (confirmed.isConfirmed) {
       try {
-        // TODO: Replace with ftms_backend API call
-        console.warn('API integration pending - mock release all');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        showSuccess(`${pendingBatches.length} payroll batch(es) released successfully`, 'Success');
-        fetchPayrollBatches(false);
+        let successCount = 0;
+        
+        for (const batch of pendingBatches) {
+          try {
+            await payrollService.releasePayrollBatch(batch.period_start, batch.period_end);
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to release batch ${batch.payroll_period_code}:`, err);
+          }
+        }
+
+        if (successCount > 0) {
+          showSuccess(`${successCount} payroll batch(es) released successfully`, 'Success');
+          fetchPayrollBatches(false);
+        } else {
+          showError('Failed to release payroll batches', 'Error');
+        }
       } catch (error) {
         showError('Failed to release payroll batches', 'Error');
       }
