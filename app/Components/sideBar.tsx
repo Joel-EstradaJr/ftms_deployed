@@ -167,7 +167,7 @@ const Sidebar: React.FC = () => {
             }`}
             onClick={() => toggleSubMenu("expense-management")}
           >
-            <i className="ri-money-dollar-circle-line"></i>
+            <i className="ri-bank-card-line" />
             <span>Expense Management</span>
             <i
               className={`dropdown-arrow ri-arrow-down-s-line ${
