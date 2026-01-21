@@ -24,7 +24,7 @@ import "@/styles/components/modal.css";
 import "@/styles/budget-management/approval.css";
 
 // Import tab components
-import BudgetApprovalTab from "./BudgetApprovalTab";
+// import BudgetApprovalTab from "./BudgetApprovalTab";
 import PurchaseApprovalTab from "./PurchaseApprovalTab";
 import CashAdvanceApprovalTab from "./CashAdvanceApprovalTab";
 
@@ -248,31 +248,36 @@ export default function ApprovalsPage() {
               onDataUpdate={handleExportDataUpdate}
             />
           </div> */}
-
+         
           {/* Purchase Approval Tab */}
           <div className={`tab-panel ${activeTab === 'purchase' ? 'active' : ''}`}>
-            <PurchaseApprovalTab
-              filters={sharedFilters}
-              searchTerm={searchTerm}
-              loading={loading}
-              onLoadingChange={setLoading}
-              onError={setError}
-              onExport={handleExport}
-              onDataUpdate={handleExportDataUpdate}
-            />
+            {activeTab === 'purchase' && (
+              <PurchaseApprovalTab
+                filters={sharedFilters}
+                searchTerm={searchTerm}
+                loading={loading}
+                onLoadingChange={setLoading}
+                onError={setError}
+                onExport={handleExport}
+                onDataUpdate={handleExportDataUpdate}
+              /> 
+            )}
           </div>
+         
 
           {/* Cash Advance Approval Tab */}
           <div className={`tab-panel ${activeTab === 'cash-advance' ? 'active' : ''}`}>
-            <CashAdvanceApprovalTab
-              filters={sharedFilters}
-              searchTerm={searchTerm}
-              loading={loading}
-              onLoadingChange={setLoading}
-              onError={setError}
-              onExport={handleExport}
-              onDataUpdate={handleExportDataUpdate}
-            />
+            {activeTab === 'cash-advance' && (
+              <CashAdvanceApprovalTab
+                filters={sharedFilters}
+                searchTerm={searchTerm}
+                loading={loading}
+                onLoadingChange={setLoading}
+                onError={setError}
+                onExport={handleExport}
+                onDataUpdate={handleExportDataUpdate}
+              />
+            )}
           </div>
         </div>
 

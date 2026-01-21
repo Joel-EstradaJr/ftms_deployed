@@ -546,11 +546,11 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
           <div className="modalButtons">
             <button 
               type="button" 
-              className="secondaryButton"
+              className="cancelButton"
               onClick={onClose}
               disabled={isSubmitting}
             >
-              <i className="ri-close-line"></i> Cancel
+              <i className="ri-close-line"></i>Cancel
             </button>
             <button 
               type="submit" 

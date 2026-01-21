@@ -166,19 +166,6 @@ const RejectionModal: React.FC<RejectionModalProps> = ({ request, onReject, onCl
                     This reason will be sent to the requester and recorded in the audit trail. (10-500 characters)
                   </small>
                 </div>
-
-                {/* Confirmation Message */}
-                <div style={{ 
-                  background: '#f8d7da', 
-                  border: '1px solid #f5c6cb', 
-                  borderRadius: '8px', 
-                  padding: '12px', 
-                  marginTop: '15px',
-                  color: '#721c24'
-                }}>
-                  <i className="ri-error-warning-line" style={{ marginRight: '8px' }}></i>
-                  <strong>Confirm Rejection:</strong> This will reject the purchase request and notify the requester.
-                </div>
               </div>
             </div>
           </div>

@@ -86,5 +86,5 @@ export function formatMoney(
 
   const sign = num < 0 ? '-' : '';
 
-  return `${currencySymbol} ${sign}${intPart}.${decPart}`;
+  return `${sign}${currencySymbol}${intPart}.${decPart}`;
 }

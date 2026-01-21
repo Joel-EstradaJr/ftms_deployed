@@ -1,6 +1,44 @@
 import Swal from 'sweetalert2';
 import { formatMoney } from './formatting';
 
+// ========================= Confirmation Alerts ========================= //
+
+export const showTypeToConfirm = async (
+  actionLabel: string,
+  title: string,
+  message: string
+): Promise<boolean> => {
+  const { value } = await Swal.fire({
+    title,
+    html: `
+      <p>${message}</p>
+      <p style="margin-top:10px;">
+        <strong>Type <span style="color:#961C1E;">${actionLabel}</span> to confirm:</strong>
+      </p>
+      <input id="type-confirm-input" class="swal2-input" autocomplete="off" placeholder="${actionLabel}" />
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Confirm',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#961C1E',
+    cancelButtonColor: '#6c757d',
+    backdrop: false,
+    preConfirm: () => {
+      const input = (document.getElementById('type-confirm-input') as HTMLInputElement)?.value;
+      if (input !== actionLabel) {
+        Swal.showValidationMessage(`Please type "${actionLabel}" to confirm.`);
+        return false;
+      }
+      return true;
+    },
+    customClass: {
+      popup: 'swal-custom-popup'
+    }
+  });
+  return !!value;
+};
+
 //--------------------ADD REVENUE RECORD-------------------//
 export const showEmptyFieldWarning = () => {
   return Swal.fire({

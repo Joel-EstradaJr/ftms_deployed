@@ -695,6 +695,7 @@ const DisposalApproval = () => {
               <input
                 className="searchInput"
                 type="text"
+                maxLength={50}
                 placeholder="Search disposals..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}

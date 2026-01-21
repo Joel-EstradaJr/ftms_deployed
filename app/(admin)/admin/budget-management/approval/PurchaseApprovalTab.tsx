@@ -24,12 +24,12 @@ import ApprovalModal from "../../budget-management/purchase-request-approval/app
 import RejectionModal from "../../budget-management/purchase-request-approval/rejectionModal";
 import ProcessRefundModal from "../../budget-management/purchase-request-approval/processRefundModal";
 import TrackStatusPurchaseRequest from "../../budget-management/purchase-request-approval/trackStatusPurchaseRequest";
-import PurchaseApprovalModal from "./PurchaseApprovalModal";
-import ModalManager from "../../../../Components/modalManager";
+//import PurchaseApprovalModal from "./PurchaseApprovalModal";
+import ModalManager from "@/Components/modalManager";
 
 // Import styles
-import "../../../../styles/purchase-approval/purchase-approval.css";
-import "../../../../styles/components/table.css";
+import "@/styles/purchase-approval/purchase-approval.css";
+import "@/styles/components/table.css";
 import "@/styles/components/forms.css"
 
 
@@ -772,12 +772,14 @@ export default function PurchaseApprovalTab({
 
   const openApproveModal = (request: PurchaseRequestApproval) => {
     setSelectedRequest(request);
-    setShowApproveModal(true);
+    setShowApproveModal(true);  //./approvalModal
+    //setShowApprovalModal(true); // Use PurchaseApprovalModal
   };
 
   const openRejectModal = (request: PurchaseRequestApproval) => {
     setSelectedRequest(request);
     setShowRejectModal(true);
+    //setShowApprovalModal(true); // Use PurchaseApprovalModal
   };
 
   const closeAllModals = () => {
@@ -1059,7 +1061,7 @@ export default function PurchaseApprovalTab({
       )}
 
       {/* Legacy modal - can be removed once all modals are properly integrated */}
-      {showApprovalModal && selectedRequest && (
+      {/* {showApprovalModal && selectedRequest && (
         <PurchaseApprovalModal
           request={selectedRequest}
           onClose={() => {
@@ -1069,7 +1071,7 @@ export default function PurchaseApprovalTab({
           onApprove={handleApprove}
           onReject={handleReject}
         />
-      )}
+      )} */}
     </>
   );
 }

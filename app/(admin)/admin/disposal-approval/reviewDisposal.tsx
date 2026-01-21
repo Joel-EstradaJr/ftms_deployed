@@ -170,7 +170,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
 
               <div className="form-group">
                 <label>Status</label>
-                <p>
+                <p className='chip-container'>
                   <span className={getStatusClass(disposal.status)}>
                     {disposal.status}
                   </span>
@@ -181,7 +181,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
             <div className="form-row">
               <div className="form-group">
                 <label>Disposal Method</label>
-                <p>
+                <p className='chip-container'>
                   <span className="chip normal">
                     {disposal.disposal_method}
                   </span>
@@ -246,7 +246,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
 
                 <div className="form-group">
                   <label>Stock Status</label>
-                  <p>
+                  <p className='chip-container'>
                     <span className={`chip ${disposal.stock.status?.toLowerCase()}`}>
                       {disposal.stock.status}
                     </span>

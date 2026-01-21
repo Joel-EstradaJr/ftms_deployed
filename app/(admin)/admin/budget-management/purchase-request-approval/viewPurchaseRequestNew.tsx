@@ -75,7 +75,7 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
       </div>
 
       {/* Modal Content */}
-      <div className="modal-content-wrapper">
+      <div className="modal-content-wrapper view-form">
           {/* PURCHASE REQUEST SECTION */}
           <div className="purchase-request-section">
             <div className="section-title">
@@ -96,7 +96,7 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
 
               <div className="form-group">
                 <label>TYPE</label>
-                <p>
+                <p className='chip-container'>
                   <span className={`chip ${(purchaseRequest.type || purchaseRequest.request_type || '').toLowerCase()}`}>
                     {formatRequestType(purchaseRequest.type || String(purchaseRequest.request_type) || 'REGULAR')}
                   </span>
@@ -105,7 +105,7 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
 
               <div className="form-group">
                 <label>STATUS</label>
-                <p>
+                <p className='chip-container'>
                   <span className={`chip ${(purchaseRequest.status || purchaseRequest.purchase_request_status || '').toLowerCase()}`}>
                     {(purchaseRequest.status || purchaseRequest.purchase_request_status || 'PENDING').toUpperCase()}
                   </span>
@@ -237,7 +237,7 @@ const ViewPurchaseRequest: React.FC<ViewPurchaseRequestProps> = ({
                             <div className="item-detail-group">
                               <div className="form-group">
                                 <label>STATUS</label>
-                                <p>
+                                <p className='chip-container'>
                                   <span className={`chip ${(item.status || '').toLowerCase()}`}>
                                     {item.status || 'PENDING'}
                                   </span>
