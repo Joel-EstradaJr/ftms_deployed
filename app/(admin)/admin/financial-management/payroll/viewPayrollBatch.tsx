@@ -7,16 +7,6 @@ import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showConfirmation, showSuccess, showError } from '../../../../utils/Alerts';
 import ViewPayslipModal from './viewPayslip';
 import payrollService from '../../../../services/payrollService';
-import {
-  calculateEarnings,
-  calculateDeductions,
-  calculateGrossPay,
-  calculateTotalDeductions,
-  generateAttendanceData,
-  formatRateType,
-  getEmployeeName,
-  RateType,
-} from '@/utils/payrollCalculations';
 import '@/styles/components/modal2.css';
 import '@/styles/components/forms.css';
 import '@/styles/components/table.css';
@@ -203,17 +193,52 @@ export default function ViewPayrollBatch({
     setPayslipModalOpen(true);
   };
 
-  // Render single payslip for batch print
+  // Render single payslip for batch print using actual HR data
   const renderPayslipForPrint = (payroll: Payroll) => {
     if (!payroll.employee) return null;
 
-    const rateType: RateType = 'monthly';
-    const earnings = calculateEarnings(payroll.baseSalary, payroll.allowances, rateType);
-    const deductions = calculateDeductions(payroll.deductions);
-    const attendance = generateAttendanceData(payroll.isDisbursed);
-    const grossPay = calculateGrossPay(earnings);
-    const totalDeductions = calculateTotalDeductions(deductions);
-    const employeeName = getEmployeeName(payroll.employee);
+    // Get HR data from payroll
+    const hrData = payroll.hrPayrollData;
+    const employeeName = [
+      payroll.employee.firstName,
+      payroll.employee.middleName,
+      payroll.employee.lastName
+    ].filter(Boolean).join(' ') || payroll.employeeId;
+
+    // Calculate values from HR data
+    const basicRate = hrData ? parseFloat(hrData.basic_rate) || 0 : payroll.baseSalary;
+    const presentDays = payroll.presentDays || 
+      hrData?.attendances?.filter((a: any) => a.status === 'Present').length || 0;
+    const basicPay = basicRate * presentDays;
+
+    // Get actual benefits from HR data
+    const benefits = (hrData?.benefits || [])
+      .filter((b: any) => b.is_active)
+      .map((b: any) => ({
+        name: b.name || b.benefit_type?.name || 'Unknown Benefit',
+        value: parseFloat(b.value) || 0,
+      }));
+
+    // Get actual deductions from HR data  
+    const deductions = (hrData?.deductions || [])
+      .filter((d: any) => d.is_active)
+      .map((d: any) => ({
+        name: d.name || d.deduction_type?.name || 'Unknown Deduction',
+        value: parseFloat(d.value) || 0,
+      }));
+
+    const totalBenefits = benefits.reduce((sum: number, b: any) => sum + b.value, 0);
+    const totalDeductions = deductions.reduce((sum: number, d: any) => sum + d.value, 0);
+    const grossPay = basicPay + totalBenefits;
+    const netPay = grossPay - totalDeductions;
+
+    // Calculate attendance counts from HR data
+    const attendanceCounts = {
+      present: hrData?.attendances?.filter((a: any) => a.status === 'Present').length || 0,
+      absent: hrData?.attendances?.filter((a: any) => a.status === 'Absent').length || 0,
+    };
+
+    const rateType = hrData?.rate_type || 'Weekly';
 
     return (
       <div key={payroll.id} className="batch-payslip-page">
@@ -257,10 +282,10 @@ export default function ViewPayrollBatch({
                 <strong>Position:</strong> {payroll.employee.position || 'N/A'}
               </div>
               <div className="empDetails">
-                <strong>Basic Rate:</strong> {formatMoney(payroll.baseSalary)}
+                <strong>Basic Rate:</strong> {formatMoney(basicRate)} ({rateType})
               </div>
               <div className="empDetails">
-                <strong>Rate Type:</strong> {formatRateType(rateType)}
+                <strong>Present Days:</strong> {presentDays}
               </div>
             </div>
           </div>
@@ -272,25 +297,21 @@ export default function ViewPayrollBatch({
               <table className="payslipTable">
                 <tbody>
                   <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Basic Pay ({formatRateType(rateType)})</td>
-                    <td className="payslipTableCellAmount">{formatMoney(earnings.basicPay)}</td>
+                    <td className="payslipTableCell">Basic Pay ({presentDays} days × {formatMoney(basicRate)})</td>
+                    <td className="payslipTableCellAmount">{formatMoney(basicPay)}</td>
                   </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Overtime Pay ({attendance.overtimeHours} hrs @ 125%)</td>
-                    <td className="payslipTableCellAmount">{formatMoney(earnings.overtimePay)}</td>
-                  </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Rice Allowance</td>
-                    <td className="payslipTableCellAmount">{formatMoney(earnings.riceAllowance)}</td>
-                  </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Transportation Allowance</td>
-                    <td className="payslipTableCellAmount">{formatMoney(earnings.transportationAllowance)}</td>
-                  </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Other Allowances</td>
-                    <td className="payslipTableCellAmount">{formatMoney(earnings.otherAllowances)}</td>
-                  </tr>
+                  {benefits.map((benefit: any, index: number) => (
+                    <tr key={`benefit-${index}`} className="payslipTableRow">
+                      <td className="payslipTableCell">{benefit.name}</td>
+                      <td className="payslipTableCellAmount">{formatMoney(benefit.value)}</td>
+                    </tr>
+                  ))}
+                  {benefits.length === 0 && (
+                    <tr className="payslipTableRow">
+                      <td className="payslipTableCell" style={{ color: '#999', fontStyle: 'italic' }}>No additional benefits</td>
+                      <td className="payslipTableCellAmount">₱ 0.00</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -299,26 +320,18 @@ export default function ViewPayrollBatch({
               <h3 className="sectionHeading">DEDUCTIONS</h3>
               <table className="payslipTable">
                 <tbody>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Withholding Tax</td>
-                    <td className="payslipTableCellAmount">{formatMoney(deductions.withholdingTax)}</td>
-                  </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Social Security Contribution</td>
-                    <td className="payslipTableCellAmount">{formatMoney(deductions.sssContribution)}</td>
-                  </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">PhilHealth Contribution</td>
-                    <td className="payslipTableCellAmount">{formatMoney(deductions.philhealthContribution)}</td>
-                  </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Pag-IBIG Contribution</td>
-                    <td className="payslipTableCellAmount">{formatMoney(deductions.pagibigContribution)}</td>
-                  </tr>
-                  <tr className="payslipTableRow">
-                    <td className="payslipTableCell">Other Deductions</td>
-                    <td className="payslipTableCellAmount">{formatMoney(deductions.otherDeductions)}</td>
-                  </tr>
+                  {deductions.map((deduction: any, index: number) => (
+                    <tr key={`deduction-${index}`} className="payslipTableRow">
+                      <td className="payslipTableCell">{deduction.name}</td>
+                      <td className="payslipTableCellAmount">{formatMoney(deduction.value)}</td>
+                    </tr>
+                  ))}
+                  {deductions.length === 0 && (
+                    <tr className="payslipTableRow">
+                      <td className="payslipTableCell" style={{ color: '#999', fontStyle: 'italic' }}>No deductions</td>
+                      <td className="payslipTableCellAmount">₱ 0.00</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -336,7 +349,7 @@ export default function ViewPayrollBatch({
             </div>
             <div className="netPayRow">
               <span>NET PAY:</span>
-              <span>{formatMoney(payroll.netPay)}</span>
+              <span>{formatMoney(netPay)}</span>
             </div>
           </div>
 
@@ -346,19 +359,11 @@ export default function ViewPayrollBatch({
             <div className="attendanceGrid">
               <div>
                 <strong>Present Count:</strong>
-                <div className="attendanceValue attendanceValuePresent">{attendance.presentCount}</div>
+                <div className="attendanceValue attendanceValuePresent">{attendanceCounts.present}</div>
               </div>
               <div>
                 <strong>Absent Count:</strong>
-                <div className="attendanceValue attendanceValueAbsent">{attendance.absentCount}</div>
-              </div>
-              <div>
-                <strong>Late Count:</strong>
-                <div className="attendanceValue attendanceValueLate">{attendance.lateCount}</div>
-              </div>
-              <div>
-                <strong>Total Overtime Hours:</strong>
-                <div className="attendanceValue attendanceValueOvertime">{attendance.overtimeHours}</div>
+                <div className="attendanceValue attendanceValueAbsent">{attendanceCounts.absent}</div>
               </div>
             </div>
           </div>
@@ -696,7 +701,7 @@ export default function ViewPayrollBatch({
                       </div>
                       <div className="form-row">
                         <div className="form-group">
-                          <label>Base Salary ({formatRateType('monthly')})</label>
+                          <label>Base Salary ({payroll.hrPayrollData?.rate_type || 'Weekly'})</label>
                           <input type="text" value={formatMoney(payroll.baseSalary)} readOnly />
                         </div>
                         <div className="form-group">
@@ -722,7 +727,7 @@ export default function ViewPayrollBatch({
                           <label>Benefits Breakdown</label>
                           <input
                             type="text"
-                            value={`Rice: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).riceAllowance)}, Transport: ${formatMoney(calculateEarnings(payroll.baseSalary, payroll.allowances).transportationAllowance)}`}
+                            value={payroll.hrPayrollData?.benefits?.filter((b: any) => b.is_active).map((b: any) => `${b.name || b.benefit_type?.name}: ${formatMoney(parseFloat(b.value))}`).join(', ') || 'No benefits'}
                             readOnly
                           />
                         </div>
@@ -730,7 +735,7 @@ export default function ViewPayrollBatch({
                           <label>Deductions Breakdown</label>
                           <input
                             type="text"
-                            value={`Tax: ${formatMoney(calculateDeductions(payroll.deductions).withholdingTax)}, SSS: ${formatMoney(calculateDeductions(payroll.deductions).sssContribution)}`}
+                            value={payroll.hrPayrollData?.deductions?.filter((d: any) => d.is_active).map((d: any) => `${d.name || d.deduction_type?.name}: ${formatMoney(parseFloat(d.value))}`).join(', ') || 'No deductions'}
                             readOnly
                           />
                         </div>

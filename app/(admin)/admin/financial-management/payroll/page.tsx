@@ -75,37 +75,44 @@ const PayrollPage = () => {
           let totalNet = 0;
 
           const payrolls = batch.employees.map((employee: HrPayrollData) => {
-            const grossEarnings = payrollService.calculateGrossEarnings(employee);
-            const deductions = payrollService.calculateTotalDeductions(employee);
-            const netPay = payrollService.calculateNetPay(employee);
-            const presentDays = employee.present_days ||
-              employee.attendances.filter(a => a.status === 'Present').length;
+            // Enrich employee with batch period dates for correct calculations
+            const enrichedEmployee: HrPayrollData = {
+              ...employee,
+              payroll_period_start: batch.payroll_period_start,
+              payroll_period_end: batch.payroll_period_end,
+            };
+            
+            const grossEarnings = payrollService.calculateGrossEarnings(enrichedEmployee);
+            const deductions = payrollService.calculateTotalDeductions(enrichedEmployee);
+            const netPay = payrollService.calculateNetPay(enrichedEmployee);
+            const presentDays = enrichedEmployee.present_days ||
+              enrichedEmployee.attendances.filter(a => a.status === 'Present').length;
 
             totalGross += grossEarnings;
             totalDeductions += deductions;
             totalNet += netPay;
 
             return {
-              id: `${batch.payroll_period_start}-${employee.employee_number}`,
+              id: `${batch.payroll_period_start}-${enrichedEmployee.employee_number}`,
               batchId: `batch-${batch.payroll_period_start}`,
-              employeeId: employee.employee_number,
-              baseSalary: parseFloat(employee.basic_rate),
-              allowances: payrollService.getBenefitsByType(employee).size > 0
-                ? Array.from(payrollService.getBenefitsByType(employee).values()).reduce((a, b) => a + b, 0)
+              employeeId: enrichedEmployee.employee_number,
+              baseSalary: parseFloat(enrichedEmployee.basic_rate),
+              allowances: payrollService.getBenefitsByType(enrichedEmployee).size > 0
+                ? Array.from(payrollService.getBenefitsByType(enrichedEmployee).values()).reduce((a, b) => a + b, 0)
                 : 0,
               deductions: deductions,
               netPay: netPay,
               isDisbursed: false,
               createdAt: new Date().toISOString(),
               employee: {
-                employeeNumber: employee.employee_number,
-                firstName: employee.employee_name || employee.employee_number,
+                employeeNumber: enrichedEmployee.employee_number,
+                firstName: enrichedEmployee.employee_name || enrichedEmployee.employee_number,
                 lastName: '',
-                department: 'N/A',
-                position: employee.rate_type,
+                department: (enrichedEmployee as any).department || 'N/A',
+                position: (enrichedEmployee as any).position || enrichedEmployee.rate_type,
                 status: 'active'
               },
-              hrPayrollData: employee,
+              hrPayrollData: enrichedEmployee,
               presentDays: presentDays
             };
           });
@@ -361,16 +368,18 @@ const PayrollPage = () => {
   // Handle disbursement
   const handleDisburse = async (batchId: string, payrollIds: string[]) => {
     try {
-      // TODO: Replace with actual API call to ftms_backend
-      console.warn('Disburse payroll API call pending');
-      console.log('Disbursing payrolls:', payrollIds, 'in batch:', batchId);
+      const batch = batches.find(b => b.id === batchId);
+      if (!batch) throw new Error('Batch not found');
 
-      // Mock success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      console.log('Releasing payroll batch:', batch.payroll_period_code);
+      
+      await payrollService.releasePayrollBatch(batch.period_start, batch.period_end);
+      
+      showSuccess('Payroll disbursed successfully', 'Success');
       await fetchPayrollBatches(false);
     } catch (error) {
-      throw new Error('Failed to disburse payroll');
+      console.error('Disbursement error:', error);
+      showError('Failed to disburse payroll', 'Error');
     }
   };
 
@@ -410,11 +419,23 @@ const PayrollPage = () => {
 
     if (confirmed.isConfirmed) {
       try {
-        // TODO: Replace with ftms_backend API call
-        console.warn('API integration pending - mock release all');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        showSuccess(`${pendingBatches.length} payroll batch(es) released successfully`, 'Success');
-        fetchPayrollBatches(false);
+        let successCount = 0;
+        
+        for (const batch of pendingBatches) {
+          try {
+            await payrollService.releasePayrollBatch(batch.period_start, batch.period_end);
+            successCount++;
+          } catch (err) {
+            console.error(`Failed to release batch ${batch.payroll_period_code}:`, err);
+          }
+        }
+
+        if (successCount > 0) {
+          showSuccess(`${successCount} payroll batch(es) released successfully`, 'Success');
+          fetchPayrollBatches(false);
+        } else {
+          showError('Failed to release payroll batches', 'Error');
+        }
       } catch (error) {
         showError('Failed to release payroll batches', 'Error');
       }

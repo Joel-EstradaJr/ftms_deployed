@@ -178,13 +178,13 @@ const Sidebar: React.FC = () => {
 
           {openSubMenu === "expense-management" && (
             <div className="sub-menu active">
-              <Link
+              { <Link
                 href={getUrl("/expense-management/operational")}
                 className={`sub-item ${activeItem === "operational-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("operational-expense")}
               >
                 Operational Expenses
-              </Link>
+              </Link>}
               <Link
                 href={getUrl("/expense-management/purchase")}
                 className={`sub-item ${activeItem === "purchase-expense" ? "active" : ""}`}
@@ -212,7 +212,7 @@ const Sidebar: React.FC = () => {
             <span>Payroll</span>
           </Link>
 
-          {/* Budget Management Submenu 
+          {/* Budget Management Submenu */}
           <div
             className={`nav-item module ${
               ["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
@@ -226,57 +226,45 @@ const Sidebar: React.FC = () => {
                 openSubMenu === "budget-management" ? "rotate" : ""
               }`}
             />
-          </div>*/}
+          </div>
 
-            {/* {openSubMenu === "budget-management" && (
-              <div className="sub-menu active">
-                {/* Budget Request - Both roles - External microservice *\/}
-                <a
-                  href={budgetRequestUrl}
-                  className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveItem("budget-request");
-                    window.location.href = budgetRequestUrl;
-                  }}
+          {openSubMenu === "budget-management" && (
+            <div className="sub-menu active">
+              {/* Budget Request - Both roles - External microservice */}
+              <a
+                href={budgetRequestUrl}
+                className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveItem("budget-request");
+                  window.location.href = budgetRequestUrl;
+                }}
+              >
+                Budget Request
+              </a>
+              
+              {/* Budget Allocation - Admin only */}
+              {userRole === 'admin' && (
+                <Link
+                  href={getUrl("/budget-management/budgetAllocation")}
+                  className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
+                  onClick={() => setActiveItem("budgetAllocation")}
                 >
-                  Budget Request
-                </a>
-                
-                {/* Budget Allocation - Admin only *\/}
-                {userRole === 'admin' && (
-                  <Link
-                    href={getUrl("/budget-management/budgetAllocation")}
-                    className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
-                    onClick={() => setActiveItem("budgetAllocation")}
-                  >
-                    Budget Allocation
-                  </Link>
-                )}
-                
-                {/* Approvals - Admin only *\/}
-                {userRole === 'admin' && (
-                  <Link
-                    href={getUrl("/budget-management/approval")}
-                    className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
-                    onClick={() => setActiveItem("approval")}
-                  >
-                    Approvals
-                  </Link>
-                )}
-              </div>
-            )} */}
-
-          {/* Approvals - Admin only */}
-          {userRole === 'admin' && (
-            <Link
-              href={getUrl("/budget-management/approval")}
-              className={`nav-item ${activeItem === "approval" ? "active" : ""}`}
-              onClick={() => setActiveItem("approval")}
-            >
-              <i className="ri-checkbox-circle-line" />
-              <span>Approvals</span>
-            </Link>
+                  Budget Allocation
+                </Link>
+              )}
+              
+              {/* Approvals - Admin only */}
+              {userRole === 'admin' && (
+                <Link
+                  href={getUrl("/budget-management/approval")}
+                  className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
+                  onClick={() => setActiveItem("approval")}
+                >
+                  Approvals
+                </Link>
+              )}
+            </div>
           )}
 
           
@@ -315,7 +303,7 @@ const Sidebar: React.FC = () => {
           )}
 
           {/* Asset Management - Admin only */}
-          {userRole === 'admin' && (
+          {/*userRole === 'admin' && (
             <Link
               href={getUrl("/asset-management")}
               className={`nav-item ${activeItem === "asset-management" ? "active" : ""}`}
@@ -324,10 +312,10 @@ const Sidebar: React.FC = () => {
               <i className="ri-archive-line" />
               <span>Asset Management</span>
             </Link>
-          )}
+          )*/}
 
-          {/* Disposal Approval - Admin only */}
-          {userRole === 'admin' && (
+         {/* Disposal Approval - Admin only */}
+          {/*userRole === 'admin' && (
             <Link
               href={getUrl("/disposal-approval")}
               className={`nav-item ${activeItem === "disposal-approval" ? "active" : ""}`}
@@ -336,7 +324,7 @@ const Sidebar: React.FC = () => {
               <i className="ri-delete-bin-line" />
               <span>Disposal Approval</span>
             </Link>
-          )}
+          )*/}
 
           {/* Audit Logs - Admin only */}
           {userRole === 'admin' && (

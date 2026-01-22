@@ -66,6 +66,40 @@ export function getCurrentWeeklyPeriod(): { period: number; start: string; end: 
 }
 
 // ============================================================================
+// SEMI-MONTHLY PERIOD HELPERS
+// ============================================================================
+
+/**
+ * Get semi-monthly period dates for a given year, month, and period type
+ * @param year - The year
+ * @param month - The month (0-indexed, 0 = January)
+ * @param periodType - 1 for 1st-15th, 2 for 16th-end of month
+ */
+export function getSemiMonthlyPeriod(
+  year: number,
+  month: number,
+  periodType: 1 | 2
+): { startDate: string; endDate: string } {
+  if (periodType === 1) {
+    // First half: 1st to 15th
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month, 15);
+    return {
+      startDate: formatDateString(startDate),
+      endDate: formatDateString(endDate),
+    };
+  } else {
+    // Second half: 16th to end of month
+    const startDate = new Date(year, month, 16);
+    const endDate = new Date(year, month + 1, 0); // Last day of the month
+    return {
+      startDate: formatDateString(startDate),
+      endDate: formatDateString(endDate),
+    };
+  }
+}
+
+// ============================================================================
 // HR PAYROLL DATA TYPES
 // ============================================================================
 
@@ -219,6 +253,11 @@ function calculateFrequencyMultiplier(
 // ============================================================================
 
 const payrollService = {
+  /**
+   * Get semi-monthly period dates for a given year, month, and period type
+   */
+  getSemiMonthlyPeriod,
+
   /**
    * Fetch HR payroll data from integration endpoint
    * GET /api/integration/hr_payroll
@@ -474,6 +513,45 @@ const payrollService = {
       });
 
     return deductionMap;
+  },
+
+  /**
+   * Release payroll batch
+   * 1. Syncs data to ensure DB record exists
+   * 2. Processes the payroll (changes status to PROCESSED)
+   * 3. Calls admin endpoint to release (triggers webhook)
+   */
+  releasePayrollBatch: async (periodStart: string, periodEnd: string): Promise<boolean> => {
+    try {
+      // 1. Sync first to get the ID
+      const syncResponse = await api.post<{ success: boolean; periodId: number }>(
+        '/api/integration/hr_payroll/fetch-and-sync',
+        { period_start: periodStart, period_end: periodEnd }
+      );
+
+      if (!syncResponse.success || !syncResponse.periodId) {
+        throw new Error('Failed to sync payroll data before release');
+      }
+
+      const periodId = syncResponse.periodId;
+
+      // 2. Process the payroll (required before release)
+      await api.post<{ success: boolean }>(
+        `/api/v1/admin/payroll-periods/${periodId}/process`,
+        { period_start: periodStart, period_end: periodEnd }
+      );
+
+      // 3. Call release endpoint (triggers webhook)
+      const releaseResponse = await api.post<{ success: boolean }>(
+        `/api/v1/admin/payroll-periods/${periodId}/release`,
+        {}
+      );
+
+      return releaseResponse.success;
+    } catch (error) {
+      console.error('Error releasing payroll batch:', error);
+      throw error;
+    }
   },
 };
 
