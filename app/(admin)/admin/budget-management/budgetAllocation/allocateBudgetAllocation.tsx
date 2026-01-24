@@ -1,42 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import '../../../../styles/components/modal.css';
 import '../../../../styles/components/table.css';
 import ModalHeader from '../../../../Components/ModalHeader';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
+import { DepartmentBudget, BudgetAllocationData, allocateBudget } from '@/app/services/budgetAllocationService';
 
-// Types
-interface DepartmentBudget {
-  department_id: string;
-  department_name: string;
-  allocated_budget: number;
-  used_budget: number;
-  remaining_budget: number;
-  reserved_budget: number;
-  purchase_request_count: number;
-  last_update_date: string;
-  budget_period: string;
-  status: 'Active' | 'Inactive' | 'Exceeded';
-}
-
+// Props interface
 interface AllocateBudgetAllocationProps {
   department: DepartmentBudget;
   budgetPeriod: string;
   onClose: () => void;
   onSubmit: (data: BudgetAllocationData) => void;
   showHeader?: boolean;
-}
-
-interface BudgetAllocationData {
-  allocation_id: string;
-  department_id: string;
-  department_name: string;
-  amount: number;
-  allocated_date: string;
-  allocated_by: string;
-  period: string;
-  notes: string;
 }
 
 const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
@@ -48,7 +25,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
 }) => {
   const [allocationAmount, setAllocationAmount] = useState('');
   const [allocationNotes, setAllocationNotes] = useState('');
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Format budget period for display
@@ -79,7 +56,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
 
   // Validate form
   const validateForm = (): boolean => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     // Validate allocation amount
     if (!allocationAmount || allocationAmount.trim() === '') {
@@ -108,9 +85,9 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
 
     // Show confirmation dialog first
     const confirmResult = await showConfirmation(
-      `<p>Are you sure you want to <b>ALLOCATE</b> ₱${parseFloat(allocationAmount).toLocaleString(undefined, { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
+      `<p>Are you sure you want to <b>ALLOCATE</b> ₱${parseFloat(allocationAmount).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
       })} to <b>${department.department_name}</b>?</p>
       <p><small>This action will update the department's budget allocation for ${formatBudgetPeriod()}.</small></p>`,
       'Confirm Budget Allocation'
@@ -121,7 +98,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const allocationData: BudgetAllocationData = {
         allocation_id: `alloc_${Date.now()}_${department.department_id}`, // Generate unique ID
@@ -135,21 +112,21 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
       };
 
       await onSubmit(allocationData);
-      
+
       // Show success message
       showSuccess(
-        `Successfully allocated ₱${parseFloat(allocationAmount).toLocaleString(undefined, { 
-          minimumFractionDigits: 2, 
-          maximumFractionDigits: 2 
+        `Successfully allocated ₱${parseFloat(allocationAmount).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
         })} to ${department.department_name} for ${formatBudgetPeriod()}.`,
         'Budget Allocated!'
       );
-      
+
       // Close modal after success
       setTimeout(() => {
         onClose();
       }, 2100); // Slightly longer than the success timer
-      
+
     } catch (error) {
       console.error('Error submitting allocation:', error);
       showError(
@@ -167,7 +144,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
     return {
       newAllocated: department.allocated_budget + amount,
       newRemaining: department.remaining_budget + amount,
-      newUtilization: department.allocated_budget + amount === 0 ? 0 : 
+      newUtilization: department.allocated_budget + amount === 0 ? 0 :
         Math.round((department.used_budget / (department.allocated_budget + amount)) * 100)
     };
   };
@@ -188,28 +165,28 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
 
         <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            
+
             {/* Department Information Section */}
             <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary-text-color)', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', position: 'relative' }}>
               Department Information
               <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Department Name</label>
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--primary-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.department_name}</div>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Department Status</label>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                  <span style={{ 
-                    padding: '0.25rem 0.75rem', 
-                    borderRadius: '20px', 
-                    fontSize: '0.875rem', 
+                  <span style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
                     fontWeight: '600',
-                    backgroundColor: department.status === 'Active' ? 'var(--success-color)' : department.status === 'Inactive' ? 'var(--warning-color)' : 'var(--error-color)',
+                    backgroundColor: department.status === 'Active' ? 'var(--success-color)' : 'var(--error-color)',
                     color: 'white'
                   }}>
                     {department.status}
@@ -218,14 +195,14 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Utilization</label>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                  <span style={{ 
-                    padding: '0.25rem 0.75rem', 
-                    borderRadius: '20px', 
-                    fontSize: '0.875rem', 
+                  <span style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
                     fontWeight: '600',
                     backgroundColor: utilizationStatus.class === 'success' ? 'var(--success-color)' : utilizationStatus.class === 'warning' ? 'var(--warning-color)' : 'var(--error-color)',
                     color: 'white'
@@ -234,11 +211,6 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
                   </span>
                 </div>
               </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Requests</label>
-                <div style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--secondary-text-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.purchase_request_count} pending requests</div>
-              </div>
             </div>
 
             {/* Current Budget Status Section */}
@@ -246,7 +218,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
               Current Budget Status
               <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: '2rem', color: 'var(--primary-color)' }}>
@@ -255,9 +227,9 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
                 <div>
                   <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Allocated</label>
                   <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
-                    ₱{department.allocated_budget.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
+                    ₱{department.allocated_budget.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
                     })}
                   </div>
                 </div>
@@ -270,9 +242,9 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
                 <div>
                   <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Used</label>
                   <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
-                    ₱{department.used_budget.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
+                    ₱{department.used_budget.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
                     })}
                   </div>
                 </div>
@@ -285,9 +257,9 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
                 <div>
                   <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Remaining</label>
                   <div style={{ fontSize: '1.25rem', fontWeight: '700', color: department.remaining_budget < 0 ? 'var(--error-color)' : 'var(--primary-text-color)' }}>
-                    ₱{department.remaining_budget.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
+                    ₱{department.remaining_budget.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
                     })}
                   </div>
                 </div>
@@ -299,13 +271,13 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
               Allocation Details
               <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Period <span style={{ color: 'var(--error-color)', fontWeight: 'bold' }}>*</span></label>
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--primary-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{formatBudgetPeriod()}</div>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Allocation Amount <span style={{ color: 'var(--error-color)', fontWeight: 'bold' }}>*</span></label>
                 <input
@@ -332,31 +304,31 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Allocation Notes</label>
-                <textarea
-                    value={allocationNotes}
-                    onChange={(e) => setAllocationNotes(e.target.value)}
-                    placeholder="Enter allocation notes or justification (optional)"
-                    rows={4}
-                    maxLength={500}
-                    style={{
-                      padding: '0.75rem',
-                      border: errors.allocationNotes ? '2px solid var(--error-color)' : '1px solid var(--border-color)',
-                      borderRadius: '8px',
-                      fontSize: '1rem',
-                      backgroundColor: 'var(--foreground-color)',
-                      color: 'var(--primary-text-color)',
-                      outline: 'none',
-                      resize: 'vertical',
-                      fontFamily: 'inherit'
-                    }}
-                />
-                <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', textAlign: 'right' }}>
-                    {allocationNotes.length}/500 characters
-                </div>
-                {errors.allocationNotes && (
-                    <div style={{ color: 'var(--error-color)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{errors.allocationNotes}</div>
-                )}
+              <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Allocation Notes</label>
+              <textarea
+                value={allocationNotes}
+                onChange={(e) => setAllocationNotes(e.target.value)}
+                placeholder="Enter allocation notes or justification (optional)"
+                rows={4}
+                maxLength={500}
+                style={{
+                  padding: '0.75rem',
+                  border: errors.allocationNotes ? '2px solid var(--error-color)' : '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  backgroundColor: 'var(--foreground-color)',
+                  color: 'var(--primary-text-color)',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', textAlign: 'right' }}>
+                {allocationNotes.length}/500 characters
+              </div>
+              {errors.allocationNotes && (
+                <div style={{ color: 'var(--error-color)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{errors.allocationNotes}</div>
+              )}
             </div>
 
             {/* Allocation Preview Section */}
@@ -366,7 +338,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
                   After Allocation Preview
                   <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '2rem', color: 'var(--success-color)' }}>
@@ -375,15 +347,15 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
                     <div>
                       <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>New Allocated Budget</label>
                       <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--success-color)' }}>
-                        ₱{preview.newAllocated.toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        ₱{preview.newAllocated.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: 'var(--success-color)', fontWeight: '500' }}>
-                        +₱{parseFloat(allocationAmount).toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        +₱{parseFloat(allocationAmount).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                     </div>
@@ -396,15 +368,15 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
                     <div>
                       <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>New Remaining Budget</label>
                       <div style={{ fontSize: '1.25rem', fontWeight: '700', color: preview.newRemaining < 0 ? 'var(--error-color)' : 'var(--success-color)' }}>
-                        ₱{preview.newRemaining.toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        ₱{preview.newRemaining.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: preview.newRemaining < 0 ? 'var(--error-color)' : 'var(--success-color)', fontWeight: '500' }}>
-                        +₱{parseFloat(allocationAmount).toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        +₱{parseFloat(allocationAmount).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                     </div>
@@ -440,7 +412,7 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
 
         {/* Modal Buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--table-row-color)' }}>
-          <button 
+          <button
             type="button"
             style={{
               padding: '0.75rem 1.5rem',
@@ -463,8 +435,8 @@ const AllocateBudgetAllocation: React.FC<AllocateBudgetAllocationProps> = ({
           >
             <i className="ri-close-line" /> Cancel
           </button>
-          
-          <button 
+
+          <button
             type="button"
             style={{
               padding: '0.75rem 1.5rem',

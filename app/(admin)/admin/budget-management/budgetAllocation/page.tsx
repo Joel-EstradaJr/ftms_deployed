@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import "@/styles/budget-management/budgetAllocation.css";
 import "@/styles/components/table.css";
 import MonthYearPicker from '@/Components/MonthYearPicker';
@@ -10,43 +10,17 @@ import { formatDate } from '@/utils/formatting';
 import AllocateBudgetAllocation from './allocateBudgetAllocation';
 import DeductBudgetAllocation from './deductBudgetAllocation';
 import DepartmentDetailsModal from './departmentDetailsModal';
+import {
+  fetchDepartmentBudgets,
+  allocateBudget,
+  deductBudget,
+  DepartmentBudget,
+  BudgetAllocationData,
+  BudgetDeductionData,
+} from '@/app/services/budgetAllocationService';
 
 
-// Types
-interface DepartmentBudget {
-  department_id: string;
-  department_name: string;
-  allocated_budget: number;
-  used_budget: number;
-  remaining_budget: number;
-  reserved_budget: number;
-  purchase_request_count: number;
-  last_update_date: string;
-  budget_period: string;
-  status: 'Active' | 'Inactive' | 'Exceeded';
-}
-
-interface BudgetAllocationData {
-  allocation_id: string;
-  department_id: string;
-  department_name: string;
-  amount: number;
-  allocated_date: string;
-  allocated_by: string;
-  period: string;
-  notes: string;
-}
-
-interface BudgetDeductionData {
-  deduction_id: string;
-  department_id: string;
-  department_name: string;
-  amount: number;
-  deducted_date: string;
-  deducted_by: string;
-  period: string;
-  notes: string;
-}
+// Note: Types are now imported from budgetAllocationService
 
 const BudgetAllocationPage: React.FC = () => {
   // State management
@@ -80,11 +54,11 @@ const BudgetAllocationPage: React.FC = () => {
 
       for (let month = startMonth; month <= endMonth; month++) {
         const monthValue = `${year}-${String(month + 1).padStart(2, '0')}`;
-        const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { 
-          month: 'long', 
-          year: 'numeric' 
+        const monthName = new Date(year, month, 1).toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric'
         });
-        
+
         options.push({
           value: monthValue,
           label: monthName,
@@ -102,7 +76,7 @@ const BudgetAllocationPage: React.FC = () => {
     const currentDate = new Date();
     const selectedDate = new Date(year, month - 1, 1);
     const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    
+
     return selectedDate < currentMonth;
   };
 
@@ -111,64 +85,26 @@ const BudgetAllocationPage: React.FC = () => {
   const totalUsed = departmentBudgets.reduce((sum, dept) => sum + dept.used_budget, 0);
   const totalRemaining = departmentBudgets.reduce((sum, dept) => sum + dept.remaining_budget, 0);
 
-  // Mock data - replace with actual API calls
-  useEffect(() => {
-    const mockData: DepartmentBudget[] = [
-      {
-        department_id: '1',
-        department_name: 'Finance',
-        allocated_budget: 500000,
-        used_budget: 320000,
-        remaining_budget: 180000,
-        reserved_budget: 50000,
-        purchase_request_count: 12,
-        last_update_date: '2026-01-09T00:00:00Z',
-        budget_period: budgetPeriod,
-        status: 'Active'
-      },
-      {
-        department_id: '2',
-        department_name: 'Operations',
-        allocated_budget: 750000,
-        used_budget: 680000,
-        remaining_budget: 70000,
-        reserved_budget: 100000,
-        purchase_request_count: 18,
-        last_update_date: '2026-01-09T00:00:00Z',
-        budget_period: budgetPeriod,
-        status: 'Active'
-      },
-      {
-        department_id: '3',
-        department_name: 'Inventory',
-        allocated_budget: 400000,
-        used_budget: 420000,
-        remaining_budget: -20000,
-        reserved_budget: 30000,
-        purchase_request_count: 8,
-        last_update_date: '2026-01-09T00:00:00Z',
-        budget_period: budgetPeriod,
-        status: 'Exceeded'
-      },
-      {
-        department_id: '4',
-        department_name: 'Human Resource',
-        allocated_budget: 300000,
-        used_budget: 145000,
-        remaining_budget: 155000,
-        reserved_budget: 25000,
-        purchase_request_count: 6,
-        last_update_date: '2026-01-09T00:00:00Z',
-        budget_period: budgetPeriod,
-        status: 'Active'
-      }
-    ];
-
-    setTimeout(() => {
-      setDepartmentBudgets(mockData);
+  // Fetch department budgets from API
+  const loadDepartmentBudgets = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setErrorCode(null);
+      const data = await fetchDepartmentBudgets(budgetPeriod);
+      setDepartmentBudgets(data);
+    } catch (err: any) {
+      console.error('Error fetching department budgets:', err);
+      setError(err.message || 'Failed to load department budgets');
+      setErrorCode(err.status || 500);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }, [budgetPeriod]);
+
+  useEffect(() => {
+    loadDepartmentBudgets();
+  }, [loadDepartmentBudgets]);
 
   // Filter departments based on search
   const filteredDepartments = departmentBudgets.filter(dept =>
@@ -194,7 +130,7 @@ const BudgetAllocationPage: React.FC = () => {
     switch (status) {
       case 'Active': return 'status-active';
       case 'Exceeded': return 'status-exceeded';
-      case 'Inactive': return 'status-inactive';
+
       default: return 'status-active';
     }
   };
@@ -228,74 +164,47 @@ const BudgetAllocationPage: React.FC = () => {
   // Handle allocation submission
   const handleSubmitAllocation = async (allocationData: BudgetAllocationData) => {
     try {
-        // Update department budget (in real app, this would be an API call)
-        const updatedBudgets = departmentBudgets.map(dept => {
-        if (dept.department_id === allocationData.department_id) {
-            return {
-            ...dept,
-            allocated_budget: dept.allocated_budget + allocationData.amount,
-            remaining_budget: dept.remaining_budget + allocationData.amount,
-            last_update_date: allocationData.allocated_date,
-            status: 'Active' as const
-            };
-        }
-        return dept;
-        });
+      // Call backend API to allocate budget
+      await allocateBudget(allocationData);
 
-        setDepartmentBudgets(updatedBudgets);
-        setShowAllocationModal(false);
-        setSelectedDepartment(null);
+      // Refresh data from backend
+      await loadDepartmentBudgets();
 
+      setShowAllocationModal(false);
+      setSelectedDepartment(null);
     } catch (error) {
-        console.error('Error allocating budget:', error);
-        throw error; // Re-throw to let the component handle it
+      console.error('Error allocating budget:', error);
+      throw error; // Re-throw to let the modal handle it
     }
-    };
+  };
 
   // Handle deduction submission
   const handleSubmitDeduction = async (deductionData: BudgetDeductionData) => {
     try {
-        // Update department budget (in real app, this would be an API call)
-        const updatedBudgets = departmentBudgets.map(dept => {
-        if (dept.department_id === deductionData.department_id) {
-            const newAllocated = dept.allocated_budget - deductionData.amount;
-            const newRemaining = dept.remaining_budget - deductionData.amount;
-            return {
-            ...dept,
-            allocated_budget: newAllocated,
-            remaining_budget: newRemaining,
-            last_update_date: deductionData.deducted_date,
-            status: newAllocated <= 0 ? 'Inactive' as const : dept.status
-            };
-        }
-        return dept;
-        });
+      // Call backend API to deduct budget
+      await deductBudget(deductionData);
 
-        setDepartmentBudgets(updatedBudgets);
-        setShowDeductionModal(false);
-        setSelectedDepartment(null);
+      // Refresh data from backend
+      await loadDepartmentBudgets();
 
+      setShowDeductionModal(false);
+      setSelectedDepartment(null);
     } catch (error) {
-        console.error('Error deducting budget:', error);
-        throw error; // Re-throw to let the component handle it
+      console.error('Error deducting budget:', error);
+      throw error; // Re-throw to let the modal handle it
     }
-    };
+  };
   // Handle view department details
   const handleViewDetails = (department: DepartmentBudget) => {
     setSelectedDepartment(department);
     setShowDepartmentDetailsModal(true);
   };
 
-  // Handle export
-  const handleExport = () => {
-    console.log('Export budget allocation data');
-    // Implement export functionality
-  };
 
   const monthlyOptions = generateMonthlyOptions();
   const isCurrentPeriodPast = isPastPeriod(budgetPeriod);
 
-    if (errorCode) {
+  if (errorCode) {
     return (
       <div className="card">
         <h1 className="title">Budget Allocation</h1>
@@ -332,11 +241,6 @@ const BudgetAllocationPage: React.FC = () => {
                 <p>Monitor and allocate monthly budgets across departments</p>
               </div>
             </div>
-            <div className="headerActions">
-              <button className="exportBtn" onClick={handleExport}>
-                <i className="ri-download-line" /> Export Report
-              </button>
-            </div>
           </div>
 
           {/* Past Period Warning */}
@@ -350,31 +254,40 @@ const BudgetAllocationPage: React.FC = () => {
           {/* Budget Summary Section */}
           <div className="budgetSummarySection">
             <div className="summaryCard">
-              <div className="summaryIcon">
-                <i className="ri-money-dollar-circle-line" />
-              </div>
-              <div className="summaryContent">
+              <div className="iconTitle">
+                <div className="summaryIcon">
+                  <i className="ri-money-dollar-circle-line" />
+                </div>
                 <h3>Total Allocated</h3>
+              </div>
+              
+              <div className="summaryContent">
                 <p className="summaryAmount">₱{totalAllocated.toLocaleString()}</p>
               </div>
             </div>
 
             <div className="summaryCard">
-              <div className="summaryIcon">
-                <i className="ri-shopping-cart-line" />
-              </div>
-              <div className="summaryContent">
+              <div className="iconTitle">
+                <div className="summaryIcon">
+                  <i className="ri-shopping-cart-line" />
+                </div>
                 <h3>Total Used</h3>
+              </div>
+              
+              <div className="summaryContent">
                 <p className="summaryAmount used">₱{totalUsed.toLocaleString()}</p>
               </div>
             </div>
 
             <div className="summaryCard">
-              <div className="summaryIcon">
-                <i className="ri-wallet-line" />
-              </div>
-              <div className="summaryContent">
+              <div className="iconTitle">
+                <div className="summaryIcon">
+                  <i className="ri-wallet-line" />
+                </div> 
                 <h3>Total Remaining</h3>
+              </div>
+              
+              <div className="summaryContent">
                 <p className={`summaryAmount ${totalRemaining < 0 ? 'negative' : 'positive'}`}>
                   ₱{totalRemaining.toLocaleString()}
                 </p>
@@ -382,11 +295,14 @@ const BudgetAllocationPage: React.FC = () => {
             </div>
 
             <div className="summaryCard">
-              <div className="summaryIcon">
-                <i className="ri-building-line" />
-              </div>
-              <div className="summaryContent">
+              <div className="iconTitle">
+                <div className="summaryIcon">
+                  <i className="ri-building-line" />
+                </div>
                 <h3>Departments</h3>
+              </div>
+              
+              <div className="summaryContent">
                 <p className="summaryAmount">{departmentBudgets.length}</p>
               </div>
             </div>
@@ -408,15 +324,15 @@ const BudgetAllocationPage: React.FC = () => {
             </div>
 
             <div className="filtersSection">
-                <div className="budgetPeriodSelector">
+              <div className="budgetPeriodSelector">
                 <label>Budget Period:</label>
                 <MonthYearPicker
-                    value={budgetPeriod}
-                    onChange={setBudgetPeriod}
-                    placeholder="Select budget period"
-                    className="period-picker"
+                  value={budgetPeriod}
+                  onChange={setBudgetPeriod}
+                  placeholder="Select budget period"
+                  className="period-picker"
                 />
-                </div>
+              </div>
             </div>
           </div>
 
@@ -432,7 +348,7 @@ const BudgetAllocationPage: React.FC = () => {
             <div className="departmentGrid">
               {filteredDepartments.map(department => {
                 const utilization = getBudgetUtilization(department.used_budget, department.allocated_budget);
-                
+
                 return (
                   <div key={department.department_id} className="departmentCard">
                     <div className="departmentHeader">
@@ -443,7 +359,7 @@ const BudgetAllocationPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="departmentActions">
-                        <button 
+                        <button
                           className="viewBtn"
                           onClick={() => handleViewDetails(department)}
                           title="View Details"
@@ -453,14 +369,14 @@ const BudgetAllocationPage: React.FC = () => {
                         {/* Only show allocate and deduct buttons if period is current or future */}
                         {!isCurrentPeriodPast && (
                           <>
-                            <button 
+                            <button
                               className="allocateBtn"
                               onClick={() => handleAllocateBudget(department)}
                               title="Allocate Budget"
                             >
                               <i className="ri-add-circle-line" />
                             </button>
-                            <button 
+                            <button
                               className="deductBtn"
                               onClick={() => handleDeductBudget(department)}
                               title="Deduct Budget"
@@ -473,14 +389,14 @@ const BudgetAllocationPage: React.FC = () => {
                         {/* Show disabled buttons for past periods */}
                         {isCurrentPeriodPast && (
                           <>
-                            <button 
+                            <button
                               className="allocateBtn disabled"
                               disabled
                               title="Cannot allocate budget for past periods"
                             >
                               <i className="ri-forbid-line" />
                             </button>
-                            <button 
+                            <button
                               className="deductBtn disabled"
                               disabled
                               title="Cannot deduct budget for past periods"
@@ -497,12 +413,12 @@ const BudgetAllocationPage: React.FC = () => {
                         <label>Allocated Budget</label>
                         <span className="metricValue">₱{department.allocated_budget.toLocaleString()}</span>
                       </div>
-                      
+
                       <div className="metric">
                         <label>Used Budget</label>
                         <span className="metricValue used">₱{department.used_budget.toLocaleString()}</span>
                       </div>
-                      
+
                       <div className="metric">
                         <label>Remaining Budget</label>
                         <span className={`metricValue ${department.remaining_budget < 0 ? 'negative' : 'positive'}`}>
@@ -519,7 +435,7 @@ const BudgetAllocationPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="utilizationBar">
-                        <div 
+                        <div
                           className={`utilizationFill ${getUtilizationClass(utilization)}`}
                           style={{ width: `${Math.min(utilization, 100)}%` }}
                         />
@@ -527,10 +443,6 @@ const BudgetAllocationPage: React.FC = () => {
                     </div>
 
                     <div className="departmentFooter">
-                      <div className="footerMetric">
-                        <i className="ri-file-list-line" />
-                        <span>{department.purchase_request_count} Requests</span>
-                      </div>
                       <div className="footerMetric">
                         <i className="ri-calendar-line" />
                         <span>Last: {formatDate(department.last_update_date)}</span>
@@ -555,24 +467,24 @@ const BudgetAllocationPage: React.FC = () => {
       {/* Budget Allocation Modal */}
       {showAllocationModal && selectedDepartment && (
         <AllocateBudgetAllocation
-            department={selectedDepartment}
-            budgetPeriod={budgetPeriod}
-            onClose={() => setShowAllocationModal(false)}
-            onSubmit={handleSubmitAllocation}
-            showHeader={true}
+          department={selectedDepartment}
+          budgetPeriod={budgetPeriod}
+          onClose={() => setShowAllocationModal(false)}
+          onSubmit={handleSubmitAllocation}
+          showHeader={true}
         />
-        )}
+      )}
 
       {/* Budget Deduction Modal */}
       {showDeductionModal && selectedDepartment && (
         <DeductBudgetAllocation
-            department={selectedDepartment}
-            budgetPeriod={budgetPeriod}
-            onClose={() => setShowDeductionModal(false)}
-            onSubmit={handleSubmitDeduction}
-            showHeader={true}
+          department={selectedDepartment}
+          budgetPeriod={budgetPeriod}
+          onClose={() => setShowDeductionModal(false)}
+          onSubmit={handleSubmitDeduction}
+          showHeader={true}
         />
-        )}
+      )}
 
       {/* Department Details Modal */}
       {showDepartmentDetailsModal && selectedDepartment && (

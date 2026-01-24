@@ -1,40 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../../../../styles/components/modal.css';
 import '../../../../styles/components/table.css';
 import '../../../../styles/components/chips.css';
 import { formatDate } from '../../../../utils/formatting';
 import PaginationComponent from '../../../../Components/pagination';
+import { DepartmentBudget, AllocationHistory, fetchAllocationHistory } from '@/app/services/budgetAllocationService';
 
-// Enhanced interfaces for allocation history
-interface AllocationHistory {
-  allocation_id: string;
-  department_id: string;
-  type: 'Allocation' | 'Deduction' | 'Adjustment';
-  amount: number;
-  date: string;
-  allocated_by: string;
-  notes: string;
-  status: 'Allocated' | 'Closed' | 'Pending' | 'Cancelled';
-  created_at: string;
-  updated_at?: string;
-  reference_id?: string;
-}
-
-interface DepartmentBudget {
-  department_id: string;
-  department_name: string;
-  allocated_budget: number;
-  used_budget: number;
-  remaining_budget: number;
-  reserved_budget: number;
-  purchase_request_count: number;
-  last_update_date: string;
-  budget_period: string;
-  status: 'Active' | 'Inactive' | 'Exceeded';
-}
-
+// Props interface
 interface DepartmentDetailsModalProps {
   department: DepartmentBudget;
   isOpen: boolean;
@@ -80,99 +54,31 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
     direction: 'desc'
   });
 
-  // Mock allocation history data
-  const generateMockHistoryData = (departmentId: string): AllocationHistory[] => {
-    const histories: AllocationHistory[] = [
-      {
-        allocation_id: 'ALLOC-2024-001',
-        department_id: departmentId,
-        type: 'Allocation',
-        amount: 250000,
-        date: '2024-09-01T00:00:00Z',
-        allocated_by: 'John Smith',
-        notes: 'Initial Q4 budget allocation',
-        status: 'Allocated',
-        created_at: '2024-09-01T00:00:00Z',
-        reference_id: 'REQ-2024-Q4-001'
-      },
-      {
-        allocation_id: 'ALLOC-2024-002',
-        department_id: departmentId,
-        type: 'Allocation',
-        amount: 150000,
-        date: '2024-09-10T00:00:00Z',
-        allocated_by: 'Maria Garcia',
-        notes: 'Additional budget for new project requirements',
-        status: 'Allocated',
-        created_at: '2024-09-10T00:00:00Z',
-        reference_id: 'REQ-2024-PROJ-002'
-      },
-      {
-        allocation_id: 'DEDUCT-2024-001',
-        department_id: departmentId,
-        type: 'Deduction',
-        amount: -50000,
-        date: '2024-09-15T00:00:00Z',
-        allocated_by: 'John Smith',
-        notes: 'Budget reallocation to Operations',
-        status: 'Closed',
-        created_at: '2024-09-15T00:00:00Z',
-        updated_at: '2024-09-15T12:30:00Z',
-        reference_id: 'TRANSFER-2024-001'
-      },
-      {
-        allocation_id: 'ALLOC-2024-003',
-        department_id: departmentId,
-        type: 'Adjustment',
-        amount: 75000,
-        date: '2024-09-20T00:00:00Z',
-        allocated_by: 'Sarah Johnson',
-        notes: 'Mid-month budget adjustment for urgent needs',
-        status: 'Pending',
-        created_at: '2024-09-20T00:00:00Z',
-        reference_id: 'ADJ-2024-MID-001'
-      },
-      {
-        allocation_id: 'ALLOC-2024-004',
-        department_id: departmentId,
-        type: 'Allocation',
-        amount: 100000,
-        date: '2024-08-25T00:00:00Z',
-        allocated_by: 'Michael Brown',
-        notes: 'Previous month carryover allocation',
-        status: 'Closed',
-        created_at: '2024-08-25T00:00:00Z',
-        updated_at: '2024-09-01T00:00:00Z',
-        reference_id: 'CARRY-2024-AUG'
-      },
-      {
-        allocation_id: 'DEDUCT-2024-002',
-        department_id: departmentId,
-        type: 'Deduction',
-        amount: -25000,
-        date: '2024-09-22T00:00:00Z',
-        allocated_by: 'John Smith',
-        notes: 'Budget correction due to calculation error',
-        status: 'Cancelled',
-        created_at: '2024-09-22T00:00:00Z',
-        reference_id: 'CORR-2024-001'
-      }
-    ];
+  // Load allocation history from API
+  const loadAllocationHistory = useCallback(async () => {
+    if (!department) return;
 
-    return histories;
-  };
+    try {
+      setLoading(true);
+      const result = await fetchAllocationHistory(department.department_id, {
+        type: filters.type as 'Allocation' | 'Deduction' | undefined,
+        dateFrom: filters.dateFrom || undefined,
+        dateTo: filters.dateTo || undefined,
+      });
+      setAllocationHistory(result.data);
+    } catch (error) {
+      console.error('Error loading allocation history:', error);
+      setAllocationHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [department, filters.type, filters.dateFrom, filters.dateTo]);
 
-  // Load allocation history
   useEffect(() => {
     if (isOpen && department) {
-      setLoading(true);
-      setTimeout(() => {
-        const mockData = generateMockHistoryData(department.department_id);
-        setAllocationHistory(mockData);
-        setLoading(false);
-      }, 500);
+      loadAllocationHistory();
     }
-  }, [isOpen, department]);
+  }, [isOpen, department, loadAllocationHistory]);
 
   // Filter and sort logic
   const getFilteredAndSortedHistory = () => {
@@ -180,7 +86,7 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
       // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           item.allocation_id.toLowerCase().includes(searchLower) ||
           item.allocated_by.toLowerCase().includes(searchLower) ||
           item.notes.toLowerCase().includes(searchLower) ||
@@ -334,8 +240,8 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
         {/* Modal Header */}
         <div className="modalHeader">
           <h1>{department.department_name} Department</h1>
-          <button 
-            className="closeButton" 
+          <button
+            className="closeButton"
             onClick={onClose}
             style={{ position: 'absolute', top: '10px', right: '10px' }}
           >
@@ -469,7 +375,7 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
                 }}
               />
 
-              <button 
+              <button
                 onClick={clearAllFilters}
                 style={{
                   padding: '0.75rem 1rem',
@@ -588,10 +494,10 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
                             </div>
                           </td>
                           <td>
-                            <span style={{ 
-                              padding: '0.25rem 0.75rem', 
-                              borderRadius: '20px', 
-                              fontSize: '0.875rem', 
+                            <span style={{
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '20px',
+                              fontSize: '0.875rem',
                               fontWeight: '600',
                               backgroundColor: item.type === 'Allocation' ? 'var(--success-color)' : item.type === 'Deduction' ? 'var(--error-color)' : 'var(--warning-color)',
                               color: 'white'
@@ -600,7 +506,7 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
                             </span>
                           </td>
                           <td>
-                            <span style={{ 
+                            <span style={{
                               color: item.amount >= 0 ? 'var(--success-color)' : 'var(--error-color)',
                               fontWeight: '600'
                             }}>
@@ -614,10 +520,10 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
                             </div>
                           </td>
                           <td>
-                            <span style={{ 
-                              padding: '0.25rem 0.75rem', 
-                              borderRadius: '20px', 
-                              fontSize: '0.875rem', 
+                            <span style={{
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '20px',
+                              fontSize: '0.875rem',
                               fontWeight: '600',
                               backgroundColor: item.status === 'Allocated' ? 'var(--success-color)' : item.status === 'Closed' ? 'var(--secondary-text-color)' : item.status === 'Pending' ? 'var(--warning-color)' : 'var(--error-color)',
                               color: 'white'
