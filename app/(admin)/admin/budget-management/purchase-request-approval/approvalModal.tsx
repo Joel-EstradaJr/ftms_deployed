@@ -4,10 +4,10 @@ import React, { useState, useEffect } from "react";
 import ModalHeader from "../../../../Components/ModalHeader";
 import { showSuccess, showError, showConfirmation } from "../../../../utils/Alerts";
 import type { PurchaseRequestApproval, PurchaseRequestItem } from "../../../../types/purchaseRequestApproval";
-import { 
-  validateAllItemApprovals, 
+import {
+  validateAllItemApprovals,
   isValidQuantity,
-  sanitizeTextInput 
+  sanitizeTextInput
 } from "../../../../utils/purchaseRequestValidation";
 //@ts-ignore
 import "../../../../styles/purchase-approval/approvalModal.css";
@@ -67,7 +67,7 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
   const handleItemReasonChange = (itemId: string, reason: string) => {
     // Sanitize input to prevent XSS
     const sanitized = sanitizeTextInput(reason);
-    
+
     setItemApprovals(prev => ({
       ...prev,
       [itemId]: {
@@ -110,7 +110,7 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
 
   const hasAnyAdjustments = (): boolean => {
     return Object.entries(itemApprovals).some(([itemId, approval]) => {
-      const item = purchaseRequest.items?.find((i, idx) => 
+      const item = purchaseRequest.items?.find((i, idx) =>
         (i.purchase_request_item_id || `item-${idx}`) === itemId
       );
       return item && approval.approved_quantity !== item.quantity;
@@ -119,7 +119,7 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateApproval()) {
       return;
     }
@@ -132,15 +132,15 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
     if (!result.isConfirmed) {
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
-      
+
       // Update items with approved quantities
       const updatedItems = purchaseRequest.items?.map((item, index) => {
         const itemId = item.purchase_request_item_id || `item-${index}`;
         const approval = itemApprovals[itemId];
-        
+
         if (approval.approved_quantity !== item.quantity) {
           return {
             ...item,
@@ -175,10 +175,10 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
   return (
     <div className="modalOverlay">
       <div className="addExpenseModal" style={{ minWidth: '900px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-        <ModalHeader 
+        <ModalHeader
           title={`Approve Purchase Request - ${purchaseRequest.purchase_request_code}`}
-          onClose={onClose} 
-          showDateTime={true} 
+          onClose={onClose}
+          showDateTime={true}
         />
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -187,10 +187,10 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
               {/* Request Details */}
               <div className="formField">
                 <label>Request Details</label>
-                <div style={{ 
-                  background: '#f8f9fa', 
-                  padding: '15px', 
-                  borderRadius: '8px', 
+                <div style={{
+                  background: '#f8f9fa',
+                  padding: '15px',
+                  borderRadius: '8px',
                   marginBottom: '15px',
                   border: '1px solid #e9ecef'
                 }}>
@@ -207,7 +207,17 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
                     <strong>Reason:</strong> {purchaseRequest.reason}
                   </div>
                   <div style={{ marginBottom: '8px' }}>
-                    <strong>Original Total:</strong> {formatCurrency(purchaseRequest.total_amount)}
+                    <strong>Original Total:</strong> {(() => {
+                      let total = purchaseRequest.total_amount;
+                      if ((total === 0 || !total) && purchaseRequest.items && purchaseRequest.items.length > 0) {
+                        total = purchaseRequest.items.reduce((sum, item) => {
+                          const qty = item.quantity || 0;
+                          const cost = item.unit_cost || 0;
+                          return sum + (item.total_amount || (qty * cost));
+                        }, 0);
+                      }
+                      return formatCurrency(total);
+                    })()}
                   </div>
                   {hasAnyAdjustments() && (
                     <div style={{ marginBottom: '0', color: '#f59e0b', fontWeight: 'bold' }}>
@@ -222,12 +232,12 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
             <div className="modalContent">
               <div className="formField">
                 <label>
-                  <i className="ri-shopping-cart-line"></i> Items to Approve 
+                  <i className="ri-shopping-cart-line"></i> Items to Approve
                   <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '10px' }}>
                     (Click to adjust quantities)
                   </span>
                 </label>
-                
+
                 {purchaseRequest.items && purchaseRequest.items.length > 0 ? (
                   <div className="itemsList">
                     {purchaseRequest.items.map((item, index) => {
@@ -236,19 +246,19 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
                       const approval = itemApprovals[itemId] || { approved_quantity: item.quantity, adjustment_reason: '' };
                       const hasQuantityChanged = approval.approved_quantity !== item.quantity;
                       const isNewItem = !!item.new_item_name;
-                      
+
                       return (
                         <div key={itemId} className="modal-content" style={{ marginBottom: '16px' }}>
-                          <div className="itemCard" style={{ 
-                            border: `2px solid ${hasQuantityChanged ? '#f59e0b' : '#e5e7eb'}`, 
-                            borderRadius: '8px', 
+                          <div className="itemCard" style={{
+                            border: `2px solid ${hasQuantityChanged ? '#f59e0b' : '#e5e7eb'}`,
+                            borderRadius: '8px',
                             padding: '12px',
                             backgroundColor: hasQuantityChanged ? '#fffbeb' : 'white'
                           }}>
-                            <div 
-                              style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
                                 alignItems: 'center',
                                 cursor: 'pointer'
                               }}
@@ -282,21 +292,21 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
                                   {approval.approved_quantity} × {formatCurrency(item.unit_cost || 0)}
                                 </div>
                               </div>
-                              <i className={isExpanded ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"} 
-                                 style={{ fontSize: '20px', color: '#6b7280' }}></i>
+                              <i className={isExpanded ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}
+                                style={{ fontSize: '20px', color: '#6b7280' }}></i>
                             </div>
 
                             {isExpanded && (
-                              <div style={{ 
-                                paddingTop: '12px', 
+                              <div style={{
+                                paddingTop: '12px',
                                 marginTop: '12px',
                                 borderTop: '1px solid #e5e7eb'
                               }}>
                                 {/* Item Details Grid */}
-                                <div style={{ 
-                                  display: 'grid', 
-                                  gridTemplateColumns: 'repeat(3, 1fr)', 
-                                  gap: '12px', 
+                                <div style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(3, 1fr)',
+                                  gap: '12px',
                                   marginBottom: '12px',
                                   padding: '12px',
                                   backgroundColor: '#f9fafb',
@@ -401,101 +411,101 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
                                   <h4 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '10px', color: '#15803d' }}>
                                     <i className="ri-edit-line"></i> Approve Quantity
                                   </h4>
-                                
-                                <div style={{ display: 'grid', gridTemplateColumns: '120px 120px 1fr', gap: '12px', marginBottom: '10px' }}>
-                                  <div>
-                                    <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
-                                      Requested
-                                    </label>
-                                    <input
-                                      type="number"
-                                      value={item.quantity}
-                                      disabled
-                                      style={{
-                                        width: '100%',
+
+                                  <div style={{ display: 'grid', gridTemplateColumns: '120px 120px 1fr', gap: '12px', marginBottom: '10px' }}>
+                                    <div>
+                                      <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
+                                        Requested
+                                      </label>
+                                      <input
+                                        type="number"
+                                        value={item.quantity}
+                                        disabled
+                                        style={{
+                                          width: '100%',
+                                          padding: '6px',
+                                          borderRadius: '4px',
+                                          border: '1px solid #d1d5db',
+                                          fontSize: '13px',
+                                          backgroundColor: '#f3f4f6',
+                                          cursor: 'not-allowed'
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
+                                        Approve Qty <span style={{ color: '#dc2626' }}>*</span>
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={approval.approved_quantity}
+                                        onChange={(e) => handleItemQuantityChange(itemId, parseInt(e.target.value) || 0)}
+                                        style={{
+                                          width: '100%',
+                                          padding: '6px',
+                                          borderRadius: '4px',
+                                          border: '2px solid #16a34a',
+                                          fontSize: '13px',
+                                          fontWeight: 'bold'
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
+                                        Approved Total
+                                      </label>
+                                      <div style={{
                                         padding: '6px',
                                         borderRadius: '4px',
-                                        border: '1px solid #d1d5db',
+                                        backgroundColor: 'white',
                                         fontSize: '13px',
-                                        backgroundColor: '#f3f4f6',
-                                        cursor: 'not-allowed'
-                                      }}
-                                    />
-                                  </div>
-                                  
-                                  <div>
-                                    <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
-                                      Approve Qty <span style={{ color: '#dc2626' }}>*</span>
-                                    </label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={approval.approved_quantity}
-                                      onChange={(e) => handleItemQuantityChange(itemId, parseInt(e.target.value) || 0)}
-                                      style={{
-                                        width: '100%',
-                                        padding: '6px',
-                                        borderRadius: '4px',
-                                        border: '2px solid #16a34a',
-                                        fontSize: '13px',
-                                        fontWeight: 'bold'
-                                      }}
-                                    />
+                                        fontWeight: 'bold',
+                                        color: hasQuantityChanged ? '#f59e0b' : '#16a34a',
+                                        border: '1px solid #bbf7d0'
+                                      }}>
+                                        {formatCurrency(calculateItemTotal(item, itemId))}
+                                        {hasQuantityChanged && (
+                                          <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '5px' }}>
+                                            (was {formatCurrency(item.total_amount || 0)})
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
 
-                                  <div>
-                                    <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
-                                      Approved Total
-                                    </label>
-                                    <div style={{
-                                      padding: '6px',
-                                      borderRadius: '4px',
-                                      backgroundColor: 'white',
-                                      fontSize: '13px',
-                                      fontWeight: 'bold',
-                                      color: hasQuantityChanged ? '#f59e0b' : '#16a34a',
-                                      border: '1px solid #bbf7d0'
-                                    }}>
-                                      {formatCurrency(calculateItemTotal(item, itemId))}
-                                      {hasQuantityChanged && (
-                                        <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '5px' }}>
-                                          (was {formatCurrency(item.total_amount || 0)})
+                                  {hasQuantityChanged && (
+                                    <div>
+                                      <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
+                                        Adjustment Reason <span style={{ color: '#dc2626' }}>*Required</span>
+                                      </label>
+                                      <textarea
+                                        value={approval.adjustment_reason}
+                                        onChange={(e) => handleItemReasonChange(itemId, e.target.value)}
+                                        placeholder="Explain why the quantity is being adjusted..."
+                                        rows={2}
+                                        style={{
+                                          width: '100%',
+                                          padding: '6px',
+                                          borderRadius: '4px',
+                                          border: !approval.adjustment_reason.trim() ? '2px solid #dc2626' : '1px solid #bbf7d0',
+                                          fontSize: '12px',
+                                          fontFamily: 'inherit',
+                                          backgroundColor: 'white'
+                                        }}
+                                      />
+                                      {!approval.adjustment_reason.trim() && (
+                                        <span style={{ fontSize: '10px', color: '#dc2626', marginTop: '3px', display: 'block' }}>
+                                          <i className="ri-error-warning-line"></i> Reason required when adjusting quantity
                                         </span>
                                       )}
                                     </div>
-                                  </div>
+                                  )}
                                 </div>
-
-                                {hasQuantityChanged && (
-                                  <div>
-                                    <label style={{ fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '4px' }}>
-                                      Adjustment Reason <span style={{ color: '#dc2626' }}>*Required</span>
-                                    </label>
-                                    <textarea
-                                      value={approval.adjustment_reason}
-                                      onChange={(e) => handleItemReasonChange(itemId, e.target.value)}
-                                      placeholder="Explain why the quantity is being adjusted..."
-                                      rows={2}
-                                      style={{
-                                        width: '100%',
-                                        padding: '6px',
-                                        borderRadius: '4px',
-                                        border: !approval.adjustment_reason.trim() ? '2px solid #dc2626' : '1px solid #bbf7d0',
-                                        fontSize: '12px',
-                                        fontFamily: 'inherit',
-                                        backgroundColor: 'white'
-                                      }}
-                                    />
-                                    {!approval.adjustment_reason.trim() && (
-                                      <span style={{ fontSize: '10px', color: '#dc2626', marginTop: '3px', display: 'block' }}>
-                                        <i className="ri-error-warning-line"></i> Reason required when adjusting quantity
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
                               </div>
-                            </div>
-                          )}
+                            )}
                           </div>
                         </div>
                       );
@@ -529,11 +539,11 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
               </div>
 
               {/* Confirmation Message */}
-              <div style={{ 
-                background: '#d4edda', 
-                border: '1px solid #c3e6cb', 
-                borderRadius: '8px', 
-                padding: '12px', 
+              <div style={{
+                background: '#d4edda',
+                border: '1px solid #c3e6cb',
+                borderRadius: '8px',
+                padding: '12px',
                 marginTop: '10px',
                 color: '#155724'
               }}>
@@ -544,27 +554,27 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({ purchaseRequest, onApprov
           </div>
 
           <div className="modalButtons">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="cancelButton"
               onClick={onClose}
               disabled={isSubmitting}
             >
               <i className="ri-close-line"></i>Cancel
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="addButton"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
-                  <i className="ri-loader-line" style={{ animation: 'spin 1s linear infinite' }}></i> 
+                  <i className="ri-loader-line" style={{ animation: 'spin 1s linear infinite' }}></i>
                   Approving...
                 </>
               ) : (
                 <>
-                  <i className="ri-check-line"></i> 
+                  <i className="ri-check-line"></i>
                   Approve Request
                 </>
               )}
