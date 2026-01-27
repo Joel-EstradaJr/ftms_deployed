@@ -144,7 +144,18 @@ export interface BudgetRequestListResponse {
  * Fetch all budget requests with optional filters
  */
 export async function fetchBudgetRequests(filters?: BudgetRequestFilters): Promise<BudgetRequest[]> {
-    const response = await api.get<BudgetRequestListResponse>('/api/finance/budget-requests', filters);
+    const apiFilters = { ...filters };
+
+    if (apiFilters.status) {
+        const upper = apiFilters.status.toUpperCase();
+        apiFilters.status = upper === 'COMPLETED' ? 'CLOSED' : upper;
+    }
+
+    if (apiFilters.request_type) {
+        apiFilters.request_type = apiFilters.request_type.toUpperCase();
+    }
+
+    const response = await api.get<BudgetRequestListResponse>('/api/finance/budget-requests', apiFilters);
 
     if (!response.success || !response.data) {
         throw new Error('Failed to fetch budget requests');

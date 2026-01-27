@@ -399,7 +399,7 @@ export default function BudgetApprovalTab({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filteredData.length > 0 && (
         <PaginationComponent
           currentPage={currentPage}
           totalPages={totalPages}

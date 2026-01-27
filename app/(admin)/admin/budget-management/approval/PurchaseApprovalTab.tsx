@@ -21,7 +21,7 @@ import type { PurchaseRequestApproval } from "../../../../types/purchaseRequestA
 import ViewPurchaseRequest from "../../budget-management/purchase-request-approval/viewPurchaseRequestNew";
 import AuditTrailPurchaseRequest from "../../budget-management/purchase-request-approval/auditTrailPurchaseRequest";
 import ApprovalModal from "../../budget-management/purchase-request-approval/approvalModal";
-import RejectionModal from "../../budget-management/purchase-request-approval/rejectionModal";
+import RejectionModal from "../../budget-management/purchase-request-approval/rejectionModal"
 import ProcessRefundModal from "../../budget-management/purchase-request-approval/processRefundModal";
 import TrackStatusPurchaseRequest from "../../budget-management/purchase-request-approval/trackStatusPurchaseRequest";
 //import PurchaseApprovalModal from "./PurchaseApprovalModal";
@@ -1138,7 +1138,7 @@ export default function PurchaseApprovalTab({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filteredData.length > 0 && (
         <PaginationComponent
           currentPage={currentPage}
           totalPages={totalPages}
