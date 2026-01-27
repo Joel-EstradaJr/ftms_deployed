@@ -207,48 +207,46 @@ export default function BudgetApprovalTab({
 
   // Handle approve from modal - calls API and updates state
   const handleApprove = async (request: BudgetRequest) => {
-    try {
-      const { approveBudgetRequest } = await import('../../../../lib/budgetRequestApi');
-      const updatedRequest = await approveBudgetRequest(
-        request.request_id,
-        { approved_amount: request.approved_amount }
-      );
+    // Note: Logging for debugging state update issues
+    console.log('Handling approval for:', request.request_id, request.id);
 
-      // Update local state with the response
-      setData(prevData =>
-        prevData.map(item =>
-          item.request_id === request.request_id
-            ? updatedRequest
-            : item
-        )
+    // We let errors bubble up to the modal
+    const { approveBudgetRequest } = await import('../../../../lib/budgetRequestApi');
+    const updatedRequest = await approveBudgetRequest(
+      request.id!,
+      { approved_amount: request.approved_amount }
+    );
+
+    console.log('Approval success, updated request:', updatedRequest);
+
+    // Update local state with the response
+    setData(prevData => {
+      const newData = prevData.map(item =>
+        item.request_id === request.request_id
+          ? updatedRequest
+          : item
       );
-    } catch (error: any) {
-      console.error('Failed to approve budget request:', error);
-      showError(error.message || 'Failed to approve budget request', 'Approval Failed');
-    }
+      return newData;
+    });
   };
 
   // Handle reject from modal - calls API and updates state
   const handleReject = async (request: BudgetRequest, reason: string) => {
-    try {
-      const { rejectBudgetRequest } = await import('../../../../lib/budgetRequestApi');
-      const updatedRequest = await rejectBudgetRequest(
-        request.request_id,
-        { rejection_reason: reason }
-      );
+    // We let errors bubble up to the modal
+    const { rejectBudgetRequest } = await import('../../../../lib/budgetRequestApi');
+    const updatedRequest = await rejectBudgetRequest(
+      request.id!,
+      { rejection_reason: reason }
+    );
 
-      // Update local state with the response
-      setData(prevData =>
-        prevData.map(item =>
-          item.request_id === request.request_id
-            ? updatedRequest
-            : item
-        )
-      );
-    } catch (error: any) {
-      console.error('Failed to reject budget request:', error);
-      showError(error.message || 'Failed to reject budget request', 'Rejection Failed');
-    }
+    // Update local state with the response
+    setData(prevData =>
+      prevData.map(item =>
+        item.request_id === request.request_id
+          ? updatedRequest
+          : item
+      )
+    );
   };
 
   // Handle export

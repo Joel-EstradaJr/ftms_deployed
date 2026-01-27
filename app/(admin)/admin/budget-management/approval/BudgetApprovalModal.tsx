@@ -12,8 +12,8 @@ import '../../../../styles/components/table.css';
 interface BudgetApprovalModalProps {
   request: BudgetRequest;
   onClose: () => void;
-  onApprove: (request: BudgetRequest) => void;
-  onReject: (request: BudgetRequest, reason: string) => void;
+  onApprove: (request: BudgetRequest) => Promise<void>;
+  onReject: (request: BudgetRequest, reason: string) => Promise<void>;
 }
 
 export default function BudgetApprovalModal({
@@ -65,11 +65,12 @@ export default function BudgetApprovalModal({
     if (result.isConfirmed) {
       setIsProcessing(true);
       try {
-        onApprove({ ...request, approved_amount: amount });
+        await onApprove({ ...request, approved_amount: amount });
         showSuccess("Budget request has been approved successfully.", "Request Approved");
         onClose();
-      } catch (error) {
-        showError("Failed to approve budget request.", "Approval Failed");
+      } catch (error: any) {
+        console.error("Approval error in modal:", error);
+        showError(error.message || "Failed to approve budget request.", "Approval Failed");
       } finally {
         setIsProcessing(false);
       }
@@ -90,11 +91,12 @@ export default function BudgetApprovalModal({
     if (result.isConfirmed) {
       setIsProcessing(true);
       try {
-        onReject(request, rejectionReason);
+        await onReject(request, rejectionReason);
         showSuccess("Budget request has been rejected.", "Request Rejected");
         onClose();
-      } catch (error) {
-        showError("Failed to reject budget request.", "Rejection Failed");
+      } catch (error: any) {
+        console.error("Rejection error in modal:", error);
+        showError(error.message || "Failed to reject budget request.", "Rejection Failed");
       } finally {
         setIsProcessing(false);
       }
@@ -144,11 +146,10 @@ export default function BudgetApprovalModal({
                 <div className="displayField displayFieldHalf">
                   <label>Request Type</label>
                   <div className="displayValue">
-                    <span className={`chip ${
-                      request.requested_type === 'Emergency' ? 'emergency' : 
-                      request.requested_type === 'Urgent' ? 'urgent' : 
-                      'regular'
-                    }`}>
+                    <span className={`chip ${request.requested_type === 'Emergency' ? 'emergency' :
+                        request.requested_type === 'Urgent' ? 'urgent' :
+                          'regular'
+                      }`}>
                       {request.requested_type}
                     </span>
                   </div>
@@ -182,7 +183,7 @@ export default function BudgetApprovalModal({
                   <div className="sectionHeader">Budget Items ({request.items.length})</div>
                   <ItemTableModal
                     isOpen={true}
-                    onClose={() => {}}
+                    onClose={() => { }}
                     mode="view"
                     title="Budget Items"
                     items={mapItemsToTableFormat(request.items)}
@@ -224,7 +225,7 @@ export default function BudgetApprovalModal({
             // Approval confirmation
             <>
               <div className="sectionTitle">Confirm Approval</div>
-              
+
               <div className="formFieldsHorizontal">
                 <div className="formField">
                   <label>Requested Amount</label>

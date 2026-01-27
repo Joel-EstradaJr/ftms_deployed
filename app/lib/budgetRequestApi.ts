@@ -88,7 +88,9 @@ export function transformBudgetRequest(data: MicroserviceBudgetRequest): BudgetR
         subtotal: Number(item.requested_amount),
     })) || [];
 
+
     return {
+        id: data.id,
         request_id: data.request_code,
         request_code: data.request_code,
         title: data.purpose?.split('\n')[0] || `Budget Request ${data.request_code}`,
