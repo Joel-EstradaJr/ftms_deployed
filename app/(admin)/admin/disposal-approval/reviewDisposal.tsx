@@ -74,9 +74,6 @@ interface DisposalRecord {
     manufacturer?: {
       manufacturer_name: string;
     };
-    body_builder?: {
-      body_builder_name: string;
-    };
     chassis_number: string;
     engine_number: string;
     seat_capacity: number;
@@ -416,7 +413,6 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Body Builder</label>
-                  <p>{disposal.bus.body_builder?.body_builder_name}</p>
                 </div>
 
                 <div className="form-group">

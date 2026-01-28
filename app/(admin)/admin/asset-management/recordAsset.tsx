@@ -51,7 +51,6 @@ interface BusInventoryData {
   model: string;
   year_model: string;
   warranty_expiration_date: string;
-  body_builder: string;
   manufacturer: string;
   dealer_name: string;
   dealer_contact: string;
@@ -275,7 +274,6 @@ export default function RecordAssetModal({
       model: bus.model,
       year_model: bus.year_model,
       warranty_expiration_date: bus.warranty_expiration_date,
-      body_builder: bus.body_builder.body_builder_name,
       manufacturer: bus.manufacturer.manufacturer_name,
       dealer_name: bus.brand_new_details?.dealer_name || 'N/A',
       dealer_contact: bus.brand_new_details?.dealer_contact || 'N/A',
@@ -945,7 +943,6 @@ export default function RecordAssetModal({
                 </div>
                 <div className="form-group">
                   <label>Body Builder</label>
-                  <input type="text" value={busData.body_builder} disabled className="disabled-field" />
                 </div>
               </div>
 

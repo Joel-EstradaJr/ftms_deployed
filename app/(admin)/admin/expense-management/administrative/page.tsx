@@ -333,7 +333,7 @@ const AdministrativeExpensePage: React.FC = () => {
 
       // Simulate filtering on sample data from allExpenses (or initialize if empty)
       const baseData = allExpenses.length > 0 ? allExpenses : sampleAdministrativeExpenses;
-      
+
       // Update allExpenses if this is first load
       if (allExpenses.length === 0) {
         setAllExpenses(sampleAdministrativeExpenses);
@@ -568,13 +568,13 @@ const AdministrativeExpensePage: React.FC = () => {
         isPastDue: false,
         isEditable: false
       };
-      
+
       // Create a temporary expense object with schedule for payment modal
       const expenseWithSchedule = {
         ...expense,
         scheduleItems: [singleInstallment]
       };
-      
+
       openPaymentModal(singleInstallment, expenseWithSchedule);
     }
   };
@@ -595,20 +595,20 @@ const AdministrativeExpensePage: React.FC = () => {
       try {
         // TODO: Replace with actual API call
         // await fetch(`/api/admin/expenses/administrative/${expense.id}/post-to-jev`, { method: 'POST' });
-        
+
         // Update both allExpenses and expenses state to mark as POSTED
-        setAllExpenses(prev => prev.map(exp => 
-          exp.id === expense.id 
-            ? { ...exp, status: 'POSTED' } 
+        setAllExpenses(prev => prev.map(exp =>
+          exp.id === expense.id
+            ? { ...exp, status: 'POSTED' }
             : exp
         ));
-        
-        setExpenses(prev => prev.map(exp => 
-          exp.id === expense.id 
-            ? { ...exp, status: 'POSTED' } 
+
+        setExpenses(prev => prev.map(exp =>
+          exp.id === expense.id
+            ? { ...exp, status: 'POSTED' }
             : exp
         ));
-        
+
         showSuccess('Success', 'Expense has been posted to JEV successfully.');
       } catch (error) {
         console.error('Error posting to JEV:', error);
@@ -659,13 +659,13 @@ const AdministrativeExpensePage: React.FC = () => {
   }));
 
   if (loading) {
-      return (
-        <div className="card">
-          <h1 className="title">Administrative Expenses</h1>
-          <Loading />
-        </div>
-      );
-    }
+    return (
+      <div className="card">
+        <h1 className="title">Administrative Expenses</h1>
+        <Loading />
+      </div>
+    );
+  }
   if (error) return <ErrorDisplay errorCode={error} onRetry={() => { setError(null); fetchData(); }} />;
 
   return (
@@ -715,7 +715,7 @@ const AdministrativeExpensePage: React.FC = () => {
               filename="administrative-expenses"
               title="Administrative Expenses Report"
             />
-            <button 
+            <button
               className="addButton"
               onClick={handleAdd}
             >
@@ -796,22 +796,22 @@ const AdministrativeExpensePage: React.FC = () => {
                             <i className="ri-pencil-line"></i>
                           </button>
                           {/* Payment button - show for PENDING or PARTIALLY_PAID expenses, disable when POSTED */}
-                          {expense.paymentStatus && 
-                           (expense.paymentStatus === PaymentStatus.PENDING || 
-                            expense.paymentStatus === PaymentStatus.PARTIALLY_PAID) && (
-                            <button
-                              className="payBtn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRecordPayment(expense);
-                              }}
-                              title="Record Payment"
-                              disabled={expense.status === 'POSTED'}
-                              style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                            >
-                              <i className="ri-money-dollar-circle-line"></i>
-                            </button>
-                          )}
+                          {expense.paymentStatus &&
+                            (expense.paymentStatus === PaymentStatus.PENDING ||
+                              expense.paymentStatus === PaymentStatus.PARTIALLY_PAID) && (
+                              <button
+                                className="payBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRecordPayment(expense);
+                                }}
+                                title="Record Payment"
+                                disabled={expense.status === 'POSTED'}
+                                style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                              >
+                                <i className="ri-money-dollar-circle-line"></i>
+                              </button>
+                            )}
                           {/* Post to JEV button - show for PAID expenses */}
                           {expense.paymentStatus === PaymentStatus.PAID && expense.status !== 'POSTED' && (
                             <button
@@ -840,7 +840,7 @@ const AdministrativeExpensePage: React.FC = () => {
           totalPages={Math.ceil(totalCount / pageSize)}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={() => {}}
+          onPageSizeChange={() => { }}
         />
       </div>
 

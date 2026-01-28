@@ -81,9 +81,6 @@ interface DisposalRecord {
     manufacturer?: {
       manufacturer_name: string;
     };
-    body_builder?: {
-      body_builder_name: string;
-    };
     chassis_number: string;
     engine_number: string;
     seat_capacity: number;
@@ -226,12 +223,7 @@ const MOCK_DISPOSAL_DATA: DisposalRecord[] = [
       manufacturer: {
         manufacturer_name: 'Mitsubishi Fuso Truck and Bus Corporation'
       },
-      
-      // Nested body builder details
-      body_builder: {
-        body_builder_name: 'Santarosa Motor Works Inc.'
-      },
-      
+            
       chassis_number: 'MHFFE8B00FK123456',
       engine_number: '4P10-T123456',
       seat_capacity: 29,
@@ -276,11 +268,6 @@ const MOCK_DISPOSAL_DATA: DisposalRecord[] = [
       // Nested manufacturer details
       manufacturer: {
         manufacturer_name: 'Isuzu Motors Limited'
-      },
-      
-      // Nested body builder details
-      body_builder: {
-        body_builder_name: 'Centro Manufacturing Corporation'
       },
       
       chassis_number: 'JALC4B16007123789',

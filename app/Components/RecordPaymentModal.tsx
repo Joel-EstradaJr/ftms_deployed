@@ -64,17 +64,29 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   };
 
   const [paymentDate, setPaymentDate] = useState<string>(getLocalDateInputValue());
-  const [paymentMethodId, setPaymentMethodId] = useState<number>(0);
+  const [paymentMethodCode, setPaymentMethodCode] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  // Filter payment methods to only Cash and Online Payment for revenue
-  const filteredPaymentMethods = entityType === 'revenue' 
-    ? paymentMethods.filter(method => {
-        const name = method.methodName.toLowerCase().trim();
-        return name === 'cash' || name === 'online payment';
-      })
-    : paymentMethods;
+  // Default payment methods matching Prisma payment_method enum
+  const DEFAULT_PAYMENT_METHODS = [
+    { id: 1, methodName: 'Cash', methodCode: 'CASH' },
+    { id: 2, methodName: 'Bank Transfer', methodCode: 'BANK_TRANSFER' },
+    { id: 3, methodName: 'E-Wallet', methodCode: 'E_WALLET' },
+    { id: 4, methodName: 'Reimbursement', methodCode: 'REIMBURSEMENT' },
+  ];
+
+  // Use passed payment methods or defaults if empty
+  const availablePaymentMethods = paymentMethods.length > 0 ? paymentMethods : DEFAULT_PAYMENT_METHODS;
+
+  // Filter payment methods based on entity type
+  const filteredPaymentMethods = (entityType === 'revenue' || entityType === 'receivable')
+    ? availablePaymentMethods.filter(method => {
+      const code = method.methodCode.toUpperCase();
+      // For receivables, allow Cash, Bank Transfer, and E-Wallet
+      return code === 'CASH' || code === 'BANK_TRANSFER' || code === 'E_WALLET';
+    })
+    : availablePaymentMethods;
 
   const currentIndex = scheduleItems.findIndex(item => item.id === selectedInstallment.id);
   const currentBalance = (selectedInstallment.currentDueAmount + selectedInstallment.carriedOverAmount) - selectedInstallment.paidAmount;
@@ -113,7 +125,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       return;
     }
 
-    if (paymentMethodId === 0) {
+    if (!paymentMethodCode) {
       showError('Please select a payment method', 'Validation Error');
       return;
     }
@@ -127,7 +139,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       title: 'Confirm Payment',
       html: `
         <div style="text-align: left; margin-bottom: 20px;">
-          <p><strong>${entityType === 'expense' ? 'Expense Ref' : 'Revenue Code'}:</strong> ${recordRef || recordId}</p>
+          <p><strong>${entityType === 'expense' ? 'Expense Ref' : 'Receivable Ref'}:</strong> ${recordRef || recordId}</p>
           <p><strong>Installment:</strong> #${selectedInstallment.installmentNumber}</p>
           <p><strong>Amount to Pay:</strong> ${formatMoney(amountToPay)}</p>
           ${isOverflow ? `<p style="color: #FF8C00;"><strong>⚠️ Will cascade to ${affectedCount} installment(s)</strong></p>` : ''}
@@ -153,7 +165,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     setIsProcessing(true);
 
     try {
-      const selectedMethod = paymentMethods.find(m => m.id === paymentMethodId);
+      const selectedMethod = filteredPaymentMethods.find(m => m.methodCode === paymentMethodCode);
       const paymentData: PaymentRecordData = {
         recordId,
         recordRef,
@@ -162,7 +174,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
         installmentNumber: selectedInstallment.installmentNumber,
         amountToPay,
         paymentDate,
-        paymentMethodId,
+        paymentMethodId: selectedMethod?.id || 0,
+        paymentMethodCode: paymentMethodCode,
         paymentMethod: selectedMethod?.methodName || '',
         recordedBy: currentUser,
         cascadeBreakdown: cascadePreview?.affectedInstallments.map((affected: any) => ({
@@ -215,15 +228,19 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <div className="modal-content add">
               <div className="add-form">
                 <div style={{ padding: '12px', border: '2px solid var(--primary-color)', borderRadius: '6px', marginBottom: '15px' }}>
-                  {entityType === 'revenue' ? (
+                  {(entityType === 'revenue' || entityType === 'receivable') ? (
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span><strong>Employee ID:</strong></span>
                         <span>{employeeNumber || 'N/A'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span><strong>Driver Name:</strong></span>
+                        <span><strong>Employee Name:</strong></span>
                         <span>{employeeName || 'N/A'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span><strong>Receivable Ref:</strong></span>
+                        <span>{recordRef || recordId}</span>
                       </div>
                     </>
                   ) : (
@@ -284,9 +301,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 <div className="form-row">
                   <div className="form-group">
                     <label>Payment Method<span className="requiredTags"> *</span></label>
-                    <select value={paymentMethodId} onChange={(e) => setPaymentMethodId(parseInt(e.target.value) || 0)} required disabled={isProcessing}>
-                      <option value={0}>Select Payment Method</option>
-                      {filteredPaymentMethods.map(method => (<option key={method.id} value={method.id}>{method.methodName}</option>))}
+                    <select value={paymentMethodCode} onChange={(e) => setPaymentMethodCode(e.target.value)} required disabled={isProcessing}>
+                      <option value="">Select Payment Method</option>
+                      {filteredPaymentMethods.map(method => (<option key={method.methodCode} value={method.methodCode}>{method.methodName}</option>))}
                     </select>
                   </div>
                 </div>
@@ -316,7 +333,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                         const isAffected = cascadePreview?.affectedInstallments.some((a: any) => a.scheduleItemId === item.id);
 
                         return (
-                          <tr 
+                          <tr
                             key={item.id || index}
                             style={{
                               backgroundColor: isAffected ? '#FFF9E6' : 'transparent',
@@ -327,7 +344,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                             <td>{formatMoney(item.currentDueAmount)}</td>
                             <td>{formatMoney(item.paidAmount)}</td>
                             <td>
-                              <span style={{ 
+                              <span style={{
                                 color: balance > 0 ? '#FF4949' : '#4CAF50',
                                 fontWeight: '600'
                               }}>
@@ -378,7 +395,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           <button
             type="submit"
             className="submit-btn"
-            disabled={isProcessing || amountToPay <= 0 || paymentMethodId === 0 || !!paymentError}
+            disabled={isProcessing || amountToPay <= 0 || !paymentMethodCode || !!paymentError}
           >
             {isProcessing ? (
               <>

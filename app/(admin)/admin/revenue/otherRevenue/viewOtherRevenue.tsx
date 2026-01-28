@@ -25,7 +25,7 @@ const OTHER_REVENUE_CATEGORIES_MAP: { [key: string]: string } = {
 };
 
 export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPayment }: ViewOtherRevenueModalProps) {
-  
+
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
 
   // Calculate net amount after discount
@@ -82,10 +82,10 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
   const scheduleStats = revenueData.isUnearnedRevenue ? getScheduleStats() : null;
 
   // Check if there are any pending or overdue payments
-  const hasPendingPayments = scheduleStats && 
-    revenueData.scheduleItems && 
-    revenueData.scheduleItems.some((item: RevenueScheduleItem) => 
-      item.paymentStatus === PaymentStatus.PENDING || 
+  const hasPendingPayments = scheduleStats &&
+    revenueData.scheduleItems &&
+    revenueData.scheduleItems.some((item: RevenueScheduleItem) =>
+      item.paymentStatus === PaymentStatus.PENDING ||
       item.paymentStatus === PaymentStatus.OVERDUE ||
       item.paymentStatus === PaymentStatus.PARTIALLY_PAID
     );
@@ -259,16 +259,16 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
                 onClick={() => {
                   // Find first unpaid installment
                   const firstUnpaid = revenueData.scheduleItems?.find(
-                    item => item.paymentStatus === PaymentStatus.OVERDUE || 
-                            item.paymentStatus === PaymentStatus.PARTIALLY_PAID || 
-                            item.paymentStatus === PaymentStatus.PENDING
+                    item => item.paymentStatus === PaymentStatus.OVERDUE ||
+                      item.paymentStatus === PaymentStatus.PARTIALLY_PAID ||
+                      item.paymentStatus === PaymentStatus.PENDING
                   );
                   if (firstUnpaid && onRecordPayment) {
                     onRecordPayment(firstUnpaid);
                   }
                 }}
-                style={{ 
-                  fontSize: '0.85rem', 
+                style={{
+                  fontSize: '0.85rem',
                   padding: '0.5rem 1rem',
                   background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)'
                 }}

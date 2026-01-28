@@ -214,7 +214,6 @@ export default function AssetManagementPage() {
         model: 'Yutong ZK6127H',
         year_model: '2020',
         warranty_expiration_date: '2025-12-31',
-        body_builder: 'Yutong',
         manufacturer: 'Yutong Bus Co.',
         dealer_name: 'ABC Motors',
         dealer_contact: '+63 912 345 6789',

@@ -88,8 +88,113 @@ interface EmployeeInstallments {
   installments: RevenueScheduleItem[];
 }
 
+// API Response interface for edit mode (from GET /api/admin/revenue/:id)
+interface RevenueDetailResponse {
+  id: number;
+  code: string;
+  assignment_id: string;
+  bus_trip_id: string;
+  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+
+  bus_details: {
+    date_assigned: string | null;
+    body_number: string | null;
+    license_plate: string | null;
+    bus_type: string | null;
+    route: string | null;
+    assignment_type: string | null;
+    assignment_value: number | null;
+    payment_method: string | null;
+    trip_revenue: number;
+    trip_fuel_expense: number;
+    company_share_amount: number;
+  };
+
+  employees: {
+    driver: {
+      employee_number: string;
+      name: string;
+    } | null;
+    conductor: {
+      employee_number: string;
+      name: string;
+    } | null;
+  };
+
+  remittance: {
+    date_recorded: string | null;
+    date_expected: string | null;
+    expected_remittance: number;
+    amount_remitted: number;
+    shortage: number;
+    description: string | null;
+  };
+
+  shortage_details?: {
+    driver_share: number;
+    conductor_share: number;
+    receivable_due_date: string | null;
+    driver_receivable: {
+      id: number;
+      code: string;
+      debtor_name: string;
+      employee_number: string | null;
+      total_amount: number;
+      paid_amount: number;
+      balance: number;
+      status: string;
+      due_date: string | null;
+      frequency: string;
+      number_of_payments: number | null;
+      installment_schedules: Array<{
+        id: number;
+        installment_number: number;
+        due_date: string;
+        amount_due: number;
+        amount_paid: number;
+        balance: number;
+        status: string;
+      }>;
+    } | null;
+    conductor_receivable: {
+      id: number;
+      code: string;
+      debtor_name: string;
+      employee_number: string | null;
+      total_amount: number;
+      paid_amount: number;
+      balance: number;
+      status: string;
+      due_date: string | null;
+      frequency: string;
+      number_of_payments: number | null;
+      installment_schedules: Array<{
+        id: number;
+        installment_number: number;
+        due_date: string;
+        amount_due: number;
+        amount_paid: number;
+        balance: number;
+        status: string;
+      }>;
+    } | null;
+  };
+
+  journal_entry?: {
+    id: number;
+    code: string;
+    status: string;
+  };
+
+  created_by: string | null;
+  created_at: string;
+  updated_by: string | null;
+  updated_at: string | null;
+}
+
 interface RecordTripRevenueModalProps {
   mode: "add" | "edit";
+  revenueId?: number; // Required for edit mode to fetch detailed data
   tripData: {
     // Primary fields from Operations table
     assignment_id: string;
@@ -100,7 +205,7 @@ interface RecordTripRevenueModalProps {
     trip_revenue: number;
     assignment_type: string; // 'Percentage' or 'Boundary'
     assignment_value: number; // quota if Boundary, company share% if Percentage
-    payment_method: string; // 'Company Cash' or 'Reimbursement'
+    payment_method?: string; // 'Company Cash' or 'Reimbursement'
     
     // Employee details (from Human Resource table)
     employee_id: string;
@@ -115,13 +220,12 @@ interface RecordTripRevenueModalProps {
     bus_plate_number: string;
     bus_type: string; // 'Airconditioned' or 'Ordinary'
     body_number: string;
-    body_builder: string; // 'Hilltop', 'Agila', 'DARJ'
     
     // Status tracking (from Model Revenue table) - only for edit mode
     date_recorded?: string | null;
     date_expected?: string | null;
     amount?: number | null;
-    status?: string; // 'remitted', 'pending', or 'receivable'
+    remittance_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
     remarks?: string | null;
     
     // Shortage/Receivable details
@@ -208,7 +312,12 @@ const MINIMUM_WAGE_DEFAULT = 600;
 const DEFAULT_CONDUCTOR_SHARE = 50; // 50%
 const DEFAULT_DRIVER_SHARE = 50; // 50%
 
-export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose, config }: RecordTripRevenueModalProps) {
+export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSave, onClose, config }: RecordTripRevenueModalProps) {
+  // Loading and error states for edit mode data fetching
+  const [isLoadingEditData, setIsLoadingEditData] = useState(mode === 'edit');
+  const [editDataError, setEditDataError] = useState<string | null>(null);
+  const [fetchedData, setFetchedData] = useState<RevenueDetailResponse | null>(null);
+
   // Get config values with fallbacks to defaults
   const MINIMUM_WAGE = config?.minimum_wage ?? MINIMUM_WAGE_DEFAULT;
   const CONDUCTOR_SHARE_PERCENT = config?.conductor_share ?? DEFAULT_CONDUCTOR_SHARE;
@@ -217,8 +326,43 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
   const DEFAULT_NUMBER_OF_PAYMENTS = config?.default_number_of_payments ?? 3;
   const RECEIVABLE_DUE_DAYS = config?.receivable_due_date ?? 30;
 
+  // Fetch detailed data for edit mode
+  useEffect(() => {
+    const fetchEditData = async () => {
+      // Use revenueId from props, or fallback to tripData.revenue_id if available
+      const idToFetch = revenueId || (tripData as any).revenue_id;
+      
+      if (mode === 'edit' && idToFetch) {
+        setIsLoadingEditData(true);
+        setEditDataError(null);
+        
+        try {
+          const response = await fetch(`/api/admin/revenue/${idToFetch}`);
+          const result = await response.json();
+          
+          if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Failed to fetch revenue details');
+          }
+          
+          setFetchedData(result.data);
+        } catch (err) {
+          console.error('[RecordTripRevenue] Error fetching edit data:', err);
+          setEditDataError(err instanceof Error ? err.message : 'Failed to load revenue data');
+        } finally {
+          setIsLoadingEditData(false);
+        }
+      }
+    };
+    
+    fetchEditData();
+  }, [mode, revenueId, tripData]);
+
   // Helper function to check if there's a conductor
   const hasConductor = (): boolean => {
+    // Check fetched data first for edit mode
+    if (fetchedData?.employees?.conductor) {
+      return true;
+    }
     return !!(tripData.conductorId && tripData.conductorFirstName);
   };
 
@@ -362,6 +506,83 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
 
   const [showReceivableBreakdown, setShowReceivableBreakdown] = useState(false);
 
+  // Update form data when fetched data is loaded in edit mode
+  useEffect(() => {
+    if (mode === 'edit' && fetchedData) {
+      const data = fetchedData;
+      
+      // Map API installment data to RevenueScheduleItem format
+      const mapInstallments = (installments: any[] | undefined): RevenueScheduleItem[] => {
+        if (!installments || installments.length === 0) return [];
+        
+        return installments.map((inst: any) => ({
+          id: inst.id.toString(),
+          installmentNumber: inst.installment_number,
+          originalDueDate: inst.due_date ? new Date(inst.due_date).toISOString().split('T')[0] : '',
+          currentDueDate: inst.due_date ? new Date(inst.due_date).toISOString().split('T')[0] : '',
+          originalDueAmount: inst.amount_due,
+          currentDueAmount: inst.amount_due,
+          paidAmount: inst.amount_paid,
+          carriedOverAmount: 0,
+          paymentStatus: inst.status === 'PAID' ? PaymentStatus.PAID 
+            : inst.status === 'PARTIAL' ? PaymentStatus.PARTIAL 
+            : PaymentStatus.PENDING,
+          isPastDue: new Date(inst.due_date) < new Date(),
+          isEditable: inst.status !== 'PAID'
+        }));
+      };
+      
+      // Get frequency from driver or conductor receivable
+      const driverFrequency = data.shortage_details?.driver_receivable?.frequency;
+      const conductorFrequency = data.shortage_details?.conductor_receivable?.frequency;
+      const frequency = driverFrequency || conductorFrequency || config?.default_frequency || 'WEEKLY';
+      
+      // Get number of payments from driver or conductor receivable
+      const driverNumPayments = data.shortage_details?.driver_receivable?.number_of_payments;
+      const conductorNumPayments = data.shortage_details?.conductor_receivable?.number_of_payments;
+      const numberOfPayments = driverNumPayments || conductorNumPayments || config?.default_number_of_payments || 3;
+      
+      // Get receivable due date
+      const receivableDueDate = data.shortage_details?.receivable_due_date
+        ? new Date(data.shortage_details.receivable_due_date).toISOString().split('T')[0]
+        : data.shortage_details?.driver_receivable?.due_date
+          ? new Date(data.shortage_details.driver_receivable.due_date).toISOString().split('T')[0]
+          : '';
+      
+      // Get start date from first installment if available
+      const firstDriverInstallment = data.shortage_details?.driver_receivable?.installment_schedules?.[0];
+      const startDate = firstDriverInstallment?.due_date
+        ? new Date(firstDriverInstallment.due_date).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      
+      setFormData(prev => ({
+        ...prev,
+        dateRecorded: data.remittance.date_recorded 
+          ? new Date(data.remittance.date_recorded).toISOString().split('T')[0] 
+          : new Date().toISOString().split('T')[0],
+        amount: data.remittance.amount_remitted || 0,
+        remarks: data.remittance.description || '',
+        remittanceDueDate: data.remittance.date_expected 
+          ? new Date(data.remittance.date_expected).toISOString().split('T')[0] 
+          : '',
+        receivableAmount: data.remittance.shortage || 0,
+        driverShare: data.shortage_details?.driver_share || 0,
+        conductorShare: data.shortage_details?.conductor_share || 0,
+        receivableDueDate: receivableDueDate,
+        frequency: frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM',
+        numberOfPayments: numberOfPayments,
+        startDate: startDate,
+        driverInstallments: mapInstallments(data.shortage_details?.driver_receivable?.installment_schedules),
+        conductorInstallments: mapInstallments(data.shortage_details?.conductor_receivable?.installment_schedules),
+      }));
+      
+      // Show receivable breakdown if there are receivables
+      if (data.shortage_details && data.remittance.shortage > 0) {
+        setShowReceivableBreakdown(true);
+      }
+    }
+  }, [mode, fetchedData, config]);
+
   const [formErrors, setFormErrors] = useState<FormErrors>({
     dateRecorded: '',
     amount: '',
@@ -426,6 +647,11 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
 
   // Calculate total receivable amount (what driver and conductor owe together)
   const calculateReceivableAmount = (remittedAmount: number): number => {
+    // Use fetched data for edit mode if available
+    if (fetchedData) {
+      return Math.max(0, fetchedData.remittance.expected_remittance - remittedAmount);
+    }
+    
     if (tripData.assignment_type === 'Boundary') {
       // Expected remittance = Boundary/Quota + Fuel
       const expectedRemittance = tripData.assignment_value + tripData.trip_fuel_expense;
@@ -580,6 +806,11 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
 
   // Calculate expected remittance amount
   const calculateExpectedRemittance = (): number => {
+    // Use fetched data for edit mode if available
+    if (fetchedData) {
+      return fetchedData.remittance.expected_remittance;
+    }
+    
     if (tripData.assignment_type === 'Boundary') {
       // Expected remittance = Boundary/Quota + Fuel
       return tripData.assignment_value + tripData.trip_fuel_expense;
@@ -595,9 +826,9 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     const status = calculateRemittanceStatus();
     const expectedRemittance = calculateExpectedRemittance();
     
-    // In edit mode: if original status was receivable but now status is PENDING (due date changed to future)
+    // In edit mode: if original status was PARTIALLY_PAID but now status is PENDING (due date changed to future)
     // Don't show receivable section - it will be deleted on save
-    if (mode === 'edit' && tripData.status === 'receivable' && status === 'PENDING') {
+    if (mode === 'edit' && tripData.remittance_status === 'PARTIALLY_PAID' && status === 'PENDING') {
       return false;
     }
     
@@ -881,15 +1112,15 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
 
     const remittanceStatus = calculateRemittanceStatus();
 
-    // Determine the final status based on receivable conversion
-    let finalStatus = 'remitted';
+    // Determine the final remittance_status for backend
+    let finalRemittanceStatus: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' = 'PAID';
     let shouldDeleteReceivables = false;
     
     if (shouldCreateReceivable()) {
       // Converted to receivable (late remittance or shortage)
-      finalStatus = 'receivable';
-    } else if (mode === 'edit' && tripData.status === 'receivable') {
-      // Was a receivable but now reverted to remitted/pending (due date changed to future)
+      finalRemittanceStatus = 'PARTIALLY_PAID';
+    } else if (mode === 'edit' && tripData.remittance_status === 'PARTIALLY_PAID') {
+      // Was a receivable but now reverted to paid (due date changed to future)
       // Signal to backend to delete existing receivable records
       shouldDeleteReceivables = true;
     }
@@ -904,8 +1135,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
       date_expected: formData.remittanceDueDate,
       duration_to_late: formData.durationToLate,
       duration_to_receivable: formData.durationToReceivable,
-      remittance_status: remittanceStatus,
-      status: finalStatus,
+      remittance_status: finalRemittanceStatus,
       delete_receivables: shouldDeleteReceivables,
     };
     
@@ -966,9 +1196,65 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
     onSave(submissionData, mode);
   };
 
+  // Show loading state while fetching edit data
+  if (isLoadingEditData) {
+    return (
+      <div className="modal-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading revenue details...</p>
+      </div>
+    );
+  }
+
+  // Show error state if fetch failed
+  if (editDataError) {
+    return (
+      <div className="modal-error">
+        <i className="ri-error-warning-line" style={{ fontSize: '3rem', color: '#ef4444' }}></i>
+        <p style={{ color: '#ef4444', marginTop: '1rem' }}>Error: {editDataError}</p>
+        <button className="btn-primary" onClick={onClose} style={{ marginTop: '1rem' }}>
+          Close
+        </button>
+      </div>
+    );
+  }
+
   if (!remittanceCalc) {
     return <div>Loading...</div>;
   }
+
+  // Use fetched data for display if available
+  const displayData = fetchedData ? {
+    date_assigned: fetchedData.bus_details.date_assigned,
+    body_number: fetchedData.bus_details.body_number,
+    bus_plate_number: fetchedData.bus_details.license_plate,
+    bus_type: fetchedData.bus_details.bus_type,
+    bus_route: fetchedData.bus_details.route,
+    assignment_type: fetchedData.bus_details.assignment_type === 'BOUNDARY' ? 'Boundary' : 'Percentage',
+    assignment_value: fetchedData.bus_details.assignment_value || 0,
+    payment_method: fetchedData.bus_details.payment_method,
+    trip_revenue: fetchedData.bus_details.trip_revenue,
+    trip_fuel_expense: fetchedData.bus_details.trip_fuel_expense,
+    company_share_amount: fetchedData.bus_details.company_share_amount,
+    driverName: fetchedData.employees.driver?.name,
+    conductorName: fetchedData.employees.conductor?.name,
+  } : {
+    date_assigned: tripData.date_assigned,
+    body_number: tripData.body_number,
+    bus_plate_number: tripData.bus_plate_number,
+    bus_type: tripData.bus_type,
+    bus_route: tripData.bus_route,
+    assignment_type: tripData.assignment_type,
+    assignment_value: tripData.assignment_value,
+    payment_method: tripData.payment_method,
+    trip_revenue: tripData.trip_revenue,
+    trip_fuel_expense: tripData.trip_fuel_expense,
+    company_share_amount: tripData.assignment_type === 'Boundary' 
+      ? tripData.assignment_value 
+      : tripData.trip_revenue * (tripData.assignment_value / 100),
+    driverName: tripData.driverName || `${tripData.driverFirstName || ''} ${tripData.driverLastName || ''}`.trim() || 'N/A',
+    conductorName: tripData.conductorName || `${tripData.conductorFirstName || ''} ${tripData.conductorLastName || ''}`.trim() || undefined,
+  };
 
   return (
     <>
@@ -989,24 +1275,18 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
       <p className="details-title">I. Bus Details</p>
       <div className="modal-content view">
         <form className="view-form">
-          {/* Date Assigned, Body Number, Body Builder */}
+          {/* Date Assigned, Body Number */}
           <div className="form-row">
             {/* Date Assigned */}
             <div className="form-group">
               <label>Date Assigned</label>
-              <p>{formatDate(tripData.date_assigned)}</p>
+              <p>{formatDate(displayData.date_assigned || '')}</p>
             </div>
 
             {/* Body Number */}
             <div className="form-group">
               <label>Body Number</label>
-              <p>{tripData.body_number}</p>
-            </div>
-
-            {/* Body Builder */}
-            <div className="form-group">
-              <label>Body Builder</label>
-              <p>{tripData.body_builder}</p>
+              <p>{displayData.body_number || 'N/A'}</p>
             </div>
           </div>
 
@@ -1015,19 +1295,19 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
             {/* Plate Number */}
             <div className="form-group">
               <label>Plate Number</label>
-              <p>{tripData.bus_plate_number}</p>
+              <p>{displayData.bus_plate_number || 'N/A'}</p>
             </div>
 
             {/* Bus Type */}
             <div className="form-group">
               <label>Bus Type</label>
-              <p>{tripData.bus_type}</p>
+              <p>{displayData.bus_type || 'N/A'}</p>
             </div>
 
             {/* Route */}
             <div className="form-group">
               <label>Route</label>
-              <p>{tripData.bus_route}</p>
+              <p>{displayData.bus_route || 'N/A'}</p>
             </div>
           </div>
 
@@ -1036,16 +1316,16 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
             {/* Assignment Type */}
             <div className="form-group">
               <label>Assignment Type</label>
-              <p>{tripData.assignment_type}</p>
+              <p>{displayData.assignment_type}</p>
             </div>
 
             {/* Company Share */}
             <div className="form-group">
               <label>Company Share</label>
               <p>
-                {tripData.assignment_type === 'Boundary' 
-                  ? formatMoney(tripData.assignment_value)
-                  : `${tripData.assignment_value}%`
+                {displayData.assignment_type === 'Boundary' 
+                  ? formatMoney(displayData.assignment_value)
+                  : `${displayData.assignment_value}%`
                 }
               </p>
             </div>
@@ -1053,7 +1333,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
             {/* Payment Method */}
             <div className="form-group">
               <label>Payment Method</label>
-              <p>{tripData.payment_method}</p>
+              <p>{displayData.payment_method || 'N/A'}</p>
             </div>
           </div>
 
@@ -1062,22 +1342,22 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
             {/* Trip Revenue */}
             <div className="form-group">
               <label>Trip Revenue</label>
-              <p>{formatMoney(tripData.trip_revenue)}</p>
+              <p>{formatMoney(displayData.trip_revenue)}</p>
             </div>
 
             {/* Fuel Expense */}
             <div className="form-group">
               <label>Fuel Expense</label>
-              <p>{formatMoney(tripData.trip_fuel_expense)}</p>
+              <p>{formatMoney(displayData.trip_fuel_expense)}</p>
             </div>
 
             {/* Company Share (calculated amount) */}
             <div className="form-group">
               <label>Company Share</label>
               <p>
-                {tripData.assignment_type === 'Boundary'
-                  ? formatMoney(tripData.assignment_value + tripData.trip_fuel_expense)
-                  : formatMoney((tripData.trip_revenue * tripData.assignment_value / 100) + tripData.trip_fuel_expense)
+                {displayData.assignment_type === 'Boundary'
+                  ? formatMoney(displayData.assignment_value + displayData.trip_fuel_expense)
+                  : formatMoney((displayData.trip_revenue * displayData.assignment_value / 100) + displayData.trip_fuel_expense)
                 }
               </p>
             </div>
@@ -1095,14 +1375,14 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
             <div className="form-group">
               <label>Driver Name</label>
               <p>
-                {tripData.driverFirstName 
+                {displayData.driverName || (tripData.driverFirstName 
                   ? formatEmployeeName(
                       tripData.driverFirstName,
                       tripData.driverMiddleName || '',
                       tripData.driverLastName || '',
                       tripData.driverSuffix || ''
                     )
-                  : 'N/A'
+                  : 'N/A')
                 }
               </p>
             </div>
@@ -1111,14 +1391,14 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
             <div className="form-group">
               <label>Conductor Name</label>
               <p>
-                {tripData.conductorFirstName 
+                {displayData.conductorName || (tripData.conductorFirstName 
                   ? formatEmployeeName(
                       tripData.conductorFirstName,
                       tripData.conductorMiddleName || '',
                       tripData.conductorLastName || '',
                       tripData.conductorSuffix || ''
                     )
-                  : 'N/A'
+                  : 'N/A')
                 }
               </p>
             </div>
@@ -1480,14 +1760,14 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                             </label>
                             <input
                                 type="text"
-                                value={tripData.conductorFirstName 
+                                value={displayData.conductorName || (tripData.conductorFirstName 
                                   ? formatEmployeeName(
                                       tripData.conductorFirstName,
                                       tripData.conductorMiddleName || '',
                                       tripData.conductorLastName || '',
                                       tripData.conductorSuffix || ''
                                     )
-                                  : 'N/A'
+                                  : 'N/A')
                                 }
                                 disabled
                                 className="disabled-field"
@@ -1523,14 +1803,14 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
                           </label>
                           <input
                               type="text"
-                              value={tripData.driverFirstName 
+                              value={displayData.driverName || (tripData.driverFirstName 
                                 ? formatEmployeeName(
                                     tripData.driverFirstName,
                                     tripData.driverMiddleName || '',
                                     tripData.driverLastName || '',
                                     tripData.driverSuffix || ''
                                   )
-                                : 'N/A'
+                                : 'N/A')
                               }
                               disabled
                               className="disabled-field"
@@ -1565,7 +1845,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
               <p className="details-subtitle">Conductor Installment Schedule</p>
               <div className="modal-content view">
                 <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
-                  <strong>{tripData.conductorFirstName ? formatEmployeeName(tripData.conductorFirstName, tripData.conductorMiddleName || '', tripData.conductorLastName || '', tripData.conductorSuffix || '') : 'Conductor'}</strong>
+                  <strong>{displayData.conductorName || (tripData.conductorFirstName ? formatEmployeeName(tripData.conductorFirstName, tripData.conductorMiddleName || '', tripData.conductorLastName || '', tripData.conductorSuffix || '') : 'Conductor')}</strong>
                   <strong>Total: {formatMoney(formData.conductorShare)}</strong>
                 </div>
                 <PaymentScheduleTable
@@ -1586,7 +1866,7 @@ export default function RecordTripRevenueModal({ mode, tripData, onSave, onClose
               <p className="details-subtitle">Driver Installment Schedule</p>
               <div className="modal-content view">
                 <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
-                  <strong>{tripData.driverFirstName ? formatEmployeeName(tripData.driverFirstName, tripData.driverMiddleName || '', tripData.driverLastName || '', tripData.driverSuffix || '') : 'Driver'}</strong>
+                  <strong>{displayData.driverName || (tripData.driverFirstName ? formatEmployeeName(tripData.driverFirstName, tripData.driverMiddleName || '', tripData.driverLastName || '', tripData.driverSuffix || '') : 'Driver')}</strong>
                   <strong>Total: {formatMoney(formData.driverShare)}</strong>
                 </div>
                 <PaymentScheduleTable

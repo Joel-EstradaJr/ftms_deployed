@@ -203,7 +203,6 @@ export default function ViewAssetModal({
               </div>
               <div className="form-group">
                 <label>Body Builder</label>
-                <p>{busData.body_builder || 'N/A'}</p>
               </div>
               <div className="form-group">
                 <label>Manufacturer</label>
