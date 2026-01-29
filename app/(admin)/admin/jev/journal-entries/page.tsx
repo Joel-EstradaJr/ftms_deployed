@@ -69,7 +69,6 @@ export default function JournalEntriesPage() {
         dateTo: dateTo || undefined,
         status: statusFilter || undefined,
         entry_type: entryTypeFilter || undefined,
-        code: searchQuery || undefined,
       });
 
       setEntries(fetchedEntries);
@@ -90,33 +89,46 @@ export default function JournalEntriesPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, dateFrom, dateTo, statusFilter, entryTypeFilter, searchQuery]);
+  }, [currentPage, pageSize, dateFrom, dateTo, statusFilter, entryTypeFilter]);
 
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
 
-  // Trigger fetch when filters change
+  // Apply client-side search filtering across all required columns
   useEffect(() => {
-    fetchEntries();
-  }, [fetchEntries]);
+    if (!searchQuery.trim()) {
+      setFilteredEntries(entries);
+      return;
+    }
 
-  // Debounce search query - reset page when search changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setCurrentPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = entries.filter((entry) => {
+      // Search across all required fields: JE Code, Date, Reference, Description, Total Debit, Total Credit, Status
+      const code = (entry.code || entry.journal_number || '').toLowerCase();
+      const date = (entry.date || entry.transaction_date || '').toLowerCase();
+      const reference = (entry.reference || '').toLowerCase();
+      const description = (entry.description || '').toLowerCase();
+      const totalDebit = String(entry.total_debit || 0);
+      const totalCredit = String(entry.total_credit || 0);
+      const status = (entry.status || '').toLowerCase();
 
-  // Apply client-side filters if needed (for immediate UI feedback)
-  useEffect(() => {
-    // Since we're using server-side filtering, just use the entries as-is
-    setFilteredEntries(entries);
-  }, [entries]);
+      return (
+        code.includes(query) ||
+        date.includes(query) ||
+        reference.includes(query) ||
+        description.includes(query) ||
+        totalDebit.includes(query) ||
+        totalCredit.includes(query) ||
+        status.includes(query)
+      );
+    });
 
-  // Paginate data - Backend handles pagination, so we use entries directly
-  const paginatedEntries = entries;
+    setFilteredEntries(filtered);
+  }, [entries, searchQuery]);
+
+  // Paginate data - use filteredEntries for display (after client-side search)
+  const paginatedEntries = filteredEntries;
 
   // Handle save new entry - routes through /auto endpoint with module: MANUAL
   const handleSaveNewEntry = async (formData: JournalEntryFormData) => {
