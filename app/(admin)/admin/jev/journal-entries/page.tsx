@@ -333,23 +333,6 @@ export default function JournalEntriesPage() {
       defaultValue: { from: '', to: '' }
     },
     {
-      id: 'entry_type',
-      title: 'Entry Type',
-      type: 'radio',
-      options: [
-        { id: '', label: 'All Entry Types' },
-        { id: EntryType.MANUAL, label: 'Manual' },
-        { id: EntryType.AUTO_REVENUE, label: 'Auto - Revenue' },
-        { id: EntryType.AUTO_EXPENSE, label: 'Auto - Expense' },
-        { id: EntryType.AUTO_PAYROLL, label: 'Auto - Payroll' },
-        { id: EntryType.AUTO_LOAN, label: 'Auto - Loan' },
-        { id: EntryType.AUTO_PURCHASE, label: 'Auto - Purchase' },
-        { id: EntryType.ADJUSTMENT, label: 'Adjustment' },
-        { id: EntryType.CLOSING, label: 'Closing' }
-      ],
-      defaultValue: ''
-    },
-    {
       id: 'status',
       title: 'Status',
       type: 'radio',
@@ -420,10 +403,19 @@ export default function JournalEntriesPage() {
               data={filteredEntries}
               filename={`journal-entries-${new Date().toISOString().split('T')[0]}`}
               title="Journal Entries Report"
+              columns={[
+                { header: 'JE Code', key: 'code' },
+                { header: 'Date', key: 'date' },
+                { header: 'Reference', key: 'reference' },
+                { header: 'Description', key: 'description' },
+                { header: 'Total Debit', key: 'total_debit' },
+                { header: 'Total Credit', key: 'total_credit' },
+                { header: 'Status', key: 'status' }
+              ]}
             />
-            <button className="addButton" onClick={handleAddEntry}>
+            {/* <button className="addButton" onClick={handleAddEntry}>
               <i className="ri-add-line"></i> Add Manual Entry
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
