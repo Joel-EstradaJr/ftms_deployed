@@ -1,3 +1,23 @@
+/**
+ * Record Rental Revenue Modal Component
+ * 
+ * Schema-aligned form for recording and managing rental revenue
+ * 
+ * Fields (matching database schema):
+ * - code: string (auto-generated revenue code)
+ * - revenue_type_id: number (FK to revenue_type table)
+ * - total_rental_amount: number (from rental_local)
+ * - down_payment_amount: number (from rental_local)
+ * - balance_amount: number (calculated: total - downpayment)
+ * - down_payment_date: string (from rental_local)
+ * - full_payment_date: string (from rental_local)
+ * - rental_status: string | null (from rental_local: 'approved', 'completed', 'cancelled')
+ * - cancelled_at: string (from rental_local)
+ * - date_recorded: string (from revenue)
+ * - assignment_id: string (from rental_local - rental assignment reference)
+ * - description: string (from revenue - notes/remarks)
+ * - payment_method: PaymentMethodEnum (from revenue: CASH, BANK_TRANSFER, E_WALLET, REIMBURSEMENT)
+ */
 import React, { useState, useEffect } from "react";
 import {
     showSuccess,
@@ -9,26 +29,32 @@ import { formatMoney } from "@/utils/formatting";
 import "@/styles/components/forms.css";
 import "@/styles/components/modal2.css";
 
+// Payment method enum values matching database schema
+export type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET' | 'REIMBURSEMENT';
+
+export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethodEnum; label: string }[] = [
+    { value: 'CASH', label: 'Cash' },
+    { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+    { value: 'E_WALLET', label: 'E-Wallet' },
+    { value: 'REIMBURSEMENT', label: 'Reimbursement' }
+];
+
 // Export the interface so it can be imported by other components
+// All fields aligned with database schema (revenue + rental_local tables)
 export interface RentalRevenueForm {
-    revenueCode: string; // auto-generated
-    revenueType: 'RENTAL'; // readonly
-    entityName: string; // customer text
-    total_rental_amount: number; // total rental amount
-    downpayment_amount: number;
-    balance_amount: number; // auto-calculated
-    down_payment_date: string; // date picker
-    full_payment_date: string; // date picker
-    rental_status: boolean; // checkbox
-    cancelled_at: string; // date picker, shows when cancelled
-    dateRecorded: string; // date picker
-    sourceRefNo: string; // rental contract number
-    remarks: string; // textarea
-    
-    // Relations
-    sourceId: number;
-    paymentMethodId: number;
-    receiptUrl?: string; // document links
+    code: string; // auto-generated revenue code
+    revenue_type_id: number; // FK to revenue_type table
+    total_rental_amount: number; // rental_local.total_rental_amount
+    down_payment_amount: number; // rental_local.down_payment_amount
+    balance_amount: number; // calculated: total - downpayment
+    down_payment_date: string; // rental_local.down_payment_date
+    full_payment_date: string; // rental_local.full_payment_date
+    rental_status: string | null; // rental_local.rental_status ('approved', 'completed', 'cancelled')
+    cancelled_at: string; // rental_local.cancelled_at
+    date_recorded: string; // revenue.date_recorded
+    assignment_id: string; // rental_local.assignment_id (rental assignment reference)
+    description: string; // revenue.description (notes/remarks)
+    payment_method: PaymentMethodEnum; // revenue.payment_method enum
 }
 
 interface FormError {
@@ -45,22 +71,19 @@ interface RecordRentalRevenueModalProps {
 
 export default function RecordRentalRevenueModal({ onSave, onClose, initialData, isEditMode = false, phase = 'record' }: RecordRentalRevenueModalProps) {
     const [rentalRevenueForm, setRentalRevenueForm] = useState<RentalRevenueForm>({
-        revenueCode: initialData?.revenueCode || "", // Will be auto-generated
-        revenueType: 'RENTAL',
-        entityName: initialData?.entityName || "",
+        code: initialData?.code || "", // Will be auto-generated
+        revenue_type_id: initialData?.revenue_type_id || 1, // Default rental type
         total_rental_amount: initialData?.total_rental_amount || 0,
-        downpayment_amount: initialData?.downpayment_amount || 0,
+        down_payment_amount: initialData?.down_payment_amount || 0,
         balance_amount: initialData?.balance_amount || 0,
         down_payment_date: initialData?.down_payment_date || "",
         full_payment_date: initialData?.full_payment_date || "",
-        rental_status: initialData?.rental_status || false,
+        rental_status: initialData?.rental_status || null,
         cancelled_at: initialData?.cancelled_at || "",
-        dateRecorded: initialData?.dateRecorded || new Date().toISOString().split('T')[0],
-        sourceRefNo: initialData?.sourceRefNo || "",
-        remarks: initialData?.remarks || "",
-        sourceId: initialData?.sourceId || 1, // Default to Bus Rental source
-        paymentMethodId: initialData?.paymentMethodId || 1,
-        receiptUrl: initialData?.receiptUrl || ""
+        date_recorded: initialData?.date_recorded || new Date().toISOString().split('T')[0],
+        assignment_id: initialData?.assignment_id || "",
+        description: initialData?.description || "",
+        payment_method: initialData?.payment_method || 'CASH'
     });
 
     const [formErrors, setFormErrors] = useState<FormError>({});
@@ -68,12 +91,12 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
 
     // Auto-calculate rental balance whenever amount or downpayment changes
     useEffect(() => {
-        const balance = rentalRevenueForm.total_rental_amount - rentalRevenueForm.downpayment_amount;
+        const balance = rentalRevenueForm.total_rental_amount - rentalRevenueForm.down_payment_amount;
         setRentalRevenueForm((prev) => ({
             ...prev,
             balance_amount: balance > 0 ? balance : 0
         }));
-    }, [rentalRevenueForm.total_rental_amount, rentalRevenueForm.downpayment_amount]);
+    }, [rentalRevenueForm.total_rental_amount, rentalRevenueForm.down_payment_amount]);
 
     useEffect(() => {
         setIsDirty(true);
@@ -81,8 +104,8 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
 
     // Function to handle changes in the form fields
     const handleChange = (field: string, value: any) => {
-        // Special handling for rental_status checkbox
-        if (field === "rental_status" && value === true) {
+        // Special handling for rental_status
+        if (field === "rental_status" && value === 'cancelled') {
             // If marking as cancelled and cancelled_at is empty, set it to today
             setRentalRevenueForm((prev) => ({
                 ...prev,
@@ -104,34 +127,30 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
         const errors: FormError = {};
 
         // Validate Phase 1 fields (always required)
-        if (!rentalRevenueForm.entityName.trim()) {
-            errors.entityName = "Customer name is required";
-        }
-
-        if (!rentalRevenueForm.sourceRefNo.trim()) {
-            errors.sourceRefNo = "Rental contract number is required";
+        if (!rentalRevenueForm.assignment_id.trim()) {
+            errors.assignment_id = "Assignment ID is required";
         }
 
         if (rentalRevenueForm.total_rental_amount <= 0) {
             errors.total_rental_amount = "Total rental amount must be greater than 0";
         }
 
-        if (!rentalRevenueForm.dateRecorded) {
-            errors.dateRecorded = "Date recorded is required";
+        if (!rentalRevenueForm.date_recorded) {
+            errors.date_recorded = "Date recorded is required";
         }
 
         // Validate Phase 2 fields (downpayment) - only when recording or submitting downpayment
         if (phase === 'record' || phase === 'downpayment') {
-            if (rentalRevenueForm.downpayment_amount <= 0) {
-                errors.downpayment_amount = "Downpayment amount must be greater than 0";
+            if (rentalRevenueForm.down_payment_amount <= 0) {
+                errors.down_payment_amount = "Downpayment amount must be greater than 0";
             }
 
-            if (rentalRevenueForm.downpayment_amount > rentalRevenueForm.total_rental_amount) {
-                errors.downpayment_amount = "Downpayment cannot exceed total rental amount";
+            if (rentalRevenueForm.down_payment_amount > rentalRevenueForm.total_rental_amount) {
+                errors.down_payment_amount = "Downpayment cannot exceed total rental amount";
             }
 
-            if (!rentalRevenueForm.paymentMethodId) {
-                errors.paymentMethodId = "Payment method is required";
+            if (!rentalRevenueForm.payment_method) {
+                errors.payment_method = "Payment method is required";
             }
 
             if (!rentalRevenueForm.down_payment_date) {
@@ -142,7 +161,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
         // Validate Phase 3 fields (balance payment)
         if (phase === 'balance') {
             const expectedBalance = rentalRevenueForm.balance_amount;
-            const enteredBalance = rentalRevenueForm.total_rental_amount - rentalRevenueForm.downpayment_amount;
+            const enteredBalance = rentalRevenueForm.total_rental_amount - rentalRevenueForm.down_payment_amount;
             
             // Check if balance payment matches expected amount (within 0.01 tolerance)
             if (Math.abs(enteredBalance - expectedBalance) > 0.01) {
@@ -166,10 +185,9 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                 title: 'Record Rental with Downpayment?',
                 html: `
                     <div style="text-align: left; padding: 10px;">
-                        <p><strong>Customer:</strong> ${rentalRevenueForm.entityName}</p>
-                        <p><strong>Contract:</strong> ${rentalRevenueForm.sourceRefNo}</p>
+                        <p><strong>Assignment ID:</strong> ${rentalRevenueForm.assignment_id}</p>
                         <p><strong>Total Amount:</strong> ${formatMoney(rentalRevenueForm.total_rental_amount)}</p>
-                        <p><strong>Downpayment:</strong> ${formatMoney(rentalRevenueForm.downpayment_amount)}</p>
+                        <p><strong>Downpayment:</strong> ${formatMoney(rentalRevenueForm.down_payment_amount)}</p>
                         <p><strong>Remaining Balance:</strong> ${formatMoney(rentalRevenueForm.balance_amount)}</p>
                     </div>
                 `,
@@ -259,7 +277,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                 <label>Revenue Type</label>
                                 <input
                                     type="text"
-                                    value={rentalRevenueForm.revenueType}
+                                    value="RENTAL"
                                     disabled
                                     style={{ backgroundColor: '#f5f5f5' }}
                                 />
@@ -269,38 +287,25 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                 </div>
             )}
 
-            {/* Phase 1 & 2: Customer & Rental Information (only shown when recording) */}
+            {/* Phase 1 & 2: Rental Information (only shown when recording) */}
             {phase === 'record' && (
                 <>
-                    {/* Phase 1: Customer & Rental Information */}
-                    <p className="details-title">I. Customer & Rental Information</p>
+                    {/* Phase 1: Rental Information */}
+                    <p className="details-title">I. Rental Information</p>
                     <div className="modal-content add">
                         <form className="add-form">
                             <div className="form-row">
-                                {/* Customer Name */}
+                                {/* Assignment ID */}
                                 <div className="form-group">
-                                    <label>Customer Name</label>
+                                    <label>Assignment ID</label>
                                     <input
-                                        className={formErrors?.entityName ? "invalid-input" : ""}
+                                        className={formErrors?.assignment_id ? "invalid-input" : ""}
                                         type="text"
-                                        value={rentalRevenueForm.entityName}
-                                        onChange={(e) => handleChange("entityName", e.target.value)}
-                                        placeholder="Enter customer name"
+                                        value={rentalRevenueForm.assignment_id}
+                                        onChange={(e) => handleChange("assignment_id", e.target.value)}
+                                        placeholder="Enter assignment ID"
                                     />
-                                    <p className="add-error-message">{formErrors?.entityName}</p>
-                                </div>
-
-                                {/* Contract Number */}
-                                <div className="form-group">
-                                    <label>Rental Contract Number</label>
-                                    <input
-                                        className={formErrors?.sourceRefNo ? "invalid-input" : ""}
-                                        type="text"
-                                        value={rentalRevenueForm.sourceRefNo}
-                                        onChange={(e) => handleChange("sourceRefNo", e.target.value)}
-                                        placeholder="Enter contract number"
-                                    />
-                                    <p className="add-error-message">{formErrors?.sourceRefNo}</p>
+                                    <p className="add-error-message">{formErrors?.assignment_id}</p>
                                 </div>
                             </div>
 
@@ -323,13 +328,13 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                 <div className="form-group">
                                     <label>Date Recorded</label>
                                     <input
-                                        className={formErrors?.dateRecorded ? "invalid-input" : ""}
+                                        className={formErrors?.date_recorded ? "invalid-input" : ""}
                                         type="date"
-                                        value={rentalRevenueForm.dateRecorded}
-                                        onChange={(e) => handleChange("dateRecorded", e.target.value)}
+                                        value={rentalRevenueForm.date_recorded}
+                                        onChange={(e) => handleChange("date_recorded", e.target.value)}
                                         max={new Date().toISOString().split('T')[0]}
                                     />
-                                    <p className="add-error-message">{formErrors?.dateRecorded}</p>
+                                    <p className="add-error-message">{formErrors?.date_recorded}</p>
                                 </div>
                             </div>
                         </form>
@@ -343,16 +348,16 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                 <div className="form-group">
                                     <label>Downpayment Amount</label>
                                     <input
-                                        className={formErrors?.downpayment_amount ? "invalid-input" : ""}
+                                        className={formErrors?.down_payment_amount ? "invalid-input" : ""}
                                         type="number"
                                         min="0"
                                         step="0.01"
                                         max={rentalRevenueForm.total_rental_amount}
-                                        value={rentalRevenueForm.downpayment_amount || ""}
-                                        onChange={(e) => handleChange("downpayment_amount", parseFloat(e.target.value) || 0)}
+                                        value={rentalRevenueForm.down_payment_amount || ""}
+                                        onChange={(e) => handleChange("down_payment_amount", parseFloat(e.target.value) || 0)}
                                         placeholder="Enter downpayment amount"
                                     />
-                                    <p className="add-error-message">{formErrors?.downpayment_amount}</p>
+                                    <p className="add-error-message">{formErrors?.down_payment_amount}</p>
                                 </div>
 
                                 <div className="form-group">
@@ -372,17 +377,18 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                 <div className="form-group">
                                     <label>Payment Method</label>
                                     <select
-                                        className={formErrors?.paymentMethodId ? "invalid-input" : ""}
-                                        value={rentalRevenueForm.paymentMethodId}
-                                        onChange={(e) => handleChange("paymentMethodId", parseInt(e.target.value))}
+                                        className={formErrors?.payment_method ? "invalid-input" : ""}
+                                        value={rentalRevenueForm.payment_method}
+                                        onChange={(e) => handleChange("payment_method", e.target.value)}
                                     >
                                         <option value="">Select Payment Method</option>
-                                        <option value="1">Cash</option>
-                                        <option value="2">Check</option>
-                                        <option value="3">Bank Transfer</option>
-                                        <option value="4">Online Payment</option>
+                                        {PAYMENT_METHOD_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
                                     </select>
-                                    <p className="add-error-message">{formErrors?.paymentMethodId}</p>
+                                    <p className="add-error-message">{formErrors?.payment_method}</p>
                                 </div>
                             </div>
 
@@ -401,18 +407,18 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                         </form>
                     </div>
 
-                    {/* Remarks */}
+                    {/* Description */}
                     <p className="details-title">III. Additional Information (Optional)</p>
                     <div className="modal-content add">
                         <form className="add-form">
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>Remarks</label>
+                                    <label>Description</label>
                                     <textarea
                                         rows={4}
-                                        value={rentalRevenueForm.remarks}
-                                        onChange={(e) => handleChange("remarks", e.target.value)}
-                                        placeholder="Enter any additional notes or remarks"
+                                        value={rentalRevenueForm.description}
+                                        onChange={(e) => handleChange("description", e.target.value)}
+                                        placeholder="Enter any additional notes or description"
                                         style={{ resize: 'vertical', minHeight: '80px' }}
                                     />
                                 </div>
@@ -431,20 +437,10 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                         <form className="add-form">
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>Customer Name</label>
+                                    <label>Assignment ID</label>
                                     <input
                                         type="text"
-                                        value={rentalRevenueForm.entityName}
-                                        disabled
-                                        style={{ backgroundColor: '#f5f5f5' }}
-                                    />
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Contract Number</label>
-                                    <input
-                                        type="text"
-                                        value={rentalRevenueForm.sourceRefNo}
+                                        value={rentalRevenueForm.assignment_id}
                                         disabled
                                         style={{ backgroundColor: '#f5f5f5' }}
                                     />
@@ -466,7 +462,7 @@ export default function RecordRentalRevenueModal({ onSave, onClose, initialData,
                                     <label>Downpayment Paid</label>
                                     <input
                                         type="text"
-                                        value={formatMoney(rentalRevenueForm.downpayment_amount)}
+                                        value={formatMoney(rentalRevenueForm.down_payment_amount)}
                                         disabled
                                         style={{ backgroundColor: '#f5f5f5' }}
                                     />
