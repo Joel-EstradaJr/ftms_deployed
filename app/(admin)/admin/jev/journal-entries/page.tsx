@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { JournalEntry, JournalEntryFormData, ChartOfAccount, EntryType, JournalStatus, AccountType, NormalBalance } from '@/app/types/jev';
-import { fetchJournalEntries, fetchJournalEntryById } from '@/app/services/journalEntryService';
+import { JournalEntry, JournalEntryFormData, ChartOfAccount, EntryType, JournalStatus } from '@/app/types/jev';
+import { fetchJournalEntries, fetchJournalEntryById, createAutoJournalEntry, updateJournalEntry, deleteJournalEntry, postJournalEntry, createReversalEntry, transformUpdatePayload } from '@/app/services/journalEntryService';
+import { fetchChartOfAccounts } from '@/app/services/chartOfAccountsService';
 
 import { getEntryTypeClass, getStatusClass } from '@/app/lib/jev/journalHelpers';
 
@@ -53,270 +54,14 @@ export default function JournalEntriesPage() {
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
 
-  // Mock Chart of Accounts
-  const mockAccounts: ChartOfAccount[] = [
-    // Assets
-    { account_id: '1010', account_code: '1010', account_name: 'Cash on Hand', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '1020', account_code: '1020', account_name: 'Cash in Bank - BPI', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '1030', account_code: '1030', account_name: 'Accounts Receivable', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '1040', account_code: '1040', account_name: 'Inventory - Fuel', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '1500', account_code: '1500', account_name: 'Transportation Equipment', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '1510', account_code: '1510', account_name: 'Office Equipment', account_type: AccountType.ASSET, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    
-    // Liabilities
-    { account_id: '2010', account_code: '2010', account_name: 'Accounts Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    { account_id: '2020', account_code: '2020', account_name: 'Loans Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    { account_id: '2030', account_code: '2030', account_name: 'SSS Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    { account_id: '2040', account_code: '2040', account_name: 'PhilHealth Payable', account_type: AccountType.LIABILITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    
-    // Equity
-    { account_id: '3010', account_code: '3010', account_name: 'Capital', account_type: AccountType.EQUITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    { account_id: '3020', account_code: '3020', account_name: 'Retained Earnings', account_type: AccountType.EQUITY, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    
-    // Revenue
-    { account_id: '4010', account_code: '4010', account_name: 'Fare Revenue', account_type: AccountType.REVENUE, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    { account_id: '4020', account_code: '4020', account_name: 'Charter Revenue', account_type: AccountType.REVENUE, normal_balance: NormalBalance.CREDIT, is_active: true, is_system_account: false },
-    
-    // Expenses
-    { account_id: '5010', account_code: '5010', account_name: 'Fuel Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '5020', account_code: '5020', account_name: 'Maintenance Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '5030', account_code: '5030', account_name: 'Salaries Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '5040', account_code: '5040', account_name: 'Rent Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '5050', account_code: '5050', account_name: 'Utilities Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-    { account_id: '5060', account_code: '5060', account_name: 'Insurance Expense', account_type: AccountType.EXPENSE, normal_balance: NormalBalance.DEBIT, is_active: true, is_system_account: false },
-  ];
-
-  // Mock data - TODO: Replace with API call
-  const mockEntries: JournalEntry[] = [
-    {
-      journal_entry_id: '1',
-      code: 'JE-2024-11-0001',
-      date: '2024-11-15',
-      posting_date: '2024-11-15',
-      reference: 'REV-001',
-      description: 'Revenue collection from Bus 101',
-      entry_type: EntryType.AUTO_REVENUE,
-      status: JournalStatus.POSTED,
-      total_debit: 50000.00,
-      total_credit: 50000.00,
-      is_balanced: true,
-      journal_lines: [
-        {
-          line_id: '1-1',
-          journal_entry_id: '1',
-          account_id: '1020',
-          account_code: '1020',
-          account_name: 'Cash in Bank - BPI',
-          account: mockAccounts.find(a => a.account_id === '1020'),
-          line_number: 1,
-          description: 'Cash collection from fare revenue',
-          debit: 50000.00,
-          credit: 0
-        },
-        {
-          line_id: '1-2',
-          journal_entry_id: '1',
-          account_id: '4010',
-          account_code: '4010',
-          account_name: 'Fare Revenue',
-          account: mockAccounts.find(a => a.account_id === '4010'),
-          line_number: 2,
-          description: 'Fare revenue - Bus 101',
-          debit: 0,
-          credit: 50000.00
-        }
-      ]
-    },
-    {
-      journal_entry_id: '2',
-      code: 'JE-2024-11-0002',
-      date: '2024-11-14',
-      description: 'Manual adjustment for fuel expense',
-      entry_type: EntryType.MANUAL,
-      status: JournalStatus.DRAFT,
-      total_debit: 15000.00,
-      total_credit: 15000.00,
-      is_balanced: true,
-      journal_lines: [
-        {
-          line_id: '2-1',
-          journal_entry_id: '2',
-          account_id: '5010',
-          account_code: '5010',
-          account_name: 'Fuel Expense',
-          account: mockAccounts.find(a => a.account_id === '5010'),
-          line_number: 1,
-          description: 'Fuel expense adjustment',
-          debit: 15000.00,
-          credit: 0
-        },
-        {
-          line_id: '2-2',
-          journal_entry_id: '2',
-          account_id: '1020',
-          account_code: '1020',
-          account_name: 'Cash in Bank - BPI',
-          account: mockAccounts.find(a => a.account_id === '1020'),
-          line_number: 2,
-          description: 'Cash payment',
-          debit: 0,
-          credit: 15000.00
-        }
-      ]
-    },
-    {
-      journal_entry_id: '3',
-      code: 'JE-2024-11-0003',
-      date: '2024-11-13',
-      posting_date: '2024-11-13',
-      reference: 'PAY-110',
-      description: 'Monthly payroll processing',
-      entry_type: EntryType.AUTO_PAYROLL,
-      status: JournalStatus.POSTED,
-      total_debit: 110000.00,
-      total_credit: 110000.00,
-      is_balanced: true,
-      journal_lines: [
-        {
-          line_id: '3-1',
-          journal_entry_id: '3',
-          account_id: '5030',
-          account: mockAccounts.find(a => a.account_id === '5030'),
-          line_number: 1,
-          description: 'Salaries and wages',
-          debit_amount: 110000.00,
-          credit_amount: 0
-        },
-        {
-          line_id: '3-2',
-          journal_entry_id: '3',
-          account_id: '2030',
-          account: mockAccounts.find(a => a.account_id === '2030'),
-          line_number: 2,
-          description: 'SSS contribution withheld',
-          debit_amount: 0,
-          credit_amount: 5000.00
-        },
-        {
-          line_id: '3-3',
-          journal_entry_id: '3',
-          account_id: '2040',
-          account: mockAccounts.find(a => a.account_id === '2040'),
-          line_number: 3,
-          description: 'PhilHealth contribution withheld',
-          debit_amount: 0,
-          credit_amount: 3000.00
-        },
-        {
-          line_id: '3-4',
-          journal_entry_id: '3',
-          account_id: '1020',
-          account: mockAccounts.find(a => a.account_id === '1020'),
-          line_number: 4,
-          description: 'Net payroll disbursement',
-          debit_amount: 0,
-          credit_amount: 102000.00
-        }
-      ]
-    },
-    {
-      journal_entry_id: '4',
-      code: 'JE-2024-11-0004',
-      date: '2024-11-12',
-      posting_date: '2024-11-12',
-      reference: 'EXP-250',
-      description: 'Fuel and maintenance expense',
-      entry_type: EntryType.AUTO_EXPENSE,
-      status: JournalStatus.POSTED,
-      total_debit: 32000.00,
-      total_credit: 32000.00,
-      is_balanced: true,
-      journal_lines: [
-        {
-          line_id: '4-1',
-          journal_entry_id: '4',
-          account_id: '5010',
-          account_code: '5010',
-          account_name: 'Fuel Expense',
-          account: mockAccounts.find(a => a.account_id === '5010'),
-          line_number: 1,
-          description: 'Fuel expense',
-          debit: 20000.00,
-          credit: 0
-        },
-        {
-          line_id: '4-2',
-          journal_entry_id: '4',
-          account_id: '5020',
-          account_code: '5020',
-          account_name: 'Maintenance Expense',
-          account: mockAccounts.find(a => a.account_id === '5020'),
-          line_number: 2,
-          description: 'Maintenance and repairs',
-          debit: 12000.00,
-          credit: 0
-        },
-        {
-          line_id: '4-3',
-          journal_entry_id: '4',
-          account_id: '2010',
-          account_code: '2010',
-          account_name: 'Accounts Payable',
-          account: mockAccounts.find(a => a.account_id === '2010'),
-          line_number: 3,
-          description: 'Accounts payable',
-          debit: 0,
-          credit: 32000.00
-        }
-      ]
-    },
-    {
-      journal_entry_id: '5',
-      code: 'JE-2024-11-0005',
-      date: '2024-11-10',
-      description: 'Year-end closing adjustment',
-      entry_type: EntryType.CLOSING,
-      status: JournalStatus.DRAFT,
-      total_debit: 250000.00,
-      total_credit: 250000.00,
-      is_balanced: true,
-      journal_lines: [
-        {
-          line_id: '5-1',
-          journal_entry_id: '5',
-          account_id: '4010',
-          account_code: '4010',
-          account_name: 'Fare Revenue',
-          account: mockAccounts.find(a => a.account_id === '4010'),
-          line_number: 1,
-          description: 'Close fare revenue to retained earnings',
-          debit: 250000.00,
-          credit: 0
-        },
-        {
-          line_id: '5-2',
-          journal_entry_id: '5',
-          account_id: '3020',
-          account_code: '3020',
-          account_name: 'Retained Earnings',
-          account: mockAccounts.find(a => a.account_id === '3020'),
-          line_number: 2,
-          description: 'Transfer to retained earnings',
-          debit: 0,
-          credit: 250000.00
-        }
-      ]
-    }
-  ];
-
   // Fetch data
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       setErrorCode(null);
-      
-      // Fetch from backend API
+
+      // Fetch journal entries from backend API
       const { entries: fetchedEntries, pagination } = await fetchJournalEntries({
         page: currentPage,
         limit: pageSize,
@@ -326,12 +71,18 @@ export default function JournalEntriesPage() {
         entry_type: entryTypeFilter || undefined,
         code: searchQuery || undefined,
       });
-      
+
       setEntries(fetchedEntries);
       setTotalPages(pagination.totalPages);
-      
-      // Set mock accounts (or fetch from chart of accounts API if needed)
-      setAccounts(mockAccounts);
+
+      // Fetch chart of accounts from backend API
+      try {
+        const { data: accountsData } = await fetchChartOfAccounts({ limit: 1000 });
+        setAccounts(accountsData);
+      } catch (accountsErr: any) {
+        console.warn('Failed to load chart of accounts:', accountsErr.message);
+        // Continue with empty accounts - journal lines may still display using embedded account data
+      }
     } catch (err: any) {
       console.error('Error fetching entries:', err);
       setError(err.message || 'Failed to load journal entries');
@@ -367,31 +118,49 @@ export default function JournalEntriesPage() {
   // Paginate data - Backend handles pagination, so we use entries directly
   const paginatedEntries = entries;
 
-  // Handle save new entry
+  // Handle save new entry - routes through /auto endpoint with module: MANUAL
   const handleSaveNewEntry = async (formData: JournalEntryFormData) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Saving new entry:', formData);
+      // Transform form data to API payload format
+      const apiPayload = {
+        module: 'MANUAL',
+        reference_id: formData.reference || `MANUAL-${Date.now()}`,
+        description: formData.description,
+        date: formData.date,
+        entries: formData.journal_lines.map(line => {
+          const account = accounts.find(a => a.account_id === line.account_id);
+          return {
+            account_code: account?.account_code || line.account_id,
+            debit: line.debit ?? line.debit_amount ?? 0,
+            credit: line.credit ?? line.credit_amount ?? 0,
+            description: line.description,
+          };
+        }),
+      };
+
+      await createAutoJournalEntry(apiPayload);
       await showSuccess('Journal entry created successfully', 'Success');
       setIsModalOpen(false);
       fetchEntries(); // Refresh the list
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving entry:', error);
-      showError('Failed to create journal entry', 'Error');
+      showError(error.message || 'Failed to create journal entry', 'Error');
     }
   };
 
   // Handle update entry
-  const handleUpdateEntry = async (formData: JournalEntryFormData) => {
+  const handleUpdateEntry = async (entryId: string, formData: JournalEntryFormData) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Updating entry:', formData);
+      // Transform form data to API payload format
+      const apiPayload = transformUpdatePayload(formData, accounts);
+
+      await updateJournalEntry(entryId, apiPayload);
       await showSuccess('Journal entry updated successfully', 'Success');
       setIsModalOpen(false);
       fetchEntries(); // Refresh the list
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating entry:', error);
-      showError('Failed to update journal entry', 'Error');
+      showError(error.message || 'Failed to update journal entry', 'Error');
     }
   };
 
@@ -427,21 +196,29 @@ export default function JournalEntriesPage() {
   };
 
   // Handle edit entry
-  const handleEditEntry = (entry: JournalEntry) => {
+  const handleEditEntry = async (entry: JournalEntry) => {
     if (entry.status !== JournalStatus.DRAFT) {
       showError('Only draft entries can be edited', 'Cannot Edit');
       return;
     }
-    setSelectedEntry(entry);
-    setModalContent(
-      <EditJournalEntryModal
-        entry={entry}
-        accounts={accounts}
-        onSubmit={handleUpdateEntry}
-        onClose={() => setIsModalOpen(false)}
-      />
-    );
-    setIsModalOpen(true);
+
+    try {
+      // Fetch full details (with journal lines) from backend
+      const fullEntry = await fetchJournalEntryById(entry.journal_entry_id);
+      setSelectedEntry(fullEntry);
+      setModalContent(
+        <EditJournalEntryModal
+          entry={fullEntry}
+          accounts={accounts}
+          onSubmit={handleUpdateEntry}
+          onClose={() => setIsModalOpen(false)}
+        />
+      );
+      setIsModalOpen(true);
+    } catch (error: any) {
+      console.error('Error fetching entry details for edit:', error);
+      showError(error.message || 'Failed to load entry details', 'Error');
+    }
   };
 
   // Handle delete entry
@@ -458,11 +235,11 @@ export default function JournalEntriesPage() {
 
     if (result.isConfirmed) {
       try {
-        // TODO: API call to delete
+        await deleteJournalEntry(entry.journal_entry_id, 'User requested deletion');
         await showSuccess('Journal entry deleted successfully', 'Deleted');
         fetchEntries();
-      } catch (error) {
-        showError('Failed to delete journal entry', 'Error');
+      } catch (error: any) {
+        showError(error.message || 'Failed to delete journal entry', 'Error');
       }
     }
   };
@@ -474,28 +251,38 @@ export default function JournalEntriesPage() {
       return;
     }
 
-    setSelectedEntry(entry);
-    setModalContent(
-      <PostEntryModal
-        entry={entry}
-        onPost={handleConfirmPost}
-        onClose={() => setIsModalOpen(false)}
-      />
-    );
-    setIsModalOpen(true);
+    try {
+      // Fetch full details (with journal lines) from backend
+      const fullEntry = await fetchJournalEntryById(entry.journal_entry_id);
+      setSelectedEntry(fullEntry);
+      setModalContent(
+        <PostEntryModal
+          entry={fullEntry}
+          onPost={handleConfirmPost}
+          onClose={() => setIsModalOpen(false)}
+        />
+      );
+      setIsModalOpen(true);
+    } catch (error: any) {
+      console.error('Error fetching entry details for post:', error);
+      showError(error.message || 'Failed to load entry details', 'Error');
+    }
   };
 
   // Handle confirm post
   const handleConfirmPost = async (postingDate: string) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Posting entry with date:', postingDate);
+      if (!selectedEntry) {
+        throw new Error('No entry selected for posting');
+      }
+
+      await postJournalEntry(selectedEntry.journal_entry_id);
       await showSuccess('Journal entry posted successfully', 'Success');
       setIsModalOpen(false);
       fetchEntries(); // Refresh the list
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error posting entry:', error);
-      showError('Failed to post journal entry', 'Error');
+      showError(error.message || 'Failed to post journal entry', 'Error');
     }
   };
 
@@ -513,13 +300,16 @@ export default function JournalEntriesPage() {
 
     if (result.isConfirmed) {
       try {
-        // TODO: Replace with actual API call
-        console.log('Reversing entry:', entry.journal_entry_id);
+        await createReversalEntry(
+          entry.journal_entry_id,
+          'User requested reversal',
+          new Date().toISOString().split('T')[0]
+        );
         await showSuccess('Journal entry reversed successfully', 'Success');
         fetchEntries(); // Refresh the list
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error reversing entry:', error);
-        showError('Failed to reverse journal entry', 'Error');
+        showError(error.message || 'Failed to reverse journal entry', 'Error');
       }
     }
   };
@@ -656,8 +446,8 @@ export default function JournalEntriesPage() {
             </thead>
             <tbody>
               {paginatedEntries.length > 0 ? (
-                paginatedEntries.map((entry) => (
-                  <tr key={entry.journal_entry_id}>
+                paginatedEntries.map((entry, index) => (
+                  <tr key={entry.journal_entry_id || entry.code || `entry-${index}`}>
                     <td><strong>{entry.code}</strong></td>
                     <td>{formatDate(entry.date)}</td>
                     <td>{entry.reference || '-'}</td>

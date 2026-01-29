@@ -58,7 +58,7 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
           <div className="error-message">
             <i className="ri-error-warning-line"></i>
             This entry cannot be posted because it is not balanced.
-            <br/>
+            <br />
             <strong>Difference:</strong> {formatMoney(Math.abs(entry.total_debit - entry.total_credit))}
           </div>
         </div>
@@ -111,7 +111,7 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
         {/* Entry Summary */}
         <div className="form-section">
           <h3 className="details-title">Entry Summary</h3>
-          
+
           <div className="form-row">
             <div className="form-group">
               <label>Journal Number</label>
@@ -154,21 +154,12 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
         {/* Posting Date */}
         <div className="form-section">
           <h3 className="details-title">Posting Information</h3>
-          
+
           <div className="form-group">
-            <label htmlFor="posting_date">
-              Posting Date <span className="required">*</span>
-            </label>
-            <input
-              type="date"
-              id="posting_date"
-              value={postingDate}
-              onChange={(e) => setPostingDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              disabled={isPosting}
-            />
+            <label>Posting Date</label>
+            <div className="value-display">{formatDate(postingDate)}</div>
             <span className="field-note">
-              The date when this entry will be recorded in the general ledger
+              Entry will be posted with today's date and current timestamp
             </span>
           </div>
 
@@ -184,7 +175,7 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
         {/* Journal Lines Preview */}
         <div className="form-section">
           <h3 className="details-title">Journal Lines ({entry.journal_lines.length})</h3>
-          
+
           <div className="journal-lines-table">
             <table>
               <thead>
@@ -199,14 +190,14 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
               <tbody>
                 {entry.journal_lines.map((line, index) => (
                   <tr key={line.line_id || index}>
-                    <td>{line.account?.account_code}</td>
-                    <td>{line.account?.account_name}</td>
+                    <td>{line.account_code || line.account?.account_code || '-'}</td>
+                    <td>{line.account_name || line.account?.account_name || '-'}</td>
                     <td>{line.description || '-'}</td>
                     <td className="amount-cell">
-                      {line.debit_amount ? formatMoney(line.debit_amount) : '-'}
+                      {(line.debit_amount || line.debit) ? formatMoney(line.debit_amount || line.debit || 0) : '-'}
                     </td>
                     <td className="amount-cell">
-                      {line.credit_amount ? formatMoney(line.credit_amount) : '-'}
+                      {(line.credit_amount || line.credit) ? formatMoney(line.credit_amount || line.credit || 0) : '-'}
                     </td>
                   </tr>
                 ))}
@@ -220,10 +211,10 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
         <button onClick={onClose} className="cancel-btn" disabled={isPosting}>
           Cancel
         </button>
-        <button 
-          onClick={handlePost} 
+        <button
+          onClick={handlePost}
           className="submit-btn"
-          disabled={isPosting || !postingDate}
+          disabled={isPosting}
         >
           {isPosting ? (
             <>
