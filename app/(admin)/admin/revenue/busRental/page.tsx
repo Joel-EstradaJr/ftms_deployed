@@ -56,6 +56,7 @@ interface BusRentalRecord {
   assignment_id: string; // rental_local.assignment_id (primary key / contract reference)
   description?: string; // revenue.description
   payment_method: PaymentMethodEnum; // revenue.payment_method (enum)
+  rental_package: string | null; // rental_local.rental_package (destination/package info)
 }
 
 interface PaginationMeta {
@@ -187,9 +188,10 @@ const AdminBusRentalPage = () => {
         sort_order: sortOrder,
       });
 
-      // Add search parameter if exists
-      if (search) {
-        params.append('search', search);
+      // Add search parameter if exists (trimmed and sanitized)
+      const trimmedSearch = search.trim();
+      if (trimmedSearch) {
+        params.append('search', trimmedSearch);
       }
 
       // Add filter parameters
@@ -199,21 +201,25 @@ const AdminBusRentalPage = () => {
 
       if (activeFilters.dateRange && typeof activeFilters.dateRange === 'object') {
         const dateRange = activeFilters.dateRange as { from: string; to: string };
-        if (dateRange.from) {
-          params.append('date_recorded_from', dateRange.from);
+        if (dateRange.from && dateRange.from.trim()) {
+          params.append('date_recorded_from', dateRange.from.trim());
         }
-        if (dateRange.to) {
-          params.append('date_recorded_to', dateRange.to);
+        if (dateRange.to && dateRange.to.trim()) {
+          params.append('date_recorded_to', dateRange.to.trim());
         }
       }
 
       if (activeFilters.amountRange && typeof activeFilters.amountRange === 'object') {
         const amountRange = activeFilters.amountRange as { from: string; to: string };
-        if (amountRange.from) {
-          params.append('amount_min', amountRange.from);
+        // Ensure amount values are valid numbers before appending
+        const minAmount = amountRange.from?.trim();
+        const maxAmount = amountRange.to?.trim();
+        
+        if (minAmount && !isNaN(Number(minAmount)) && Number(minAmount) >= 0) {
+          params.append('amount_min', minAmount);
         }
-        if (amountRange.to) {
-          params.append('amount_max', amountRange.to);
+        if (maxAmount && !isNaN(Number(maxAmount)) && Number(maxAmount) >= 0) {
+          params.append('amount_max', maxAmount);
         }
       }
 
@@ -241,6 +247,7 @@ const AdminBusRentalPage = () => {
           assignment_id: item.assignment_id,
           description: item.description,
           payment_method: item.payment_method || 'CASH',
+          rental_package: item.rental_package || null,
         }));
 
         setData(mappedData);
@@ -722,7 +729,7 @@ const AdminBusRentalPage = () => {
               <input
                 className="searchInput"
                 type="text"
-                placeholder="Search by customer, code, or contract..."
+                placeholder="Search by code, assignment ID, rental package, status..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
@@ -754,6 +761,7 @@ const AdminBusRentalPage = () => {
                     Revenue Code{getSortIndicator("code")}
                   </th>
                   <th>Assignment ID</th>
+                  <th>Rental Package</th>
                   <th
                     onClick={() => handleSort("total_rental_amount")}
                     style={{ cursor: 'pointer', userSelect: 'none' }}
@@ -768,6 +776,13 @@ const AdminBusRentalPage = () => {
                   >
                     Rental Balance{getSortIndicator("balance_amount")}
                   </th>
+                  <th
+                    onClick={() => handleSort("date_recorded")}
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    title="Click to sort by Date Recorded"
+                  >
+                    Date Recorded{getSortIndicator("date_recorded")}
+                  </th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -775,13 +790,13 @@ const AdminBusRentalPage = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
                       Loading...
                     </td>
                   </tr>
                 ) : data.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
                       No rental records found.
                     </td>
                   </tr>
@@ -800,8 +815,10 @@ const AdminBusRentalPage = () => {
                       <tr key={item.id}>
                         <td style={{ maxWidth: 10 }}>{item.code}</td>
                         <td>{item.assignment_id}</td>
+                        <td>{item.rental_package || '—'}</td>
                         <td>{formatMoney(item.total_rental_amount)}</td>
                         <td>{formatMoney(item.balance_amount)}</td>
+                        <td>{item.date_recorded ? formatDate(item.date_recorded) : '—'}</td>
                         <td style={{ maxWidth: 10 }}>
                           <span className={`chip ${statusInfo.className}`}>
                             {statusInfo.label}

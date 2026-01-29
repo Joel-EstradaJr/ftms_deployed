@@ -50,6 +50,7 @@ interface BusRentalRecord {
     assignment_id: string; // rental_local.assignment_id
     description?: string; // revenue.description
     payment_method: PaymentMethodEnum; // revenue.payment_method enum
+    rental_package: string | null; // rental_local.rental_package (destination/package info)
     busPlateNumber?: string;
     bodyNumber?: string;
     rental_start_date?: string;
@@ -135,10 +136,10 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
 
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Total Rental Amount</label>
+                            <label>Rental Package</label>
                             <input
                                 type="text"
-                                value={formatMoney(record.total_rental_amount)}
+                                value={record.rental_package || 'N/A'}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -149,6 +150,18 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <input
                                 type="text"
                                 value={formatDate(record.date_recorded)}
+                                disabled
+                                style={{ backgroundColor: '#f5f5f5' }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Total Rental Amount</label>
+                            <input
+                                type="text"
+                                value={formatMoney(record.total_rental_amount)}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
