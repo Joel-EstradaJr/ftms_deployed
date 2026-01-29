@@ -98,15 +98,6 @@ const ViewJournalEntryModal: React.FC<ViewJournalEntryModalProps> = ({
             </div>
 
             <div className="detailRow">
-              <span className="label">Entry Type:</span>
-              <span className="value">
-                <span className={`chip ${getEntryTypeClass(entry.entry_type)}`}>
-                  {getEntryTypeLabel(entry.entry_type)}
-                </span>
-              </span>
-            </div>
-
-            <div className="detailRow">
               <span className="label">Transaction Date:</span>
               <span className="value">{formatDate(entry.transaction_date)}</span>
             </div>
