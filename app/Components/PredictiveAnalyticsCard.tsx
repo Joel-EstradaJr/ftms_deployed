@@ -31,10 +31,10 @@ interface PredictiveAnalyticsCardProps {
 
 const styles = {
     container: {
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--foreground-color)',
         borderRadius: '16px',
         padding: '24px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        boxShadow: 'var(--box-shadow)',
         marginTop: '24px',
     } as React.CSSProperties,
 
@@ -50,7 +50,7 @@ const styles = {
         margin: 0,
         fontSize: '1.25rem',
         fontWeight: 600,
-        color: '#111827',
+        color: 'var(--primary-text-color)',
     } as React.CSSProperties,
 
     metricsGrid: {
@@ -63,13 +63,13 @@ const styles = {
     metricCard: {
         padding: '16px',
         borderRadius: '12px',
-        backgroundColor: '#f9fafb',
-        borderLeft: '4px solid',
+        backgroundColor: 'var(--background-color)',
+        border: '4px solid',
     } as React.CSSProperties,
 
     metricLabel: {
         fontSize: '0.75rem',
-        color: '#6b7280',
+        color: 'var(--secondary-text-color)',
         marginBottom: '4px',
         textTransform: 'uppercase' as const,
         letterSpacing: '0.05em',
@@ -78,19 +78,19 @@ const styles = {
     metricValue: {
         fontSize: '1.5rem',
         fontWeight: 700,
-        color: '#111827',
+        color: 'var(--primary-text-color)',
     } as React.CSSProperties,
 
     metricSubtext: {
         fontSize: '0.75rem',
-        color: '#9ca3af',
+        color: 'var(--secondary-text-color)',
         marginTop: '2px',
     } as React.CSSProperties,
 
     chartContainer: {
         marginBottom: '24px',
         padding: '16px',
-        backgroundColor: '#fafafa',
+        backgroundColor: 'var(--background-color)',
         borderRadius: '12px',
     } as React.CSSProperties,
 
@@ -103,14 +103,15 @@ const styles = {
 
     chartBox: {
         padding: '16px',
-        backgroundColor: '#fafafa',
+        backgroundColor: 'var(--background-color)',
+        boxShadow: 'var(--box-shadow)',
         borderRadius: '12px',
     } as React.CSSProperties,
 
     chartTitle: {
         fontSize: '0.875rem',
         fontWeight: 600,
-        color: '#374151',
+        color: 'var(--primary-text-color)',
         marginBottom: '12px',
         textAlign: 'center' as const,
     } as React.CSSProperties,
@@ -127,9 +128,9 @@ const styles = {
         gap: '8px',
         padding: '10px 20px',
         borderRadius: '8px',
-        border: variant === 'secondary' ? '1px solid #e5e7eb' : 'none',
-        backgroundColor: variant === 'primary' ? '#3b82f6' : '#ffffff',
-        color: variant === 'primary' ? '#ffffff' : '#374151',
+        border: variant === 'secondary' ? '1px solid var(--border-color)' : 'none',
+        backgroundColor: variant === 'primary' ? 'var(--primary-color)' : 'var(--foreground-color)',
+        color: variant === 'primary' ? 'var(--button-font-color)' : 'var(--primary-text-color)',
         fontSize: '0.875rem',
         fontWeight: 500,
         cursor: 'pointer',
@@ -139,9 +140,9 @@ const styles = {
     explanationBox: {
         marginTop: '20px',
         padding: '20px',
-        backgroundColor: '#eff6ff',
+        backgroundColor: 'var(--info-chip-bg-color)',
         borderRadius: '12px',
-        borderLeft: '4px solid #3b82f6',
+        borderLeft: '4px solid var(--info-color)',
     } as React.CSSProperties,
 
     explanationTitle: {
@@ -150,13 +151,13 @@ const styles = {
         gap: '8px',
         fontSize: '0.875rem',
         fontWeight: 600,
-        color: '#1e40af',
+        color: 'var(--info-chip-text-color)',
         marginBottom: '12px',
     } as React.CSSProperties,
 
     explanationText: {
         fontSize: '0.875rem',
-        color: '#1e3a8a',
+        color: 'var(--info-chip-text-color)',
         lineHeight: 1.6,
         whiteSpace: 'pre-line' as const,
     } as React.CSSProperties,
@@ -166,14 +167,14 @@ const styles = {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '40px',
-        color: '#6b7280',
+        color: 'var(--secondary-text-color)',
     } as React.CSSProperties,
 
     spinner: {
         width: '24px',
         height: '24px',
-        border: '3px solid #e5e7eb',
-        borderTopColor: '#3b82f6',
+        border: '3px solid var(--border-color)',
+        borderTopColor: 'var(--primary-color)',
         borderRadius: '50%',
         animation: 'spin 1s linear infinite',
         marginRight: '12px',
@@ -296,7 +297,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
         if (dataType === 'both' && revenueForecast && expenseForecast) {
             // Export both forecasts
             const revChartImage = revenueChartRef.current?.getChartImage() || undefined;
-            exportForecastToPDF({
+            await exportForecastToPDF({
                 forecastResult: revenueForecast,
                 dataType: 'revenue',
                 chartImageBase64: revChartImage,
@@ -306,7 +307,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const expChartImage = expenseChartRef.current?.getChartImage() || undefined;
-            exportForecastToPDF({
+            await exportForecastToPDF({
                 forecastResult: expenseForecast,
                 dataType: 'expense',
                 chartImageBase64: expChartImage,
@@ -315,7 +316,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
         } else if (primaryForecast) {
             const chartRef = dataType === 'expense' ? expenseChartRef : revenueChartRef;
             const chartImage = chartRef.current?.getChartImage() || undefined;
-            exportForecastToPDF({
+            await exportForecastToPDF({
                 forecastResult: primaryForecast,
                 dataType: primaryType,
                 chartImageBase64: chartImage,
@@ -328,9 +329,9 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
 
     // Helper functions for metrics
     const getTrendColor = (result: ForecastResult | null) => {
-        if (!result) return '#6b7280';
-        return result.trend === 'increasing' ? '#22c55e' :
-            result.trend === 'decreasing' ? '#ef4444' : '#6b7280';
+        if (!result) return 'var(--secondary-text-color)';
+        return result.trend === 'increasing' ? 'var(--success-color)' :
+            result.trend === 'decreasing' ? 'var(--error-color)' : 'var(--secondary-text-color)';
     };
 
     const getTrendIcon = (result: ForecastResult | null) => {
@@ -368,7 +369,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
                 </div>
             </div>
 
-            <div style={{ ...styles.metricCard, borderColor: type === 'revenue' ? '#22c55e' : '#ef4444' }}>
+            <div style={{ ...styles.metricCard, borderColor: type === 'revenue' ? 'var(--success-color)' : 'var(--error-color)' }}>
                 <div style={styles.metricLabel}>{prefix}Next Month</div>
                 <div style={styles.metricValue}>
                     ₱{(result.nextMonthPrediction / 1000).toFixed(1)}k
@@ -378,7 +379,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
                 </div>
             </div>
 
-            <div style={{ ...styles.metricCard, borderColor: '#8b5cf6' }}>
+            <div style={{ ...styles.metricCard, borderColor: 'var(--info-color)' }}>
                 <div style={styles.metricLabel}>{prefix}Monthly Avg</div>
                 <div style={styles.metricValue}>
                     ₱{(result.averageHistorical / 1000).toFixed(1)}k
@@ -386,7 +387,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
                 <div style={styles.metricSubtext}>Historical average</div>
             </div>
 
-            <div style={{ ...styles.metricCard, borderColor: result.confidence >= 70 ? '#22c55e' : result.confidence >= 50 ? '#f59e0b' : '#ef4444' }}>
+            <div style={{ ...styles.metricCard, borderColor: result.confidence >= 70 ? 'var(--success-color)' : result.confidence >= 50 ? 'var(--warning-color)' : 'var(--error-color)' }}>
                 <div style={styles.metricLabel}>{prefix}Confidence</div>
                 <div style={styles.metricValue}>{result.confidence}%</div>
                 <div style={styles.metricSubtext}>
@@ -403,14 +404,15 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
                 @keyframes spin {
                     to { transform: rotate(360deg); }
                 }
-                .export-btn:hover { background-color: #2563eb !important; }
-                .explain-btn:hover { background-color: #f3f4f6 !important; }
+                .export-btn:hover { background-color: var(--primary-hover-color) !important; }
+                .explain-btn:hover { background-color: var(--background-color) !important; }
             `}</style>
 
             {/* Header */}
+            {/* Header */}
             <div style={styles.header}>
                 <h2 style={styles.title}>Predictive Analytics</h2>
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)' }}>
                     {dataType === 'both' ? 'Revenue & Expenses' : dataType === 'revenue' ? 'Revenue' : 'Expenses'}
                 </span>
             </div>
@@ -422,7 +424,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
                     <div style={styles.comparisonGrid}>
                         {/* Revenue Column */}
                         <div style={styles.comparisonColumn}>
-                            <div style={{ ...styles.comparisonHeader, backgroundColor: '#dcfce7', color: '#166534' }}>
+                            <div style={{ ...styles.comparisonHeader, backgroundColor: 'var(--success-chip-bg-color)', color: 'var(--success-chip-text-color)' }}>
                                 Revenue Forecast
                             </div>
                             <div style={{ ...styles.metricsGrid, gridTemplateColumns: 'repeat(2, 1fr)' }}>
@@ -432,7 +434,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
 
                         {/* Expense Column */}
                         <div style={styles.comparisonColumn}>
-                            <div style={{ ...styles.comparisonHeader, backgroundColor: '#fee2e2', color: '#991b1b' }}>
+                            <div style={{ ...styles.comparisonHeader, backgroundColor: 'var(--error-chip-bg-color)', color: 'var(--error-chip-text-color)' }}>
                                 Expense Forecast
                             </div>
                             <div style={{ ...styles.metricsGrid, gridTemplateColumns: 'repeat(2, 1fr)' }}>
@@ -444,7 +446,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
                     {/* Charts Side by Side */}
                     <div style={styles.chartsRow}>
                         <div style={styles.chartBox}>
-                            <div style={{ ...styles.chartTitle, color: '#166534' }}>Revenue Trend & Forecast</div>
+                            <div style={{ ...styles.chartTitle, color: 'var(--success-chip-text-color)' }}>Revenue Trend & Forecast</div>
                             <ForecastChart
                                 ref={revenueChartRef}
                                 historical={revenueForecast.historical}
@@ -454,7 +456,7 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
                             />
                         </div>
                         <div style={styles.chartBox}>
-                            <div style={{ ...styles.chartTitle, color: '#991b1b' }}>Expense Trend & Forecast</div>
+                            <div style={{ ...styles.chartTitle, color: 'var(--error-chip-text-color)' }}>Expense Trend & Forecast</div>
                             <ForecastChart
                                 ref={expenseChartRef}
                                 historical={expenseForecast.historical}

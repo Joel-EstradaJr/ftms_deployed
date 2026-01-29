@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { addPDFHeader } from '../utils/PDFHeader';
 import '../styles/components/exportBtn.css';
 
 interface ExportButtonProps {
@@ -14,12 +15,12 @@ interface ExportButtonProps {
   logo?: string;
 }
 
-const ExportButton: React.FC<ExportButtonProps> = ({ 
-  data, 
-  filename, 
-  columns, 
+const ExportButton: React.FC<ExportButtonProps> = ({
+  data,
+  filename,
+  columns,
   title = 'Export Report',
-  logo 
+  logo
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -27,7 +28,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({
   const getColumns = () => {
     if (columns) return columns;
     if (data.length === 0) return [];
-    
+
     const firstItem = data[0];
     return Object.keys(firstItem).map(key => ({
       header: key.replace(/_/g, ' ').toUpperCase(),
@@ -64,28 +65,27 @@ const ExportButton: React.FC<ExportButtonProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     setIsOpen(false);
     const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
-    
-    // Add logo if provided
-    if (logo) {
-      try {
-        doc.addImage(logo, 'PNG', 14, 10, 30, 30);
-      } catch (error) {
-        console.warn('Could not add logo to PDF:', error);
-      }
+
+    // Add Standard Header
+    const headerBottomY = await addPDFHeader(doc);
+    let yPos = headerBottomY + 5;
+
+    // Add specific title if provided (below header)
+    if (title) {
+      doc.setFontSize(14);
+      doc.setTextColor(150, 28, 30); // Primary color
+      doc.text(title, 14, yPos);
+
+      // Add generation date
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, yPos + 6);
+
+      yPos += 15;
     }
-
-    // Add title
-    doc.setFontSize(18);
-    doc.setTextColor(150, 28, 30); // Primary color #961C1E
-    doc.text(title, logo ? 50 : 14, 20);
-
-    // Add generation date
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, logo ? 50 : 14, 28);
 
     const cols = getColumns();
     const headers = [cols.map(col => col.header)];
@@ -98,7 +98,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({
     autoTable(doc, {
       head: headers,
       body: body,
-      startY: logo ? 45 : 35,
+      startY: yPos,
       theme: 'grid',
       headStyles: {
         fillColor: [150, 28, 30], // Primary color
@@ -128,7 +128,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({
     }));
 
     const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
-    
+
     // Style headers
     const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
     for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -156,7 +156,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({
         Export
         <i className={`ri-arrow-${isOpen ? 'up' : 'down'}-s-line`}></i>
       </button>
-      
+
       {isOpen && (
         <div className="export-dropdown">
           <button
@@ -188,7 +188,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({
           </button>
         </div>
       )}
-      
+
       {/* Click outside to close */}
       {isOpen && (
         <div

@@ -8,6 +8,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ForecastResult } from './predictiveAnalytics';
+import { addPDFHeader } from './PDFHeader';
 
 // ============================================================================
 // INTERFACES
@@ -31,7 +32,7 @@ export interface PDFExportOptions {
 /**
  * Generate and download a PDF report for the forecast
  */
-export function exportForecastToPDF(options: PDFExportOptions): void {
+export async function exportForecastToPDF(options: PDFExportOptions): Promise<void> {
     const { forecastResult, dataType, chartImageBase64, explanation, dateRange } = options;
     const doc = new jsPDF();
 
@@ -39,25 +40,23 @@ export function exportForecastToPDF(options: PDFExportOptions): void {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
     const contentWidth = pageWidth - (margin * 2);
-    let yPos = margin;
 
-    // Title Header
-    doc.setFillColor(17, 24, 39);
-    doc.rect(0, 0, pageWidth, 40, 'F');
+    // Add Standard Header
+    let yPos = await addPDFHeader(doc);
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('FTMS Predictive Analytics Report', margin, 25);
-
+    // Report Meta (Date)
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
     const dateStr = new Date().toLocaleDateString('en-PH', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     });
-    doc.text(`Generated: ${dateStr}`, margin, 35);
+    doc.text(`Generated: ${dateStr}`, margin, yPos);
+    yPos += 10;
 
     yPos = 55;
     doc.setTextColor(0, 0, 0);
