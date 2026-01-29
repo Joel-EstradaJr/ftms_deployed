@@ -270,13 +270,13 @@ export default function JournalEntriesPage() {
   };
 
   // Handle confirm post
-  const handleConfirmPost = async (postingDate: string) => {
+  const handleConfirmPost = async (entryId: string, postingDate: string) => {
     try {
-      if (!selectedEntry) {
+      if (!entryId) {
         throw new Error('No entry selected for posting');
       }
 
-      await postJournalEntry(selectedEntry.journal_entry_id);
+      await postJournalEntry(entryId);
       await showSuccess('Journal entry posted successfully', 'Success');
       setIsModalOpen(false);
       fetchEntries(); // Refresh the list

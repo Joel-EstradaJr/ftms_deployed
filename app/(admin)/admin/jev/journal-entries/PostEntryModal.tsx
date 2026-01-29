@@ -10,7 +10,7 @@ import '@/app/styles/JEV/journal-entries.css';
 interface PostEntryModalProps {
   entry: JournalEntry;
   onClose: () => void;
-  onPost: (postingDate: string) => Promise<void>;
+  onPost: (entryId: string, postingDate: string) => Promise<void>;
 }
 
 const PostEntryModal: React.FC<PostEntryModalProps> = ({
@@ -91,7 +91,7 @@ const PostEntryModal: React.FC<PostEntryModalProps> = ({
     if (result.isConfirmed) {
       setIsPosting(true);
       try {
-        await onPost(postingDate);
+        await onPost(entry.journal_entry_id, postingDate);
       } catch (error) {
         setIsPosting(false);
       }
