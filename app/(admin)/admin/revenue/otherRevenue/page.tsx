@@ -95,6 +95,12 @@ interface OtherRevenueRecord {
   accountCode?: string;
   created_by?: string;
   created_at?: string;
+  // Journal Entry link (for edit/delete restrictions)
+  journalEntry?: {
+    id: number;
+    code: string;
+    status: string;
+  } | null;
   // Receivable data for unearned revenue
   receivable?: {
     id: number;
@@ -1613,9 +1619,10 @@ const AdminOtherRevenuePage = () => {
                               <i className="ri-eye-line"></i>
                             </button>
 
-                            {/* Edit button - ONLY visible for PENDING status */}
+                            {/* Edit button - ONLY visible for PENDING status and no POSTED JE */}
                             {(row.originalRecord.remittance_status === 'PENDING' ||
-                              row.paymentStatus === PaymentStatus.PENDING) && (
+                              row.paymentStatus === PaymentStatus.PENDING) &&
+                              row.originalRecord.journalEntry?.status !== 'POSTED' && (
                                 <button
                                   className="editBtn"
                                   onClick={() => openModal('edit', row.originalRecord)}
@@ -1625,9 +1632,10 @@ const AdminOtherRevenuePage = () => {
                                 </button>
                               )}
 
-                            {/* Delete button - ONLY visible for PENDING status */}
+                            {/* Delete button - ONLY visible for PENDING status and no POSTED JE */}
                             {(row.originalRecord.remittance_status === 'PENDING' ||
-                              row.paymentStatus === PaymentStatus.PENDING) && (
+                              row.paymentStatus === PaymentStatus.PENDING) &&
+                              row.originalRecord.journalEntry?.status !== 'POSTED' && (
                                 <button
                                   className="deleteBtn"
                                   onClick={(e) => {
@@ -1639,6 +1647,17 @@ const AdminOtherRevenuePage = () => {
                                   <i className="ri-delete-bin-line" />
                                 </button>
                               )}
+
+                            {/* Locked indicator for POSTED journal entries */}
+                            {row.originalRecord.journalEntry?.status === 'POSTED' && (
+                              <span
+                                className="lockedIndicator"
+                                title="Locked - Journal entry posted"
+                                style={{ color: '#888', padding: '4px 8px' }}
+                              >
+                                <i className="ri-lock-line" />
+                              </span>
+                            )}
 
                             {/* Pay button for unearned revenue that's not fully paid */}
                             {row.originalRecord.isUnearnedRevenue &&
