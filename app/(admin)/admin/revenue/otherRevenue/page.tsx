@@ -1113,6 +1113,13 @@ const AdminOtherRevenuePage = () => {
           }>;
         } | null | undefined;
 
+        // Map journal entry from backend response for edit/delete restrictions
+        const journalEntry = item.journalEntry as {
+          id: number;
+          code: string;
+          status: string;
+        } | null | undefined;
+
         // Map schedule items to frontend format
         const scheduleItems: RevenueScheduleItem[] = receivable?.scheduleItems?.map(s => ({
           id: String(s.id),
@@ -1145,6 +1152,12 @@ const AdminOtherRevenuePage = () => {
           accountCode: item.accountCode as string | undefined,
           created_by: item.created_by as string | undefined,
           created_at: item.created_at as string | undefined,
+          // Journal Entry for edit/delete restrictions - single source of truth
+          journalEntry: journalEntry ? {
+            id: journalEntry.id,
+            code: journalEntry.code,
+            status: journalEntry.status
+          } : null,
           receivable: receivable ? {
             id: receivable.id,
             status: receivable.status,
@@ -1619,10 +1632,11 @@ const AdminOtherRevenuePage = () => {
                               <i className="ri-eye-line"></i>
                             </button>
 
-                            {/* Edit button - ONLY visible for PENDING status and no POSTED JE */}
+                            {/* Edit button - ONLY visible for PENDING status and JE in DRAFT status */}
+                            {/* Journal Entry status is the single source of truth for edit restrictions */}
                             {(row.originalRecord.remittance_status === 'PENDING' ||
                               row.paymentStatus === PaymentStatus.PENDING) &&
-                              row.originalRecord.journalEntry?.status !== 'POSTED' && (
+                              (!row.originalRecord.journalEntry || row.originalRecord.journalEntry?.status === 'DRAFT') && (
                                 <button
                                   className="editBtn"
                                   onClick={() => openModal('edit', row.originalRecord)}
@@ -1632,10 +1646,11 @@ const AdminOtherRevenuePage = () => {
                                 </button>
                               )}
 
-                            {/* Delete button - ONLY visible for PENDING status and no POSTED JE */}
+                            {/* Delete button - ONLY visible for PENDING status and JE in DRAFT status */}
+                            {/* Journal Entry status is the single source of truth for delete restrictions */}
                             {(row.originalRecord.remittance_status === 'PENDING' ||
                               row.paymentStatus === PaymentStatus.PENDING) &&
-                              row.originalRecord.journalEntry?.status !== 'POSTED' && (
+                              (!row.originalRecord.journalEntry || row.originalRecord.journalEntry?.status === 'DRAFT') && (
                                 <button
                                   className="deleteBtn"
                                   onClick={(e) => {
@@ -1648,11 +1663,11 @@ const AdminOtherRevenuePage = () => {
                                 </button>
                               )}
 
-                            {/* Locked indicator for POSTED journal entries */}
-                            {row.originalRecord.journalEntry?.status === 'POSTED' && (
+                            {/* Locked indicator for non-DRAFT journal entries */}
+                            {row.originalRecord.journalEntry && row.originalRecord.journalEntry?.status !== 'DRAFT' && (
                               <span
                                 className="lockedIndicator"
-                                title="Locked - Journal entry posted"
+                                title={`Locked - Journal entry ${row.originalRecord.journalEntry?.status?.toLowerCase()}`}
                                 style={{ color: '#888', padding: '4px 8px' }}
                               >
                                 <i className="ri-lock-line" />
