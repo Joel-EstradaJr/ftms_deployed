@@ -242,7 +242,7 @@ export interface EmployeeItem {
 // API ENDPOINT BASE
 // ============================================================================
 
-const EXPENSE_API_BASE = '/api/operational-trip-expenses';
+const EXPENSE_API_BASE = '/api/admin/operational-expenses';
 
 // ============================================================================
 // API FUNCTIONS
@@ -359,8 +359,8 @@ export async function softDeleteExpense(id: number, reason?: string): Promise<vo
     const response = await api.patch<{
         success: boolean;
         message: string;
-    }>(`${EXPENSE_API_BASE}/${id}/soft-delete`, { 
-        reason: reason || 'Deleted by admin' 
+    }>(`${EXPENSE_API_BASE}/${id}/soft-delete`, {
+        reason: reason || 'Deleted by admin'
     });
 
     if (!response.success) {
