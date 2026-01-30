@@ -125,7 +125,11 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     onChange(optionValue);
     setIsOpen(false);
     setSearchTerm('');
-    if (onBlur) onBlur();
+    // Delay onBlur to allow React state update from onChange to complete first
+    // This ensures validation runs with the updated value, not the stale value
+    if (onBlur) {
+      setTimeout(() => onBlur(), 0);
+    }
   };
 
   // Handle keyboard navigation

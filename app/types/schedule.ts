@@ -22,10 +22,12 @@ export enum PaymentStatus {
 /**
  * Frequency options for recurring schedules
  * Consolidated from ExpenseScheduleFrequency and RevenueScheduleFrequency
+ * Aligned with backend receivable_frequency enum
  */
 export enum ScheduleFrequency {
   DAILY = 'DAILY',
   WEEKLY = 'WEEKLY',
+  BIWEEKLY = 'BIWEEKLY',
   MONTHLY = 'MONTHLY',
   ANNUAL = 'ANNUAL',
   CUSTOM = 'CUSTOM'

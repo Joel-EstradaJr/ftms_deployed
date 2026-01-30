@@ -24,7 +24,7 @@ export interface SimpleScheduleItem {
 import { PaymentRecordData } from '@/app/types/payments';
 
 interface RecordPaymentModalProps {
-  entityType?: 'revenue' | 'expense' | string;
+  entityType?: 'revenue' | 'expense' | 'other-revenue' | string;
   recordId: string | number;
   recordRef?: string;
   scheduleItems: SimpleScheduleItem[];
@@ -34,9 +34,11 @@ interface RecordPaymentModalProps {
   onPaymentRecorded: (paymentData: PaymentRecordData) => Promise<void>;
   onClose: () => void;
   processCascadePayment: (amount: number, items: any[], startIndex: number) => any;
-  // Employee information for revenue payments
+  // Employee information for revenue payments (bus trip revenue)
   employeeNumber?: string;
   employeeName?: string;
+  // Flag to hide employee fields (for Other Revenue)
+  hideEmployeeFields?: boolean;
 }
 
 const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
@@ -51,7 +53,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   onClose,
   processCascadePayment,
   employeeNumber,
-  employeeName
+  employeeName,
+  hideEmployeeFields = false
 }) => {
   const [amountToPay, setAmountToPay] = useState<number>(0);
 
@@ -80,7 +83,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   const availablePaymentMethods = paymentMethods.length > 0 ? paymentMethods : DEFAULT_PAYMENT_METHODS;
 
   // Filter payment methods based on entity type
-  const filteredPaymentMethods = (entityType === 'revenue' || entityType === 'receivable')
+  const filteredPaymentMethods = (entityType === 'revenue' || entityType === 'receivable' || entityType === 'other-revenue')
     ? availablePaymentMethods.filter(method => {
       const code = method.methodCode.toUpperCase();
       // For receivables, allow Cash, Bank Transfer, and E-Wallet
@@ -139,7 +142,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       title: 'Confirm Payment',
       html: `
         <div style="text-align: left; margin-bottom: 20px;">
-          <p><strong>${entityType === 'expense' ? 'Expense Ref' : 'Receivable Ref'}:</strong> ${recordRef || recordId}</p>
+          <p><strong>${entityType === 'expense' ? 'Expense Ref' : entityType === 'other-revenue' ? 'Revenue Ref' : 'Receivable Ref'}:</strong> ${recordRef || recordId}</p>
           <p><strong>Installment:</strong> #${selectedInstallment.installmentNumber}</p>
           <p><strong>Amount to Pay:</strong> ${formatMoney(amountToPay)}</p>
           ${isOverflow ? `<p style="color: #FF8C00;"><strong>⚠️ Will cascade to ${affectedCount} installment(s)</strong></p>` : ''}
@@ -228,7 +231,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <div className="modal-content add">
               <div className="add-form">
                 <div style={{ padding: '12px', border: '2px solid var(--primary-color)', borderRadius: '6px', marginBottom: '15px' }}>
-                  {(entityType === 'revenue' || entityType === 'receivable') ? (
+                  {(entityType === 'revenue' || entityType === 'receivable') && !hideEmployeeFields ? (
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span><strong>Employee ID:</strong></span>
@@ -243,6 +246,11 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                         <span>{recordRef || recordId}</span>
                       </div>
                     </>
+                  ) : entityType === 'other-revenue' || hideEmployeeFields ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span><strong>Revenue Ref:</strong></span>
+                      <span>{recordRef || recordId}</span>
+                    </div>
                   ) : (
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span><strong>Expense Ref:</strong></span>

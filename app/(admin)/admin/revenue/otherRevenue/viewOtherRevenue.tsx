@@ -28,22 +28,9 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
 
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
 
-  // Calculate net amount after discount
-  const calculateNetAmount = (): number => {
-    return revenueData.amount - (revenueData.discountAmount || 0);
-  };
-
   // Format category for display
   const formatCategory = (category: string): string => {
     return OTHER_REVENUE_CATEGORIES_MAP[category] || category;
-  };
-
-  // Get verification status badge
-  const getVerificationBadge = () => {
-    if (revenueData.isVerified) {
-      return <span className="chip completed">Verified</span>;
-    }
-    return <span className="chip pending">Pending Verification</span>;
   };
 
   // Calculate payment schedule stats
@@ -116,13 +103,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
             {/* Revenue Type */}
             <div className="form-group">
               <label>Revenue Type</label>
-              <p>OTHER</p>
-            </div>
-
-            {/* Verification Status */}
-            <div className="form-group">
-              <label>Verification Status</label>
-              <span>{getVerificationBadge()}</span>
+              <p>{revenueData.name || 'Not Applicable'}</p>
             </div>
           </div>
         </form>
@@ -148,7 +129,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
             {/* Reference Number */}
             <div className="form-group">
               <label>Reference Number</label>
-              <p>{revenueData.payment_reference}</p>
+              <p>{revenueData.payment_reference || 'Not Applicable'}</p>
             </div>
           </div>
 
@@ -156,13 +137,13 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
             {/* Department */}
             <div className="form-group">
               <label>Department</label>
-              <p>{revenueData.department}</p>
+              <p>{revenueData.department || 'Not Applicable'}</p>
             </div>
 
             {/* Payment Method */}
             <div className="form-group">
               <label>Payment Method</label>
-              <p>{revenueData.paymentMethodName || 'N/A'}</p>
+              <p>{revenueData.paymentMethodName || revenueData.payment_method || 'Not Applicable'}</p>
             </div>
 
             {/* Amount */}
@@ -174,50 +155,10 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
         </form>
       </div>
 
-      {/* II. Discount Information (if applicable) */}
-      {(revenueData.discountAmount || revenueData.discountPercentage) ? (
-        <>
-          <p className="details-title">II. Discount Information</p>
-          <div className="modal-content view">
-            <form className="view-form">
-              <div className="form-row">
-                {/* Discount Amount */}
-                <div className="form-group">
-                  <label>Discount Amount</label>
-                  <p>{formatMoney(revenueData.discountAmount || 0)}</p>
-                </div>
-
-                {/* Discount Percentage */}
-                <div className="form-group">
-                  <label>Discount Percentage</label>
-                  <p>{revenueData.discountPercentage || 0}%</p>
-                </div>
-
-                {/* Net Amount */}
-                <div className="form-group">
-                  <label>Net Amount</label>
-                  <p className="amount-field">{formatMoney(calculateNetAmount())}</p>
-                </div>
-              </div>
-
-              <div className="form-row">
-                {/* Discount Reason */}
-                <div className="form-group full-width">
-                  <label>Discount Reason</label>
-                  <p>{revenueData.discountReason || 'N/A'}</p>
-                </div>
-              </div>
-            </form>
-          </div>
-        </>
-      ) : null}
-
-      {/* III. Revenue Recognition (if applicable) */}
+      {/* II. Revenue Recognition (if applicable) */}
       {revenueData.isUnearnedRevenue && (
         <>
-          <p className="details-title">
-            {(revenueData.discountAmount || revenueData.discountPercentage) ? 'III' : 'II'}. Revenue Recognition
-          </p>
+          <p className="details-title">II. Revenue Recognition</p>
           <div className="modal-content view">
             <form className="view-form">
               <div className="form-row">
@@ -225,14 +166,6 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
                 <div className="form-group">
                   <label>Revenue Type</label>
                   <p className="chip pending">Unearned Revenue</p>
-                </div>
-              </div>
-
-              <div className="form-row">
-                {/* Recognition Schedule */}
-                <div className="form-group full-width">
-                  <label>Recognition Schedule</label>
-                  <p>{revenueData.recognitionSchedule || 'N/A'}</p>
                 </div>
               </div>
             </form>
@@ -245,12 +178,7 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
             <p className="details-title" style={{ margin: 0 }}>
-              {(() => {
-                let section = 2;
-                if (revenueData.discountAmount || revenueData.discountPercentage) section++;
-                if (revenueData.isUnearnedRevenue) section++;
-                return `${['', 'I', 'II', 'III', 'IV'][section]}`;
-              })()}. Payment Schedule & History
+              {revenueData.isUnearnedRevenue ? 'III' : 'II'}. Payment Schedule & History
             </p>
             {hasPendingPayments && (
               <button
@@ -330,7 +258,6 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
                         <th>Amount Paid</th>
                         <th>Applied To</th>
                         <th>Method</th>
-                        <th>Reference</th>
                         <th>Recorded By</th>
                       </tr>
                     </thead>
@@ -347,7 +274,6 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
                             <td>{formatMoney(item.paidAmount)}</td>
                             <td>Installment #{item.installmentNumber}</td>
                             <td>{item.paymentMethod || 'N/A'}</td>
-                            <td>{item.referenceNumber || '—'}</td>
                             <td>{item.paidBy || 'N/A'}</td>
                           </tr>
                         ))}
@@ -367,50 +293,12 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
         </>
       )}
 
-      {/* Verification Details (if verified) */}
-      {revenueData.isVerified && revenueData.verifiedBy && (
-        <>
-          <p className="details-title">
-            {(() => {
-              let section = 2;
-              if (revenueData.discountAmount || revenueData.discountPercentage) section++;
-              if (revenueData.isUnearnedRevenue) section++; // Revenue Recognition
-              if (revenueData.isUnearnedRevenue && revenueData.scheduleItems && revenueData.scheduleItems.length > 0) section++; // Payment Schedule
-              return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][section]}`;
-            })()}. Verification Details
-          </p>
-          <div className="modal-content view">
-            <form className="view-form">
-              <div className="form-row">
-                {/* Verified By */}
-                <div className="form-group">
-                  <label>Verified By</label>
-                  <p>{revenueData.verifiedBy}</p>
-                </div>
-
-                {/* Verified At */}
-                <div className="form-group">
-                  <label>Verified At</label>
-                  <p>{formatDate(revenueData.verifiedAt || '')}</p>
-                </div>
-              </div>
-            </form>
-          </div>
-        </>
-      )}
-
       {/* Additional Information */}
-      {(revenueData.remarks || revenueData.receiptUrl || revenueData.accountCode) && (
+      {(revenueData.remarks || revenueData.accountCode) && (
         <>
           <p className="details-title">
-            {(() => {
-              let section = 2;
-              if (revenueData.discountAmount || revenueData.discountPercentage) section++;
-              if (revenueData.isUnearnedRevenue) section++; // Revenue Recognition
-              if (revenueData.isUnearnedRevenue && revenueData.scheduleItems && revenueData.scheduleItems.length > 0) section++; // Payment Schedule
-              if (revenueData.isVerified && revenueData.verifiedBy) section++; // Verification
-              return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][section]}`;
-            })()}. Additional Information
+            {revenueData.isUnearnedRevenue && revenueData.scheduleItems && revenueData.scheduleItems.length > 0 ? 'IV' :
+              revenueData.isUnearnedRevenue ? 'III' : 'II'}. Additional Information
           </p>
           <div className="modal-content view">
             <form className="view-form">
@@ -419,17 +307,6 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
                   <div className="form-group full-width">
                     <label>Remarks</label>
                     <p>{revenueData.remarks}</p>
-                  </div>
-                </div>
-              )}
-
-              {revenueData.receiptUrl && (
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Receipt Document</label>
-                    <a href={revenueData.receiptUrl} target="_blank" rel="noopener noreferrer" className="document-link">
-                      <i className="ri-file-line" /> View Receipt
-                    </a>
                   </div>
                 </div>
               )}
