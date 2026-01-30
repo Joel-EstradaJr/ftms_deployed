@@ -100,27 +100,28 @@ export function distributeAmount<T extends ScheduleItem>(
 ): T[] {
   const items = [...scheduleItems];
   
-  // Filter only editable (PENDING) items
-  const editableItems = items.filter(item => item.isEditable);
-  const lockedItems = items.filter(item => !item.isEditable);
+  // Filter only editable (PENDING) items - editable is computed from status
+  const editableItems = items.filter(item => item.status === PaymentStatus.PENDING);
+  const lockedItems = items.filter(item => item.status !== PaymentStatus.PENDING);
 
   if (editableItems.length === 0) {
     return items;
   }
 
-  // Calculate total locked amount (paid + carried over)
-  const lockedAmount = lockedItems.reduce((sum, item) => sum + item.currentDueAmount, 0);
+  // Calculate total locked amount (already paid or committed)
+  const lockedAmount = lockedItems.reduce((sum, item) => sum + item.amount_due, 0);
   const remainingAmount = totalAmount - lockedAmount;
 
   if (editedIndex !== undefined && newAmount !== undefined) {
     // User edited a specific amount
     const editedItem = items[editedIndex];
     
-    if (!editedItem.isEditable) {
+    if (editedItem.status !== PaymentStatus.PENDING) {
       return items; // Cannot edit locked items
     }
 
-    editedItem.currentDueAmount = newAmount;
+    editedItem.amount_due = newAmount;
+    editedItem.balance = newAmount - (editedItem.amount_paid || 0);
     
     // Recalculate other editable items
     const otherEditableItems = editableItems.filter((_, idx) => 
@@ -133,14 +134,16 @@ export function distributeAmount<T extends ScheduleItem>(
 
       otherEditableItems.forEach(item => {
         const itemIndex = items.indexOf(item);
-        items[itemIndex].currentDueAmount = parseFloat(amountPerItem.toFixed(2));
+        items[itemIndex].amount_due = parseFloat(amountPerItem.toFixed(2));
+        items[itemIndex].balance = items[itemIndex].amount_due - (items[itemIndex].amount_paid || 0);
       });
 
       // Adjust last item to handle rounding
       const lastEditableIndex = items.indexOf(otherEditableItems[otherEditableItems.length - 1]);
-      const totalDistributed = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
+      const totalDistributed = items.reduce((sum, item) => sum + item.amount_due, 0);
       const difference = totalAmount - totalDistributed;
-      items[lastEditableIndex].currentDueAmount += difference;
+      items[lastEditableIndex].amount_due += difference;
+      items[lastEditableIndex].balance = items[lastEditableIndex].amount_due - (items[lastEditableIndex].amount_paid || 0);
     }
   } else {
     // Equal distribution among all editable items
@@ -148,14 +151,16 @@ export function distributeAmount<T extends ScheduleItem>(
 
     editableItems.forEach(item => {
       const itemIndex = items.indexOf(item);
-      items[itemIndex].currentDueAmount = parseFloat(amountPerItem.toFixed(2));
+      items[itemIndex].amount_due = parseFloat(amountPerItem.toFixed(2));
+      items[itemIndex].balance = items[itemIndex].amount_due - (items[itemIndex].amount_paid || 0);
     });
 
     // Adjust last editable item to handle rounding
     const lastEditableIndex = items.indexOf(editableItems[editableItems.length - 1]);
-    const totalDistributed = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
+    const totalDistributed = items.reduce((sum, item) => sum + item.amount_due, 0);
     const difference = totalAmount - totalDistributed;
-    items[lastEditableIndex].currentDueAmount += difference;
+    items[lastEditableIndex].amount_due += difference;
+    items[lastEditableIndex].balance = items[lastEditableIndex].amount_due - (items[lastEditableIndex].amount_paid || 0);
   }
 
   return items;
@@ -179,18 +184,19 @@ export function smartDistributeAmount<T extends ScheduleItem>(
   const items = [...scheduleItems];
   const editedItem = items[editedIndex];
 
-  // Cannot edit non-editable items
-  if (!editedItem.isEditable) {
+  // Cannot edit non-PENDING items
+  if (editedItem.status !== PaymentStatus.PENDING) {
     return items;
   }
 
   // Set the edited item amount
-  items[editedIndex].currentDueAmount = newAmount;
+  items[editedIndex].amount_due = newAmount;
+  items[editedIndex].balance = newAmount - (items[editedIndex].amount_paid || 0);
 
   // Calculate sum of all items up to and including the edited index
   const sumUpToEdited = items
     .slice(0, editedIndex + 1)
-    .reduce((sum, item) => sum + item.currentDueAmount, 0);
+    .reduce((sum, item) => sum + item.amount_due, 0);
 
   // Find subsequent editable (PENDING) items
   const subsequentEditableItems = items
@@ -199,7 +205,7 @@ export function smartDistributeAmount<T extends ScheduleItem>(
       item,
       absoluteIndex: editedIndex + 1 + relativeIndex
     }))
-    .filter(({ item }) => item.isEditable && item.paymentStatus === PaymentStatus.PENDING);
+    .filter(({ item }) => item.status === PaymentStatus.PENDING);
 
   if (subsequentEditableItems.length === 0) {
     // No subsequent editable items to redistribute to
@@ -213,14 +219,16 @@ export function smartDistributeAmount<T extends ScheduleItem>(
   const amountPerItem = remainingAmount / subsequentEditableItems.length;
 
   subsequentEditableItems.forEach(({ absoluteIndex }) => {
-    items[absoluteIndex].currentDueAmount = parseFloat(amountPerItem.toFixed(2));
+    items[absoluteIndex].amount_due = parseFloat(amountPerItem.toFixed(2));
+    items[absoluteIndex].balance = items[absoluteIndex].amount_due - (items[absoluteIndex].amount_paid || 0);
   });
 
   // Adjust last subsequent editable item to handle rounding
   const lastSubsequentIndex = subsequentEditableItems[subsequentEditableItems.length - 1].absoluteIndex;
-  const totalDistributed = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
+  const totalDistributed = items.reduce((sum, item) => sum + item.amount_due, 0);
   const difference = totalAmount - totalDistributed;
-  items[lastSubsequentIndex].currentDueAmount += difference;
+  items[lastSubsequentIndex].amount_due += difference;
+  items[lastSubsequentIndex].balance = items[lastSubsequentIndex].amount_due - (items[lastSubsequentIndex].amount_paid || 0);
 
   return items;
 }
@@ -280,19 +288,21 @@ export function validateDateRange(
  * @returns Payment status
  */
 export function calculatePaymentStatus<T extends ScheduleItem>(item: T): PaymentStatus {
-  const { currentDueDate, currentDueAmount, paidAmount, paymentStatus } = item;
+  const { due_date, amount_due, amount_paid, status } = item;
 
   // Preserve manual status changes
-  if (paymentStatus === PaymentStatus.CANCELLED || paymentStatus === PaymentStatus.WRITTEN_OFF) {
-    return paymentStatus;
+  if (status === PaymentStatus.CANCELLED || status === PaymentStatus.WRITTEN_OFF) {
+    return status;
   }
 
-  const dueDate = new Date(currentDueDate + 'T00:00:00');
+  const dueDate = new Date(due_date + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const paid = amount_paid || 0;
+  
   // Fully paid
-  if (paidAmount >= currentDueAmount) {
+  if (paid >= amount_due) {
     return PaymentStatus.PAID;
   }
 
@@ -300,12 +310,12 @@ export function calculatePaymentStatus<T extends ScheduleItem>(item: T): Payment
   const isPastDue = dueDate < today;
 
   // Overdue (past due date with unpaid balance)
-  if (isPastDue && paidAmount < currentDueAmount) {
+  if (isPastDue && paid < amount_due) {
     return PaymentStatus.OVERDUE;
   }
 
   // Partially paid (not past due)
-  if (paidAmount > 0 && paidAmount < currentDueAmount) {
+  if (paid > 0 && paid < amount_due) {
     return PaymentStatus.PARTIALLY_PAID;
   }
 
@@ -315,88 +325,36 @@ export function calculatePaymentStatus<T extends ScheduleItem>(item: T): Payment
 
 /**
  * Carry over unpaid balance from overdue item to next pending item
+ * @deprecated Carry-over is removed from schema-aligned approach
  * @param scheduleItems - All schedule items
  * @param overdueIndex - Index of overdue item
- * @returns Updated schedule items
+ * @returns Updated schedule items (unchanged - no-op)
  */
 export function carryOverBalance<T extends ScheduleItem>(
   scheduleItems: T[],
   overdueIndex: number
 ): T[] {
-  const items = [...scheduleItems];
-  const overdueItem = items[overdueIndex];
-
-  // Calculate unpaid balance
-  const unpaidBalance = overdueItem.currentDueAmount - overdueItem.paidAmount;
-
-  if (unpaidBalance <= 0) {
-    return items; // Nothing to carry over
-  }
-
-  // Find next PENDING item
-  const nextPendingIndex = items.findIndex((item, idx) => 
-    idx > overdueIndex && item.paymentStatus === PaymentStatus.PENDING
-  );
-
-  if (nextPendingIndex === -1) {
-    return items; // No pending items to carry over to
-  }
-
-  // Update next pending item
-  items[nextPendingIndex].carriedOverAmount += unpaidBalance;
-  items[nextPendingIndex].currentDueAmount += unpaidBalance;
-
-  // Mark overdue item as processed
-  overdueItem.carriedOverAmount = unpaidBalance;
-
-  return items;
+  // Note: Carry-over functionality removed in schema alignment
+  // Balance tracking is now done via amount_paid and balance fields
+  return [...scheduleItems];
 }
 
 /**
- * Process all overdue items and carry over unpaid balances
- * Runs through all schedule items, identifies overdue ones not yet processed,
- * and carries over their unpaid balances to the next pending installments
+ * Process all overdue items and recalculate their statuses
  * @param scheduleItems - All schedule items
- * @returns Object with updated items and count of carryovers processed
+ * @returns Object with updated items and count of status changes
  */
 export function processOverdueCarryover<T extends ScheduleItem>(
   scheduleItems: T[]
 ): { updatedItems: T[]; carryoversProcessed: number } {
-  let items = [...scheduleItems];
-  let carryoversProcessed = 0;
-
-  // Recalculate all statuses first
-  items = items.map(item => ({
+  // Recalculate all statuses
+  const items = scheduleItems.map(item => ({
     ...item,
-    paymentStatus: calculatePaymentStatus(item)
+    status: calculatePaymentStatus(item)
   }));
 
-  // Find all overdue items that haven't been carried over yet
-  const overdueItems = items
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => 
-      item.paymentStatus === PaymentStatus.OVERDUE && 
-      item.carriedOverAmount === 0 && // Not yet carried over
-      (item.currentDueAmount - item.paidAmount) > 0 // Has unpaid balance
-    );
-
-  // Process each overdue item
-  for (const { index } of overdueItems) {
-    const unpaidBalance = items[index].currentDueAmount - items[index].paidAmount;
-
-    // Find next PENDING item
-    const nextPendingIndex = items.findIndex((item, idx) => 
-      idx > index && item.paymentStatus === PaymentStatus.PENDING
-    );
-
-    if (nextPendingIndex !== -1) {
-      // Carry over the balance
-      items[nextPendingIndex].carriedOverAmount += unpaidBalance;
-      items[nextPendingIndex].currentDueAmount += unpaidBalance;
-      items[index].carriedOverAmount = unpaidBalance;
-      carryoversProcessed++;
-    }
-  }
+  // Count items that became overdue
+  const carryoversProcessed = items.filter(item => item.status === PaymentStatus.OVERDUE).length;
 
   return { updatedItems: items, carryoversProcessed };
 }
@@ -421,29 +379,29 @@ export function processCascadePayment<T extends ScheduleItem>(
     
     // Skip already paid, cancelled, or written-off items
     if (
-      item.paymentStatus === PaymentStatus.PAID ||
-      item.paymentStatus === PaymentStatus.CANCELLED ||
-      item.paymentStatus === PaymentStatus.WRITTEN_OFF
+      item.status === PaymentStatus.PAID ||
+      item.status === PaymentStatus.CANCELLED ||
+      item.status === PaymentStatus.WRITTEN_OFF
     ) {
       continue;
     }
 
-    const balance = item.currentDueAmount - item.paidAmount;
-    const amountToApply = Math.min(remainingAmount, balance);
+    const itemBalance = item.balance ?? (item.amount_due - (item.amount_paid || 0));
+    const amountToApply = Math.min(remainingAmount, itemBalance);
     
-    const previousBalance = balance;
-    const newPaidAmount = item.paidAmount + amountToApply;
-    const newBalance = balance - amountToApply;
+    const previousBalance = itemBalance;
+    const newPaidAmount = (item.amount_paid || 0) + amountToApply;
+    const newBalance = itemBalance - amountToApply;
     
     const newStatus = newBalance === 0 
       ? PaymentStatus.PAID 
       : newPaidAmount > 0 
         ? PaymentStatus.PARTIALLY_PAID 
-        : item.paymentStatus;
+        : item.status;
 
     affectedInstallments.push({
-      installmentNumber: item.installmentNumber,
-      scheduleItemId: item.id || `item-${i}`,
+      installmentNumber: item.installment_number,
+      scheduleItemId: item.id?.toString() || `item-${i}`,
       amountApplied: amountToApply,
       previousBalance,
       newBalance,
@@ -472,16 +430,12 @@ export function generateScheduleItems<T extends ScheduleItem>(
 ): T[] {
   const items: T[] = dates.map((date, index) => ({
     id: `temp-${Date.now()}-${index}`,
-    installmentNumber: index + 1,
-    originalDueDate: date,
-    currentDueDate: date,
-    originalDueAmount: 0,
-    currentDueAmount: 0,
-    paidAmount: 0,
-    carriedOverAmount: 0,
-    paymentStatus: PaymentStatus.PENDING,
-    isPastDue: false,
-    isEditable: true
+    installment_number: index + 1,
+    due_date: date,
+    amount_due: 0,
+    amount_paid: 0,
+    balance: 0,
+    status: PaymentStatus.PENDING
   } as T));
 
   // Distribute amount equally
@@ -505,7 +459,7 @@ export function validateSchedule<T extends ScheduleItem>(
   }
 
   // Check total amount matches
-  const calculatedTotal = scheduleItems.reduce((sum, item) => sum + item.currentDueAmount, 0);
+  const calculatedTotal = scheduleItems.reduce((sum, item) => sum + item.amount_due, 0);
   const difference = Math.abs(calculatedTotal - totalAmount);
   
   if (difference > 0.01) {
@@ -514,8 +468,8 @@ export function validateSchedule<T extends ScheduleItem>(
 
   // Check dates are in chronological order
   for (let i = 1; i < scheduleItems.length; i++) {
-    const prevDate = new Date(scheduleItems[i - 1].currentDueDate + 'T00:00:00');
-    const currDate = new Date(scheduleItems[i].currentDueDate + 'T00:00:00');
+    const prevDate = new Date(scheduleItems[i - 1].due_date + 'T00:00:00');
+    const currDate = new Date(scheduleItems[i].due_date + 'T00:00:00');
     
     if (currDate <= prevDate) {
       errors.push(`Installment ${i + 1} date must be after installment ${i} date`);
@@ -524,7 +478,7 @@ export function validateSchedule<T extends ScheduleItem>(
 
   // Check no negative amounts
   scheduleItems.forEach((item, index) => {
-    if (item.currentDueAmount <= 0) {
+    if (item.amount_due <= 0) {
       errors.push(`Installment ${index + 1} amount must be greater than zero`);
     }
   });

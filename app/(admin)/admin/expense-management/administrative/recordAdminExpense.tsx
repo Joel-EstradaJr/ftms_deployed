@@ -28,19 +28,16 @@ interface RecordAdminExpenseModalProps {
 }
 
 interface FormErrors {
-  date: string;
-  category: string;
-  subcategory: string;
+  date_recorded: string;
+  expense_type_id: string;
   amount: string;
   description: string;
   vendor: string;
   invoice_number: string;
-  paymentMethod: string;
-  referenceNo: string;
+  payment_method: string;
+  payment_reference: string;
   numberOfPayments: string;
   startDate: string;
-  remarks: string;
-  accountingCode: string;
 }
 
 const EXPENSE_CATEGORIES = Object.values(AdministrativeExpenseType).map(type => ({
@@ -67,27 +64,23 @@ export default function RecordAdminExpenseModal({
 }: RecordAdminExpenseModalProps) {
   
   const [formData, setFormData] = useState<AdministrativeExpense>({
-    id: existingData?.id || '',
-    expense_type: existingData?.expense_type || 'ADMINISTRATIVE',
-    category: existingData?.category || '',
-    subcategory: existingData?.subcategory || '',
-    date: existingData?.date || new Date().toISOString().split('T')[0],
+    id: existingData?.id || 0,
+    code: existingData?.code || '',
+    expense_type_id: existingData?.expense_type_id || 0,
+    date_recorded: existingData?.date_recorded || new Date().toISOString().split('T')[0],
     amount: existingData?.amount || 0,
     description: existingData?.description || '',
     vendor: existingData?.vendor || '',
     invoice_number: existingData?.invoice_number || '',
     
-    // Prepaid fields
-    isPrepaid: existingData?.isPrepaid || false,
+    // Payable relationship
+    payable_id: existingData?.payable_id || null,
     frequency: existingData?.frequency || undefined,
-    startDate: existingData?.startDate || new Date().toISOString().split('T')[0],
     scheduleItems: existingData?.scheduleItems || [],
     
     // Payment details
-    paymentMethod: existingData?.paymentMethod || '',
-    referenceNo: existingData?.referenceNo || '',
-    receiptUrl: existingData?.receiptUrl || '',
-    remarks: existingData?.remarks || '',
+    payment_method: existingData?.payment_method || '',
+    payment_reference: existingData?.payment_reference || '',
     paymentStatus: existingData?.paymentStatus || PaymentStatus.PENDING,
     
     created_by: existingData?.created_by || currentUser,
@@ -97,21 +90,21 @@ export default function RecordAdminExpenseModal({
 
   const [scheduleItems, setScheduleItems] = useState<ExpenseScheduleItem[]>(existingData?.scheduleItems || []);
   const [numberOfPayments, setNumberOfPayments] = useState<number>(existingData?.scheduleItems?.length || 2);
+  // Derived: has payable if payable_id exists or schedule items exist
+  const hasPayable = formData.payable_id !== null || (formData.scheduleItems && formData.scheduleItems.length > 0);
+  const [enablePayable, setEnablePayable] = useState<boolean>(hasPayable);
 
   const [formErrors, setFormErrors] = useState<FormErrors>({
-    date: '',
-    category: '',
-    subcategory: '',
+    date_recorded: '',
+    expense_type_id: '',
     amount: '',
     description: '',
     vendor: '',
     invoice_number: '',
-    paymentMethod: '',
-    referenceNo: '',
+    payment_method: '',
+    payment_reference: '',
     numberOfPayments: '',
-    startDate: '',
-    remarks: '',
-    accountingCode: ''
+    startDate: ''
   });
 
   const [isDirty, setIsDirty] = useState(false);
@@ -119,38 +112,29 @@ export default function RecordAdminExpenseModal({
   // Generate schedule when relevant fields change
   useEffect(() => {
     if (
-      formData.isPrepaid &&
+      enablePayable &&
       formData.frequency &&
-      formData.frequency !== ExpenseScheduleFrequency.CUSTOM &&
-      formData.startDate &&
       numberOfPayments &&
       numberOfPayments > 0 &&
       formData.amount > 0
     ) {
+      // Use the first schedule item's due_date as start date, or today
+      const startDate = scheduleItems[0]?.due_date || new Date().toISOString().split('T')[0];
       const dates = generateScheduleDates(
         formData.frequency,
-        formData.startDate,
+        startDate,
         numberOfPayments
       );
       const items = generateScheduleItems(dates, formData.amount);
       setScheduleItems(items);
       setFormData(prev => ({ ...prev, scheduleItems: items }));
-    } else if (formData.isPrepaid && formData.frequency === ExpenseScheduleFrequency.CUSTOM) {
-      // For custom, keep existing items or create one default item
-      if (scheduleItems.length === 0 && formData.amount > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        const items = generateScheduleItems([today], formData.amount);
-        setScheduleItems(items);
-        setFormData(prev => ({ ...prev, scheduleItems: items }));
-      }
-    } else if (!formData.isPrepaid) {
+    } else if (!enablePayable) {
       setScheduleItems([]);
-      setFormData(prev => ({ ...prev, scheduleItems: [] }));
+      setFormData(prev => ({ ...prev, scheduleItems: [], payable_id: null }));
     }
   }, [
-    formData.isPrepaid,
+    enablePayable,
     formData.frequency,
-    formData.startDate,
     numberOfPayments,
     formData.amount
   ]);
@@ -164,11 +148,11 @@ export default function RecordAdminExpenseModal({
     let errorMessage = '';
 
     switch (fieldName) {
-      case 'date':
+      case 'date_recorded':
         if (!value) errorMessage = 'Date is required';
         break;
-      case 'category':
-        if (!value) errorMessage = 'Category is required';
+      case 'expense_type_id':
+        if (!value || value === 0) errorMessage = 'Expense type is required';
         break;
       case 'amount':
         if (!value || value <= 0) errorMessage = 'Amount must be greater than 0';
@@ -177,7 +161,7 @@ export default function RecordAdminExpenseModal({
         if (!value) errorMessage = 'Vendor is required';
         break;
       case 'numberOfPayments':
-        if (formData.isPrepaid && formData.frequency !== ExpenseScheduleFrequency.CUSTOM) {
+        if (enablePayable) {
           const n = Number(value);
           if (!n || !Number.isInteger(n) || n < 2 || n > 100) {
             errorMessage = 'Number of payments must be between 2 and 100';
@@ -185,7 +169,7 @@ export default function RecordAdminExpenseModal({
         }
         break;
       case 'startDate':
-        if (formData.isPrepaid && !value) {
+        if (enablePayable && !value) {
           errorMessage = 'Start date is required';
         } else if (value) {
           const startDate = new Date(value + 'T00:00:00');
@@ -196,9 +180,6 @@ export default function RecordAdminExpenseModal({
             errorMessage = 'Start date cannot be in the past';
           }
         }
-        break;
-      case 'accountingCode':
-        if (!value) errorMessage = 'Accounting Code is required';
         break;
     }
 
@@ -230,19 +211,16 @@ export default function RecordAdminExpenseModal({
 
     // Validate all fields
     const errors: FormErrors = {
-      date: validateFormField('date', formData.date),
-      category: validateFormField('category', formData.category),
-      subcategory: '',
+      date_recorded: validateFormField('date_recorded', formData.date_recorded),
+      expense_type_id: validateFormField('expense_type_id', formData.expense_type_id),
       amount: validateFormField('amount', formData.amount),
       description: '',
       vendor: validateFormField('vendor', formData.vendor),
       invoice_number: '',
-      paymentMethod: '',
-      referenceNo: '',
+      payment_method: '',
+      payment_reference: '',
       numberOfPayments: validateFormField('numberOfPayments', numberOfPayments),
-      startDate: validateFormField('startDate', formData.startDate),
-      remarks: '',
-      accountingCode: validateFormField('accountingCode', formData.category)
+      startDate: ''
     };
 
     if (Object.values(errors).some(err => err !== '')) {
@@ -250,7 +228,7 @@ export default function RecordAdminExpenseModal({
       return;
     }
 
-    if (formData.isPrepaid) {
+    if (enablePayable) {
       const scheduleValidation = validateSchedule(scheduleItems, formData.amount);
       if (!scheduleValidation.isValid) {
         showError(scheduleValidation.errors[0], 'error');
@@ -283,7 +261,7 @@ export default function RecordAdminExpenseModal({
               <label>Expense Code</label>
               <input
                 type="text"
-                value={formData.id || 'Auto-generated'}
+                value={formData.code || 'Auto-generated'}
                 readOnly
                 className="readonly-input"
               />
@@ -292,25 +270,25 @@ export default function RecordAdminExpenseModal({
               <label>Date Recorded <span className="requiredTags">*</span></label>
               <input
                 type="date"
-                name="date"
-                value={formData.date}
+                name="date_recorded"
+                value={formData.date_recorded}
                 onChange={handleInputChange}
-                className={formErrors.date ? 'error' : ''}
+                className={formErrors.date_recorded ? 'error' : ''}
                 readOnly={mode === 'edit'}
               />
-              {formErrors.date && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.date}</p>}
+              {formErrors.date_recorded && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.date_recorded}</p>}
             </div>
           </div>
 
-          {/* Row: Expense Name + Amount */}
+          {/* Row: Vendor + Amount */}
           <div className="form-row">
             <div className="form-group">
-              <label>Expense Name <span className="requiredTags">*</span></label>
+              <label>Vendor <span className="requiredTags">*</span></label>
               <CustomDropdown
                 options={EXPENSE_CATEGORIES}
                 value={formData.vendor || ''}
                 onChange={(val) => setFormData(prev => ({ ...prev, vendor: val }))}
-                placeholder="Select or type expense name"
+                placeholder="Select or type vendor name"
                 allowCustomInput={true}
               />
               {formErrors.vendor && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.vendor}</p>}
@@ -330,58 +308,101 @@ export default function RecordAdminExpenseModal({
             </div>
           </div>
 
-          {/* Row: Payment Method */}
+          {/* Row: Invoice Number + Payment Method */}
           <div className="form-row">
+            <div className="form-group">
+              <label>Invoice Number</label>
+              <input
+                type="text"
+                name="invoice_number"
+                value={formData.invoice_number || ''}
+                onChange={handleInputChange}
+                placeholder="Enter invoice number"
+              />
+            </div>
             <div className="form-group">
               <label>Payment Method</label>
               <select
-                name="paymentMethod"
-                value={formData.paymentMethod}
+                name="payment_method"
+                value={formData.payment_method}
                 onChange={handleInputChange}
               >
                 <option value="">Select Payment Method</option>
                 <option value="CASH">Cash</option>
-                <option value="CHECK">Check</option>
                 <option value="BANK_TRANSFER">Bank Transfer</option>
-                <option value="CREDIT_CARD">Credit Card</option>
-                <option value="OTHERS">Others</option>
+                <option value="E_WALLET">E-Wallet</option>
+                <option value="REIMBURSEMENT">Reimbursement</option>
               </select>
             </div>
           </div>
-        </form>
 
+          {/* Row: Description */}
+          <div className="form-row">
+            <div className="form-group full-width">
+              <label>Description</label>
+              <textarea
+                name="description"
+                value={formData.description || ''}
+                onChange={handleInputChange}
+                rows={2}
+                placeholder="Enter expense description or remarks"
+              />
+            </div>
+          </div>
+
+          {/* Row: Expense Type */}
+          <div className="form-row">
+            <div className="form-group">
+              <label>Expense Type <span className="requiredTags">*</span></label>
+              <select
+                name="expense_type_id"
+                value={formData.expense_type_id}
+                onChange={handleInputChange}
+                className={formErrors.expense_type_id ? 'error' : ''}
+              >
+                <option value={0}>Select Expense Type</option>
+                {CHART_OF_ACCOUNTS.map(account => (
+                  <option key={account.account_id} value={parseInt(account.account_id)}>
+                    {account.account_code} - {account.account_name}
+                  </option>
+                ))}
+              </select>
+              {formErrors.expense_type_id && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.expense_type_id}</p>}
+            </div>
+          </div>
+        </form>
       </div>
 
       {/* II. Payables */}
       <p className="details-title">II. Payables</p>
       <div className={`modal-content ${mode}`}>
         <form className={`${mode}-form`}>
-          {/* Prepaid / Payable Section */}
+          {/* Enable Payable Section */}
           <div className="form-row">
             <div className="form-group full-width section-divider">
               <div className="checkbox-wrapper">
                 <input
                   type="checkbox"
-                  id="isPrepaid"
-                  name="isPrepaid"
-                  checked={formData.isPrepaid}
-                  onChange={handleInputChange}
+                  id="enablePayable"
+                  name="enablePayable"
+                  checked={enablePayable}
+                  onChange={(e) => setEnablePayable(e.target.checked)}
                 />
-                <label htmlFor="isPrepaid" style={{ fontWeight: '600' }}>
-                  Payables? (Schedule Payments)
+                <label htmlFor="enablePayable" style={{ fontWeight: '600' }}>
+                  Enable Payment Schedule
                 </label>
               </div>
             </div>
           </div>
 
-          {formData.isPrepaid && (
+          {enablePayable && (
             <>
               <div className="form-row">
                 <div className="form-group">
                   <label>Frequency <span className="requiredTags">*</span></label>
                   <select
                     name="frequency"
-                    value={formData.frequency}
+                    value={formData.frequency || ''}
                     onChange={handleInputChange}
                   >
                     <option value="">Select Frequency</option>
@@ -390,35 +411,20 @@ export default function RecordAdminExpenseModal({
                     ))}
                   </select>
                 </div>
-                {formData.frequency !== ExpenseScheduleFrequency.CUSTOM && (
-                  <div className="form-group">
-                    <label>Number of Payments <span className="requiredTags">*</span></label>
-                    <input
-                      type="number"
-                      value={numberOfPayments}
-                      onChange={(e) => {
-                        setNumberOfPayments(parseInt(e.target.value) || 0);
-                        validateFormField('numberOfPayments', e.target.value);
-                      }}
-                      min="2"
-                      max="100"
-                      className={formErrors.numberOfPayments ? 'error' : ''}
-                    />
-                    {formErrors.numberOfPayments && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.numberOfPayments}</p>}
-                  </div>
-                )}
-              </div>
-              <div className="form-row">
                 <div className="form-group">
-                  <label>Start Date <span className="requiredTags">*</span></label>
+                  <label>Number of Payments <span className="requiredTags">*</span></label>
                   <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    className={formErrors.startDate ? 'error' : ''}
+                    type="number"
+                    value={numberOfPayments}
+                    onChange={(e) => {
+                      setNumberOfPayments(parseInt(e.target.value) || 0);
+                      validateFormField('numberOfPayments', e.target.value);
+                    }}
+                    min="2"
+                    max="100"
+                    className={formErrors.numberOfPayments ? 'error' : ''}
                   />
-                  {formErrors.startDate && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.startDate}</p>}
+                  {formErrors.numberOfPayments && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.numberOfPayments}</p>}
                 </div>
               </div>
               <div className="form-row">
@@ -429,68 +435,22 @@ export default function RecordAdminExpenseModal({
                     mode={mode}
                     onItemChange={handleScheduleChange}
                     totalAmount={formData.amount}
-                    isPrepaid={formData.isPrepaid}
+                    isPrepaid={enablePayable}
                     frequency={formData.frequency}
                   />
                 </div>
               </div>
-            </>) }
-          </form>
-      </div>
-
-      {/* III. Additional Info */}
-      <p className="details-title">III. Additional Info</p>
-      <div className={`modal-content ${mode}`}>
-        <form className={`${mode}-form`}>
-
-          {/* Row: Remarks */}
-          <div className="form-row">
-            <div className="form-group full-width">
-              <label>Remarks</label>
-              <textarea
-                name="remarks"
-                value={formData.remarks}
-                onChange={handleInputChange}
-                rows={2}
-              />
-            </div>
-          </div>
+            </>
+          )}
         </form>
       </div>
 
-      {/* IV. Accounting Details */}
-      <p className="details-title">IV. Accounting Details</p>
-      <div className={`modal-content ${mode}`}>
-        <form className={`${mode}-form`}>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Accounting Code <span className="requiredTags">*</span></label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className={formErrors.accountingCode ? 'error' : ''}
-              >
-                <option value="">Select Account</option>
-                {CHART_OF_ACCOUNTS.map(account => (
-                  <option key={account.account_id} value={account.account_code}>
-                    {account.account_code} - {account.account_name}
-                  </option>
-                ))}
-              </select>
-              {formErrors.accountingCode && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.accountingCode}</p>}
-            </div>
-          </div>
-        </form>
+      <div className="modal-actions">
+        <button type="button" className="cancel-btn" onClick={onClose}>Cancel</button>
+        <button type="button" className="submit-btn" onClick={(e) => handleSubmit(e as any)}>
+          {mode === 'add' ? 'Record Expense' : 'Save Changes'}
+        </button>
       </div>
-
-        
-        <div className="modal-actions">
-          <button type="button" className="cancel-btn" onClick={onClose}>Cancel</button>
-          <button type="button" className="submit-btn" onClick={(e) => handleSubmit(e as any)}>
-                {mode === 'add' ? 'Record Expense' : 'Save Changes'}
-            </button>
-        </div>
     </>
   );
 }

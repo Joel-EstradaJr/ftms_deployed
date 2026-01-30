@@ -21,73 +21,59 @@ export enum PaymentStatus {
 
 /**
  * Frequency options for recurring schedules
- * Consolidated from ExpenseScheduleFrequency and RevenueScheduleFrequency
  * Aligned with backend receivable_frequency enum
  */
 export enum ScheduleFrequency {
   DAILY = 'DAILY',
   WEEKLY = 'WEEKLY',
   BIWEEKLY = 'BIWEEKLY',
-  MONTHLY = 'MONTHLY',
-  ANNUAL = 'ANNUAL',
-  CUSTOM = 'CUSTOM'
+  MONTHLY = 'MONTHLY'
 }
 
 /**
  * Base interface for schedule items
- * Consolidated from ExpenseScheduleItem and RevenueScheduleItem (identical structures)
+ * Aligned with backend expense_installment_schedule model
  */
 export interface ScheduleItem {
-  /** Unique identifier for the schedule item */
-  id?: string;
+  /** Unique identifier for the schedule item (expense_installment_schedule.id) */
+  id?: number | string;
   
-  /** Parent schedule identifier */
-  scheduleId?: string;
+  /** Parent payable identifier (expense_installment_schedule.payable_id) */
+  payable_id?: number;
   
-  /** Sequential installment number (1-based) */
-  installmentNumber: number;
+  /** Sequential installment number (expense_installment_schedule.installment_number) */
+  installment_number: number;
   
-  /** Original due date when schedule was created */
-  originalDueDate: string;
+  /** Due date (expense_installment_schedule.due_date) */
+  due_date: string;
   
-  /** Current due date (may be adjusted) */
-  currentDueDate: string;
+  /** Amount due for this installment (expense_installment_schedule.amount_due) */
+  amount_due: number;
   
-  /** Original due amount when schedule was created */
-  originalDueAmount: number;
+  /** Amount that has been paid (expense_installment_schedule.amount_paid) */
+  amount_paid: number;
   
-  /** Current due amount (may include carried over amounts) */
-  currentDueAmount: number;
+  /** Remaining balance (expense_installment_schedule.balance) */
+  balance: number;
   
-  /** Amount that has been paid */
-  paidAmount: number;
+  /** Current payment status (expense_installment_schedule.status - installment_status enum) */
+  status: PaymentStatus;
   
-  /** Amount carried over from previous installments */
-  carriedOverAmount: number;
+  // Audit trail
+  created_by?: string;
+  created_at?: string;
+  updated_by?: string;
+  updated_at?: string;
   
-  /** Current payment status */
-  paymentStatus: PaymentStatus;
+  // ============================================
+  // UI-only computed fields (not persisted)
+  // ============================================
   
-  /** Whether this installment is past its due date */
-  isPastDue: boolean;
+  /** Whether this installment is past its due date (computed at runtime) */
+  isPastDue?: boolean;
   
-  /** Whether this installment can be edited */
-  isEditable: boolean;
-  
-  /** Timestamp when payment was made */
-  paidAt?: string;
-  
-  /** User who made the payment */
-  paidBy?: string;
-  
-  /** Payment method used */
-  paymentMethod?: string;
-  
-  /** Payment reference number */
-  referenceNumber?: string;
-  
-  /** Additional notes about this installment */
-  remarks?: string;
+  /** Whether this installment can be edited (computed based on status) */
+  isEditable?: boolean;
 }
 
 /**

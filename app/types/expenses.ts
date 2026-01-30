@@ -121,40 +121,47 @@ export interface OperationalExpense {
 }
 
 // Administrative Expense Interface
+// Aligned with backend expense + payable schema
 export interface AdministrativeExpense {
-  id: string;
-  expense_type: string; // This might be mapped to category
-  category: string; // New field
-  subcategory: string; // New field
-  date: string;
-  amount: number;
-  description: string;
-  status?: string; // Status field (e.g., PENDING, APPROVED, POSTED)
-  department?: string;
-  vendor?: string;
-  invoice_number?: string;
-  items?: ExpenseItem[];
+  // Primary identifiers (maps to expense.id, expense.code)
+  id: number | string;  // expense.id (int) or expense.code (string) for display
+  code: string;         // expense.code - unique expense identifier
   
-  // Prepaid/Payable fields
-  isPrepaid: boolean;
-  frequency?: ExpenseScheduleFrequency;
-  startDate?: string;
-  endDate?: string;
+  // Core expense fields (aligned with expense model)
+  expense_type_id: number;           // FK to expense_type table
+  date_recorded: string;              // expense.date_recorded
+  amount: number;                     // expense.amount
+  description?: string;               // expense.description (also stores remarks)
+  vendor?: string;                    // expense.vendor - creditor/vendor name
+  invoice_number?: string;            // expense.invoice_number
+  status?: ExpenseStatus;             // expense.status enum
+  payment_method?: string;            // expense.payment_method enum
+  payment_reference?: string;         // expense.payment_reference
+  
+  // Payable relationship (for scheduled payments)
+  payable_id?: number | null;         // expense.payable_id FK
+  
+  // Computed/derived fields for UI
+  paymentStatus?: PaymentStatus;      // Computed from payable.status or installments
+  balance?: number;                   // payable.balance
+  
+  // Schedule items (from expense_installment_schedule via payable)
   scheduleItems?: ExpenseScheduleItem[];
   
-  // Payment details
-  paymentMethod?: string;
-  referenceNo?: string;
-  receiptUrl?: string;
-  remarks?: string;
-  paymentStatus?: PaymentStatus;
-  remainingBalance?: number;
-
-  created_by: string;
-  approved_by?: string;
+  // Frequency for payable schedule (maps to payable.frequency)
+  frequency?: ExpenseScheduleFrequency;
+  
+  // Audit trail (aligned with expense model)
+  created_by?: string;
   created_at: string;
+  updated_by?: string;
+  updated_at?: string;
+  approved_by?: string;
   approved_at?: string;
-  updated_at: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  rejection_remarks?: string;
+  is_deleted?: boolean;
 }
 
 // Purchase Expense Interface
