@@ -242,7 +242,7 @@ export interface EmployeeItem {
 // API ENDPOINT BASE
 // ============================================================================
 
-const EXPENSE_API_BASE = '/api/admin/operational-expenses';
+const EXPENSE_API_BASE = '/api/v1/admin/operational-expenses';
 
 // ============================================================================
 // API FUNCTIONS

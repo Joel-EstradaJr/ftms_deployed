@@ -15,6 +15,15 @@ interface ViewOperationalExpenseModalProps {
     date_assigned?: string;
     creditor_name?: string;
     employee_reference?: string;
+    journal_entry_id?: number;
+    journal_entry_code?: string;
+    // Rejection/Approval audit
+    rejected_by?: string;
+    rejected_at?: string;
+    // Remarks
+    approval_remarks?: string;
+    rejection_remarks?: string;
+    deletion_remarks?: string;
   };
   onClose: () => void;
 }
@@ -156,6 +165,12 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
                 )}
               </p>
             </div>
+            {expenseData.journal_entry_code && (
+              <div className="form-group">
+                <label>Journal Entry</label>
+                <p><strong>{expenseData.journal_entry_code}</strong></p>
+              </div>
+            )}
           </div>
         </form>
       </div>
@@ -229,6 +244,33 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
                 <div className="form-group">
                   <label>Approved On</label>
                   <p>{formatDate(expenseData.approved_at)}</p>
+                </div>
+              )}
+              {expenseData.approval_remarks && (
+                <div className="form-group">
+                  <label>Approval Remarks</label>
+                  <p>{expenseData.approval_remarks}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {expenseData.rejected_by && (
+            <div className="form-row">
+              <div className="form-group">
+                <label>Rejected By</label>
+                <p>{expenseData.rejected_by}</p>
+              </div>
+              {expenseData.rejected_at && (
+                <div className="form-group">
+                  <label>Rejected On</label>
+                  <p>{formatDate(expenseData.rejected_at)}</p>
+                </div>
+              )}
+              {expenseData.rejection_remarks && (
+                <div className="form-group">
+                  <label>Rejection Reason</label>
+                  <p>{expenseData.rejection_remarks}</p>
                 </div>
               )}
             </div>
