@@ -153,7 +153,7 @@ button {
 }
 
 .dashboard_exportButton button {
-  background: linear-gradient(135deg, #961C1E 0%, #be7609 100%) !important;
+  background: var(--primary-color) !important;
   color: white !important;
   border: none !important;
   padding: 0.75rem 1.5rem !important;
@@ -162,13 +162,13 @@ button {
   align-items: center !important;
   gap: 0.5rem !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(150, 28, 30, 0.3) !important;
   transition: all 0.3s ease !important;
 }
 
 .dashboard_exportButton button:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(150, 28, 30, 0.4) !important;
 }
 
 /* ---------- Main Data Container ---------- */

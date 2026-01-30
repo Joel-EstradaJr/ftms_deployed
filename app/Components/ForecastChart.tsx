@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -14,10 +14,11 @@ import {
     ChartOptions,
     ChartData,
 } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Line } from 'react-chartjs-2';
 import { DataPoint } from '../utils/predictiveAnalytics';
 
-// Register Chart.js components
+// Register Chart.js components including data labels plugin
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -26,7 +27,8 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend,
-    Filler
+    Filler,
+    ChartDataLabels
 );
 
 // ============================================================================
@@ -56,7 +58,7 @@ const ForecastChart = forwardRef<ForecastChartRef, ForecastChartProps>(
         useImperativeHandle(ref, () => ({
             getChartImage: () => {
                 if (chartRef.current) {
-                    return chartRef.current.toBase64Image();
+                    return chartRef.current.toBase64Image('image/png', 1);
                 }
                 return null;
             },
@@ -111,6 +113,24 @@ const ForecastChart = forwardRef<ForecastChartRef, ForecastChartProps>(
                     pointHoverRadius: 6,
                     pointBackgroundColor: colors.primary,
                     borderWidth: 2,
+                    datalabels: {
+                        display: (context) => {
+                            // Only show labels for every other point to avoid clutter
+                            return context.dataIndex % 2 === 0 && context.dataset.data[context.dataIndex] !== null;
+                        },
+                        color: colors.primary,
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 4,
+                        font: {
+                            size: 9,
+                            weight: 'bold',
+                        },
+                        formatter: (value) => {
+                            if (value === null) return '';
+                            return `₱${(Number(value) / 1000).toFixed(0)}k`;
+                        },
+                    },
                 },
                 {
                     label: 'Forecast',
@@ -125,6 +145,26 @@ const ForecastChart = forwardRef<ForecastChartRef, ForecastChartProps>(
                     pointStyle: 'triangle',
                     borderWidth: 2,
                     borderDash: [5, 5],
+                    datalabels: {
+                        display: (context) => {
+                            // Show labels for all forecast points (excluding the connecting historical point)
+                            const index = context.dataIndex;
+                            const historicalLength = historical.length;
+                            return index >= historicalLength && context.dataset.data[index] !== null;
+                        },
+                        color: colors.secondary,
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 4,
+                        font: {
+                            size: 9,
+                            weight: 'bold',
+                        },
+                        formatter: (value) => {
+                            if (value === null) return '';
+                            return `₱${(Number(value) / 1000).toFixed(0)}k`;
+                        },
+                    },
                 },
             ],
         };
@@ -161,6 +201,9 @@ const ForecastChart = forwardRef<ForecastChartRef, ForecastChartProps>(
                         },
                     },
                 },
+                datalabels: {
+                    // Global datalabels options (overridden per dataset)
+                },
             },
             scales: {
                 x: {
@@ -172,6 +215,12 @@ const ForecastChart = forwardRef<ForecastChartRef, ForecastChartProps>(
                         maxRotation: 45,
                         minRotation: 0,
                     },
+                    title: {
+                        display: true,
+                        text: 'Month',
+                        font: { size: 12, weight: 'bold' },
+                        color: '#6B7280',
+                    },
                 },
                 y: {
                     beginAtZero: false,
@@ -181,6 +230,12 @@ const ForecastChart = forwardRef<ForecastChartRef, ForecastChartProps>(
                     ticks: {
                         font: { size: 11 },
                         callback: (value) => `₱${(Number(value) / 1000).toFixed(0)}k`,
+                    },
+                    title: {
+                        display: true,
+                        text: 'Amount (₱)',
+                        font: { size: 12, weight: 'bold' },
+                        color: '#6B7280',
                     },
                 },
             },

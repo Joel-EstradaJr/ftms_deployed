@@ -73,7 +73,7 @@ export const addPDFHeader = async (doc: jsPDF): Promise<number> => {
     doc.text(contact, textStartX, yPos + 19);
 
     // Facebook Line
-    const facebook = 'Facebook: https://web.facebook.com/profile.php?id=100084745104995';
+    const facebook = 'Facebook: Agila Bus Transport Corp';
     doc.text(facebook, textStartX, yPos + 24);
 
     // Draw a separator line below the header

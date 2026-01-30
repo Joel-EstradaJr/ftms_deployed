@@ -8,7 +8,7 @@ import {
     MOCK_EXPENSE_TYPES
 } from '../data/mockAnalyticsData';
 import { forecast, ForecastResult } from '../utils/predictiveAnalytics';
-import { exportForecastToPDF } from '../utils/ForecastPDFExport';
+import { exportForecastToPDF, exportCombinedForecastToPDF } from '../utils/ForecastPDFExport';
 import {
     generateForecastExplanation,
     generateFallbackExplanation
@@ -295,22 +295,15 @@ const PredictiveAnalyticsCard: React.FC<PredictiveAnalyticsCardProps> = ({ dataT
         await new Promise(resolve => setTimeout(resolve, 100));
 
         if (dataType === 'both' && revenueForecast && expenseForecast) {
-            // Export both forecasts
+            // Export combined PDF with both forecasts (single file, two pages)
             const revChartImage = revenueChartRef.current?.getChartImage() || undefined;
-            await exportForecastToPDF({
-                forecastResult: revenueForecast,
-                dataType: 'revenue',
-                chartImageBase64: revChartImage,
-                explanation: showExplanation ? explanation : undefined,
-            });
-
-            await new Promise(resolve => setTimeout(resolve, 500));
-
             const expChartImage = expenseChartRef.current?.getChartImage() || undefined;
-            await exportForecastToPDF({
-                forecastResult: expenseForecast,
-                dataType: 'expense',
-                chartImageBase64: expChartImage,
+
+            await exportCombinedForecastToPDF({
+                revenueForecast,
+                expenseForecast,
+                revenueChartImage: revChartImage,
+                expenseChartImage: expChartImage,
                 explanation: showExplanation ? explanation : undefined,
             });
         } else if (primaryForecast) {

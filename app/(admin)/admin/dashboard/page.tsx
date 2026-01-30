@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import PieChart from "../../../Components/pieChart";
 import ExportConfirmationModal from "../../../Components/ExportConfirmationModal";
 import ErrorDisplay from '../../../Components/errordisplay';
@@ -9,6 +11,7 @@ import { ModernLineChart, ModernDoughnutChart } from "../../../Components/Modern
 import EmotionSettingsModal from "../../../Components/dashboardEmotion";
 import PredictiveAnalyticsCard, { PredictiveDataType } from "../../../Components/PredictiveAnalyticsCard";
 import { useDashboardData } from "../../../hooks/useDashboardData";
+import { addPDFHeader } from "../../../utils/PDFHeader";
 
 interface DashboardData {
   revenue: {
@@ -204,67 +207,188 @@ const DashboardPage = () => {
 
     fileName += `_${dateStamp}_${timeStamp}`;
 
-    return `${fileName}.csv`;
+    return `${fileName}.pdf`;
   };
 
-  // Frontend-only CSV export
-  const handleExport = () => {
+  // Frontend-only PDF export
+  const handleExport = async () => {
     try {
       const fileName = generateFileName();
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
 
-      // Build CSV content
-      let csv = "Financial Dashboard Report\n";
-      csv += `Generated: ${new Date().toLocaleString()}\n`;
-      csv += `Filter: ${dateFilter || 'All Time'}\n`;
+      // Helper to format currency (use PHP instead of ₱ for Helvetica compatibility)
+      const formatCurrency = (amount: number) => `PHP ${amount.toLocaleString()}`;
 
+      // Add company header
+      let yPos = await addPDFHeader(doc);
+
+      // Generated date (small, italic)
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 120);
+      const dateStr = new Date().toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(`Generated: ${dateStr}`, margin, yPos);
+      yPos += 4;
+
+      // Filter info
+      let filterText = `Filter: ${dateFilter || 'All Time'}`;
       if (dateFilter === 'Custom' && dateFrom && dateTo) {
-        csv += `Date Range: ${dateFrom} to ${dateTo}\n`;
+        filterText += ` (${dateFrom} to ${dateTo})`;
       }
+      doc.text(filterText, margin, yPos);
+      yPos += 10;
 
-      csv += "\n";
+      // Report title
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Financial Dashboard Report', margin, yPos);
+      yPos += 10;
 
-      // Revenue section
-      csv += "REVENUE BREAKDOWN\n";
-      csv += "Category,Amount\n";
-      Object.values(dashboardData.revenue.byCategory).forEach((cat) => {
-        csv += `"${cat.name}","₱${cat.amount.toLocaleString()}"\n`;
+      // Financial Summary Section
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('Financial Summary', margin, yPos);
+      yPos += 4;
+
+      const profitMargin = dashboardData.revenue.total > 0
+        ? ((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(2)
+        : '0.00';
+
+      const summaryData = [
+        ['Total Revenue', formatCurrency(dashboardData.revenue.total)],
+        ['Total Expenses', formatCurrency(dashboardData.expense.total)],
+        ['Net Profit', formatCurrency(dashboardData.profit)],
+        ['Profit Margin', `${profitMargin}%`],
+      ];
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        styles: {
+          fontSize: 10,
+          font: 'helvetica',
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [17, 24, 39],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold' },
+          1: { halign: 'right' },
+        },
+        margin: { left: margin, right: margin },
       });
-      csv += `"Total Revenue","₱${dashboardData.revenue.total.toLocaleString()}"\n`;
-      csv += "\n";
 
-      // Expense section
-      csv += "EXPENSE BREAKDOWN\n";
-      csv += "Category,Amount\n";
-      Object.values(dashboardData.expense.byCategory).forEach((cat) => {
-        csv += `"${cat.name}","₱${cat.amount.toLocaleString()}"\n`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+
+      // Revenue Breakdown Section
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Revenue Breakdown', margin, yPos);
+      yPos += 4;
+
+      const revenueData = Object.values(dashboardData.revenue.byCategory).map((cat) => [
+        cat.name,
+        formatCurrency(cat.amount)
+      ]);
+      revenueData.push(['Total', formatCurrency(dashboardData.revenue.total)]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Category', 'Amount']],
+        body: revenueData,
+        styles: {
+          fontSize: 10,
+          font: 'helvetica',
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [34, 197, 94],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        columnStyles: {
+          1: { halign: 'right' },
+        },
+        margin: { left: margin, right: margin },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.row.index === revenueData.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [240, 253, 244];
+          }
+        },
       });
-      csv += `"Total Expenses","₱${dashboardData.expense.total.toLocaleString()}"\n`;
-      csv += "\n";
 
-      // Summary
-      csv += "FINANCIAL SUMMARY\n";
-      csv += "Metric,Value\n";
-      csv += `"Total Revenue","₱${dashboardData.revenue.total.toLocaleString()}"\n`;
-      csv += `"Total Expenses","₱${dashboardData.expense.total.toLocaleString()}"\n`;
-      csv += `"Net Profit","₱${dashboardData.profit.toLocaleString()}"\n`;
-      csv += `"Profit Margin","${((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(2)}%"\n`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      yPos = (doc as any).lastAutoTable.finalY + 10;
 
-      // Create and trigger download
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.style.display = 'none';
+      // Expense Breakdown Section
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Expense Breakdown', margin, yPos);
+      yPos += 4;
 
-      document.body.appendChild(link);
-      link.click();
+      const expenseData = Object.values(dashboardData.expense.byCategory).map((cat) => [
+        cat.name,
+        formatCurrency(cat.amount)
+      ]);
+      expenseData.push(['Total', formatCurrency(dashboardData.expense.total)]);
 
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 100);
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Category', 'Amount']],
+        body: expenseData,
+        styles: {
+          fontSize: 10,
+          font: 'helvetica',
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [239, 68, 68],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        columnStyles: {
+          1: { halign: 'right' },
+        },
+        margin: { left: margin, right: margin },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.row.index === expenseData.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [254, 242, 242];
+          }
+        },
+      });
+
+      // Footer
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.setFillColor(249, 250, 251);
+      doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(156, 163, 175);
+      doc.text('Generated by FTMS Dashboard Module', margin, pageHeight - 7);
+
+      // Save the PDF
+      doc.save(fileName);
 
       setIsExportModalOpen(false);
 
@@ -274,6 +398,7 @@ const DashboardPage = () => {
       alert('Failed to export dashboard. Please try again.');
     }
   };
+
 
 
   if (apiError && !dashboardData.profit) {

@@ -25,29 +25,117 @@ export interface PDFExportOptions {
     };
 }
 
+export interface CombinedPDFExportOptions {
+    revenueForecast: ForecastResult;
+    expenseForecast: ForecastResult;
+    revenueChartImage?: string;
+    expenseChartImage?: string;
+    explanation?: string;
+}
+
 // ============================================================================
-// PDF GENERATION
+// HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Generate and download a PDF report for the forecast
+ * Format the AI explanation text for PDF output
  */
-export async function exportForecastToPDF(options: PDFExportOptions): Promise<void> {
-    const { forecastResult, dataType, chartImageBase64, explanation, dateRange } = options;
-    const doc = new jsPDF();
+function formatExplanationForPDF(explanation: string): { sections: { title: string; content: string[] }[] } {
+    const sections: { title: string; content: string[] }[] = [];
 
-    // Constants
+    // Clean up encoding artifacts
+    let cleanText = explanation
+        .replace(/[Ø=ÜÈ]/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+    // Split by numbered sections or headers
+    const lines = cleanText.split('\n');
+    let currentSection: { title: string; content: string[] } | null = null;
+
+    for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
+
+        // Check if this is a header (ends with colon or starts with number followed by period)
+        const isHeader = /^\d+\.\s*[A-Z]/.test(trimmedLine) ||
+            /^[A-Z][^.]*:$/.test(trimmedLine) ||
+            /^[A-Z][A-Z\s]+:/.test(trimmedLine);
+
+        if (isHeader) {
+            if (currentSection) {
+                sections.push(currentSection);
+            }
+            currentSection = {
+                title: trimmedLine.replace(/^\d+\.\s*/, '').replace(/:$/, ''),
+                content: [],
+            };
+        } else if (currentSection) {
+            // Check if it's a bullet point
+            if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) {
+                currentSection.content.push(trimmedLine);
+            } else {
+                currentSection.content.push(trimmedLine);
+            }
+        } else {
+            // No current section, create a default one
+            currentSection = {
+                title: 'Analysis',
+                content: [trimmedLine],
+            };
+        }
+    }
+
+    if (currentSection) {
+        sections.push(currentSection);
+    }
+
+    return { sections };
+}
+
+/**
+ * Get trend text without special characters
+ */
+function getTrendText(trend: string, percentage: number): string {
+    const trendWord = trend === 'increasing' ? 'Growing' :
+        trend === 'decreasing' ? 'Declining' : 'Stable';
+    return `${trendWord} (${Math.abs(percentage)}% annually)`;
+}
+
+/**
+ * Get confidence level text
+ */
+function getConfidenceText(confidence: number): string {
+    const level = confidence >= 70 ? 'High' : confidence >= 50 ? 'Medium' : 'Low';
+    return `${confidence}% (${level})`;
+}
+
+// ============================================================================
+// SINGLE FORECAST PDF GENERATION
+// ============================================================================
+
+/**
+ * Generate a single page for a forecast report
+ */
+async function generateForecastPage(
+    doc: jsPDF,
+    options: PDFExportOptions,
+    isFirstPage: boolean
+): Promise<void> {
+    const { forecastResult, dataType, chartImageBase64, explanation } = options;
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
     const contentWidth = pageWidth - (margin * 2);
 
     // Add Standard Header
-    let yPos = await addPDFHeader(doc);
+    let yPos = isFirstPage ? await addPDFHeader(doc) : 40;
 
-    // Report Meta (Date)
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
+    // Generated Date (smaller, italic)
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(120, 120, 120);
     const dateStr = new Date().toLocaleDateString('en-PH', {
         year: 'numeric',
         month: 'long',
@@ -56,110 +144,82 @@ export async function exportForecastToPDF(options: PDFExportOptions): Promise<vo
         minute: '2-digit'
     });
     doc.text(`Generated: ${dateStr}`, margin, yPos);
-    yPos += 10;
+    yPos += 12;
 
-    yPos = 55;
-    doc.setTextColor(0, 0, 0);
-
-    // Report Type Badge
-    const typeLabel = dataType === 'revenue' ? 'Revenue Forecast' : 'Expense Forecast';
-    const badgeColor = dataType === 'revenue' ? [34, 197, 94] : [239, 68, 68];
-
-    doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
-    doc.roundedRect(margin, yPos, 60, 8, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
+    // Report Type Heading (simple text, no badge)
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text(typeLabel.toUpperCase(), margin + 5, yPos + 6);
+    doc.setTextColor(31, 41, 55); // Dark gray #1F2937
+    const reportTitle = dataType === 'revenue' ? 'Revenue Forecast Report' : 'Expense Forecast Report';
+    doc.text(reportTitle, margin, yPos);
+    yPos += 12;
 
-    yPos += 20;
-    doc.setTextColor(0, 0, 0);
-
-    // Summary Cards Section
-    doc.setFontSize(14);
+    // Executive Summary as Table (compact, readable)
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
     doc.text('Executive Summary', margin, yPos);
-    yPos += 8;
+    yPos += 5;
 
-    // Draw summary cards
-    const cardWidth = (contentWidth - 10) / 3;
-    const cardHeight = 35;
-    const cards = [
-        {
-            title: 'Trend',
-            value: forecastResult.trend === 'increasing' ? '↑ Growing' :
-                forecastResult.trend === 'decreasing' ? '↓ Declining' : '→ Stable',
-            subtitle: `${Math.abs(forecastResult.trendPercentage)}% annually`,
-            color: forecastResult.trend === 'increasing' ? [34, 197, 94] :
-                forecastResult.trend === 'decreasing' ? [239, 68, 68] : [156, 163, 175],
-        },
-        {
-            title: 'Next Month',
-            value: `₱${forecastResult.nextMonthPrediction.toLocaleString()}`,
-            subtitle: forecastResult.forecast[0]?.label || 'N/A',
-            color: [59, 130, 246],
-        },
-        {
-            title: 'Confidence',
-            value: `${forecastResult.confidence}%`,
-            subtitle: forecastResult.confidence >= 70 ? 'High' : forecastResult.confidence >= 50 ? 'Medium' : 'Low',
-            color: forecastResult.confidence >= 70 ? [34, 197, 94] :
-                forecastResult.confidence >= 50 ? [249, 115, 22] : [239, 68, 68],
-        },
+    const summaryData = [
+        ['Trend', getTrendText(forecastResult.trend, forecastResult.trendPercentage)],
+        ['Next Month Prediction', `₱${forecastResult.nextMonthPrediction.toLocaleString()}`],
+        ['Confidence', getConfidenceText(forecastResult.confidence)],
+        ['Historical Average', `₱${Math.round(forecastResult.averageHistorical).toLocaleString()}`],
     ];
 
-    cards.forEach((card, index) => {
-        const cardX = margin + (index * (cardWidth + 5));
-
-        // Card background
-        doc.setFillColor(249, 250, 251);
-        doc.roundedRect(cardX, yPos, cardWidth, cardHeight, 3, 3, 'F');
-
-        // Card accent line
-        doc.setFillColor(card.color[0], card.color[1], card.color[2]);
-        doc.rect(cardX, yPos, 3, cardHeight, 'F');
-
-        // Card content
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(107, 114, 128);
-        doc.text(card.title, cardX + 8, yPos + 10);
-
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(17, 24, 39);
-        doc.text(card.value, cardX + 8, yPos + 22);
-
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(156, 163, 175);
-        doc.text(card.subtitle, cardX + 8, yPos + 30);
+    autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        styles: {
+            fontSize: 9,
+            cellPadding: 4,
+        },
+        headStyles: {
+            fillColor: [107, 114, 128],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+        },
+        columnStyles: {
+            0: { cellWidth: 60, fontStyle: 'bold' },
+            1: { cellWidth: 80 },
+        },
+        tableWidth: 140,
+        margin: { left: margin },
     });
 
-    yPos += cardHeight + 15;
-    doc.setTextColor(0, 0, 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    yPos = (doc as any).lastAutoTable.finalY + 12;
 
     // Chart Section
     if (chartImageBase64) {
-        doc.setFontSize(14);
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
         doc.text('Forecast Visualization', margin, yPos);
         yPos += 5;
 
+        // Add chart frame
+        const chartHeight = 65;
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(margin, yPos, contentWidth, chartHeight + 4, 2, 2, 'S');
+
         // Add chart image
         try {
-            const chartHeight = 70;
-            doc.addImage(chartImageBase64, 'PNG', margin, yPos, contentWidth, chartHeight);
+            doc.addImage(chartImageBase64, 'PNG', margin + 2, yPos + 2, contentWidth - 4, chartHeight);
             yPos += chartHeight + 10;
         } catch (error) {
             console.error('Failed to add chart image:', error);
-            yPos += 5;
+            yPos += 10;
         }
     }
 
     // Data Table
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
     doc.text('Monthly Breakdown', margin, yPos);
     yPos += 5;
 
@@ -178,10 +238,12 @@ export async function exportForecastToPDF(options: PDFExportOptions): Promise<vo
 
     // Add forecast data
     forecastResult.forecast.forEach((d, i) => {
-        const changeFromPrev = i === 0
-            ? ((d.y - forecastResult.historical[forecastResult.historical.length - 1].y) /
-                forecastResult.historical[forecastResult.historical.length - 1].y * 100).toFixed(1)
-            : ((d.y - forecastResult.forecast[i - 1].y) / forecastResult.forecast[i - 1].y * 100).toFixed(1);
+        const prevValue = i === 0
+            ? forecastResult.historical[forecastResult.historical.length - 1].y
+            : forecastResult.forecast[i - 1].y;
+        const changeFromPrev = prevValue !== 0
+            ? ((d.y - prevValue) / prevValue * 100).toFixed(1)
+            : '0';
 
         tableData.push([
             d.label,
@@ -197,7 +259,7 @@ export async function exportForecastToPDF(options: PDFExportOptions): Promise<vo
         body: tableData.slice(-8), // Show last 5 historical + 3 forecast
         styles: {
             fontSize: 9,
-            cellPadding: 4,
+            cellPadding: 3,
         },
         headStyles: {
             fillColor: [17, 24, 39],
@@ -227,7 +289,7 @@ export async function exportForecastToPDF(options: PDFExportOptions): Promise<vo
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     yPos = (doc as any).lastAutoTable.finalY + 10;
 
-    // AI Explanation Section
+    // AI Explanation Section (formatted)
     if (explanation) {
         // Check if we need a new page
         if (yPos > 220) {
@@ -235,21 +297,47 @@ export async function exportForecastToPDF(options: PDFExportOptions): Promise<vo
             yPos = margin;
         }
 
-        doc.setFontSize(14);
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
         doc.text('AI Analysis', margin, yPos);
         yPos += 8;
 
-        // Explanation box
-        doc.setFillColor(239, 246, 255);
-        const explanationLines = doc.splitTextToSize(explanation, contentWidth - 10);
-        const boxHeight = Math.min(explanationLines.length * 5 + 10, 60);
-        doc.roundedRect(margin, yPos, contentWidth, boxHeight, 3, 3, 'F');
+        // Parse and format the explanation
+        const formatted = formatExplanationForPDF(explanation);
 
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(30, 58, 138);
-        doc.text(explanationLines.slice(0, 10), margin + 5, yPos + 8);
+        for (const section of formatted.sections) {
+            // Check if we need a new page
+            if (yPos > 260) {
+                doc.addPage();
+                yPos = margin;
+            }
+
+            // Section title
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 64, 175); // Blue
+            doc.text(section.title, margin + 5, yPos);
+            yPos += 5;
+
+            // Section content
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(55, 65, 81); // Gray
+
+            for (const line of section.content) {
+                const wrappedLines = doc.splitTextToSize(line, contentWidth - 10);
+                for (const wrappedLine of wrappedLines) {
+                    if (yPos > 270) {
+                        doc.addPage();
+                        yPos = margin;
+                    }
+                    doc.text(wrappedLine, margin + 5, yPos);
+                    yPos += 4;
+                }
+            }
+            yPos += 3;
+        }
     }
 
     // Footer
@@ -258,6 +346,7 @@ export async function exportForecastToPDF(options: PDFExportOptions): Promise<vo
     doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
 
     doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(156, 163, 175);
     doc.text(
         'Generated by FTMS Predictive Analytics Module',
@@ -269,9 +358,53 @@ export async function exportForecastToPDF(options: PDFExportOptions): Promise<vo
         pageWidth - margin - 70,
         pageHeight - 7
     );
+}
+
+/**
+ * Generate and download a PDF report for a single forecast
+ */
+export async function exportForecastToPDF(options: PDFExportOptions): Promise<void> {
+    const doc = new jsPDF();
+
+    await generateForecastPage(doc, options, true);
 
     // Save the PDF
     const timestamp = new Date().toISOString().split('T')[0];
-    const filename = `ftms_${dataType}_forecast_${timestamp}.pdf`;
+    const filename = `ftms_${options.dataType}_forecast_${timestamp}.pdf`;
+    doc.save(filename);
+}
+
+// ============================================================================
+// COMBINED FORECAST PDF GENERATION
+// ============================================================================
+
+/**
+ * Generate and download a combined PDF report with both revenue and expense forecasts
+ */
+export async function exportCombinedForecastToPDF(options: CombinedPDFExportOptions): Promise<void> {
+    const { revenueForecast, expenseForecast, revenueChartImage, expenseChartImage, explanation } = options;
+
+    const doc = new jsPDF();
+
+    // Page 1: Revenue Forecast
+    await generateForecastPage(doc, {
+        forecastResult: revenueForecast,
+        dataType: 'revenue',
+        chartImageBase64: revenueChartImage,
+        explanation: explanation,
+    }, true);
+
+    // Page 2: Expense Forecast
+    doc.addPage();
+    await generateForecastPage(doc, {
+        forecastResult: expenseForecast,
+        dataType: 'expense',
+        chartImageBase64: expenseChartImage,
+        explanation: undefined, // Only include explanation once
+    }, false);
+
+    // Save the PDF
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `ftms_combined_forecast_${timestamp}.pdf`;
     doc.save(filename);
 }
