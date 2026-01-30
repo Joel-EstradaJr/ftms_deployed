@@ -33,70 +33,66 @@ import {
 // Transform API expense to form data format for viewing
 interface OperationalExpenseViewData {
   id?: number;
-  expenseCode: string;
-  dateRecorded: string;
-  expenseCategory: string;
-  expenseSubcategory?: string;
+  code: string;
+  date_recorded: string;
+  expense_type_name: string;
   amount: number;
-  cachedTripId?: number;
-  busPlateNumber?: string;
-  route?: string;
-  department?: string;
-  receiptFile?: File | null;
-  receiptUrl?: string;
-  accountCodeId?: number;
-  paymentMethodId: number;
-  isReimbursable: boolean;
-  remarks?: string;
+  bus_trip_assignment_id?: number;
+  bus_trip_id?: number;
+  plate_number?: string;
+  bus_route?: string;
+  account_id?: number;
+  payment_method: string;
+  is_reimbursable: boolean;
+  description?: string;
   status?: string;
-  createdBy: string;
-  approvedBy?: string;
-  createdAt?: string;
-  approvedAt?: string;
+  created_by: string;
+  approved_by?: string;
+  created_at?: string;
+  approved_at?: string;
   // View-only fields
-  bodyNumber?: string;
-  busType?: string;
-  dateAssigned?: string;
-  reimbursementEmployeeNumber?: string;
-  reimbursementEmployeeName?: string;
-  paymentMethodName?: string;
-  accountCode?: string;
-  accountName?: string;
+  body_number?: string;
+  bus_type?: string;
+  date_assigned?: string;
+  employee_reference?: string;
+  creditor_name?: string;
+  payable_description?: string;
+  payment_method_name?: string;
+  account_code?: string;
+  account_name?: string;
 }
 
 // Transform API expense to form data format for viewing
 const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
   return {
     id: expense.id,
-    expenseCode: expense.code || expense.expense_information?.expense_code || '',
-    dateRecorded: expense.expense_information?.date_recorded || expense.date_recorded || '',
-    expenseCategory: expense.expense_information?.expense_name || expense.expense_name || '',
-    expenseSubcategory: '',
+    code: expense.code || expense.expense_information?.expense_code || '',
+    date_recorded: expense.expense_information?.date_recorded || expense.date_recorded || '',
+    expense_type_name: expense.expense_information?.expense_name || expense.expense_name || '',
     amount: expense.expense_information?.amount || expense.amount || 0,
-    cachedTripId: undefined,
-    busPlateNumber: expense.trip_assignment_details?.plate_number || '',
-    route: expense.trip_assignment_details?.route || '',
-    department: '',
-    receiptFile: null,
-    receiptUrl: '',
-    accountCodeId: expense.accounting_details?.account_id,
-    paymentMethodId: 1,
-    isReimbursable: !!expense.reimbursable_details,
-    remarks: expense.additional_information?.remarks || expense.description || '',
+    bus_trip_assignment_id: expense.trip_assignment_details?.bus_trip_assignment_id,
+    bus_trip_id: expense.trip_assignment_details?.bus_trip_id,
+    plate_number: expense.trip_assignment_details?.plate_number || '',
+    bus_route: expense.trip_assignment_details?.route || '',
+    account_id: expense.accounting_details?.account_id,
+    payment_method: expense.expense_information?.payment_method || expense.payment_method || '',
+    is_reimbursable: !!expense.reimbursable_details,
+    description: expense.additional_information?.remarks || expense.description || '',
     status: expense.status,
-    createdBy: expense.audit_trail?.requested_by || expense.created_by || '',
-    approvedBy: expense.audit_trail?.approved_by || expense.approved_by,
-    createdAt: expense.audit_trail?.requested_on || expense.created_at,
-    approvedAt: expense.audit_trail?.approved_on || expense.approved_at,
+    created_by: expense.audit_trail?.requested_by || expense.created_by || '',
+    approved_by: expense.audit_trail?.approved_by || expense.approved_by,
+    created_at: expense.audit_trail?.requested_on || expense.created_at,
+    approved_at: expense.audit_trail?.approved_on || expense.approved_at,
     // Additional view fields
-    bodyNumber: expense.trip_assignment_details?.body_number || expense.body_number,
-    busType: expense.trip_assignment_details?.bus_type,
-    dateAssigned: expense.trip_assignment_details?.date_assigned,
-    reimbursementEmployeeNumber: expense.reimbursable_details?.employee_number,
-    reimbursementEmployeeName: expense.reimbursable_details?.creditor_name,
-    paymentMethodName: expense.expense_information?.payment_method || expense.payment_method,
-    accountCode: expense.accounting_details?.account_code,
-    accountName: expense.accounting_details?.account_name,
+    body_number: expense.trip_assignment_details?.body_number || expense.body_number,
+    bus_type: expense.trip_assignment_details?.bus_type,
+    date_assigned: expense.trip_assignment_details?.date_assigned,
+    employee_reference: expense.reimbursable_details?.employee_number,
+    creditor_name: expense.reimbursable_details?.creditor_name,
+    payable_description: expense.reimbursable_details?.purpose,
+    payment_method_name: expense.expense_information?.payment_method || expense.payment_method,
+    account_code: expense.accounting_details?.account_code,
+    account_name: expense.accounting_details?.account_name,
   };
 };
 
