@@ -233,54 +233,36 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     scheduleItems: [
       {
         id: '1',
-        installmentNumber: 1,
-        originalDueDate: "2024-11-15",
-        currentDueDate: "2024-11-15",
-        originalDueAmount: 15000.00,
-        currentDueAmount: 15000.00,
-        paidAmount: 15000.00,
-        carriedOverAmount: 0,
+        installment_number: 1,
+        due_date: "2024-11-15",
+        amount_due: 15000.00,
+        amount_paid: 15000.00,
+        balance: 0,
+        status: PaymentStatus.PAID,
         isPastDue: false,
         isEditable: false,
-        paymentStatus: PaymentStatus.PAID,
-        paidAt: "2024-11-14",
-        paidBy: "admin",
-        paymentMethod: "Bank Transfer",
-        referenceNumber: "PAY-001-2024",
-        remarks: "First installment paid on time",
       },
       {
         id: '2',
-        installmentNumber: 2,
-        originalDueDate: "2024-12-15",
-        currentDueDate: "2024-12-15",
-        originalDueAmount: 15000.00,
-        currentDueAmount: 15000.00,
-        paidAmount: 10000.00,
-        carriedOverAmount: 0,
+        installment_number: 2,
+        due_date: "2024-12-15",
+        amount_due: 15000.00,
+        amount_paid: 10000.00,
+        balance: 5000.00,
+        status: PaymentStatus.PARTIALLY_PAID,
         isPastDue: false,
         isEditable: false,
-        paymentStatus: PaymentStatus.PARTIALLY_PAID,
-        paidAt: "2024-12-10",
-        paidBy: "admin",
-        paymentMethod: "Bank Transfer",
-        referenceNumber: "PAY-002-2024",
-        remarks: "Partial payment received",
       },
       {
         id: '3',
-        installmentNumber: 3,
-        originalDueDate: "2025-01-15",
-        currentDueDate: "2025-01-15",
-        originalDueAmount: 15000.00,
-        currentDueAmount: 20000.00,
-        paidAmount: 0,
-        carriedOverAmount: 5000.00,
+        installment_number: 3,
+        due_date: "2025-01-15",
+        amount_due: 15000.00,
+        amount_paid: 0,
+        balance: 15000.00,
+        status: PaymentStatus.PENDING,
         isPastDue: false,
         isEditable: true,
-        paymentStatus: PaymentStatus.PENDING,
-        // Unpaid installment, optional fields omitted
-        remarks: "Carried over balance from installment 2",
       }
     ]
   },
@@ -866,9 +848,9 @@ const AdminOtherRevenuePage = () => {
     const scheduleItems = revenueRecord.scheduleItems || [];
 
     // Find the earliest unpaid installment: prioritize OVERDUE > PARTIALLY_PAID > PENDING
-    const overdueItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.OVERDUE);
-    const partiallyPaidItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.PARTIALLY_PAID);
-    const pendingItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.PENDING);
+    const overdueItems = scheduleItems.filter(item => item.status === PaymentStatus.OVERDUE);
+    const partiallyPaidItems = scheduleItems.filter(item => item.status === PaymentStatus.PARTIALLY_PAID);
+    const pendingItems = scheduleItems.filter(item => item.status === PaymentStatus.PENDING);
 
     let targetItem = scheduleItem;
 
@@ -877,7 +859,7 @@ const AdminOtherRevenuePage = () => {
       targetItem = overdueItems[0];
     }
     // Otherwise, if clicked item is PAID, find the next unpaid one
-    else if (scheduleItem.paymentStatus === PaymentStatus.PAID) {
+    else if (scheduleItem.status === PaymentStatus.PAID) {
       if (partiallyPaidItems.length > 0) {
         targetItem = partiallyPaidItems[0];
       } else if (pendingItems.length > 0) {
@@ -1110,6 +1092,15 @@ const AdminOtherRevenuePage = () => {
             amountPaid: number;
             balance: number;
             status: string;
+            payments?: Array<{
+              id: number;
+              amountPaid: number;
+              paymentDate: string;
+              paymentMethod: string | null;
+              paymentReference: string | null;
+              createdBy: string | null;
+              createdAt: string;
+            }>;
           }>;
         } | null | undefined;
 
@@ -1120,19 +1111,27 @@ const AdminOtherRevenuePage = () => {
           status: string;
         } | null | undefined;
 
-        // Map schedule items to frontend format
+        // Map schedule items to frontend format (schema-aligned field names)
         const scheduleItems: RevenueScheduleItem[] = receivable?.scheduleItems?.map(s => ({
           id: String(s.id),
-          installmentNumber: s.installmentNumber,
-          originalDueDate: s.dueDate,
-          currentDueDate: s.dueDate,
-          originalDueAmount: s.amountDue,
-          currentDueAmount: s.amountDue,
-          paidAmount: s.amountPaid,
-          carriedOverAmount: 0,
+          installment_number: s.installmentNumber,
+          due_date: s.dueDate?.split('T')[0] || s.dueDate,
+          amount_due: s.amountDue,
+          amount_paid: s.amountPaid,
+          balance: s.balance,
+          status: s.status as PaymentStatus,
           isPastDue: new Date(s.dueDate) < new Date() && s.status !== 'PAID',
           isEditable: s.status !== 'PAID',
-          paymentStatus: s.status as PaymentStatus,
+          // Map payment transaction records for payment history
+          payments: s.payments?.map(p => ({
+            id: p.id,
+            amount_paid: p.amountPaid,
+            payment_date: p.paymentDate?.split('T')[0] || p.paymentDate,
+            payment_method: p.paymentMethod,
+            payment_reference: p.paymentReference,
+            created_by: p.createdBy,
+            created_at: p.createdAt
+          })) || []
         })) || [];
 
         return {
@@ -1367,11 +1366,11 @@ const AdminOtherRevenuePage = () => {
         // Create ONE row per revenue, aggregating all installment data
         // Calculate total receivable balance from all installments
         const totalBalance = record.scheduleItems.reduce(
-          (sum, item) => sum + (item.currentDueAmount - item.paidAmount),
+          (sum, item) => sum + (item.balance || (item.amount_due - item.amount_paid)),
           0
         );
         const totalPaid = record.scheduleItems.reduce(
-          (sum, item) => sum + item.paidAmount,
+          (sum, item) => sum + (item.amount_paid || 0),
           0
         );
 
@@ -1677,14 +1676,14 @@ const AdminOtherRevenuePage = () => {
                             {/* Pay button for unearned revenue that's not fully paid */}
                             {row.originalRecord.isUnearnedRevenue &&
                               row.paymentStatus &&
-                              row.paymentStatus !== PaymentStatus.PAID &&
-                              row.paymentStatus !== PaymentStatus.CANCELLED &&
-                              row.paymentStatus !== PaymentStatus.WRITTEN_OFF &&
+                              row.status !== PaymentStatus.PAID &&
+                              row.status !== PaymentStatus.CANCELLED &&
+                              row.status !== PaymentStatus.WRITTEN_OFF &&
                               row.originalRecord.scheduleItems &&
                               row.originalRecord.scheduleItems.length > 0 && (() => {
                                 // Find the first unpaid installment
                                 const firstUnpaid = row.originalRecord.scheduleItems.find(
-                                  item => item.paymentStatus !== PaymentStatus.PAID
+                                  item => item.status !== PaymentStatus.PAID
                                 );
                                 return firstUnpaid ? (
                                   <button

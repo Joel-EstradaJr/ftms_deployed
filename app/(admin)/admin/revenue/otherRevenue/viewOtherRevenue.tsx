@@ -53,14 +53,14 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
 
     const stats = {
       total: items.length,
-      paid: items.filter((i: RevenueScheduleItem) => i.paymentStatus === PaymentStatus.PAID).length,
-      pending: items.filter((i: RevenueScheduleItem) => i.paymentStatus === PaymentStatus.PENDING).length,
-      overdue: items.filter((i: RevenueScheduleItem) => i.paymentStatus === PaymentStatus.OVERDUE).length,
-      totalPaid: items.reduce((sum: number, i: RevenueScheduleItem) => sum + i.paidAmount, 0),
-      totalAmount: items.reduce((sum: number, i: RevenueScheduleItem) => sum + i.currentDueAmount, 0),
+      paid: items.filter((i: RevenueScheduleItem) => i.status === PaymentStatus.PAID).length,
+      pending: items.filter((i: RevenueScheduleItem) => i.status === PaymentStatus.PENDING).length,
+      overdue: items.filter((i: RevenueScheduleItem) => i.status === PaymentStatus.OVERDUE).length,
+      totalPaid: items.reduce((sum: number, i: RevenueScheduleItem) => sum + (i.amount_paid || 0), 0),
+      totalAmount: items.reduce((sum: number, i: RevenueScheduleItem) => sum + (i.amount_due || 0), 0),
       nextPayment: items
-        .filter((i: RevenueScheduleItem) => i.paymentStatus !== PaymentStatus.PAID && i.paymentStatus !== PaymentStatus.CANCELLED)
-        .sort((a: RevenueScheduleItem, b: RevenueScheduleItem) => new Date(a.currentDueDate).getTime() - new Date(b.currentDueDate).getTime())[0] || null
+        .filter((i: RevenueScheduleItem) => i.status !== PaymentStatus.PAID && i.status !== PaymentStatus.CANCELLED)
+        .sort((a: RevenueScheduleItem, b: RevenueScheduleItem) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0] || null
     };
 
     return stats;
@@ -72,9 +72,9 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
   const hasPendingPayments = scheduleStats &&
     revenueData.scheduleItems &&
     revenueData.scheduleItems.some((item: RevenueScheduleItem) =>
-      item.paymentStatus === PaymentStatus.PENDING ||
-      item.paymentStatus === PaymentStatus.OVERDUE ||
-      item.paymentStatus === PaymentStatus.PARTIALLY_PAID
+      item.status === PaymentStatus.PENDING ||
+      item.status === PaymentStatus.OVERDUE ||
+      item.status === PaymentStatus.PARTIALLY_PAID
     );
 
   return (
@@ -187,9 +187,9 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
                 onClick={() => {
                   // Find first unpaid installment
                   const firstUnpaid = revenueData.scheduleItems?.find(
-                    item => item.paymentStatus === PaymentStatus.OVERDUE ||
-                      item.paymentStatus === PaymentStatus.PARTIALLY_PAID ||
-                      item.paymentStatus === PaymentStatus.PENDING
+                    item => item.status === PaymentStatus.OVERDUE ||
+                      item.status === PaymentStatus.PARTIALLY_PAID ||
+                      item.status === PaymentStatus.PENDING
                   );
                   if (firstUnpaid && onRecordPayment) {
                     onRecordPayment(firstUnpaid);
@@ -262,28 +262,53 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
                       </tr>
                     </thead>
                     <tbody>
-                      {revenueData.scheduleItems
-                        .filter((item: RevenueScheduleItem) => item.paidAmount > 0)
-                        .sort((a: RevenueScheduleItem, b: RevenueScheduleItem) => {
-                          if (!a.paidAt || !b.paidAt) return 0;
-                          return new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime();
-                        })
-                        .map((item: RevenueScheduleItem, idx: number) => (
+                      {(() => {
+                        // Collect all payment records from all schedule items
+                        const allPayments: Array<{
+                          paymentDate: string;
+                          amountPaid: number;
+                          installmentNumber: number;
+                          paymentMethod: string | null;
+                          createdBy: string | null;
+                        }> = [];
+
+                        revenueData.scheduleItems.forEach((item: RevenueScheduleItem) => {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          const payments = (item as any).payments || [];
+                          payments.forEach((p: { payment_date: string; amount_paid: number; payment_method: string | null; created_by: string | null }) => {
+                            allPayments.push({
+                              paymentDate: p.payment_date,
+                              amountPaid: p.amount_paid,
+                              installmentNumber: item.installment_number,
+                              paymentMethod: p.payment_method,
+                              createdBy: p.created_by
+                            });
+                          });
+                        });
+
+                        // Sort by payment date descending
+                        allPayments.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+
+                        if (allPayments.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={5} style={{ textAlign: 'center', padding: '1.5rem', color: '#999' }}>
+                                No payment history yet
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return allPayments.map((payment, idx) => (
                           <tr key={idx}>
-                            <td>{item.paidAt ? formatDate(item.paidAt) : 'N/A'}</td>
-                            <td>{formatMoney(item.paidAmount)}</td>
-                            <td>Installment #{item.installmentNumber}</td>
-                            <td>{item.paymentMethod || 'N/A'}</td>
-                            <td>{item.paidBy || 'N/A'}</td>
+                            <td>{formatDate(payment.paymentDate)}</td>
+                            <td>{formatMoney(payment.amountPaid)}</td>
+                            <td>Installment #{payment.installmentNumber}</td>
+                            <td>{payment.paymentMethod ? payment.paymentMethod.replace('_', ' ') : 'N/A'}</td>
+                            <td>{payment.createdBy || 'N/A'}</td>
                           </tr>
-                        ))}
-                      {revenueData.scheduleItems.filter((item: RevenueScheduleItem) => item.paidAmount > 0).length === 0 && (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: '1.5rem', color: '#999' }}>
-                            No payment history yet
-                          </td>
-                        </tr>
-                      )}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>

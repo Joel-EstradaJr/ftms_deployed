@@ -6,9 +6,9 @@
  * while maintaining code reusability.
  */
 
-import { 
-  ScheduleItem, 
-  ScheduleFrequency, 
+import {
+  ScheduleItem,
+  ScheduleFrequency,
   PaymentStatus,
   PaymentCascadeResult
 } from '../types/schedule';
@@ -48,11 +48,17 @@ export function generateScheduleDates(
         nextDate.setDate(start.getDate() + (i * 7));
         break;
 
+      case ScheduleFrequency.BIWEEKLY:
+        // Same day of week, +14 days (every two weeks)
+        nextDate = new Date(start);
+        nextDate.setDate(start.getDate() + (i * 14));
+        break;
+
       case ScheduleFrequency.MONTHLY:
         // Same date each month, handle edge cases
         nextDate = new Date(start);
         nextDate.setMonth(start.getMonth() + i);
-        
+
         // Handle months with fewer days (e.g., Jan 31 → Feb 28/29)
         if (nextDate.getDate() !== start.getDate()) {
           // Set to last day of the previous month
@@ -64,7 +70,7 @@ export function generateScheduleDates(
         // Same month/day each year
         nextDate = new Date(start);
         nextDate.setFullYear(start.getFullYear() + i);
-        
+
         // Handle leap year edge case (Feb 29)
         if (start.getMonth() === 1 && start.getDate() === 29) {
           // Check if target year is not a leap year
@@ -99,7 +105,7 @@ export function distributeAmount<T extends ScheduleItem>(
   newAmount?: number
 ): T[] {
   const items = [...scheduleItems];
-  
+
   // Filter only editable (PENDING) items - editable is computed from status
   const editableItems = items.filter(item => item.status === PaymentStatus.PENDING);
   const lockedItems = items.filter(item => item.status !== PaymentStatus.PENDING);
@@ -115,16 +121,16 @@ export function distributeAmount<T extends ScheduleItem>(
   if (editedIndex !== undefined && newAmount !== undefined) {
     // User edited a specific amount
     const editedItem = items[editedIndex];
-    
+
     if (editedItem.status !== PaymentStatus.PENDING) {
       return items; // Cannot edit locked items
     }
 
     editedItem.amount_due = newAmount;
     editedItem.balance = newAmount - (editedItem.amount_paid || 0);
-    
+
     // Recalculate other editable items
-    const otherEditableItems = editableItems.filter((_, idx) => 
+    const otherEditableItems = editableItems.filter((_, idx) =>
       items.indexOf(editableItems[idx]) !== editedIndex
     );
 
@@ -300,7 +306,7 @@ export function calculatePaymentStatus<T extends ScheduleItem>(item: T): Payment
   today.setHours(0, 0, 0, 0);
 
   const paid = amount_paid || 0;
-  
+
   // Fully paid
   if (paid >= amount_due) {
     return PaymentStatus.PAID;
@@ -376,7 +382,7 @@ export function processCascadePayment<T extends ScheduleItem>(
 
   for (let i = startIndex; i < scheduleItems.length && remainingAmount > 0; i++) {
     const item = scheduleItems[i];
-    
+
     // Skip already paid, cancelled, or written-off items
     if (
       item.status === PaymentStatus.PAID ||
@@ -388,15 +394,15 @@ export function processCascadePayment<T extends ScheduleItem>(
 
     const itemBalance = item.balance ?? (item.amount_due - (item.amount_paid || 0));
     const amountToApply = Math.min(remainingAmount, itemBalance);
-    
+
     const previousBalance = itemBalance;
     const newPaidAmount = (item.amount_paid || 0) + amountToApply;
     const newBalance = itemBalance - amountToApply;
-    
-    const newStatus = newBalance === 0 
-      ? PaymentStatus.PAID 
-      : newPaidAmount > 0 
-        ? PaymentStatus.PARTIALLY_PAID 
+
+    const newStatus = newBalance === 0
+      ? PaymentStatus.PAID
+      : newPaidAmount > 0
+        ? PaymentStatus.PARTIALLY_PAID
         : item.status;
 
     affectedInstallments.push({
@@ -461,7 +467,7 @@ export function validateSchedule<T extends ScheduleItem>(
   // Check total amount matches
   const calculatedTotal = scheduleItems.reduce((sum, item) => sum + item.amount_due, 0);
   const difference = Math.abs(calculatedTotal - totalAmount);
-  
+
   if (difference > 0.01) {
     errors.push(`Total amount mismatch: Expected ${totalAmount}, Got ${calculatedTotal}`);
   }
@@ -470,7 +476,7 @@ export function validateSchedule<T extends ScheduleItem>(
   for (let i = 1; i < scheduleItems.length; i++) {
     const prevDate = new Date(scheduleItems[i - 1].due_date + 'T00:00:00');
     const currDate = new Date(scheduleItems[i].due_date + 'T00:00:00');
-    
+
     if (currDate <= prevDate) {
       errors.push(`Installment ${i + 1} date must be after installment ${i} date`);
     }

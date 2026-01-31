@@ -10,16 +10,8 @@ import '@/styles/components/modal2.css';
 import '@/styles/components/table.css';
 import '@/styles/components/chips.css';
 
-// Minimal schedule item type — matches both revenue and expense fields used here
-export interface SimpleScheduleItem {
-  id?: string;
-  installmentNumber: number;
-  currentDueDate: string;
-  currentDueAmount: number;
-  paidAmount: number;
-  carriedOverAmount: number;
-  paymentStatus: string;
-}
+// Using ScheduleItem from types/schedule.ts (schema-aligned field names)
+import { ScheduleItem } from '@/app/types/schedule';
 
 import { PaymentRecordData } from '@/app/types/payments';
 
@@ -27,8 +19,8 @@ interface RecordPaymentModalProps {
   entityType?: 'revenue' | 'expense' | 'other-revenue' | string;
   recordId: string | number;
   recordRef?: string;
-  scheduleItems: SimpleScheduleItem[];
-  selectedInstallment: SimpleScheduleItem;
+  scheduleItems: ScheduleItem[];
+  selectedInstallment: ScheduleItem;
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   currentUser: string;
   onPaymentRecorded: (paymentData: PaymentRecordData) => Promise<void>;
@@ -92,8 +84,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     : availablePaymentMethods;
 
   const currentIndex = scheduleItems.findIndex(item => item.id === selectedInstallment.id);
-  const currentBalance = (selectedInstallment.currentDueAmount + selectedInstallment.carriedOverAmount) - selectedInstallment.paidAmount;
-  const totalOutstanding = scheduleItems.reduce((sum, s) => sum + (s.currentDueAmount - s.paidAmount), 0);
+  // Use schema-aligned field names: amount_due, amount_paid, balance
+  const currentBalance = (selectedInstallment.amount_due || 0) - (selectedInstallment.amount_paid || 0);
+  const totalOutstanding = scheduleItems.reduce((sum, s) => sum + ((s.amount_due || 0) - (s.amount_paid || 0)), 0);
 
   const cascadePreview = useMemo(() => {
     if (amountToPay <= 0 || currentIndex === -1) return null;
@@ -143,7 +136,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       html: `
         <div style="text-align: left; margin-bottom: 20px;">
           <p><strong>${entityType === 'expense' ? 'Expense Ref' : entityType === 'other-revenue' ? 'Revenue Ref' : 'Receivable Ref'}:</strong> ${recordRef || recordId}</p>
-          <p><strong>Installment:</strong> #${selectedInstallment.installmentNumber}</p>
+          <p><strong>Installment:</strong> #${selectedInstallment.installment_number}</p>
           <p><strong>Amount to Pay:</strong> ${formatMoney(amountToPay)}</p>
           ${isOverflow ? `<p style="color: #FF8C00;"><strong>⚠️ Will cascade to ${affectedCount} installment(s)</strong></p>` : ''}
         </div>
@@ -172,9 +165,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       const paymentData: PaymentRecordData = {
         recordId,
         recordRef,
-        scheduleItemId: selectedInstallment.id || '',
+        scheduleItemId: String(selectedInstallment.id) || '',
         scheduleItemIds: cascadePreview?.affectedInstallments.map((a: any) => a.scheduleItemId) || [],
-        installmentNumber: selectedInstallment.installmentNumber,
+        installmentNumber: selectedInstallment.installment_number,
         amountToPay,
         paymentDate,
         paymentMethodId: selectedMethod?.id || 0,
@@ -208,7 +201,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     if (!cascadePreview) return scheduleItems;
     return scheduleItems.map(item => {
       const affected = cascadePreview.affectedInstallments.find((a: any) => a.scheduleItemId === item.id);
-      if (affected) return { ...item, paidAmount: item.paidAmount + affected.amountApplied, paymentStatus: affected.newStatus };
+      if (affected) return { ...item, amount_paid: (item.amount_paid || 0) + affected.amountApplied, status: affected.newStatus };
       return item;
     });
   }, [scheduleItems, cascadePreview]);
@@ -259,11 +252,11 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Installment:</strong></span>
-                    <span>#{selectedInstallment.installmentNumber}</span>
+                    <span>#{selectedInstallment.installment_number}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Due Date:</strong></span>
-                    <span>{formatDate(selectedInstallment.currentDueDate)}</span>
+                    <span>{formatDate(selectedInstallment.due_date)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Amount Due (this installment):</strong></span>
@@ -337,8 +330,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     </thead>
                     <tbody>
                       {previewItems.map((item, index) => {
-                        const balance = item.currentDueAmount - item.paidAmount;
+                        const balance = (item.amount_due || 0) - (item.amount_paid || 0);
                         const isAffected = cascadePreview?.affectedInstallments.some((a: any) => a.scheduleItemId === item.id);
+                        const statusStr = String(item.status || 'PENDING');
 
                         return (
                           <tr
@@ -348,9 +342,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                               fontWeight: isAffected ? '600' : 'normal'
                             }}
                           >
-                            <td>{formatDate(item.currentDueDate)}</td>
-                            <td>{formatMoney(item.currentDueAmount)}</td>
-                            <td>{formatMoney(item.paidAmount)}</td>
+                            <td>{formatDate(item.due_date)}</td>
+                            <td>{formatMoney(item.amount_due || 0)}</td>
+                            <td>{formatMoney(item.amount_paid || 0)}</td>
                             <td>
                               <span style={{
                                 color: balance > 0 ? '#FF4949' : '#4CAF50',
@@ -360,8 +354,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                               </span>
                             </td>
                             <td>
-                              <span className={`chip ${item.paymentStatus.toLowerCase().replace('_', '-')}`}>
-                                {item.paymentStatus.replace('_', ' ')}
+                              <span className={`chip ${statusStr.toLowerCase().replace('_', '-')}`}>
+                                {statusStr.replace('_', ' ')}
                               </span>
                             </td>
                           </tr>
