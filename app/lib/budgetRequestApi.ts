@@ -155,7 +155,7 @@ export async function fetchBudgetRequests(filters?: BudgetRequestFilters): Promi
         apiFilters.request_type = apiFilters.request_type.toUpperCase();
     }
 
-    const response = await api.get<BudgetRequestListResponse>('/api/finance/budget-requests', apiFilters);
+    const response = await api.get<BudgetRequestListResponse>('/finance/budget-requests', apiFilters);
 
     if (!response.success || !response.data) {
         throw new Error('Failed to fetch budget requests');
@@ -168,7 +168,7 @@ export async function fetchBudgetRequests(filters?: BudgetRequestFilters): Promi
  * Fetch a single budget request by ID
  */
 export async function fetchBudgetRequestById(id: string): Promise<BudgetRequest> {
-    const response = await api.get<ApiResponse<MicroserviceBudgetRequest>>(`/api/finance/budget-requests/${id}`);
+    const response = await api.get<ApiResponse<MicroserviceBudgetRequest>>(`/finance/budget-requests/${id}`);
 
     if (!response.success || !response.data) {
         throw new Error('Failed to fetch budget request');
@@ -185,7 +185,7 @@ export async function approveBudgetRequest(
     data: { approved_amount?: number; remarks?: string }
 ): Promise<BudgetRequest> {
     const response = await api.post<ApiResponse<MicroserviceBudgetRequest>>(
-        `/api/finance/budget-requests/${id}/approve`,
+        `/finance/budget-requests/${id}/approve`,
         data
     );
 
@@ -204,7 +204,7 @@ export async function rejectBudgetRequest(
     data: { rejection_reason: string }
 ): Promise<BudgetRequest> {
     const response = await api.post<ApiResponse<MicroserviceBudgetRequest>>(
-        `/api/finance/budget-requests/${id}/reject`,
+        `/finance/budget-requests/${id}/reject`,
         data
     );
 
