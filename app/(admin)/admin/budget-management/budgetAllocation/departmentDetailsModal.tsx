@@ -96,9 +96,6 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
       // Type filter
       if (filters.type && item.type !== filters.type) return false;
 
-      // Status filter
-      if (filters.status && item.status !== filters.status) return false;
-
       // Date range filter
       if (filters.dateFrom && new Date(item.date) < new Date(filters.dateFrom)) return false;
       if (filters.dateTo && new Date(item.date) > new Date(filters.dateTo)) return false;
