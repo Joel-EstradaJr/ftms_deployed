@@ -780,30 +780,8 @@ export default function RecordOtherRevenueModal({
                 <>
                   <div className="form-row">
                     <div className="form-group full-width">
-                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label>
                         <span style={{ fontWeight: 600 }}>Payment Schedule Preview</span>
-                        {formData.scheduleFrequency !== RevenueScheduleFrequency.CUSTOM && mode === 'add' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (formData.scheduleFrequency && formData.scheduleStartDate && formData.numberOfPayments) {
-                                const dates = generateScheduleDates(
-                                  formData.scheduleFrequency,
-                                  formData.scheduleStartDate,
-                                  formData.numberOfPayments
-                                );
-                                const items = generateScheduleItems(dates, formData.amount);
-                                setScheduleItems(items);
-                                setFormData(prev => ({ ...prev, scheduleItems: items }));
-                              }
-                            }}
-                            className="modal-table-add-btn"
-                            style={{ fontSize: '12px', padding: '6px 12px' }}
-                          >
-                            <i className="ri-restart-line"></i>
-                            Reset
-                          </button>
-                        )}
                       </label>
                     </div>
                   </div>

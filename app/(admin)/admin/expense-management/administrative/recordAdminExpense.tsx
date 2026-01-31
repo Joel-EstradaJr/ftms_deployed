@@ -96,9 +96,12 @@ export default function RecordAdminExpenseModal({
 
   const [scheduleItems, setScheduleItems] = useState<ExpenseScheduleItem[]>(existingData?.scheduleItems || []);
   const [numberOfPayments, setNumberOfPayments] = useState<number>(existingData?.scheduleItems?.length || 2);
-  // Derived: has payable if payable_id exists or schedule items exist
-  const hasPayable = formData.payable_id !== null || (formData.scheduleItems && formData.scheduleItems.length > 0);
-  const [enablePayable, setEnablePayable] = useState<boolean>(hasPayable);
+  const [scheduleStartDate, setScheduleStartDate] = useState<string>(
+    existingData?.scheduleItems?.[0]?.due_date || new Date().toISOString().split('T')[0]
+  );
+  // Initialize enablePayable - true if existing data has payable_id or schedule items
+  const initialHasPayable = Boolean(existingData?.payable_id) || Boolean(existingData?.scheduleItems && existingData.scheduleItems.length > 0);
+  const [enablePayable, setEnablePayable] = useState<boolean>(initialHasPayable);
 
   const [formErrors, setFormErrors] = useState<FormErrors>({
     date_recorded: '',
@@ -116,33 +119,73 @@ export default function RecordAdminExpenseModal({
   const [isDirty, setIsDirty] = useState(false);
 
   // Generate schedule when relevant fields change
+  // In edit mode: regenerate if frequency/numberOfPayments changed, redistribute if only amount changed
   useEffect(() => {
-    if (
-      enablePayable &&
-      formData.frequency &&
-      numberOfPayments &&
-      numberOfPayments > 0 &&
-      formData.amount > 0
-    ) {
-      // Use the first schedule item's due_date as start date, or today
-      const startDate = scheduleItems[0]?.due_date || new Date().toISOString().split('T')[0];
-      const dates = generateScheduleDates(
-        formData.frequency,
-        startDate,
-        numberOfPayments
-      );
-      const items = generateScheduleItems(dates, formData.amount);
-      setScheduleItems(items);
-      setFormData(prev => ({ ...prev, scheduleItems: items }));
-    } else if (!enablePayable) {
+    // Skip if payable not enabled
+    if (!enablePayable) {
       setScheduleItems([]);
       setFormData(prev => ({ ...prev, scheduleItems: [], payable_id: null }));
+      return;
     }
+
+    // Check if we have all required fields
+    if (!formData.frequency || !scheduleStartDate || !numberOfPayments || numberOfPayments <= 0 || formData.amount <= 0) {
+      return;
+    }
+
+    // In edit mode, check what changed
+    if (mode === 'edit' && existingData?.scheduleItems && existingData.scheduleItems.length > 0) {
+      const frequencyChanged = formData.frequency !== existingData.frequency;
+      const numberOfPaymentsChanged = numberOfPayments !== existingData.scheduleItems.length;
+      const amountChanged = formData.amount !== existingData.amount;
+      const startDateChanged = scheduleStartDate !== existingData.scheduleItems[0]?.due_date;
+
+      // If frequency, number of payments, or start date changed - regenerate completely
+      if (frequencyChanged || numberOfPaymentsChanged || startDateChanged) {
+        const dates = generateScheduleDates(
+          formData.frequency,
+          scheduleStartDate,
+          numberOfPayments
+        );
+        const items = generateScheduleItems(dates, formData.amount);
+        setScheduleItems(items);
+        setFormData(prev => ({ ...prev, scheduleItems: items }));
+        return;
+      }
+
+      // If only amount changed - redistribute across existing schedule items
+      if (amountChanged) {
+        const amountPerInstallment = formData.amount / scheduleItems.length;
+        const updatedItems = scheduleItems.map(item => ({
+          ...item,
+          amount_due: amountPerInstallment,
+          balance: amountPerInstallment - (item.amount_paid || 0)
+        }));
+        setScheduleItems(updatedItems);
+        setFormData(prev => ({ ...prev, scheduleItems: updatedItems }));
+      }
+      return;
+    }
+
+    // Add mode - generate new schedule
+    const dates = generateScheduleDates(
+      formData.frequency,
+      scheduleStartDate,
+      numberOfPayments
+    );
+    const items = generateScheduleItems(dates, formData.amount);
+    setScheduleItems(items);
+    setFormData(prev => ({ ...prev, scheduleItems: items }));
   }, [
+    mode,
     enablePayable,
     formData.frequency,
+    scheduleStartDate,
     numberOfPayments,
-    formData.amount
+    formData.amount,
+    existingData?.scheduleItems,
+    existingData?.amount,
+    existingData?.frequency
   ]);
 
   // Track form changes
@@ -456,6 +499,19 @@ export default function RecordAdminExpenseModal({
                 </div>
               </div>
               <div className="form-row">
+                <div className="form-group">
+                  <label>Start Date <span className="requiredTags">*</span></label>
+                  <input
+                    type="date"
+                    value={scheduleStartDate}
+                    onChange={(e) => setScheduleStartDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className={formErrors.startDate ? 'error' : ''}
+                  />
+                  {formErrors.startDate && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.startDate}</p>}
+                </div>
+              </div>
+              <div className="form-row">
                 <div className="form-group full-width">
                   <label>Payment Schedule</label>
                   <ExpenseScheduleTable
@@ -463,7 +519,7 @@ export default function RecordAdminExpenseModal({
                     mode={mode}
                     onItemChange={handleScheduleChange}
                     totalAmount={formData.amount}
-                    isPrepaid={enablePayable}
+                    hasPayable={enablePayable}
                     frequency={formData.frequency}
                   />
                 </div>

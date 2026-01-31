@@ -104,7 +104,12 @@ const AdministrativeExpensePage: React.FC = () => {
       const response = await fetch('/api/admin/other-expense/payment-methods');
       const result = await response.json();
       if (result.success && result.data) {
-        setPaymentMethods(result.data);
+        // Map API response {id, code, name} to expected {value, label} format
+        const mappedMethods = result.data.map((m: { id: number; code: string; name: string }) => ({
+          value: m.code,
+          label: m.name
+        }));
+        setPaymentMethods(mappedMethods);
       }
     } catch (err) {
       console.error('Failed to fetch payment methods:', err);
@@ -244,7 +249,7 @@ const AdministrativeExpensePage: React.FC = () => {
         scheduleItems={(expense.scheduleItems || []).map(i => ({ ...(i as any) }))}
         selectedInstallment={scheduleItem}
         paymentMethods={methods}
-        currentUser={expense.created_by}
+        currentUser={expense.created_by || 'admin@ftms.com'}
         onPaymentRecorded={handlePaymentRecorded}
         onClose={closePaymentModal}
         processCascadePayment={processExpenseCascade}
@@ -256,27 +261,80 @@ const AdministrativeExpensePage: React.FC = () => {
   };
 
   const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
-    // Refresh data after payment recorded
-    await fetchData();
-    closePaymentModal();
+    try {
+      // Call backend payment API
+      const response = await fetch('/api/admin/other-expense/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expenseId: paymentData.recordId,
+          scheduleItemId: paymentData.scheduleItemId,
+          scheduleItemIds: paymentData.scheduleItemIds,
+          amountPaid: paymentData.amountToPay,
+          paymentDate: paymentData.paymentDate,
+          paymentMethod: paymentData.paymentMethodCode,
+          recordedBy: paymentData.recordedBy,
+          cascadeBreakdown: paymentData.cascadeBreakdown
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to record payment');
+      }
+
+      await fetchData();
+      closePaymentModal();
+    } catch (error) {
+      console.error('Payment recording failed:', error);
+      throw error; // Let RecordPaymentModal handle error display
+    }
   };
 
   // Open modal with different modes
-  const openModal = (mode: 'view' | 'add' | 'edit', rowData?: AdministrativeExpense) => {
+  const openModal = async (mode: 'view' | 'add' | 'edit', rowData?: AdministrativeExpense) => {
     if (rowData) {
       setActiveRow(rowData);
     }
 
-    if (mode === 'view' && rowData) {
+    // For view and edit modes, fetch full expense details including schedule items
+    let fullExpenseData = rowData;
+    if ((mode === 'view' || mode === 'edit') && rowData?.id) {
+      try {
+        const response = await fetch(`/api/admin/other-expense/${rowData.id}`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          // Extract vendor name from object if needed
+          const vendorData = result.data.vendor;
+          const vendorName = typeof vendorData === 'object' && vendorData !== null
+            ? (vendorData.supplier_local?.supplier_name || vendorData.name || '')
+            : (vendorData || '');
+
+          fullExpenseData = {
+            ...rowData,
+            ...result.data,
+            vendor: vendorName,  // Ensure vendor is a string, not object
+            vendor_id: result.data.vendor_id || rowData.vendor_id,
+            scheduleItems: result.data.scheduleItems || [],
+            frequency: result.data.frequency || rowData.frequency,
+          };
+        }
+      } catch (error) {
+        console.error('Failed to fetch expense details:', error);
+        // Fallback to rowData if fetch fails
+      }
+    }
+
+    if (mode === 'view' && fullExpenseData) {
       setModalContent(
         <ViewAdminExpenseModal
-          data={rowData}
+          data={fullExpenseData}
           onClose={closeModal}
           onEdit={(data) => openModal('edit', data)}
           onRecordPayment={(scheduleItem?: ExpenseScheduleItem) => {
             // Default to earliest pending installment if none passed
-            const pendingItem = scheduleItem || (rowData.scheduleItems || []).find((it: ExpenseScheduleItem) => it.status === PaymentStatus.PENDING || it.status === PaymentStatus.PARTIALLY_PAID);
-            if (pendingItem) openPaymentModal(pendingItem, rowData);
+            const pendingItem = scheduleItem || (fullExpenseData.scheduleItems || []).find((it: ExpenseScheduleItem) => it.status === PaymentStatus.PENDING || it.status === PaymentStatus.PARTIALLY_PAID);
+            if (pendingItem) openPaymentModal(pendingItem, fullExpenseData);
           }}
         />
       );
@@ -292,16 +350,16 @@ const AdministrativeExpensePage: React.FC = () => {
           vendors={vendors}
         />
       );
-    } else if (mode === 'edit' && rowData) {
+    } else if (mode === 'edit' && fullExpenseData) {
       // Check if expense is PENDING - only allow edit for PENDING
-      if (rowData.status !== ExpenseStatus.PENDING) {
+      if (String(fullExpenseData.status).toUpperCase() !== 'PENDING') {
         showError('Error', 'Only PENDING expenses can be edited');
         return;
       }
       setModalContent(
         <RecordAdminExpenseModal
           mode="edit"
-          existingData={rowData}
+          existingData={fullExpenseData}
           onSave={handleSave}
           onClose={closeModal}
           currentUser="admin@ftms.com"
@@ -355,10 +413,15 @@ const AdministrativeExpensePage: React.FC = () => {
           date_recorded: formData.date_recorded,
           amount: formData.amount,
           description: formData.description,
-          vendor_id: formData.vendor_id,  // Changed from vendor to vendor_id
+          vendor_id: formData.vendor_id,
           invoice_number: formData.invoice_number,
           payment_method: formData.payment_method,
           payment_reference: formData.payment_reference,
+          // Schedule settings for update
+          enable_schedule: formData.scheduleItems && formData.scheduleItems.length > 0,
+          frequency: formData.frequency,
+          number_of_payments: formData.scheduleItems?.length,
+          schedule_start_date: formData.scheduleItems?.[0]?.due_date,
         };
 
         const response = await fetch(`/api/admin/other-expense/${formData.id}`, {
@@ -699,7 +762,7 @@ const AdministrativeExpensePage: React.FC = () => {
                           >
                             <i className="ri-eye-line"></i>
                           </button>
-                          {expense.status === ExpenseStatus.PENDING && (
+                          {String(expense.status).toUpperCase() === 'PENDING' && (
                             <>
                               <button
                                 className="editBtn"

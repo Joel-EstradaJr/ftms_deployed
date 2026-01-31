@@ -304,7 +304,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     <label>Payment Method<span className="requiredTags"> *</span></label>
                     <select value={paymentMethodCode} onChange={(e) => setPaymentMethodCode(e.target.value)} required disabled={isProcessing}>
                       <option value="">Select Payment Method</option>
-                      {filteredPaymentMethods.map(method => (<option key={method.methodCode} value={method.methodCode}>{method.methodName}</option>))}
+                      {filteredPaymentMethods.map((method, index) => (<option key={method.methodCode || `method-${index}`} value={method.methodCode}>{method.methodName}</option>))}
                     </select>
                   </div>
                 </div>

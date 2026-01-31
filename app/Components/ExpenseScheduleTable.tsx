@@ -16,6 +16,7 @@ interface ExpenseScheduleTableProps {
   hasPayable: boolean;
   frequency?: ExpenseScheduleFrequency;
   onRecordPayment?: (item: ExpenseScheduleItem) => void;
+  expenseStatus?: string; // Only show payment actions when APPROVED
 }
 
 const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
@@ -25,8 +26,11 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
   totalAmount,
   hasPayable,
   frequency,
-  onRecordPayment
+  onRecordPayment,
+  expenseStatus
 }) => {
+  // Only show payment actions for APPROVED expenses
+  const canRecordPayment = onRecordPayment && String(expenseStatus).toUpperCase() === 'APPROVED';
   const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
   const [editingAmountIndex, setEditingAmountIndex] = useState<number | null>(null);
   const [dateError, setDateError] = useState<string>('');
@@ -71,11 +75,11 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
     const today = new Date();
     const lastItem = scheduleItems[scheduleItems.length - 1];
     const lastDate = lastItem ? new Date(lastItem.due_date + 'T00:00:00') : today;
-    
+
     // Default to 1 day after last item or today
     const newDate = new Date(lastDate);
     newDate.setDate(newDate.getDate() + 1);
-    
+
     const newItem: ExpenseScheduleItem = {
       id: `temp-${Date.now()}`,
       installment_number: scheduleItems.length + 1,
@@ -161,7 +165,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
           }
         }
       `}</style>
-      
+
       <div className="table-wrapper" style={{ maxHeight: '400px', marginBottom: '20px' }}>
         <table className="modal-table">
           <thead className="modal-table-heading">
@@ -172,10 +176,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
               {showPaidColumn && <th style={{ width: '120px' }}>Paid Amount</th>}
               <th style={{ width: '120px' }}>Balance</th>
               <th style={{ width: '140px' }}>Status</th>
-              {isEditable && (
-                <th style={{ width: '80px' }}>Actions</th>
-              )}
-              {onRecordPayment && (
+              {canRecordPayment && (
                 <th style={{ width: '80px' }}>Action</th>
               )}
             </tr>
@@ -213,7 +214,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
                     ) : (
                       <span
                         onClick={() => isDateEditable && setEditingDateIndex(index)}
-                        style={{ 
+                        style={{
                           cursor: isDateEditable ? 'pointer' : 'default',
                           textDecoration: isDateEditable ? 'underline' : 'none'
                         }}
@@ -239,7 +240,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
                     ) : (
                       <span
                         onClick={() => isAmountEditable && setEditingAmountIndex(index)}
-                        style={{ 
+                        style={{
                           cursor: isAmountEditable ? 'pointer' : 'default',
                           textDecoration: isAmountEditable ? 'underline' : 'none'
                         }}
@@ -267,23 +268,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
                       {formatStatusLabel(item.status)}
                     </span>
                   </td>
-
-                  {/* Actions */}
-                  {isEditable && (
-                    <td style={{ textAlign: 'center' }}>
-                      {canRemove && (
-                        <button
-                          onClick={() => handleRemoveDate(index)}
-                          className="deleteBtn"
-                          title="Remove"
-                          style={{ width: '28px', height: '28px' }}
-                        >
-                          <i className="ri-delete-bin-line"></i>
-                        </button>
-                      )}
-                    </td>
-                  )}
-                  {onRecordPayment && (
+                  {canRecordPayment && (
                     <td className="actionButtons">
                       <div className="actionButtonsContainer">
                         {item.status !== PaymentStatus.PAID && (
@@ -316,7 +301,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
         </table>
       </div>
 
-      {/* Add Date Button */}
+      {/* Add Date Button
       {isEditable && (
         <div style={{ marginTop: '10px' }}>
           <button
@@ -328,7 +313,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
             Add Installment Date
           </button>
         </div>
-      )}
+      )} */}
 
       {/* Warning if total mismatch */}
       {Math.abs(totalDue - totalAmount) > 0.01 && (
