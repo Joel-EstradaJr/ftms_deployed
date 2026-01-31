@@ -288,7 +288,7 @@ export default function CashAdvanceApprovalTab({
         success: boolean;
         data: any[];
       }>('/api/integration/approval/cash-advance');
-      
+
       if (response.success && response.data) {
         // Map backend data to frontend interface
         const mappedData: CashAdvanceRequest[] = response.data.map((item: any) => ({
@@ -315,7 +315,7 @@ export default function CashAdvanceApprovalTab({
           repayment_frequency: item.repayment_frequency || null,
           number_of_repayment_periods: item.number_of_repayment_periods ?? null,
         }));
-        
+
         setData(mappedData);
         onError(null);
       }
@@ -493,7 +493,7 @@ export default function CashAdvanceApprovalTab({
       // Find the backend ID (we need to get it from the request_id which is request_number)
       const backendData = await api.get<{ success: boolean; data: any[] }>('/api/integration/approval/cash-advance');
       const backendRequest = backendData.data?.find((item: any) => item.request_number === request.request_id);
-      
+
       if (!backendRequest) {
         showError('Request not found', 'Error');
         return;
@@ -504,7 +504,7 @@ export default function CashAdvanceApprovalTab({
         approvedAmount,
         reviewedBy: 'Finance Admin',
       });
-      
+
       showSuccess('Cash advance approved successfully', 'Approved!');
       fetchCashAdvances(); // Refresh data
       closeModal();
@@ -518,7 +518,7 @@ export default function CashAdvanceApprovalTab({
     try {
       const backendData = await api.get<{ success: boolean; data: any[] }>('/api/integration/approval/cash-advance');
       const backendRequest = backendData.data?.find((item: any) => item.request_number === request.request_id);
-      
+
       if (!backendRequest) {
         showError('Request not found', 'Error');
         return;
@@ -529,7 +529,7 @@ export default function CashAdvanceApprovalTab({
         rejectionReason: reason,
         reviewedBy: 'Finance Admin',
       });
-      
+
       showSuccess('Cash advance rejected', 'Rejected');
       fetchCashAdvances(); // Refresh data
       closeModal();
@@ -679,7 +679,7 @@ export default function CashAdvanceApprovalTab({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filteredData.length > 0 && (
         <PaginationComponent
           currentPage={currentPage}
           totalPages={totalPages}

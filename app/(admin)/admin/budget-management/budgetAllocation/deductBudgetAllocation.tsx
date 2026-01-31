@@ -1,42 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import '../../../../styles/components/modal.css';
 import '../../../../styles/components/table.css';
 import ModalHeader from '../../../../Components/ModalHeader';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
+import { DepartmentBudget, BudgetDeductionData, deductBudget } from '@/app/services/budgetAllocationService';
 
-// Types
-interface DepartmentBudget {
-  department_id: string;
-  department_name: string;
-  allocated_budget: number;
-  used_budget: number;
-  remaining_budget: number;
-  reserved_budget: number;
-  purchase_request_count: number;
-  last_update_date: string;
-  budget_period: string;
-  status: 'Active' | 'Inactive' | 'Exceeded';
-}
-
+// Props interface
 interface DeductBudgetAllocationProps {
   department: DepartmentBudget;
   budgetPeriod: string;
   onClose: () => void;
   onSubmit: (data: BudgetDeductionData) => void;
   showHeader?: boolean;
-}
-
-interface BudgetDeductionData {
-  deduction_id: string;
-  department_id: string;
-  department_name: string;
-  amount: number;
-  deducted_date: string;
-  deducted_by: string;
-  period: string;
-  notes: string;
 }
 
 const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
@@ -48,7 +25,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
 }) => {
   const [deductionAmount, setDeductionAmount] = useState('');
   const [deductionNotes, setDeductionNotes] = useState('');
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Format budget period for display
@@ -79,7 +56,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
 
   // Validate form
   const validateForm = (): boolean => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     // Validate deduction amount
     if (!deductionAmount || deductionAmount.trim() === '') {
@@ -110,9 +87,9 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
 
     // Show confirmation dialog first
     const confirmResult = await showConfirmation(
-      `<p>Are you sure you want to <b>DEDUCT</b> ₱${parseFloat(deductionAmount).toLocaleString(undefined, { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
+      `<p>Are you sure you want to <b>DEDUCT</b> ₱${parseFloat(deductionAmount).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
       })} from <b>${department.department_name}</b>?</p>
       <p><small>This action will reduce the department's budget allocation for ${formatBudgetPeriod()}.</small></p>`,
       'Confirm Budget Deduction'
@@ -123,7 +100,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const deductionData: BudgetDeductionData = {
         deduction_id: `deduct_${Date.now()}_${department.department_id}`, // Generate unique ID
@@ -137,21 +114,21 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
       };
 
       await onSubmit(deductionData);
-      
+
       // Show success message
       showSuccess(
-        `Successfully deducted ₱${parseFloat(deductionAmount).toLocaleString(undefined, { 
-          minimumFractionDigits: 2, 
-          maximumFractionDigits: 2 
+        `Successfully deducted ₱${parseFloat(deductionAmount).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
         })} from ${department.department_name} for ${formatBudgetPeriod()}.`,
         'Budget Deducted!'
       );
-      
+
       // Close modal after success
       setTimeout(() => {
         onClose();
       }, 2100); // Slightly longer than the success timer
-      
+
     } catch (error) {
       console.error('Error submitting deduction:', error);
       showError(
@@ -169,7 +146,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
     return {
       newAllocated: department.allocated_budget - amount,
       newRemaining: department.remaining_budget - amount,
-      newUtilization: department.allocated_budget - amount === 0 ? 0 : 
+      newUtilization: department.allocated_budget - amount === 0 ? 0 :
         Math.round((department.used_budget / (department.allocated_budget - amount)) * 100)
     };
   };
@@ -190,28 +167,28 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
 
         <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            
+
             {/* Department Information Section */}
             <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary-text-color)', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', position: 'relative' }}>
               Department Information
               <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Department Name</label>
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--primary-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.department_name}</div>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Department Status</label>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                  <span style={{ 
-                    padding: '0.25rem 0.75rem', 
-                    borderRadius: '20px', 
-                    fontSize: '0.875rem', 
+                  <span style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
                     fontWeight: '600',
-                    backgroundColor: department.status === 'Active' ? 'var(--success-color)' : department.status === 'Inactive' ? 'var(--warning-color)' : 'var(--error-color)',
+                    backgroundColor: department.status === 'Active' ? 'var(--success-color)' : 'var(--error-color)',
                     color: 'white'
                   }}>
                     {department.status}
@@ -220,14 +197,14 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Utilization</label>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                  <span style={{ 
-                    padding: '0.25rem 0.75rem', 
-                    borderRadius: '20px', 
-                    fontSize: '0.875rem', 
+                  <span style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
                     fontWeight: '600',
                     backgroundColor: utilizationStatus.class === 'success' ? 'var(--success-color)' : utilizationStatus.class === 'warning' ? 'var(--warning-color)' : 'var(--error-color)',
                     color: 'white'
@@ -236,11 +213,6 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                   </span>
                 </div>
               </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Requests</label>
-                <div style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--secondary-text-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{department.purchase_request_count} pending requests</div>
-              </div>
             </div>
 
             {/* Current Budget Status Section */}
@@ -248,7 +220,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
               Current Budget Status
               <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: '2rem', color: 'var(--primary-color)' }}>
@@ -257,9 +229,9 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                 <div>
                   <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Allocated</label>
                   <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
-                    ₱{department.allocated_budget.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
+                    ₱{department.allocated_budget.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
                     })}
                   </div>
                 </div>
@@ -272,9 +244,9 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                 <div>
                   <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Used</label>
                   <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-text-color)' }}>
-                    ₱{department.used_budget.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
+                    ₱{department.used_budget.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
                     })}
                   </div>
                 </div>
@@ -287,9 +259,9 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                 <div>
                   <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>Current Remaining</label>
                   <div style={{ fontSize: '1.25rem', fontWeight: '700', color: department.remaining_budget < 0 ? 'var(--error-color)' : 'var(--primary-text-color)' }}>
-                    ₱{department.remaining_budget.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
+                    ₱{department.remaining_budget.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
                     })}
                   </div>
                 </div>
@@ -301,13 +273,13 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
               Deduction Details
               <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Budget Period <span style={{ color: 'var(--error-color)', fontWeight: 'bold' }}>*</span></label>
                 <div style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--primary-color)', padding: '0.75rem', backgroundColor: 'var(--table-row-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>{formatBudgetPeriod()}</div>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Deduction Amount <span style={{ color: 'var(--error-color)', fontWeight: 'bold' }}>*</span></label>
                 <input
@@ -335,31 +307,31 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-                <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Deduction Notes</label>
-                <textarea
-                    value={deductionNotes}
-                    onChange={(e) => setDeductionNotes(e.target.value)}
-                    placeholder="Enter deduction notes or justification (optional)"
-                    rows={4}
-                    maxLength={500}
-                    style={{
-                      padding: '0.75rem',
-                      border: errors.deductionNotes ? '2px solid var(--error-color)' : '1px solid var(--border-color)',
-                      borderRadius: '8px',
-                      fontSize: '1rem',
-                      backgroundColor: 'var(--foreground-color)',
-                      color: 'var(--primary-text-color)',
-                      outline: 'none',
-                      resize: 'vertical',
-                      fontFamily: 'inherit'
-                    }}
-                />
-                <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', textAlign: 'right' }}>
-                    {deductionNotes.length}/500 characters
-                </div>
-                {errors.deductionNotes && (
-                    <div style={{ color: 'var(--error-color)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{errors.deductionNotes}</div>
-                )}
+              <label style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--primary-text-color)' }}>Deduction Notes</label>
+              <textarea
+                value={deductionNotes}
+                onChange={(e) => setDeductionNotes(e.target.value)}
+                placeholder="Enter deduction notes or justification (optional)"
+                rows={4}
+                maxLength={500}
+                style={{
+                  padding: '0.75rem',
+                  border: errors.deductionNotes ? '2px solid var(--error-color)' : '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  backgroundColor: 'var(--foreground-color)',
+                  color: 'var(--primary-text-color)',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <div style={{ fontSize: '0.875rem', color: 'var(--secondary-text-color)', textAlign: 'right' }}>
+                {deductionNotes.length}/500 characters
+              </div>
+              {errors.deductionNotes && (
+                <div style={{ color: 'var(--error-color)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{errors.deductionNotes}</div>
+              )}
             </div>
 
             {/* Deduction Preview Section */}
@@ -369,7 +341,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                   After Deduction Preview
                   <div style={{ position: 'absolute', bottom: '-2px', left: '0', width: '60px', height: '2px', background: 'var(--primary-color)' }}></div>
                 </div>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', backgroundColor: 'var(--table-row-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '2rem', color: 'var(--error-color)' }}>
@@ -378,15 +350,15 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                     <div>
                       <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>New Allocated Budget</label>
                       <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--error-color)' }}>
-                        ₱{preview.newAllocated.toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        ₱{preview.newAllocated.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: 'var(--error-color)', fontWeight: '500' }}>
-                        -₱{parseFloat(deductionAmount).toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        -₱{parseFloat(deductionAmount).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                     </div>
@@ -399,15 +371,15 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
                     <div>
                       <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--secondary-text-color)', display: 'block', marginBottom: '0.25rem' }}>New Remaining Budget</label>
                       <div style={{ fontSize: '1.25rem', fontWeight: '700', color: preview.newRemaining < 0 ? 'var(--error-color)' : 'var(--success-color)' }}>
-                        ₱{preview.newRemaining.toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        ₱{preview.newRemaining.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: preview.newRemaining < 0 ? 'var(--error-color)' : 'var(--success-color)', fontWeight: '500' }}>
-                        -₱{parseFloat(deductionAmount).toLocaleString(undefined, { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
+                        -₱{parseFloat(deductionAmount).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
                         })}
                       </div>
                     </div>
@@ -443,7 +415,7 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
 
         {/* Modal Buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--table-row-color)' }}>
-          <button 
+          <button
             type="button"
             style={{
               padding: '0.75rem 1.5rem',
@@ -466,8 +438,8 @@ const DeductBudgetAllocation: React.FC<DeductBudgetAllocationProps> = ({
           >
             <i className="ri-close-line" /> Cancel
           </button>
-          
-          <button 
+
+          <button
             type="button"
             style={{
               padding: '0.75rem 1.5rem',
