@@ -12,6 +12,7 @@
  */
 export enum PaymentStatus {
   PENDING = 'PENDING',
+  PARTIAL = 'PARTIAL',
   PARTIALLY_PAID = 'PARTIALLY_PAID',
   PAID = 'PAID',
   OVERDUE = 'OVERDUE',
@@ -27,7 +28,9 @@ export enum ScheduleFrequency {
   DAILY = 'DAILY',
   WEEKLY = 'WEEKLY',
   BIWEEKLY = 'BIWEEKLY',
-  MONTHLY = 'MONTHLY'
+  MONTHLY = 'MONTHLY',
+  ANNUAL = 'ANNUAL',
+  CUSTOM = 'CUSTOM'
 }
 
 /**

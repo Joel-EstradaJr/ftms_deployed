@@ -410,14 +410,12 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
       installments.push({
         id: `temp-${i + 1}`,
-        installmentNumber: i + 1,
-        originalDueDate: dueDateStr,
-        currentDueDate: dueDateStr,
-        originalDueAmount: amountPerInstallment,
-        currentDueAmount: amountPerInstallment,
-        paidAmount: 0,
-        carriedOverAmount: 0,
-        paymentStatus: PaymentStatus.PENDING,
+        installment_number: i + 1,
+        due_date: dueDateStr,
+        amount_due: amountPerInstallment,
+        amount_paid: 0,
+        balance: amountPerInstallment,
+        status: PaymentStatus.PENDING,
         isPastDue: false,
         isEditable: true
       });
@@ -517,14 +515,12 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
         
         return installments.map((inst: any) => ({
           id: inst.id.toString(),
-          installmentNumber: inst.installment_number,
-          originalDueDate: inst.due_date ? new Date(inst.due_date).toISOString().split('T')[0] : '',
-          currentDueDate: inst.due_date ? new Date(inst.due_date).toISOString().split('T')[0] : '',
-          originalDueAmount: inst.amount_due,
-          currentDueAmount: inst.amount_due,
-          paidAmount: inst.amount_paid,
-          carriedOverAmount: 0,
-          paymentStatus: inst.status === 'PAID' ? PaymentStatus.PAID 
+          installment_number: inst.installment_number,
+          due_date: inst.due_date ? new Date(inst.due_date).toISOString().split('T')[0] : '',
+          amount_due: inst.amount_due,
+          amount_paid: inst.amount_paid,
+          balance: inst.amount_due - inst.amount_paid,
+          status: inst.status === 'PAID' ? PaymentStatus.PAID 
             : inst.status === 'PARTIAL' ? PaymentStatus.PARTIAL 
             : PaymentStatus.PENDING,
           isPastDue: new Date(inst.due_date) < new Date(),
@@ -788,7 +784,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     // Check driver installments
     if (tripData.driver_installments?.installments) {
       const hasDriverPayment = tripData.driver_installments.installments.some(
-        installment => installment.paidAmount > 0
+        (installment: any) => installment.amount_paid > 0
       );
       if (hasDriverPayment) return true;
     }
@@ -796,7 +792,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     // Check conductor installments
     if (tripData.conductor_installments?.installments) {
       const hasConductorPayment = tripData.conductor_installments.installments.some(
-        installment => installment.paidAmount > 0
+        (installment: any) => installment.amount_paid > 0
       );
       if (hasConductorPayment) return true;
     }
@@ -1101,7 +1097,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
         tripRevenue: tripData.trip_revenue,
         assignmentType: tripData.assignment_type,
         assignmentValue: tripData.assignment_value,
-        paymentMethod: tripData.payment_method,
+        paymentMethod: tripData.payment_method || 'CASH',
         remittedAmount: formData.amount,
         hasLoan: shouldCreateReceivable(),
         loanAmount: shouldCreateReceivable() ? formData.receivableAmount : undefined
@@ -1120,7 +1116,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     let shouldDeleteReceivables = false;
 
     if (isPending) {
-      finalStatus = 'pending';
+      finalRemittanceStatus = 'PENDING';
     } else if (shouldCreateReceivable()) {
       // Converted to receivable (late remittance or shortage)
       finalRemittanceStatus = 'PARTIALLY_PAID';
@@ -1162,12 +1158,12 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
         installment_plan: formData.frequency,
         expected_installment: formData.driverShare / formData.numberOfPayments,
         installments: formData.driverInstallments.map(inst => ({
-          installment_number: inst.installmentNumber,
-          due_date: inst.currentDueDate,
-          amount_due: inst.currentDueAmount,
-          amount_paid: inst.paidAmount,
-          balance: inst.currentDueAmount - inst.paidAmount,
-          status: inst.paymentStatus
+          installment_number: inst.installment_number,
+          due_date: inst.due_date,
+          amount_due: inst.amount_due,
+          amount_paid: inst.amount_paid,
+          balance: inst.balance,
+          status: inst.status
         }))
       };
 
@@ -1187,12 +1183,12 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
           installment_plan: formData.frequency,
           expected_installment: formData.conductorShare / formData.numberOfPayments,
           installments: formData.conductorInstallments.map(inst => ({
-            installment_number: inst.installmentNumber,
-            due_date: inst.currentDueDate,
-            amount_due: inst.currentDueAmount,
-            amount_paid: inst.paidAmount,
-            balance: inst.currentDueAmount - inst.paidAmount,
-            status: inst.paymentStatus
+            installment_number: inst.installment_number,
+            due_date: inst.due_date,
+            amount_due: inst.amount_due,
+            amount_paid: inst.amount_paid,
+            balance: inst.balance,
+            status: inst.status
           }))
         };
       }
