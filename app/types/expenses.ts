@@ -1,6 +1,6 @@
 // ==================== EXPENSE MANAGEMENT TYPE DEFINITIONS ====================
 
-import { 
+import {
   PaymentStatus as BasePaymentStatus,
   ScheduleFrequency as BaseScheduleFrequency,
   ScheduleItem as BaseScheduleItem
@@ -126,31 +126,34 @@ export interface AdministrativeExpense {
   // Primary identifiers (maps to expense.id, expense.code)
   id: number | string;  // expense.id (int) or expense.code (string) for display
   code: string;         // expense.code - unique expense identifier
-  
+
   // Core expense fields (aligned with expense model)
   expense_type_id: number;           // FK to expense_type table
   date_recorded: string;              // expense.date_recorded
   amount: number;                     // expense.amount
   description?: string;               // expense.description (also stores remarks)
-  vendor?: string;                    // expense.vendor - creditor/vendor name
+  vendor_id?: number | null;          // expense.vendor_id FK to vendor table
+  vendor?: string;                    // Computed vendor name for display (backwards compat)
+  vendor_name?: string;               // Computed vendor name from relation
+  vendor_code?: string;               // Vendor code (supplier_id or standalone code)
   invoice_number?: string;            // expense.invoice_number
   status?: ExpenseStatus;             // expense.status enum
   payment_method?: string;            // expense.payment_method enum
   payment_reference?: string;         // expense.payment_reference
-  
+
   // Payable relationship (for scheduled payments)
   payable_id?: number | null;         // expense.payable_id FK
-  
+
   // Computed/derived fields for UI
   paymentStatus?: PaymentStatus;      // Computed from payable.status or installments
   balance?: number;                   // payable.balance
-  
+
   // Schedule items (from expense_installment_schedule via payable)
   scheduleItems?: ExpenseScheduleItem[];
-  
+
   // Frequency for payable schedule (maps to payable.frequency)
   frequency?: ExpenseScheduleFrequency;
-  
+
   // Audit trail (aligned with expense model)
   created_by?: string;
   created_at: string;

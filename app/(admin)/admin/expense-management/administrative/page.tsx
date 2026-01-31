@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import FilterDropdown, { FilterSection } from '../../../../Components/filter';
 import ExportButton from '../../../../Components/ExportButton';
 import ModalManager from '../../../../Components/modalManager';
@@ -20,21 +20,39 @@ import { formatDate, formatMoney } from '../../../../utils/formatting';
 import Swal from 'sweetalert2';
 import { showSuccess, showError } from '@/app/utils/Alerts';
 
-import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseScheduleFrequency, ExpenseStatus } from '../../../../types/expenses';
+import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseStatus } from '../../../../types/expenses';
 import { PaymentRecordData } from '@/app/types/payments';
 
+// Expense type interface from API
+interface ExpenseType {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+}
 
-
+// Vendor from API
+interface Vendor {
+  id: number;
+  code: string;
+  name: string;
+  type: 'supplier' | 'standalone';
+  supplier_id?: string;
+}
 
 const AdministrativeExpensePage: React.FC = () => {
   const [expenses, setExpenses] = useState<AdministrativeExpense[]>([]);
-  const [allExpenses, setAllExpenses] = useState<AdministrativeExpense[]>([]); // Store all expenses separately
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | number | null>(null);
 
   const [selectedExpense, setSelectedExpense] = useState<AdministrativeExpense | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filters, setFilters] = useState<AdministrativeExpenseFilters>({});
+
+  // Reference data from API
+  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);  // Unified vendor list
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ value: string; label: string }>>([]);
 
   // Modal states using ModalManager pattern
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,284 +62,134 @@ const AdministrativeExpensePage: React.FC = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedScheduleItem, setSelectedScheduleItem] = useState<any | null>(null);
   const [selectedExpenseRecord, setSelectedExpenseRecord] = useState<AdministrativeExpense | null>(null);
-  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: number; methodName: string; methodCode: string }>>([
-    { id: 1, methodName: 'Bank Transfer', methodCode: 'BANK' },
-    { id: 2, methodName: 'Cash', methodCode: 'CASH' },
-    { id: 3, methodName: 'Check', methodCode: 'CHECK' }
-  ]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
 
-  // Sample data for demonstration - aligned with schema
-  const sampleAdministrativeExpenses: AdministrativeExpense[] = [
-    {
-      id: 1,
-      code: 'ADM-001',
-      expense_type_id: 5010,
-      date_recorded: '2024-01-15',
-      amount: 2500.00,
-      description: 'Printer paper, pens, and office supplies for admin office',
-      vendor: 'Office Depot',
-      invoice_number: 'INV-2024-001',
-      status: ExpenseStatus.APPROVED,
-      payment_method: 'CASH',
-      payable_id: null,
-      paymentStatus: PaymentStatus.PAID,
-      created_by: 'admin@ftms.com',
-      created_at: '2024-01-15T08:00:00Z',
-      approved_by: 'manager@ftms.com',
-      approved_at: '2024-01-15T14:30:00Z',
-      updated_at: '2024-01-15T14:30:00Z',
-    },
-    {
-      id: 2,
-      code: 'ADM-002',
-      expense_type_id: 5020,
-      date_recorded: '2024-01-20',
-      amount: 15000.00,
-      description: 'Monthly electricity bill for main office',
-      vendor: 'Electric Company',
-      invoice_number: 'INV-ELEC-JAN-2024',
-      status: ExpenseStatus.PENDING,
-      payment_method: 'BANK_TRANSFER',
-      payable_id: null,
-      paymentStatus: PaymentStatus.PENDING,
-      created_by: 'admin@ftms.com',
-      created_at: '2024-01-20T09:00:00Z',
-      approved_by: 'manager@ftms.com',
-      approved_at: '2024-01-20T16:00:00Z',
-      updated_at: '2024-01-21T10:00:00Z',
-    },
-    {
-      id: 3,
-      code: 'ADM-003',
-      expense_type_id: 5040,
-      date_recorded: '2024-02-01',
-      amount: 60000.00,
-      description: 'Annual vehicle insurance premium - 12 monthly installments',
-      vendor: 'Insurance Corp',
-      invoice_number: 'INV-INS-2024-001',
-      status: ExpenseStatus.APPROVED,
-      payment_method: 'BANK_TRANSFER',
-      payable_id: 1,
-      frequency: ExpenseScheduleFrequency.MONTHLY,
-      paymentStatus: PaymentStatus.PARTIALLY_PAID,
-      balance: 52000,
-      scheduleItems: [
-        {
-          id: 1,
-          payable_id: 1,
-          installment_number: 1,
-          due_date: '2024-02-15',
-          amount_due: 5000,
-          amount_paid: 5000,
-          balance: 0,
-          status: PaymentStatus.PAID,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 2,
-          payable_id: 1,
-          installment_number: 2,
-          due_date: '2024-03-15',
-          amount_due: 5000,
-          amount_paid: 3000,
-          balance: 2000,
-          status: PaymentStatus.PARTIALLY_PAID,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 3,
-          payable_id: 1,
-          installment_number: 3,
-          due_date: '2024-04-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 4,
-          payable_id: 1,
-          installment_number: 4,
-          due_date: '2024-05-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 5,
-          payable_id: 1,
-          installment_number: 5,
-          due_date: '2024-06-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 6,
-          payable_id: 1,
-          installment_number: 6,
-          due_date: '2024-07-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 7,
-          payable_id: 1,
-          installment_number: 7,
-          due_date: '2024-08-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 8,
-          payable_id: 1,
-          installment_number: 8,
-          due_date: '2024-09-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 9,
-          payable_id: 1,
-          installment_number: 9,
-          due_date: '2024-10-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 10,
-          payable_id: 1,
-          installment_number: 10,
-          due_date: '2024-11-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 11,
-          payable_id: 1,
-          installment_number: 11,
-          due_date: '2024-12-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        },
-        {
-          id: 12,
-          payable_id: 1,
-          installment_number: 12,
-          due_date: '2025-01-15',
-          amount_due: 5000,
-          amount_paid: 0,
-          balance: 5000,
-          status: PaymentStatus.PENDING,
-          isPastDue: false,
-          isEditable: false
-        }
-      ],
-      created_by: 'admin@ftms.com',
-      created_at: '2024-02-01T10:00:00Z',
-      approved_by: 'manager@ftms.com',
-      approved_at: '2024-02-01T15:00:00Z',
-      updated_at: '2024-03-20T11:30:00Z',
-    },
-  ];
+  // Summary data
+  const [summary, setSummary] = useState<{ pending_count: number; approved_count: number; total_amount: number }>({
+    pending_count: 0,
+    approved_count: 0,
+    total_amount: 0
+  });
 
+  // Fetch reference data on mount
+  useEffect(() => {
+    fetchExpenseTypes();
+    fetchVendors();
+    fetchPaymentMethods();
+  }, []);
+
+  // Fetch data when page/filters/search changes
   useEffect(() => {
     fetchData();
   }, [currentPage, filters, searchTerm]);
+
+  const fetchExpenseTypes = async () => {
+    try {
+      const response = await fetch('/api/admin/other-expense/expense-types');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setExpenseTypes(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch expense types:', err);
+    }
+  };
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const response = await fetch('/api/admin/other-expense/payment-methods');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setPaymentMethods(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch payment methods:', err);
+    }
+  };
+
+  const fetchVendors = async () => {
+    try {
+      const response = await fetch('/api/admin/other-expense/vendors');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setVendors(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch vendors:', err);
+    }
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/admin/expenses/administrative?page=${currentPage}&pageSize=${pageSize}&search=${searchTerm}&filters=${JSON.stringify(filters)}`);
-      // const data = await response.json();
-
-      // Simulate filtering on sample data from allExpenses (or initialize if empty)
-      const baseData = allExpenses.length > 0 ? allExpenses : sampleAdministrativeExpenses;
-
-      // Update allExpenses if this is first load
-      if (allExpenses.length === 0) {
-        setAllExpenses(sampleAdministrativeExpenses);
-      }
-
-      let filtered = [...baseData];
+      // Build query params
+      const params = new URLSearchParams();
+      params.set('page', currentPage.toString());
+      params.set('limit', pageSize.toString());
 
       if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        filtered = filtered.filter(
-          (exp) =>
-            exp.code?.toLowerCase().includes(searchLower) ||
-            exp.vendor?.toLowerCase().includes(searchLower) ||
-            exp.description?.toLowerCase().includes(searchLower) ||
-            exp.date_recorded?.toLowerCase().includes(searchLower) ||
-            exp.status?.toLowerCase().includes(searchLower) ||
-            String(exp.amount).includes(searchTerm)
-        );
+        params.set('search', searchTerm);
       }
 
       if (filters.status) {
-        filtered = filtered.filter((exp) => exp.status === filters.status || exp.paymentStatus === filters.status);
-      }
-
-      if (filters.amountRange?.min) {
-        filtered = filtered.filter((exp) => exp.amount >= Number(filters.amountRange!.min));
-      }
-
-      if (filters.amountRange?.max) {
-        filtered = filtered.filter((exp) => exp.amount <= Number(filters.amountRange!.max));
+        params.set('status', filters.status);
       }
 
       if (filters.dateRange?.from) {
-        filtered = filtered.filter((exp) => exp.date_recorded >= filters.dateRange!.from!);
+        params.set('date_from', filters.dateRange.from);
       }
 
       if (filters.dateRange?.to) {
-        filtered = filtered.filter((exp) => exp.date_recorded <= filters.dateRange!.to!);
+        params.set('date_to', filters.dateRange.to);
       }
 
-      setExpenses(filtered);
-      setTotalCount(filtered.length);
+      if (filters.amountRange?.min) {
+        params.set('amount_min', filters.amountRange.min);
+      }
+
+      if (filters.amountRange?.max) {
+        params.set('amount_max', filters.amountRange.max);
+      }
+
+      const response = await fetch(`/api/admin/other-expense?${params.toString()}`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Map API response to frontend interface
+        const mappedExpenses: AdministrativeExpense[] = result.data.expenses.map((exp: any) => ({
+          id: exp.id,
+          code: exp.code,
+          expense_type_id: exp.expense_type_id,
+          date_recorded: exp.date_recorded,
+          amount: exp.amount,
+          description: exp.description,
+          vendor: exp.vendor,
+          invoice_number: exp.invoice_number,
+          status: exp.status as ExpenseStatus,
+          payment_method: exp.payment_method,
+          payable_id: exp.payable_id,
+          paymentStatus: exp.paymentStatus as PaymentStatus,
+          balance: exp.balance,
+          scheduleItems: exp.scheduleItems || [],
+          frequency: exp.frequency,
+          created_by: exp.created_by,
+          created_at: exp.created_at,
+          approved_by: exp.approved_by,
+          approved_at: exp.approved_at,
+        }));
+
+        setExpenses(mappedExpenses);
+        setTotalCount(result.data.pagination?.total || 0);
+        setSummary(result.data.summary || { pending_count: 0, approved_count: 0, total_amount: 0 });
+      } else {
+        setError(result.error || 'Failed to fetch expenses');
+      }
     } catch (err) {
       setError(500);
       console.error(err);
@@ -362,6 +230,12 @@ const AdministrativeExpensePage: React.FC = () => {
     setSelectedScheduleItem(scheduleItem);
     setSelectedExpenseRecord(expense);
 
+    const methods = paymentMethods.map((m, idx) => ({
+      id: idx + 1,
+      methodName: m.label,
+      methodCode: m.value
+    }));
+
     setModalContent(
       <RecordPaymentModal
         entityType="expense"
@@ -369,7 +243,7 @@ const AdministrativeExpensePage: React.FC = () => {
         recordRef={expense.invoice_number}
         scheduleItems={(expense.scheduleItems || []).map(i => ({ ...(i as any) }))}
         selectedInstallment={scheduleItem}
-        paymentMethods={paymentMethods}
+        paymentMethods={methods}
         currentUser={expense.created_by}
         onPaymentRecorded={handlePaymentRecorded}
         onClose={closePaymentModal}
@@ -382,42 +256,8 @@ const AdministrativeExpensePage: React.FC = () => {
   };
 
   const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
-    // Update the local state with the payment result for demo/mock purposes
-    // In production, this should call an API and refresh the data
-    const { scheduleItemId, cascadeBreakdown } = paymentData;
-
-    setExpenses(prev => {
-      return prev.map(exp => {
-        if (exp.id !== paymentData.recordId) return exp;
-        const items = exp.scheduleItems?.map(item => {
-          // If the schedule item is affected by the cascade, update its amount_paid
-          const affected = cascadeBreakdown?.find((a: any) => a.scheduleItemId === item.id);
-          if (affected) {
-            const newPaid = (item.amount_paid || 0) + affected.amountApplied;
-            const newBalance = item.amount_due - newPaid;
-            return {
-              ...item,
-              amount_paid: newPaid,
-              balance: newBalance,
-              status: newBalance <= 0 ? PaymentStatus.PAID : PaymentStatus.PARTIALLY_PAID
-            };
-          }
-          return item;
-        }) || [];
-        // Recompute overall paymentStatus and balance
-        const totalPaid = items.reduce((s: any, i: any) => s + (i.amount_paid || 0), 0);
-        const newBalance = (exp.amount || 0) - totalPaid;
-        const newPaymentStatus = newBalance <= 0 ? PaymentStatus.PAID : totalPaid > 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PENDING;
-
-        return {
-          ...exp,
-          scheduleItems: items,
-          balance: newBalance,
-          paymentStatus: newPaymentStatus
-        };
-      });
-    });
-
+    // Refresh data after payment recorded
+    await fetchData();
     closePaymentModal();
   };
 
@@ -448,9 +288,16 @@ const AdministrativeExpensePage: React.FC = () => {
           onSave={handleSave}
           onClose={closeModal}
           currentUser="admin@ftms.com"
+          expenseTypes={expenseTypes}
+          vendors={vendors}
         />
       );
     } else if (mode === 'edit' && rowData) {
+      // Check if expense is PENDING - only allow edit for PENDING
+      if (rowData.status !== ExpenseStatus.PENDING) {
+        showError('Error', 'Only PENDING expenses can be edited');
+        return;
+      }
       setModalContent(
         <RecordAdminExpenseModal
           mode="edit"
@@ -458,6 +305,8 @@ const AdministrativeExpensePage: React.FC = () => {
           onSave={handleSave}
           onClose={closeModal}
           currentUser="admin@ftms.com"
+          expenseTypes={expenseTypes}
+          vendors={vendors}
         />
       );
     }
@@ -465,19 +314,73 @@ const AdministrativeExpensePage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (formData: AdministrativeExpense, mode: 'add' | 'edit') => {
-    if (mode === 'add') {
-      const newExpense = {
-        ...formData,
-        id: `ADM-${Date.now()}`, // Mock ID
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setExpenses(prev => [newExpense, ...prev]);
-    } else {
-      setExpenses(prev => prev.map(exp => exp.id === formData.id ? formData : exp));
+  const handleSave = async (formData: AdministrativeExpense, mode: 'add' | 'edit') => {
+    try {
+      if (mode === 'add') {
+        // Create new expense via API
+        const payload = {
+          expense_type_id: formData.expense_type_id,
+          date_recorded: formData.date_recorded,
+          amount: formData.amount,
+          description: formData.description,
+          vendor_id: formData.vendor_id,  // Changed from vendor to vendor_id
+          invoice_number: formData.invoice_number,
+          payment_method: formData.payment_method,
+          payment_reference: formData.payment_reference,
+          // Schedule settings
+          enable_schedule: formData.scheduleItems && formData.scheduleItems.length > 0,
+          frequency: formData.frequency,
+          number_of_payments: formData.scheduleItems?.length,
+          schedule_start_date: formData.scheduleItems?.[0]?.due_date,
+        };
+
+        const response = await fetch('/api/admin/other-expense', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showSuccess('Success', 'Expense created successfully');
+          await fetchData();
+        } else {
+          showError('Error', result.message || 'Failed to create expense');
+        }
+      } else {
+        // Update existing expense via API
+        const payload = {
+          expense_type_id: formData.expense_type_id,
+          date_recorded: formData.date_recorded,
+          amount: formData.amount,
+          description: formData.description,
+          vendor_id: formData.vendor_id,  // Changed from vendor to vendor_id
+          invoice_number: formData.invoice_number,
+          payment_method: formData.payment_method,
+          payment_reference: formData.payment_reference,
+        };
+
+        const response = await fetch(`/api/admin/other-expense/${formData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showSuccess('Success', 'Expense updated successfully');
+          await fetchData();
+        } else {
+          showError('Error', result.message || 'Failed to update expense');
+        }
+      }
+      closeModal();
+    } catch (err) {
+      console.error('Save error:', err);
+      showError('Error', 'An error occurred while saving');
     }
-    closeModal();
   };
 
   // Action handlers
@@ -524,40 +427,114 @@ const AdministrativeExpensePage: React.FC = () => {
     }
   };
 
-  const handlePostToJEV = async (expense: AdministrativeExpense) => {
+  const handleApprove = async (expense: AdministrativeExpense) => {
     const result = await Swal.fire({
-      title: 'Post to JEV?',
-      text: `Are you sure you want to post ${expense.invoice_number || expense.id} to the Journal Entry Voucher?`,
+      title: 'Approve Expense?',
+      text: `Are you sure you want to approve ${expense.code}? This will generate a journal entry.`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, post it!',
+      confirmButtonText: 'Yes, approve it!',
       cancelButtonText: 'Cancel'
     });
 
     if (result.isConfirmed) {
       try {
-        // TODO: Replace with actual API call
-        // await fetch(`/api/admin/expenses/administrative/${expense.id}/post-to-jev`, { method: 'POST' });
+        const response = await fetch(`/api/admin/other-expense/${expense.id}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ remarks: 'Approved via UI' }),
+        });
 
-        // Update both allExpenses and expenses state to mark as POSTED
-        setAllExpenses(prev => prev.map(exp =>
-          exp.id === expense.id
-            ? { ...exp, status: 'POSTED' }
-            : exp
-        ));
+        const apiResult = await response.json();
 
-        setExpenses(prev => prev.map(exp =>
-          exp.id === expense.id
-            ? { ...exp, status: 'POSTED' }
-            : exp
-        ));
-
-        showSuccess('Success', 'Expense has been posted to JEV successfully.');
+        if (apiResult.success) {
+          showSuccess('Success', 'Expense approved and journal entry created');
+          await fetchData();
+        } else {
+          showError('Error', apiResult.message || 'Failed to approve expense');
+        }
       } catch (error) {
-        console.error('Error posting to JEV:', error);
-        showError('Error', 'Failed to post expense to JEV. Please try again.');
+        console.error('Error approving expense:', error);
+        showError('Error', 'Failed to approve expense. Please try again.');
+      }
+    }
+  };
+
+  const handleReject = async (expense: AdministrativeExpense) => {
+    const { value: reason } = await Swal.fire({
+      title: 'Reject Expense',
+      input: 'textarea',
+      inputLabel: 'Reason for rejection',
+      inputPlaceholder: 'Enter reason for rejection...',
+      showCancelButton: true,
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Please provide a reason for rejection';
+        }
+      }
+    });
+
+    if (reason) {
+      try {
+        const response = await fetch(`/api/admin/other-expense/${expense.id}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
+        });
+
+        const apiResult = await response.json();
+
+        if (apiResult.success) {
+          showSuccess('Success', 'Expense rejected');
+          await fetchData();
+        } else {
+          showError('Error', apiResult.message || 'Failed to reject expense');
+        }
+      } catch (error) {
+        console.error('Error rejecting expense:', error);
+        showError('Error', 'Failed to reject expense. Please try again.');
+      }
+    }
+  };
+
+  const handleDelete = async (expense: AdministrativeExpense) => {
+    if (expense.status !== ExpenseStatus.PENDING) {
+      showError('Error', 'Only PENDING expenses can be deleted');
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: 'Delete Expense?',
+      text: `Are you sure you want to delete ${expense.code}? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`/api/admin/other-expense/${expense.id}/soft-delete`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'Deleted via UI' }),
+        });
+
+        const apiResult = await response.json();
+
+        if (apiResult.success) {
+          showSuccess('Success', 'Expense deleted');
+          await fetchData();
+        } else {
+          showError('Error', apiResult.message || 'Failed to delete expense');
+        }
+      } catch (error) {
+        console.error('Error deleting expense:', error);
+        showError('Error', 'Failed to delete expense. Please try again.');
       }
     }
   };
@@ -583,10 +560,8 @@ const AdministrativeExpensePage: React.FC = () => {
       options: [
         { id: '', label: 'All Status' },
         { id: 'PENDING', label: 'Pending' },
-        { id: 'PARTIALLY_PAID', label: 'Partially Paid' },
-        { id: 'PAID', label: 'Paid' },
-        { id: 'OVERDUE', label: 'Overdue' },
-        { id: 'CANCELLED', label: 'Cancelled' }
+        { id: 'APPROVED', label: 'Approved' },
+        { id: 'REJECTED', label: 'Rejected' },
       ],
       defaultValue: ''
     }
@@ -600,7 +575,7 @@ const AdministrativeExpensePage: React.FC = () => {
     'Invoice Number': exp.invoice_number || 'N/A',
     Description: exp.description || 'N/A',
     Amount: formatMoney(exp.amount),
-    Status: exp.status || exp.paymentStatus || 'PENDING',
+    Status: exp.status || 'PENDING',
   }));
 
   if (loading) {
@@ -628,7 +603,7 @@ const AdministrativeExpensePage: React.FC = () => {
               <input
                 className="searchInput"
                 type="text"
-                placeholder="Search by request code, expense name, department..."
+                placeholder="Search by code, vendor, invoice number..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -676,7 +651,7 @@ const AdministrativeExpensePage: React.FC = () => {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Request Code</th>
+                  <th>Expense Code</th>
                   <th>Vendor</th>
                   <th>Invoice #</th>
                   <th>Amount</th>
@@ -708,13 +683,9 @@ const AdministrativeExpensePage: React.FC = () => {
                       <td>{expense.invoice_number || '-'}</td>
                       <td>{formatMoney(expense.amount)}</td>
                       <td>
-                        {(expense.status || expense.paymentStatus) ? (
-                          <span className={`chip ${(expense.status || expense.paymentStatus || '').toLowerCase().replace('_', '-')}`}>
-                            {(expense.status || expense.paymentStatus || 'PENDING').replace('_', ' ')}
-                          </span>
-                        ) : (
-                          <span className="chip pending">PENDING</span>
-                        )}
+                        <span className={`chip ${(expense.status || 'PENDING').toLowerCase().replace('_', '-')}`}>
+                          {(expense.status || 'PENDING').replace('_', ' ')}
+                        </span>
                       </td>
                       <td className="actionButtons">
                         <div className="actionButtonsContainer">
@@ -728,46 +699,51 @@ const AdministrativeExpensePage: React.FC = () => {
                           >
                             <i className="ri-eye-line"></i>
                           </button>
-                          <button
-                            className="editBtn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(expense);
-                            }}
-                            title="Edit"
-                            disabled={expense.status === 'POSTED'}
-                            style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                          >
-                            <i className="ri-pencil-line"></i>
-                          </button>
-                          {/* Payment button - show for PENDING or PARTIALLY_PAID expenses, disable when POSTED */}
-                          {((expense.status || expense.paymentStatus) === PaymentStatus.PENDING ||
-                            (expense.status || expense.paymentStatus) === PaymentStatus.PARTIALLY_PAID) && (
+                          {expense.status === ExpenseStatus.PENDING && (
+                            <>
                               <button
-                                className="payBtn"
+                                className="editBtn"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleRecordPayment(expense);
+                                  handleEdit(expense);
                                 }}
-                                title="Record Payment"
-                                disabled={expense.status === 'POSTED'}
-                                style={expense.status === 'POSTED' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                                title="Edit"
                               >
-                                <i className="ri-money-dollar-circle-line"></i>
+                                <i className="ri-pencil-line"></i>
                               </button>
-                            )}
-                          {/* Post to JEV button - show for PAID expenses */}
-                          {(expense.status || expense.paymentStatus) === PaymentStatus.PAID && expense.status !== 'POSTED' && (
-                            <button
-                              className="submitBtn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePostToJEV(expense);
-                              }}
-                              title="Post to JEV"
-                            >
-                              <i className="ri-send-plane-line"></i>
-                            </button>
+                              <button
+                                className="submitBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApprove(expense);
+                                }}
+                                title="Approve"
+                              >
+                                <i className="ri-check-line"></i>
+                              </button>
+                              <button
+                                className="rejectBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReject(expense);
+                                }}
+                                title="Reject"
+                                style={{ backgroundColor: '#dc3545' }}
+                              >
+                                <i className="ri-close-line"></i>
+                              </button>
+                              <button
+                                className="deleteBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(expense);
+                                }}
+                                title="Delete"
+                                style={{ backgroundColor: '#6c757d' }}
+                              >
+                                <i className="ri-delete-bin-line"></i>
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

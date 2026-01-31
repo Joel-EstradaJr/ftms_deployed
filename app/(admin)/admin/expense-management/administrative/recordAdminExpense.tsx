@@ -8,16 +8,32 @@ import "@/styles/components/chips.css";
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showConfirmation } from "@/utils/Alerts";
 import { isValidAmount } from "@/utils/validation";
-import { 
-  AdministrativeExpense, 
-  AdministrativeExpenseType, 
-  ExpenseScheduleFrequency, 
+import {
+  AdministrativeExpense,
+  ExpenseScheduleFrequency,
   ExpenseScheduleItem,
-  PaymentStatus 
+  PaymentStatus
 } from "@/app/types/expenses";
 import { generateScheduleDates, generateScheduleItems, validateSchedule } from "@/app/utils/expenseScheduleCalculations";
 import ExpenseScheduleTable from "@/Components/ExpenseScheduleTable";
 import CustomDropdown from "@/Components/CustomDropdown";
+
+// Expense type from API
+interface ExpenseType {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+}
+
+// Vendor from API
+interface Vendor {
+  id: number;
+  code: string;
+  name: string;
+  type: 'supplier' | 'standalone';
+  supplier_id?: string;
+}
 
 interface RecordAdminExpenseModalProps {
   mode: "add" | "edit";
@@ -25,6 +41,8 @@ interface RecordAdminExpenseModalProps {
   onSave: (formData: AdministrativeExpense, mode: "add" | "edit") => void;
   onClose: () => void;
   currentUser: string;
+  expenseTypes?: ExpenseType[]; // From API
+  vendors?: Vendor[];  // From API - unified vendor list
 }
 
 interface FormErrors {
@@ -32,7 +50,7 @@ interface FormErrors {
   expense_type_id: string;
   amount: string;
   description: string;
-  vendor: string;
+  vendor_id: string;  // Changed from vendor to vendor_id
   invoice_number: string;
   payment_method: string;
   payment_reference: string;
@@ -40,29 +58,16 @@ interface FormErrors {
   startDate: string;
 }
 
-const EXPENSE_CATEGORIES = Object.values(AdministrativeExpenseType).map(type => ({
-  value: type,
-  label: type.replace(/_/g, ' ')
-}));
-
-// Sample Chart of Accounts - In production, this should be fetched from API
-const CHART_OF_ACCOUNTS = [
-  { account_id: '5010', account_code: '5010', account_name: 'Office Supplies Expense' },
-  { account_id: '5020', account_code: '5020', account_name: 'Utilities Expense' },
-  { account_id: '5030', account_code: '5030', account_name: 'Professional Fees' },
-  { account_id: '5040', account_code: '5040', account_name: 'Insurance Expense' },
-  { account_id: '5050', account_code: '5050', account_name: 'Licensing and Permits' },
-  { account_id: '5060', account_code: '5060', account_name: 'General Administrative Expense' },
-];
-
-export default function RecordAdminExpenseModal({ 
-  mode, 
-  existingData, 
-  onSave, 
-  onClose, 
-  currentUser 
+export default function RecordAdminExpenseModal({
+  mode,
+  existingData,
+  onSave,
+  onClose,
+  currentUser,
+  expenseTypes = [],
+  vendors = []  // New prop for vendors
 }: RecordAdminExpenseModalProps) {
-  
+
   const [formData, setFormData] = useState<AdministrativeExpense>({
     id: existingData?.id || 0,
     code: existingData?.code || '',
@@ -70,19 +75,20 @@ export default function RecordAdminExpenseModal({
     date_recorded: existingData?.date_recorded || new Date().toISOString().split('T')[0],
     amount: existingData?.amount || 0,
     description: existingData?.description || '',
-    vendor: existingData?.vendor || '',
+    vendor_id: existingData?.vendor_id || null,  // Changed from vendor to vendor_id
+    vendor: existingData?.vendor || '',  // Keep for display
     invoice_number: existingData?.invoice_number || '',
-    
+
     // Payable relationship
     payable_id: existingData?.payable_id || null,
     frequency: existingData?.frequency || undefined,
     scheduleItems: existingData?.scheduleItems || [],
-    
+
     // Payment details
     payment_method: existingData?.payment_method || '',
     payment_reference: existingData?.payment_reference || '',
     paymentStatus: existingData?.paymentStatus || PaymentStatus.PENDING,
-    
+
     created_by: existingData?.created_by || currentUser,
     created_at: existingData?.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -99,7 +105,7 @@ export default function RecordAdminExpenseModal({
     expense_type_id: '',
     amount: '',
     description: '',
-    vendor: '',
+    vendor_id: '',
     invoice_number: '',
     payment_method: '',
     payment_reference: '',
@@ -157,7 +163,7 @@ export default function RecordAdminExpenseModal({
       case 'amount':
         if (!value || value <= 0) errorMessage = 'Amount must be greater than 0';
         break;
-      case 'vendor':
+      case 'vendor_id':
         if (!value) errorMessage = 'Vendor is required';
         break;
       case 'numberOfPayments':
@@ -195,6 +201,8 @@ export default function RecordAdminExpenseModal({
       newValue = (e.target as HTMLInputElement).checked;
     } else if (name === 'amount') {
       newValue = parseFloat(value) || 0;
+    } else if (name === 'expense_type_id') {
+      newValue = parseInt(value) || 0;
     }
 
     setFormData(prev => ({ ...prev, [name]: newValue }));
@@ -215,7 +223,7 @@ export default function RecordAdminExpenseModal({
       expense_type_id: validateFormField('expense_type_id', formData.expense_type_id),
       amount: validateFormField('amount', formData.amount),
       description: '',
-      vendor: validateFormField('vendor', formData.vendor),
+      vendor_id: validateFormField('vendor_id', formData.vendor_id),
       invoice_number: '',
       payment_method: '',
       payment_reference: '',
@@ -224,7 +232,7 @@ export default function RecordAdminExpenseModal({
     };
 
     if (Object.values(errors).some(err => err !== '')) {
-      showError('Please fix the errors in the form','error');
+      showError('Please fix the errors in the form', 'error');
       return;
     }
 
@@ -237,6 +245,12 @@ export default function RecordAdminExpenseModal({
     }
 
     onSave(formData, mode);
+  };
+
+  // Get expense type name for display
+  const getExpenseTypeName = (typeId: number): string => {
+    const expType = expenseTypes.find(t => t.id === typeId);
+    return expType ? `${expType.code} - ${expType.name}` : '';
   };
 
   return (
@@ -284,14 +298,28 @@ export default function RecordAdminExpenseModal({
           <div className="form-row">
             <div className="form-group">
               <label>Vendor <span className="requiredTags">*</span></label>
-              <CustomDropdown
-                options={EXPENSE_CATEGORIES}
-                value={formData.vendor || ''}
-                onChange={(val) => setFormData(prev => ({ ...prev, vendor: val }))}
-                placeholder="Select or type vendor name"
-                allowCustomInput={true}
-              />
-              {formErrors.vendor && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.vendor}</p>}
+              <select
+                name="vendor_id"
+                value={formData.vendor_id || ''}
+                onChange={(e) => {
+                  const vendorId = e.target.value ? parseInt(e.target.value) : null;
+                  const selectedVendor = vendors.find(v => v.id === vendorId);
+                  setFormData(prev => ({
+                    ...prev,
+                    vendor_id: vendorId,
+                    vendor: selectedVendor?.name || ''
+                  }));
+                }}
+                className={formErrors.vendor_id ? 'error' : ''}
+              >
+                <option value="">Select Vendor</option>
+                {vendors.map(vendor => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name} {vendor.type === 'supplier' ? `(${vendor.supplier_id})` : ''}
+                  </option>
+                ))}
+              </select>
+              {formErrors.vendor_id && <p className={mode === 'add' ? 'add-error-message' : 'edit-error-message'}>{formErrors.vendor_id}</p>}
             </div>
             <div className="form-group">
               <label>Amount <span className="requiredTags">*</span></label>
@@ -361,9 +389,9 @@ export default function RecordAdminExpenseModal({
                 className={formErrors.expense_type_id ? 'error' : ''}
               >
                 <option value={0}>Select Expense Type</option>
-                {CHART_OF_ACCOUNTS.map(account => (
-                  <option key={account.account_id} value={parseInt(account.account_id)}>
-                    {account.account_code} - {account.account_name}
+                {expenseTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.code} - {type.name}
                   </option>
                 ))}
               </select>
