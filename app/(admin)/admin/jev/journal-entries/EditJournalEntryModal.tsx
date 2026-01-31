@@ -18,7 +18,7 @@ interface ChangeRecord {
 interface EditJournalEntryModalProps {
   entry: JournalEntry;
   onClose: () => void;
-  onSubmit: (data: JournalEntryFormData) => Promise<void>;
+  onSubmit: (entryId: string, data: JournalEntryFormData) => Promise<void>;
   accounts: ChartOfAccount[];
 }
 
@@ -79,12 +79,14 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
     transaction_date?: string;
     description?: string;
     balance?: string;
-    lines: { [lineIndex: number]: { 
-      account_id?: string; 
-      line_description?: string; 
-      debit_amount?: string; 
-      credit_amount?: string; 
-    }};
+    lines: {
+      [lineIndex: number]: {
+        account_id?: string;
+        line_description?: string;
+        debit_amount?: string;
+        credit_amount?: string;
+      }
+    };
   }>({ lines: {} });
 
   // Calculate totals
@@ -118,7 +120,7 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
       const currentLine = formData.journal_lines[lineIndex];
       const originalLine = originalData.journal_lines[lineIndex];
       if (!currentLine || !originalLine) return false;
-      
+
       const fieldKey = field as keyof JournalEntryLine;
       return JSON.stringify(currentLine[fieldKey]) !== JSON.stringify(originalLine[fieldKey]);
     }
@@ -130,7 +132,7 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
   const changedLineIndices = new Set<number>();
   formData.journal_lines.forEach((line, index) => {
     if (originalData.journal_lines[index]) {
-      const hasChanges = 
+      const hasChanges =
         line.account_id !== originalData.journal_lines[index].account_id ||
         line.description !== originalData.journal_lines[index].description ||
         line.debit_amount !== originalData.journal_lines[index].debit_amount ||
@@ -155,15 +157,15 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
 
   const validateLine = (index: number, field: string, lines: JLTableLine[]): string | undefined => {
     const line = lines[index];
-    
+
     if (field === 'account_id' && !line.account_id) {
       return 'Account is required';
     }
     if (field === 'line_description' && line.line_description.length > 200) {
       return 'Description cannot exceed 200 characters';
     }
-    if ((field === 'debit_amount' || field === 'credit_amount') && 
-        line.debit_amount === 0 && line.credit_amount === 0) {
+    if ((field === 'debit_amount' || field === 'credit_amount') &&
+      line.debit_amount === 0 && line.credit_amount === 0) {
       return 'Either debit or credit amount is required';
     }
     return undefined;
@@ -177,14 +179,14 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
       newValue,
       lineIndex,
     };
-    
+
     const newHistory = [...changeHistory, change];
     // Limit history to 50 changes
     if (newHistory.length > 50) {
       newHistory.shift();
     }
     setChangeHistory(newHistory);
-    
+
     const fieldKey = lineIndex !== undefined ? `line_${lineIndex}_${field}` : field;
     setChangedFields(new Set(changedFields).add(fieldKey));
   };
@@ -194,9 +196,9 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
     if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
       recordChange(field, oldValue, value);
     }
-    
+
     setFormData({ ...formData, [field]: value });
-    
+
     if (field === 'transaction_date' || field === 'description') {
       setErrors({ ...errors, [field]: undefined });
     }
@@ -213,14 +215,14 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
   const handleLineChange = (index: number, field: string, value: string | number | null) => {
     const updatedLines = [...formData.journal_lines];
     const oldValue = updatedLines[index][field as keyof JournalEntryLine];
-    
+
     if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
       recordChange(field, oldValue, value, index);
     }
-    
-    updatedLines[index] = { 
-      ...updatedLines[index], 
-      [field]: value 
+
+    updatedLines[index] = {
+      ...updatedLines[index],
+      [field]: value
     };
     setFormData({ ...formData, journal_lines: updatedLines });
 
@@ -305,10 +307,10 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
         if (!newErrors.lines[index]) newErrors.lines[index] = {};
         newErrors.lines[index].account_id = 'Account is required';
       }
-      
+
       const debitAmt = line.debit_amount || 0;
       const creditAmt = line.credit_amount || 0;
-      
+
       if (debitAmt === 0 && creditAmt === 0) {
         if (!newErrors.lines[index]) newErrors.lines[index] = {};
         newErrors.lines[index].debit_amount = 'Either debit or credit is required';
@@ -351,7 +353,7 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
     );
 
     if (result.isConfirmed) {
-      await onSubmit(formData);
+      await onSubmit(entry.journal_entry_id, formData);
     }
   };
 
@@ -385,10 +387,10 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
 
   const handleUndo = () => {
     if (changeHistory.length === 0) return;
-    
+
     const lastChange = changeHistory[changeHistory.length - 1];
     const newHistory = changeHistory.slice(0, -1);
-    
+
     if (lastChange.lineIndex !== undefined) {
       const updatedLines = [...formData.journal_lines];
       if (lastChange.field === 'journal_lines') {
@@ -403,11 +405,11 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
     } else {
       setFormData({ ...formData, [lastChange.field]: lastChange.oldValue });
     }
-    
+
     setChangeHistory(newHistory);
-    
-    const fieldKey = lastChange.lineIndex !== undefined 
-      ? `line_${lastChange.lineIndex}_${lastChange.field}` 
+
+    const fieldKey = lastChange.lineIndex !== undefined
+      ? `line_${lastChange.lineIndex}_${lastChange.field}`
       : lastChange.field;
     setUndoHighlight(fieldKey);
     setTimeout(() => setUndoHighlight(null), 2000);
@@ -433,7 +435,7 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
         {/* Entry Information Section */}
         <div className="form-section">
           <h3 className="details-title">Basic Information</h3>
-          
+
           <div className="form-row">
             <div className={`form-group ${isFieldChanged('transaction_date') ? 'field-changed' : ''} ${undoHighlight === 'transaction_date' ? 'undo-highlight' : ''}`}>
               <label htmlFor="transaction_date">
@@ -514,8 +516,8 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
 
       <div className="modal-actions">
         <div className="left-actions">
-          <button 
-            onClick={handleUndo} 
+          <button
+            onClick={handleUndo}
             className="undo-btn"
             disabled={changeHistory.length === 0}
             title={changeHistory.length > 0 ? `Undo last change (${changeHistory.length} changes)` : 'No changes to undo'}
@@ -523,8 +525,8 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
             <i className="ri-arrow-go-back-line"></i>
             Undo Last Change
           </button>
-          <button 
-            onClick={handleReset} 
+          <button
+            onClick={handleReset}
             className="reset-btn"
             disabled={changeHistory.length === 0}
             title={changeHistory.length > 0 ? 'Reset all changes to original values' : 'No changes to reset'}
@@ -537,8 +539,8 @@ const EditJournalEntryModal: React.FC<EditJournalEntryModalProps> = ({
           <button onClick={handleCancel} className="cancel-btn">
             Cancel
           </button>
-          <button 
-            onClick={handleSubmit} 
+          <button
+            onClick={handleSubmit}
             className="submit-btn"
             disabled={!isBalanced}
             title={!isBalanced ? 'Entry must be balanced before updating' : `Update entry with ${changeHistory.length} change(s)`}

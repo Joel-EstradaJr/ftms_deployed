@@ -665,9 +665,6 @@ const AuditPage = () => {
             />
           </div>
 
-          <div className="filters">
-            <button onClick={handleExport} id="export"><i className="ri-receipt-line" /> Export Logs</button>
-          </div>
         </div>
         <div className="table-wrapper">
           <div className="tableContainer">

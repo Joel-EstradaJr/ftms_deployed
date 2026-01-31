@@ -7,14 +7,23 @@ import { OperationalExpenseData } from "./recordOperationalExpense";
 
 interface ViewOperationalExpenseModalProps {
   expenseData: OperationalExpenseData & {
-    paymentMethodName?: string;
-    accountCode?: string;
-    accountName?: string;
-    bodyNumber?: string;
-    busType?: string;
-    dateAssigned?: string;
-    reimbursementEmployeeName?: string;
-    reimbursementEmployeeNumber?: string;
+    payment_method_name?: string;
+    account_code?: string;
+    account_name?: string;
+    body_number?: string;
+    bus_type?: string;
+    date_assigned?: string;
+    creditor_name?: string;
+    employee_reference?: string;
+    journal_entry_id?: number;
+    journal_entry_code?: string;
+    // Rejection/Approval audit
+    rejected_by?: string;
+    rejected_at?: string;
+    // Remarks
+    approval_remarks?: string;
+    rejection_remarks?: string;
+    deletion_remarks?: string;
   };
   onClose: () => void;
 }
@@ -63,11 +72,11 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
           <div className="form-row">
             <div className="form-group">
               <label>Expense Code</label>
-              <p><strong>{expenseData.expenseCode}</strong></p>
+              <p><strong>{expenseData.code}</strong></p>
             </div>
             <div className="form-group">
               <label>Date Recorded</label>
-              <p>{formatDate(expenseData.dateRecorded)}</p>
+              <p>{formatDate(expenseData.date_recorded)}</p>
             </div>
             <div className="form-group">
               <label>Status</label>
@@ -84,7 +93,7 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
           <div className="form-row">
             <div className="form-group">
               <label>Expense Name</label>
-              <p>{expenseData.expenseCategory || 'N/A'}</p>
+              <p>{expenseData.expense_type_name || 'N/A'}</p>
             </div>
             <div className="form-group">
               <label>Amount</label>
@@ -92,39 +101,39 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
             </div>
             <div className="form-group">
               <label>Payment Method</label>
-              <p>{expenseData.paymentMethodName || 'N/A'}</p>
+              <p>{expenseData.payment_method_name || expenseData.payment_method || 'N/A'}</p>
             </div>
           </div>
         </form>
       </div>
 
       {/* II. Trip Assignment Details */}
-      {(expenseData.dateAssigned || expenseData.bodyNumber || expenseData.busType || expenseData.route || expenseData.busPlateNumber) && (
+      {(expenseData.date_assigned || expenseData.body_number || expenseData.bus_type || expenseData.bus_route || expenseData.plate_number) && (
         <div className="modal-content view">
           <p className="details-title">II. Trip Assignment Details</p>
           <form className="view-form">
             <div className="form-row">
               <div className="form-group">
                 <label>Date Assigned</label>
-                <p>{expenseData.dateAssigned ? formatDate(expenseData.dateAssigned) : 'N/A'}</p>
+                <p>{expenseData.date_assigned ? formatDate(expenseData.date_assigned) : 'N/A'}</p>
               </div>
               <div className="form-group">
                 <label>Body Number</label>
-                <p>{expenseData.bodyNumber || 'N/A'}</p>
+                <p>{expenseData.body_number || 'N/A'}</p>
               </div>
               <div className="form-group">
                 <label>Bus Type</label>
-                <p>{expenseData.busType || 'N/A'}</p>
+                <p>{expenseData.bus_type || 'N/A'}</p>
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label>Route</label>
-                <p>{expenseData.route || 'N/A'}</p>
+                <p>{expenseData.bus_route || 'N/A'}</p>
               </div>
               <div className="form-group">
                 <label>Plate Number</label>
-                <p>{expenseData.busPlateNumber || 'N/A'}</p>
+                <p>{expenseData.plate_number || 'N/A'}</p>
               </div>
             </div>
           </form>
@@ -134,34 +143,40 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
       {/* III. Accounting Details */}
       <div className="modal-content view">
         <p className="details-title">
-          {(expenseData.dateAssigned || expenseData.bodyNumber) ? 'III' : 'II'}. Accounting Details
+          {(expenseData.date_assigned || expenseData.body_number) ? 'III' : 'II'}. Accounting Details
         </p>
         <form className="view-form">
           <div className="form-row">
-            {(expenseData.accountCode || expenseData.accountName) && (
+            {(expenseData.account_code || expenseData.account_name) && (
               <div className="form-group">
                 <label>Accounting Code</label>
-                <p>{expenseData.accountCode && expenseData.accountName
-                  ? `${expenseData.accountCode} - ${expenseData.accountName}`
+                <p>{expenseData.account_code && expenseData.account_name
+                  ? `${expenseData.account_code} - ${expenseData.account_name}`
                   : 'N/A'}</p>
               </div>
             )}
             <div className="form-group">
               <label>Reimbursable Expense</label>
               <p className="chip-container">
-                {expenseData.isReimbursable ? (
+                {expenseData.is_reimbursable ? (
                   <span className="chip reimbursable">Yes</span>
                 ) : (
                   <span className="chip not-reimbursable">No</span>
                 )}
               </p>
             </div>
+            {expenseData.journal_entry_code && (
+              <div className="form-group">
+                <label>Journal Entry</label>
+                <p><strong>{expenseData.journal_entry_code}</strong></p>
+              </div>
+            )}
           </div>
         </form>
       </div>
 
       {/* Reimbursable Details (if applicable) */}
-      {expenseData.isReimbursable && (expenseData.reimbursementEmployeeNumber || expenseData.reimbursementEmployeeName) && (
+      {expenseData.is_reimbursable && (expenseData.employee_reference || expenseData.creditor_name) && (
         <div className="modal-content view">
           <p className="details-title">Reimbursement Details</p>
           <form className="view-form">
@@ -169,17 +184,17 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
               <div className="form-group">
                 <label>Employee to Reimburse</label>
                 <p>
-                  {expenseData.reimbursementEmployeeNumber && (
-                    <span style={{ fontWeight: 600 }}>{expenseData.reimbursementEmployeeNumber}</span>
+                  {expenseData.employee_reference && (
+                    <span style={{ fontWeight: 600 }}>{expenseData.employee_reference}</span>
                   )}
-                  {expenseData.reimbursementEmployeeNumber && expenseData.reimbursementEmployeeName && ' - '}
-                  {expenseData.reimbursementEmployeeName || 'N/A'}
+                  {expenseData.employee_reference && expenseData.creditor_name && ' - '}
+                  {expenseData.creditor_name || 'N/A'}
                 </p>
               </div>
-              {expenseData.reimbursementPurpose && (
+              {expenseData.payable_description && (
                 <div className="form-group">
                   <label>Purpose</label>
-                  <p>{expenseData.reimbursementPurpose}</p>
+                  <p>{expenseData.payable_description}</p>
                 </div>
               )}
             </div>
@@ -188,14 +203,14 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
       )}
 
       {/* Description/Remarks */}
-      {expenseData.remarks && (
+      {expenseData.description && (
         <div className="modal-content view">
           <p className="details-title">Additional Information</p>
           <form className="view-form">
             <div className="form-row">
               <div className="form-group full-width">
                 <label>Description / Remarks</label>
-                <p style={{ whiteSpace: 'pre-wrap' }}>{expenseData.remarks}</p>
+                <p style={{ whiteSpace: 'pre-wrap' }}>{expenseData.description}</p>
               </div>
             </div>
           </form>
@@ -209,26 +224,53 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
           <div className="form-row">
             <div className="form-group">
               <label>Requested By</label>
-              <p>{expenseData.createdBy || 'N/A'}</p>
+              <p>{expenseData.created_by || 'N/A'}</p>
             </div>
-            {expenseData.createdAt && (
+            {expenseData.created_at && (
               <div className="form-group">
                 <label>Requested On</label>
-                <p>{formatDate(expenseData.createdAt)}</p>
+                <p>{formatDate(expenseData.created_at)}</p>
               </div>
             )}
           </div>
 
-          {expenseData.approvedBy && (
+          {expenseData.approved_by && (
             <div className="form-row">
               <div className="form-group">
                 <label>Approved By</label>
-                <p>{expenseData.approvedBy}</p>
+                <p>{expenseData.approved_by}</p>
               </div>
-              {expenseData.approvedAt && (
+              {expenseData.approved_at && (
                 <div className="form-group">
                   <label>Approved On</label>
-                  <p>{formatDate(expenseData.approvedAt)}</p>
+                  <p>{formatDate(expenseData.approved_at)}</p>
+                </div>
+              )}
+              {expenseData.approval_remarks && (
+                <div className="form-group">
+                  <label>Approval Remarks</label>
+                  <p>{expenseData.approval_remarks}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {expenseData.rejected_by && (
+            <div className="form-row">
+              <div className="form-group">
+                <label>Rejected By</label>
+                <p>{expenseData.rejected_by}</p>
+              </div>
+              {expenseData.rejected_at && (
+                <div className="form-group">
+                  <label>Rejected On</label>
+                  <p>{formatDate(expenseData.rejected_at)}</p>
+                </div>
+              )}
+              {expenseData.rejection_remarks && (
+                <div className="form-group">
+                  <label>Rejection Reason</label>
+                  <p>{expenseData.rejection_remarks}</p>
                 </div>
               )}
             </div>

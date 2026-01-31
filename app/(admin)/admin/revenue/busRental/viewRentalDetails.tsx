@@ -1,27 +1,56 @@
+/**
+ * View Rental Details Modal Component
+ * 
+ * Read-only modal for displaying rental revenue details
+ * 
+ * Fields (matching database schema):
+ * - code: string (revenue code)
+ * - revenue_type_id: number (FK to revenue_type table)
+ * - total_rental_amount: number (from rental_local)
+ * - down_payment_amount: number (from rental_local)
+ * - balance_amount: number (calculated)
+ * - down_payment_date: string (from rental_local)
+ * - full_payment_date: string (from rental_local)
+ * - rental_status: string | null (from rental_local: 'approved', 'completed', 'cancelled')
+ * - cancelled_at: string (from rental_local)
+ * - date_recorded: string (from revenue)
+ * - assignment_id: string (from rental_local)
+ * - description: string (from revenue)
+ * - payment_method: PaymentMethodEnum (from revenue)
+ */
 import React from "react";
 import { formatMoney, formatDate } from "@/utils/formatting";
 import "@/styles/components/forms.css";
 import "@/styles/components/modal2.css";
 import "@/styles/components/chips.css";
 
+// Payment method enum values matching database schema
+type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET' | 'REIMBURSEMENT';
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethodEnum, string> = {
+    'CASH': 'Cash',
+    'BANK_TRANSFER': 'Bank Transfer',
+    'E_WALLET': 'E-Wallet',
+    'REIMBURSEMENT': 'Reimbursement'
+};
+
+// Schema-aligned interface for bus rental records
 interface BusRentalRecord {
     id: number;
-    revenueCode: string;
-    revenueType: 'RENTAL';
-    entityName: string;
-    total_rental_amount: number;
-    downpayment_amount: number;
-    balance_amount: number;
-    down_payment_date: string | null;
-    full_payment_date: string | null;
-    rental_status: boolean;
-    cancelled_at?: string | null;
-    dateRecorded: string;
-    sourceRefNo: string;
-    remarks?: string;
-    sourceId: number;
-    paymentMethodId: number;
-    receiptUrl?: string;
+    code: string; // revenue code
+    revenue_type_id: number; // FK to revenue_type
+    total_rental_amount: number; // rental_local.total_rental_amount
+    down_payment_amount: number; // rental_local.down_payment_amount
+    balance_amount: number; // calculated
+    down_payment_date: string | null; // rental_local.down_payment_date
+    full_payment_date: string | null; // rental_local.full_payment_date
+    rental_status: string | null; // rental_local.rental_status ('approved', 'completed', 'cancelled')
+    cancelled_at?: string | null; // rental_local.cancelled_at
+    date_recorded: string; // revenue.date_recorded
+    assignment_id: string; // rental_local.assignment_id
+    description?: string; // revenue.description
+    payment_method: PaymentMethodEnum; // revenue.payment_method enum
+    rental_package: string | null; // rental_local.rental_package (destination/package info)
     busPlateNumber?: string;
     bodyNumber?: string;
     rental_start_date?: string;
@@ -61,7 +90,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <label>Revenue Type</label>
                             <input
                                 type="text"
-                                value={record.revenueType}
+                                value="RENTAL"
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -79,26 +108,48 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                 </form>
             </div>
 
-            {/* Phase 1: Customer & Rental Information */}
-            <p className="details-title">I. Customer & Rental Information</p>
+            {/* Phase 1: Rental Information */}
+            <p className="details-title">I. Rental Information</p>
             <div className="modal-content add">
                 <form className="add-form">
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Customer Name</label>
+                            <label>Assignment ID</label>
                             <input
                                 type="text"
-                                value={record.entityName}
+                                value={record.assignment_id}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
                         </div>
 
                         <div className="form-group">
-                            <label>Rental Contract Number</label>
+                            <label>Revenue Code</label>
                             <input
                                 type="text"
-                                value={record.sourceRefNo}
+                                value={record.code}
+                                disabled
+                                style={{ backgroundColor: '#f5f5f5' }}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Rental Package</label>
+                            <input
+                                type="text"
+                                value={record.rental_package || 'N/A'}
+                                disabled
+                                style={{ backgroundColor: '#f5f5f5' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Date Recorded</label>
+                            <input
+                                type="text"
+                                value={formatDate(record.date_recorded)}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -111,16 +162,6 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <input
                                 type="text"
                                 value={formatMoney(record.total_rental_amount)}
-                                disabled
-                                style={{ backgroundColor: '#f5f5f5' }}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Date Recorded</label>
-                            <input
-                                type="text"
-                                value={formatDate(record.dateRecorded)}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -138,7 +179,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <label>Downpayment Amount</label>
                             <input
                                 type="text"
-                                value={formatMoney(record.downpayment_amount)}
+                                value={formatMoney(record.down_payment_amount)}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -164,7 +205,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                             <label>Payment Method</label>
                             <input
                                 type="text"
-                                value="Cash" // You may want to get this from record.paymentMethod?.methodName
+                                value={PAYMENT_METHOD_LABELS[record.payment_method] || record.payment_method}
                                 disabled
                                 style={{ backgroundColor: '#f5f5f5' }}
                             />
@@ -202,7 +243,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                                     <label>Balance Amount Paid</label>
                                     <input
                                         type="text"
-                                        value={formatMoney(record.total_rental_amount - record.downpayment_amount)}
+                                        value={formatMoney(record.total_rental_amount - record.down_payment_amount)}
                                         disabled
                                         style={{ 
                                             backgroundColor: '#e8f5e9', 
@@ -233,7 +274,7 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
             )}
 
             {/* Cancellation Information (if applicable) */}
-            {record.rental_status && (
+            {record.rental_status === 'cancelled' && (
                 <>
                     <p className="details-title">{record.full_payment_date ? 'IV' : 'III'}. Cancellation Information</p>
                     <div className="modal-content add">
@@ -268,19 +309,19 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
             )}
 
             {/* Additional Information */}
-            {record.remarks && (
+            {record.description && (
                 <>
                     <p className="details-title">
-                        {record.full_payment_date && record.rental_status ? 'V' : 
-                         record.full_payment_date || record.rental_status ? 'IV' : 'III'}. Additional Information (Optional)
+                        {record.full_payment_date && record.rental_status === 'cancelled' ? 'V' : 
+                         record.full_payment_date || record.rental_status === 'cancelled' ? 'IV' : 'III'}. Additional Information (Optional)
                     </p>
                     <div className="modal-content add">
                         <form className="add-form">
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>Remarks</label>
+                                    <label>Description</label>
                                     <textarea
-                                        value={record.remarks}
+                                        value={record.description}
                                         disabled
                                         rows={4}
                                         style={{ backgroundColor: '#f5f5f5', resize: 'vertical', minHeight: '80px' }}

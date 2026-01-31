@@ -23,80 +23,90 @@ import {
   softDeleteExpense,
   approveExpense,
   rejectExpense,
-  fetchExpenseTypes,
-  syncExpenses,
   ExpenseListItem,
   ExpenseSummary,
-  ExpenseType,
 } from '../../../../services/operationalExpenseService';
 
 // Transform API expense to form data format for viewing
 interface OperationalExpenseViewData {
   id?: number;
-  expenseCode: string;
-  dateRecorded: string;
-  expenseCategory: string;
-  expenseSubcategory?: string;
+  code: string;
+  date_recorded: string;
+  expense_type_name: string;
   amount: number;
-  cachedTripId?: number;
-  busPlateNumber?: string;
-  route?: string;
-  department?: string;
-  receiptFile?: File | null;
-  receiptUrl?: string;
-  accountCodeId?: number;
-  paymentMethodId: number;
-  isReimbursable: boolean;
-  remarks?: string;
+  bus_trip_assignment_id?: string;
+  bus_trip_id?: string;
+  plate_number?: string;
+  bus_route?: string;
+  account_id?: number;
+  payment_method: string;
+  is_reimbursable: boolean;
+  description?: string;
   status?: string;
-  createdBy: string;
-  approvedBy?: string;
-  createdAt?: string;
-  approvedAt?: string;
+  created_by: string;
+  approved_by?: string;
+  created_at?: string;
+  approved_at?: string;
+  rejected_by?: string;
+  rejected_at?: string;
   // View-only fields
-  bodyNumber?: string;
-  busType?: string;
-  dateAssigned?: string;
-  reimbursementEmployeeNumber?: string;
-  reimbursementEmployeeName?: string;
-  paymentMethodName?: string;
-  accountCode?: string;
-  accountName?: string;
+  body_number?: string;
+  bus_type?: string;
+  date_assigned?: string;
+  employee_reference?: string;
+  creditor_name?: string;
+  payable_description?: string;
+  payment_method_name?: string;
+  account_code?: string;
+  account_name?: string;
+  journal_entry_id?: number;
+  journal_entry_code?: string;
+  // Remarks fields
+  approval_remarks?: string;
+  rejection_remarks?: string;
+  deletion_remarks?: string;
 }
 
 // Transform API expense to form data format for viewing
+// Backend returns flat structure directly, not nested
 const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
   return {
     id: expense.id,
-    expenseCode: expense.code || expense.expense_information?.expense_code || '',
-    dateRecorded: expense.expense_information?.date_recorded || expense.date_recorded || '',
-    expenseCategory: expense.expense_information?.expense_name || expense.expense_name || '',
-    expenseSubcategory: '',
-    amount: expense.expense_information?.amount || expense.amount || 0,
-    cachedTripId: undefined,
-    busPlateNumber: expense.trip_assignment_details?.plate_number || '',
-    route: expense.trip_assignment_details?.route || '',
-    department: '',
-    receiptFile: null,
-    receiptUrl: '',
-    accountCodeId: expense.accounting_details?.account_id,
-    paymentMethodId: 1,
-    isReimbursable: !!expense.reimbursable_details,
-    remarks: expense.additional_information?.remarks || expense.description || '',
+    code: expense.code || '',
+    date_recorded: expense.date_recorded || '',
+    expense_type_name: expense.expense_type_name || '',
+    amount: expense.amount || 0,
+    bus_trip_assignment_id: expense.bus_trip_assignment_id,
+    bus_trip_id: expense.bus_trip_id,
+    plate_number: expense.plate_number || '',
+    bus_route: expense.bus_route || '',
+    account_id: expense.account_id,
+    payment_method: expense.payment_method || '',
+    is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
+    description: expense.description || '',
     status: expense.status,
-    createdBy: expense.audit_trail?.requested_by || expense.created_by || '',
-    approvedBy: expense.audit_trail?.approved_by || expense.approved_by,
-    createdAt: expense.audit_trail?.requested_on || expense.created_at,
-    approvedAt: expense.audit_trail?.approved_on || expense.approved_at,
-    // Additional view fields
-    bodyNumber: expense.trip_assignment_details?.body_number || expense.body_number,
-    busType: expense.trip_assignment_details?.bus_type,
-    dateAssigned: expense.trip_assignment_details?.date_assigned,
-    reimbursementEmployeeNumber: expense.reimbursable_details?.employee_number,
-    reimbursementEmployeeName: expense.reimbursable_details?.creditor_name,
-    paymentMethodName: expense.expense_information?.payment_method || expense.payment_method,
-    accountCode: expense.accounting_details?.account_code,
-    accountName: expense.accounting_details?.account_name,
+    created_by: expense.created_by || '',
+    approved_by: expense.approved_by,
+    created_at: expense.created_at,
+    approved_at: expense.approved_at,
+    rejected_by: expense.rejected_by,
+    rejected_at: expense.rejected_at,
+    // Additional view fields - directly from flat response
+    body_number: expense.body_number,
+    bus_type: expense.bus_type,
+    date_assigned: expense.date_assigned,
+    employee_reference: expense.employee_reference,
+    creditor_name: expense.creditor_name,
+    payable_description: expense.payable_description,
+    payment_method_name: expense.payment_method,
+    account_code: expense.account_code,
+    account_name: expense.account_name,
+    journal_entry_id: expense.journal_entry_id,
+    journal_entry_code: expense.journal_entry_code,
+    // Remarks fields
+    approval_remarks: expense.approval_remarks,
+    rejection_remarks: expense.rejection_remarks,
+    deletion_remarks: expense.deletion_remarks,
   };
 };
 
@@ -104,12 +114,12 @@ const OperationalExpensePage = () => {
   // State management
   const [data, setData] = useState<ExpenseListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [filters, setFilters] = useState<OperationalExpenseFilters>({});
 
   // Pagination states
@@ -125,26 +135,18 @@ const OperationalExpensePage = () => {
     total_approved_amount: 0,
   });
 
-  // Reference data states (for filters)
-  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
-
   // ModalManager states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
   const [activeRow, setActiveRow] = useState<number | null>(null);
 
-  // Load reference data on mount (expense types for filter)
+  // Debounce search term to prevent excessive API calls
   useEffect(() => {
-    const loadReferenceData = async () => {
-      try {
-        const types = await fetchExpenseTypes();
-        setExpenseTypes(types);
-      } catch (err) {
-        console.error('Error loading reference data:', err);
-      }
-    };
-    loadReferenceData();
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms debounce
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Fetch expenses data
   const fetchData = useCallback(async () => {
@@ -155,12 +157,10 @@ const OperationalExpensePage = () => {
       const result = await fetchExpenses({
         page: currentPage,
         limit: pageSize,
-        search: searchTerm || undefined,
+        search: debouncedSearchTerm || undefined,
         date_from: filters.dateRange?.from || undefined,
         date_to: filters.dateRange?.to || undefined,
         status: filters.status ? [filters.status] : undefined,
-        // Map expense_type filter to expense_name
-        expense_name: filters.expense_type || undefined,
       });
 
       setData(result.expenses);
@@ -175,17 +175,8 @@ const OperationalExpensePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, filters, searchTerm]);
+  }, [currentPage, pageSize, filters, debouncedSearchTerm]);
 
-  // Load employees when reimbursable section needs them
-  const loadEmployees = async (search?: string) => {
-    try {
-      const employeeList = await fetchEmployees(search);
-      setEmployees(employeeList);
-    } catch (err) {
-      console.error('Error loading employees:', err);
-    }
-  };
 
   // Modal management functions
   const openModal = async (mode: 'view', rowData: ExpenseListItem) => {
@@ -216,52 +207,6 @@ const OperationalExpensePage = () => {
     setIsModalOpen(false);
     setModalContent(null);
     setActiveRow(null);
-  };
-
-  // Handle sync from external APIs
-  const handleSync = async () => {
-    try {
-      const confirmed = await showConfirmation(
-        'Sync Expenses',
-        'This will fetch the latest operational and rental trip expenses from the external BOMS system. Continue?'
-      );
-
-      if (!confirmed) return;
-
-      setSyncing(true);
-
-      const result = await syncExpenses();
-
-      const totalNew = (result.operational?.new_expenses_created || 0) + (result.rental?.new_expenses_created || 0);
-      const totalUpdated = (result.operational?.expenses_updated || 0) + (result.rental?.expenses_updated || 0);
-      const totalErrors = (result.operational?.errors?.length || 0) + (result.rental?.errors?.length || 0);
-
-      if (totalErrors > 0) {
-        await Swal.fire({
-          title: 'Sync Completed with Warnings',
-          html: `
-            <div style="text-align: left;">
-              <p><strong>New expenses:</strong> ${totalNew}</p>
-              <p><strong>Updated:</strong> ${totalUpdated}</p>
-              <p style="color: #dc3545;"><strong>Errors:</strong> ${totalErrors}</p>
-            </div>
-          `,
-          icon: 'warning',
-        });
-      } else {
-        await showSuccess(
-          'Sync Complete',
-          `Successfully synced ${totalNew} new expenses and updated ${totalUpdated} existing expenses.`
-        );
-      }
-
-      fetchData(); // Refresh the data
-    } catch (error) {
-      console.error('Error syncing expenses:', error);
-      await showError('Sync Failed', 'Failed to sync expenses from external system. Please try again.');
-    } finally {
-      setSyncing(false);
-    }
   };
 
   // Action handlers
@@ -370,23 +315,13 @@ const OperationalExpensePage = () => {
     }
   };
 
-  // Filter sections for FilterDropdown
+  // Filter sections for FilterDropdown - only Status (matches table columns)
   const filterSections: FilterSection[] = [
     {
       id: 'dateRange',
       title: 'Date Range',
       type: 'dateRange',
       defaultValue: { from: '', to: '' }
-    },
-    {
-      id: 'expense_type',
-      title: 'Expense Type',
-      type: 'radio',
-      options: [
-        { id: '', label: 'All Types' },
-        ...expenseTypes.map(et => ({ id: et.name, label: et.name }))
-      ],
-      defaultValue: ''
     },
     {
       id: 'status',
@@ -406,7 +341,6 @@ const OperationalExpensePage = () => {
   const handleFilterApply = (appliedFilters: any) => {
     const converted: OperationalExpenseFilters = {
       dateRange: appliedFilters.dateRange,
-      expense_type: appliedFilters.expense_type,
       status: appliedFilters.status,
     };
     setFilters(converted);
@@ -443,15 +377,14 @@ const OperationalExpensePage = () => {
     );
   }
 
-  // Prepare export data
+  // Prepare export data - matches visible table columns exactly
   const exportData = data.map(expense => ({
-    'Date': formatDate(expense.date_recorded),
-    'Expense Type': expense.expense_name,
-    'Body Number': expense.body_number || expense.operational_trip?.body_number || '-',
+    'Date Recorded': formatDate(expense.date_recorded),
+    'Expense Code': expense.code,
+    'Body Number': expense.body_number || '-',
     'Amount': formatMoney(expense.amount),
     'Reimbursable': expense.is_reimbursable ? 'Yes' : 'No',
     'Status': expense.status,
-    'Code': expense.code
   }));
 
   return (
@@ -485,7 +418,7 @@ const OperationalExpensePage = () => {
               <input
                 className="searchInput"
                 type="text"
-                placeholder="Search expense name, body number, code..."
+                placeholder="Search by expense code, body number, amount, status..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -498,13 +431,11 @@ const OperationalExpensePage = () => {
                 const dateRange = filterValues.dateRange as { from: string; to: string } || { from: '', to: '' };
                 handleFilterApply({
                   dateRange,
-                  expense_type: (filterValues.expense_type as string) || '',
                   status: (filterValues.status as string) || ''
                 });
               }}
               initialValues={{
                 dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
-                expense_type: filters.expense_type || '',
                 status: filters.status || ''
               }}
             />
@@ -516,16 +447,6 @@ const OperationalExpensePage = () => {
               filename="operational-expenses"
               title="Operational Expenses Report"
             />
-            {/* Sync Button - Fetch expenses from external BOMS API */}
-            <button 
-              className="addButton" 
-              onClick={handleSync}
-              disabled={syncing}
-              title="Sync expenses from external BOMS system"
-            >
-              <i className={syncing ? "ri-loader-4-line" : "ri-refresh-line"} /> 
-              {syncing ? 'Syncing...' : 'Sync Expenses'}
-            </button>
           </div>
         </div>
 
@@ -534,8 +455,8 @@ const OperationalExpensePage = () => {
             <table className="data-table operational-expense-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Expense</th>
+                  <th>Date Recorded</th>
+                  <th>Expense Code</th>
                   <th>Body Number</th>
                   <th>Amount</th>
                   <th>Reimbursable</th>
@@ -557,11 +478,11 @@ const OperationalExpensePage = () => {
                     <tr key={expense.id} className={activeRow === Number(expense.id) ? 'active-row' : ''}>
                       <td>{formatDate(expense.date_recorded)}</td>
                       <td>
-                        <span className={`chip ${expense.expense_name?.toLowerCase().replace(/\s+/g, '_') || ''}`}>
-                          {expense.expense_name || '-'}
+                        <span className="chip expense-code">
+                          {expense.code || '-'}
                         </span>
                       </td>
-                      <td>{expense.body_number || expense.operational_trip?.body_number || '-'}</td>
+                      <td>{expense.body_number || '-'}</td>
                       <td className="expense-amount">{formatMoney(expense.amount)}</td>
                       <td>
                         <span className={`chip ${expense.is_reimbursable ? 'reimbursable' : 'not-reimbursable'}`}>

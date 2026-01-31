@@ -16,7 +16,7 @@ const Sidebar: React.FC = () => {
 
   // External microservice URLs from environment variables
   const budgetRequestUrl = process.env.NEXT_PUBLIC_BUDGET_REQUEST_URL || 'https://budget-request-micro-frontend.vercel.app';
-  
+
   const auditActiveKey = 'audit';
   const auditIconClass = 'ri-booklet-line';
 
@@ -58,11 +58,11 @@ const Sidebar: React.FC = () => {
 
   useEffect(() => {
     const normalizedPath = getNormalizedPath(pathname);
-    
-      const staticMatch = staticRoutes[normalizedPath];
+
+    const staticMatch = staticRoutes[normalizedPath];
     if (staticMatch) {
       setActiveItem(staticMatch);
-      
+
       if (["expense", "reimbursement", "operational-expense", "administrative-expense", "purchase-expense"].includes(staticMatch)) {
         setOpenSubMenu("expense-management");
       } else if (["budget-request", "budgetAllocation", "approval"].includes(staticMatch)) {
@@ -120,17 +120,15 @@ const Sidebar: React.FC = () => {
 
           {/* Revenue Management Submenu - Both roles */}
           <div
-            className={`nav-item module ${
-              ["tripRevenue", "busRental", "otherRevenue"].includes(activeItem!) ? "active" : ""
-            }`}
+            className={`nav-item module ${["tripRevenue", "busRental", "otherRevenue"].includes(activeItem!) ? "active" : ""
+              }`}
             onClick={() => toggleSubMenu("revenue-management")}
           >
             <i className="ri-money-dollar-circle-line" />
             <span>Revenue Management</span>
             <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "revenue-management" ? "rotate" : ""
-              }`}
+              className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "revenue-management" ? "rotate" : ""
+                }`}
             />
           </div>
 
@@ -162,42 +160,40 @@ const Sidebar: React.FC = () => {
 
           {/* Expense Management Submenu - Both roles */}
           <div
-            className={`nav-item module ${
-              ["operational-expense", "administrative-expense", "purchase-expense"].includes(activeItem!) ? "active" : ""
-            }`}
+            className={`nav-item module ${["operational-expense", "administrative-expense", "purchase-expense"].includes(activeItem!) ? "active" : ""
+              }`}
             onClick={() => toggleSubMenu("expense-management")}
           >
-            <i className="ri-money-dollar-circle-line"></i>
+            <i className="ri-bank-card-line" />
             <span>Expense Management</span>
             <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "expense-management" ? "rotate" : ""
-              }`}
+              className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "expense-management" ? "rotate" : ""
+                }`}
             />
           </div>
 
           {openSubMenu === "expense-management" && (
             <div className="sub-menu active">
-              {/* <Link
+              {<Link
                 href={getUrl("/expense-management/operational")}
                 className={`sub-item ${activeItem === "operational-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("operational-expense")}
               >
                 Operational Expenses
-              </Link> */}
-              <Link
+              </Link>}
+              {/* <Link
                 href={getUrl("/expense-management/purchase")}
                 className={`sub-item ${activeItem === "purchase-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("purchase-expense")}
               >
                 Purchase Expenses
-              </Link>
+              </Link> */}
               <Link
                 href={getUrl("/expense-management/administrative")}
                 className={`sub-item ${activeItem === "administrative-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("administrative-expense")}
               >
-                Administrative Expenses
+                Other Expenses
               </Link>
             </div>
           )}
@@ -212,74 +208,60 @@ const Sidebar: React.FC = () => {
             <span>Payroll</span>
           </Link>
 
-          {/* Budget Management Submenu 
+          {/* Budget Management Submenu */}
           <div
-            className={`nav-item module ${
-              ["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
-            }`}
+            className={`nav-item module ${["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
+              }`}
             onClick={() => toggleSubMenu("budget-management")}
           >
             <i className="ri-wallet-3-line"></i>
             <span>Budget Management</span>
             <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "budget-management" ? "rotate" : ""
-              }`}
+              className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "budget-management" ? "rotate" : ""
+                }`}
             />
-          </div>*/}
+          </div>
 
-            {/* {openSubMenu === "budget-management" && (
-              <div className="sub-menu active">
-                {/* Budget Request - Both roles - External microservice *\/}
-                <a
-                  href={budgetRequestUrl}
-                  className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveItem("budget-request");
-                    window.location.href = budgetRequestUrl;
-                  }}
+          {openSubMenu === "budget-management" && (
+            <div className="sub-menu active">
+              {/* Budget Request - Both roles - External microservice */}
+              <a
+                href={budgetRequestUrl}
+                className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveItem("budget-request");
+                  window.location.href = budgetRequestUrl;
+                }}
+              >
+                Budget Request
+              </a>
+
+              {/* Budget Allocation - Admin only */}
+              {userRole === 'admin' && (
+                <Link
+                  href={getUrl("/budget-management/budgetAllocation")}
+                  className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
+                  onClick={() => setActiveItem("budgetAllocation")}
                 >
-                  Budget Request
-                </a>
-                
-                {/* Budget Allocation - Admin only *\/}
-                {userRole === 'admin' && (
-                  <Link
-                    href={getUrl("/budget-management/budgetAllocation")}
-                    className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
-                    onClick={() => setActiveItem("budgetAllocation")}
-                  >
-                    Budget Allocation
-                  </Link>
-                )}
-                
-                {/* Approvals - Admin only *\/}
-                {userRole === 'admin' && (
-                  <Link
-                    href={getUrl("/budget-management/approval")}
-                    className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
-                    onClick={() => setActiveItem("approval")}
-                  >
-                    Approvals
-                  </Link>
-                )}
-              </div>
-            )} */}
+                  Budget Allocation
+                </Link>
+              )}
 
-          {/* Approvals - Admin only */}
-          {userRole === 'admin' && (
-            <Link
-              href={getUrl("/budget-management/approval")}
-              className={`nav-item ${activeItem === "approval" ? "active" : ""}`}
-              onClick={() => setActiveItem("approval")}
-            >
-              <i className="ri-checkbox-circle-line" />
-              <span>Approvals</span>
-            </Link>
+              {/* Approvals - Admin only */}
+              {userRole === 'admin' && (
+                <Link
+                  href={getUrl("/budget-management/approval")}
+                  className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
+                  onClick={() => setActiveItem("approval")}
+                >
+                  Approvals
+                </Link>
+              )}
+            </div>
           )}
 
-          
+
           {/* Financial Reports - Both roles */}
           <Link
             href={getUrl("/report")}
@@ -326,7 +308,7 @@ const Sidebar: React.FC = () => {
             </Link>
           )*/}
 
-         {/* Disposal Approval - Admin only */}
+          {/* Disposal Approval - Admin only */}
           {/*userRole === 'admin' && (
             <Link
               href={getUrl("/disposal-approval")}

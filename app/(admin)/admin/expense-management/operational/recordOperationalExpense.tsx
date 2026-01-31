@@ -10,24 +10,32 @@ import SearchableDropdown, { DropdownOption } from "@/Components/SearchableDropd
 import CustomDropdown from "@/Components/CustomDropdown";
 import TripSelectorModal from '@/Components/TripSelector';
 
+// Payment method enum values (matching schema)
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+  { value: 'E_WALLET', label: 'E-Wallet' },
+  { value: 'REIMBURSEMENT', label: 'Reimbursement' },
+];
+
 interface RecordOperationalExpenseModalProps {
   mode: "add" | "edit" | "approve";
   existingData?: OperationalExpenseData | null;
   onSave: (formData: OperationalExpenseData, mode: "add" | "edit" | "approve") => void;
   onClose: () => void;
-  paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   departments: Array<{ id: number; name: string }>;
   cachedTrips: Array<{ 
-    id: number; 
-    busPlateNumber: string; 
+    assignment_id: string;
+    bus_trip_id: string;
+    plate_number: string; 
     body_number: string;
     bus_type: string;
-    route: string; 
+    bus_route: string; 
     date_assigned: string;
     departmentId: number;
     departmentName: string;
   }>;
-  chartOfAccounts: Array<{ id: number; accountCode: string; accountName: string }>;
+  chartOfAccounts: Array<{ id: number; account_code: string; account_name: string }>;
   employees: Array<{ 
     employee_id: string; 
     name: string; 
@@ -40,49 +48,44 @@ interface RecordOperationalExpenseModalProps {
 
 export interface OperationalExpenseData {
   id?: number;
-  expenseCode: string;
-  dateRecorded: string;
-  expenseCategory: string;
-  expenseSubcategory?: string;
+  code: string;
+  date_recorded: string;
+  expense_type_name: string; // UI display for expense type
   amount: number;
-  cachedTripId?: number;
-  busPlateNumber?: string;
-  route?: string;
+  // Composite trip reference (replacing cachedTripId)
+  bus_trip_assignment_id?: string;
+  bus_trip_id?: string;
+  plate_number?: string;
+  bus_route?: string;
   department?: string;
-  receiptFile?: File | null;
-  receiptUrl?: string;
-  accountCodeId?: number;
-  paymentMethodId: number;
-  isReimbursable: boolean;
-  remarks?: string;
+  account_id?: number;
+  payment_method: string; // enum value: CASH, BANK_TRANSFER, E_WALLET, REIMBURSEMENT
+  is_reimbursable: boolean;
+  description?: string;
   
-  // Reimbursement fields
-  reimbursementEmployeeId?: string;
-  reimbursementPurpose?: string;
-  reimbursementReceiptFile?: File | null;
-  reimbursementReceiptUrl?: string;
+  // Reimbursement fields (maps to payable)
+  employee_reference?: string;
+  creditor_name?: string;
+  payable_description?: string;
   
   // View-only fields
   status?: string;
-  createdBy: string;
-  approvedBy?: string;
-  createdAt?: string;
-  approvedAt?: string;
+  created_by: string;
+  approved_by?: string;
+  created_at?: string;
+  approved_at?: string;
 }
 
 interface FormErrors {
-  dateRecorded: string;
-  expenseCategory: string;
-  expenseSubcategory: string;
+  date_recorded: string;
+  expense_type_name: string;
   amount: string;
-  cachedTripId: string;
-  receiptFile: string;
-  accountCodeId: string;
-  paymentMethodId: string;
-  remarks: string;
-  reimbursementEmployeeId: string;
-  reimbursementPurpose: string;
-  reimbursementReceiptFile: string;
+  bus_trip_assignment_id: string;
+  account_id: string;
+  payment_method: string;
+  description: string;
+  employee_reference: string;
+  payable_description: string;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -100,7 +103,6 @@ export default function RecordOperationalExpenseModal({
   existingData, 
   onSave, 
   onClose, 
-  paymentMethods,
   departments,
   cachedTrips,
   chartOfAccounts,
@@ -117,41 +119,35 @@ export default function RecordOperationalExpenseModal({
 
   const [formData, setFormData] = useState<OperationalExpenseData>({
     id: existingData?.id,
-    expenseCode: existingData?.expenseCode || generateExpenseCode(),
-    dateRecorded: existingData?.dateRecorded || new Date().toISOString().split('T')[0],
-    expenseCategory: existingData?.expenseCategory || '',
-    expenseSubcategory: existingData?.expenseSubcategory || '',
+    code: existingData?.code || generateExpenseCode(),
+    date_recorded: existingData?.date_recorded || new Date().toISOString().split('T')[0],
+    expense_type_name: existingData?.expense_type_name || '',
     amount: existingData?.amount || 0,
-    cachedTripId: existingData?.cachedTripId,
-    busPlateNumber: existingData?.busPlateNumber || '',
-    route: existingData?.route || '',
+    bus_trip_assignment_id: existingData?.bus_trip_assignment_id,
+    bus_trip_id: existingData?.bus_trip_id,
+    plate_number: existingData?.plate_number || '',
+    bus_route: existingData?.bus_route || '',
     department: existingData?.department || '',
-    receiptFile: null,
-    receiptUrl: existingData?.receiptUrl || '',
-    accountCodeId: existingData?.accountCodeId,
-    paymentMethodId: existingData?.paymentMethodId || 0,
-    isReimbursable: existingData?.isReimbursable || false,
-    remarks: existingData?.remarks || '',
-    reimbursementEmployeeId: existingData?.reimbursementEmployeeId || '',
-    reimbursementPurpose: existingData?.reimbursementPurpose || '',
-    reimbursementReceiptFile: null,
-    reimbursementReceiptUrl: existingData?.reimbursementReceiptUrl || '',
-    createdBy: existingData?.createdBy || currentUser,
+    account_id: existingData?.account_id,
+    payment_method: existingData?.payment_method || '',
+    is_reimbursable: existingData?.is_reimbursable || false,
+    description: existingData?.description || '',
+    employee_reference: existingData?.employee_reference || '',
+    creditor_name: existingData?.creditor_name || '',
+    payable_description: existingData?.payable_description || '',
+    created_by: existingData?.created_by || currentUser,
   });
 
   const [errors, setErrors] = useState<FormErrors>({
-    dateRecorded: '',
-    expenseCategory: '',
-    expenseSubcategory: '',
+    date_recorded: '',
+    expense_type_name: '',
     amount: '',
-    cachedTripId: '',
-    receiptFile: '',
-    accountCodeId: '',
-    paymentMethodId: '',
-    remarks: '',
-    reimbursementEmployeeId: '',
-    reimbursementPurpose: '',
-    reimbursementReceiptFile: '',
+    bus_trip_assignment_id: '',
+    account_id: '',
+    payment_method: '',
+    description: '',
+    employee_reference: '',
+    payable_description: '',
   });
 
   const [touched, setTouched] = useState<Set<keyof FormErrors>>(new Set());
@@ -161,16 +157,17 @@ export default function RecordOperationalExpenseModal({
     date_assigned: '',
     body_number: '',
     bus_type: '',
-    route: ''
+    bus_route: ''
   });
 
-  // Handle trip selection from TripSelector modal
+  // Handle trip selection from TripSelector modal - using composite key
   const handleTripSelect = (trip: any) => {
     setFormData(prev => ({
       ...prev,
-      cachedTripId: trip.id,
-      busPlateNumber: trip.busPlateNumber,
-      route: trip.route,
+      bus_trip_assignment_id: trip.assignment_id,
+      bus_trip_id: trip.bus_trip_id,
+      plate_number: trip.plate_number,
+      bus_route: trip.bus_route,
       department: trip.departmentName,
     }));
     
@@ -178,18 +175,18 @@ export default function RecordOperationalExpenseModal({
       date_assigned: trip.date_assigned || '',
       body_number: trip.body_number || '',
       bus_type: trip.bus_type || '',
-      route: trip.route || ''
+      bus_route: trip.bus_route || ''
     });
   };
 
   // Validation function
   const validateFormField = (name: keyof FormErrors, value: any): string => {
     switch (name) {
-      case 'dateRecorded':
+      case 'date_recorded':
         if (!value) return 'Date is required';
         return '';
       
-      case 'expenseCategory':
+      case 'expense_type_name':
         if (!value) return 'Expense name is required';
         return '';
       
@@ -198,20 +195,20 @@ export default function RecordOperationalExpenseModal({
         if (!isValidAmount(value.toString())) return 'Invalid amount format';
         return '';
       
-      case 'paymentMethodId':
-        if (!value || value === 0) return 'Payment method is required';
+      case 'payment_method':
+        if (!value) return 'Payment method is required';
         return '';
       
-      case 'remarks':
-        if (value && value.length > 500) return 'Remarks must not exceed 500 characters';
+      case 'description':
+        if (value && value.length > 500) return 'Description must not exceed 500 characters';
         return '';
       
-      case 'reimbursementEmployeeId':
-        if (formData.isReimbursable && !value) return 'Employee is required for reimbursable expenses';
+      case 'employee_reference':
+        if (formData.is_reimbursable && !value) return 'Employee is required for reimbursable expenses';
         return '';
       
-      case 'reimbursementPurpose':
-        if (formData.isReimbursable && !value) return 'Purpose is required for reimbursable expenses';
+      case 'payable_description':
+        if (formData.is_reimbursable && !value) return 'Purpose is required for reimbursable expenses';
         if (value && value.length > 500) return 'Purpose must not exceed 500 characters';
         return '';
       
@@ -222,18 +219,15 @@ export default function RecordOperationalExpenseModal({
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {
-      dateRecorded: validateFormField('dateRecorded', formData.dateRecorded),
-      expenseCategory: validateFormField('expenseCategory', formData.expenseCategory),
-      expenseSubcategory: '',
+      date_recorded: validateFormField('date_recorded', formData.date_recorded),
+      expense_type_name: validateFormField('expense_type_name', formData.expense_type_name),
       amount: validateFormField('amount', formData.amount),
-      cachedTripId: '',
-      receiptFile: '',
-      accountCodeId: '',
-      paymentMethodId: validateFormField('paymentMethodId', formData.paymentMethodId),
-      remarks: validateFormField('remarks', formData.remarks),
-      reimbursementEmployeeId: validateFormField('reimbursementEmployeeId', formData.reimbursementEmployeeId),
-      reimbursementPurpose: validateFormField('reimbursementPurpose', formData.reimbursementPurpose),
-      reimbursementReceiptFile: '',
+      bus_trip_assignment_id: '',
+      account_id: '',
+      payment_method: validateFormField('payment_method', formData.payment_method),
+      description: validateFormField('description', formData.description),
+      employee_reference: validateFormField('employee_reference', formData.employee_reference),
+      payable_description: validateFormField('payable_description', formData.payable_description),
     };
 
     setErrors(newErrors);
@@ -274,41 +268,12 @@ export default function RecordOperationalExpenseModal({
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const fieldName = e.target.name;
-    
-    if (file) {
-      // Validate file type and size
-      const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-      const maxSize = 5 * 1024 * 1024; // 5MB
-
-      if (!validTypes.includes(file.type)) {
-        setErrors(prev => ({
-          ...prev,
-          [fieldName]: 'Only JPG, PNG, and PDF files are allowed'
-        }));
-        return;
-      }
-
-      if (file.size > maxSize) {
-        setErrors(prev => ({
-          ...prev,
-          [fieldName]: 'File size must not exceed 5MB'
-        }));
-        return;
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        [fieldName]: file
-      }));
-
-      setErrors(prev => ({
-        ...prev,
-        [fieldName]: ''
-      }));
+  // Get display text for selected trip
+  const getTripDisplayText = () => {
+    if (formData.bus_trip_assignment_id && formData.bus_trip_id) {
+      return `${formData.plate_number} - ${formData.bus_route}`;
     }
+    return '';
   };
 
   const handleSubmit = async () => {
@@ -367,12 +332,12 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">I. Basic Expense Information</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="expenseCode" className="required">Expense Code</label>
+                  <label htmlFor="code" className="required">Expense Code</label>
                   <input
                     type="text"
-                    id="expenseCode"
-                    name="expenseCode"
-                    value={formData.expenseCode}
+                    id="code"
+                    name="code"
+                    value={formData.code}
                     disabled
                     className="input-disabled"
                   />
@@ -380,53 +345,53 @@ export default function RecordOperationalExpenseModal({
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="dateRecorded" className="required">Date Recorded</label>
+                  <label htmlFor="date_recorded" className="required">Date Recorded</label>
                   <input
                     type="date"
-                    id="dateRecorded"
-                    name="dateRecorded"
-                    value={formData.dateRecorded}
+                    id="date_recorded"
+                    name="date_recorded"
+                    value={formData.date_recorded}
                     onChange={handleInputChange}
                     onBlur={handleInputBlur}
-                    className={errors.dateRecorded && touched.has('dateRecorded') ? 'input-error' : ''}
+                    className={errors.date_recorded && touched.has('date_recorded') ? 'input-error' : ''}
                     required
                     disabled={mode === 'edit'}
                   />
-                  {errors.dateRecorded && touched.has('dateRecorded') && (
-                    <span className="error-message">{errors.dateRecorded}</span>
+                  {errors.date_recorded && touched.has('date_recorded') && (
+                    <span className="error-message">{errors.date_recorded}</span>
                   )}
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="expenseCategory" className="required">Expense Name</label>
+                  <label htmlFor="expense_type_name" className="required">Expense Name</label>
                   <CustomDropdown
                     options={EXPENSE_CATEGORIES}
-                    value={formData.expenseCategory}
+                    value={formData.expense_type_name}
                     onChange={(value: string) => {
-                      setFormData(prev => ({ ...prev, expenseCategory: value }));
-                      if (touched.has('expenseCategory')) {
+                      setFormData(prev => ({ ...prev, expense_type_name: value }));
+                      if (touched.has('expense_type_name')) {
                         setErrors(prev => ({
                           ...prev,
-                          expenseCategory: validateFormField('expenseCategory', value)
+                          expense_type_name: validateFormField('expense_type_name', value)
                         }));
                       }
                     }}
                     onBlur={() => {
-                      setTouched(prev => new Set(prev).add('expenseCategory'));
+                      setTouched(prev => new Set(prev).add('expense_type_name'));
                       setErrors(prev => ({
                         ...prev,
-                        expenseCategory: validateFormField('expenseCategory', formData.expenseCategory)
+                        expense_type_name: validateFormField('expense_type_name', formData.expense_type_name)
                       }));
                     }}
                     placeholder="Select or enter expense"
-                    className={errors.expenseCategory && touched.has('expenseCategory') ? 'input-error' : ''}
+                    className={errors.expense_type_name && touched.has('expense_type_name') ? 'input-error' : ''}
                     showDescription={false}
                     allowCustomInput={true}
                   />
-                  {errors.expenseCategory && touched.has('expenseCategory') && (
-                    <span className="error-message">{errors.expenseCategory}</span>
+                  {errors.expense_type_name && touched.has('expense_type_name') && (
+                    <span className="error-message">{errors.expense_type_name}</span>
                   )}
                 </div>
               </div>
@@ -453,25 +418,25 @@ export default function RecordOperationalExpenseModal({
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="paymentMethodId" className="required">Payment Method</label>
+                  <label htmlFor="payment_method" className="required">Payment Method</label>
                   <select
-                    id="paymentMethodId"
-                    name="paymentMethodId"
-                    value={formData.paymentMethodId}
+                    id="payment_method"
+                    name="payment_method"
+                    value={formData.payment_method}
                     onChange={handleInputChange}
                     onBlur={handleInputBlur}
-                    className={errors.paymentMethodId && touched.has('paymentMethodId') ? 'input-error' : ''}
+                    className={errors.payment_method && touched.has('payment_method') ? 'input-error' : ''}
                     required
                   >
                     <option value="">Select Payment Method</option>
-                    {paymentMethods.map(method => (
-                      <option key={method.id} value={method.id}>
-                        {method.methodName} ({method.methodCode})
+                    {PAYMENT_METHOD_OPTIONS.map(method => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
                       </option>
                     ))}
                   </select>
-                  {errors.paymentMethodId && touched.has('paymentMethodId') && (
-                    <span className="error-message">{errors.paymentMethodId}</span>
+                  {errors.payment_method && touched.has('payment_method') && (
+                    <span className="error-message">{errors.payment_method}</span>
                   )}
                 </div>
               </div>
@@ -484,12 +449,12 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">II. Trip Assignment Details</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="cachedTripId">Trip Assignment <span className="requiredTags"> *</span></label>
+                  <label htmlFor="bus_trip_assignment_id">Trip Assignment <span className="requiredTags"> *</span></label>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                     <input
                       type="text"
-                      id="cachedTripId"
-                      value={formData.cachedTripId ? `Trip #${formData.cachedTripId} - ${formData.busPlateNumber} (${formData.route})` : ''}
+                      id="bus_trip_assignment_id"
+                      value={getTripDisplayText()}
                       placeholder="No trip selected"
                       disabled
                       className="input-disabled"
@@ -511,23 +476,23 @@ export default function RecordOperationalExpenseModal({
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="busPlateNumber">Plate Number</label>
+                  <label htmlFor="plate_number">Plate Number</label>
                   <input
                     type="text"
-                    id="busPlateNumber"
-                    name="busPlateNumber"
-                    value={formData.busPlateNumber || ''}
+                    id="plate_number"
+                    name="plate_number"
+                    value={formData.plate_number || ''}
                     disabled
                     className="input-disabled"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="bodyNumber">Body Number</label>
+                  <label htmlFor="body_number">Body Number</label>
                   <input
                     type="text"
-                    id="bodyNumber"
-                    name="bodyNumber"
+                    id="body_number"
+                    name="body_number"
                     value={selectedTripDetails.body_number || ''} 
                     disabled
                     className="input-disabled"
@@ -537,23 +502,23 @@ export default function RecordOperationalExpenseModal({
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="route">Route</label>
+                  <label htmlFor="bus_route">Route</label>
                   <input
                     type="text"
-                    id="route"
-                    name="route"
-                    value={formData.route || ''}
+                    id="bus_route"
+                    name="bus_route"
+                    value={formData.bus_route || ''}
                     disabled
                     className="input-disabled"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="busType">Type</label>
+                  <label htmlFor="bus_type">Type</label>
                   <input
                     type="text"
-                    id="busType"
-                    name="busType"
+                    id="bus_type"
+                    name="bus_type"
                     value={selectedTripDetails.bus_type || ''}
                     disabled
                     className="input-disabled"
@@ -569,18 +534,18 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">III. Accounting Details</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="accountCodeId">Accounting Code<span className="requiredTags"> *</span></label>
+                  <label htmlFor="account_id">Accounting Code<span className="requiredTags"> *</span></label>
                   <select
-                    id="accountCodeId"
-                    name="accountCodeId"
-                    value={formData.accountCodeId || ''}
+                    id="account_id"
+                    name="account_id"
+                    value={formData.account_id || ''}
                     onChange={handleInputChange}
                     required
                   >
                     <option value="">Select Account Code</option>
                     {chartOfAccounts.map(account => (
                       <option key={account.id} value={account.id}>
-                        {account.accountCode} - {account.accountName}
+                        {account.account_code} - {account.account_name}
                       </option>
                     ))}
                   </select>
@@ -588,20 +553,20 @@ export default function RecordOperationalExpenseModal({
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="isReimbursable">Reimbursable Expense</label>
+                  <label htmlFor="is_reimbursable">Reimbursable Expense</label>
                   <div className="checkbox-wrapper">
                     {/* <div className="checkbox-label"> */}
                       <input
                         type="checkbox"
-                        id="isReimbursable"
-                        name="isReimbursable"
-                        checked={formData.isReimbursable}
+                        id="is_reimbursable"
+                        name="is_reimbursable"
+                        checked={formData.is_reimbursable}
                         onChange={handleInputChange}
                       />
                     {/* </div> */}
 
                     {/* <div className="checkbox-label"> */}
-                      <label htmlFor="isReimbursable">
+                      <label htmlFor="is_reimbursable">
                         This expense is reimbursable to an employee
                       </label>
                     {/* </div> */}
@@ -612,7 +577,7 @@ export default function RecordOperationalExpenseModal({
           </div>
 
           {/* Conditional Section: Reimbursement Details */}
-          {formData.isReimbursable && (
+          {formData.is_reimbursable && (
             <div className="modal-content">
               <div className="form-section reimbursement-section">
                 <h3 className="section-title">III-A. Reimbursement Details</h3>
@@ -621,157 +586,105 @@ export default function RecordOperationalExpenseModal({
                 <br/>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="reimbursementEmployeeId" className="required">Employee to Reimburse</label>
+                    <label htmlFor="employee_reference" className="required">Employee to Reimburse</label>
                     <SearchableDropdown
                       options={employees.map(emp => ({
-                        value: emp.employee_id,
+                        value: emp.employee_number,
                         label: `${emp.employee_number} - ${emp.name}`,
                         description: `${emp.job_title} | ${emp.department}`
                       }))}
-                      value={formData.reimbursementEmployeeId || ''}
+                      value={formData.employee_reference || ''}
                       onChange={(value) => {
-                        setFormData(prev => ({ ...prev, reimbursementEmployeeId: value }));
-                        if (touched.has('reimbursementEmployeeId')) {
+                        // Find employee to also set creditor_name
+                        const selectedEmployee = employees.find(e => e.employee_number === value);
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          employee_reference: value,
+                          creditor_name: selectedEmployee?.name || ''
+                        }));
+                        if (touched.has('employee_reference')) {
                           setErrors(prev => ({
                             ...prev,
-                            reimbursementEmployeeId: validateFormField('reimbursementEmployeeId', value)
+                            employee_reference: validateFormField('employee_reference', value)
                           }));
                         }
                       }}
                       onBlur={() => {
-                        setTouched(prev => new Set(prev).add('reimbursementEmployeeId'));
+                        setTouched(prev => new Set(prev).add('employee_reference'));
                         setErrors(prev => ({
                           ...prev,
-                          reimbursementEmployeeId: validateFormField('reimbursementEmployeeId', formData.reimbursementEmployeeId)
+                          employee_reference: validateFormField('employee_reference', formData.employee_reference)
                         }));
                       }}
                       placeholder="Select Employee"
-                      className={errors.reimbursementEmployeeId && touched.has('reimbursementEmployeeId') ? 'input-error' : ''}
+                      className={errors.employee_reference && touched.has('employee_reference') ? 'input-error' : ''}
                       showDescription={true}
                     />
                     <small className="field-note">Searchable Dropdown - No Custom Input</small>
-                    {errors.reimbursementEmployeeId && touched.has('reimbursementEmployeeId') && (
-                      <span className="error-message">{errors.reimbursementEmployeeId}</span>
+                    {errors.employee_reference && touched.has('employee_reference') && (
+                      <span className="error-message">{errors.employee_reference}</span>
                     )}
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group full-width">
-                    <label htmlFor="reimbursementPurpose" className="required">Purpose of Reimbursement</label>
+                    <label htmlFor="payable_description" className="required">Purpose of Reimbursement</label>
                     <textarea
-                      id="reimbursementPurpose"
-                      name="reimbursementPurpose"
-                      value={formData.reimbursementPurpose || ''}
+                      id="payable_description"
+                      name="payable_description"
+                      value={formData.payable_description || ''}
                       onChange={handleInputChange}
                       onBlur={handleInputBlur}
                       placeholder="Describe the purpose and reason for this reimbursement"
                       rows={3}
                       maxLength={500}
-                      className={errors.reimbursementPurpose && touched.has('reimbursementPurpose') ? 'input-error' : ''}
+                      className={errors.payable_description && touched.has('payable_description') ? 'input-error' : ''}
                       required
                     />
                     <div className="textarea-footer">
                       <span className="hint-message">
-                        {formData.reimbursementPurpose?.length || 0}/500 characters
+                        {formData.payable_description?.length || 0}/500 characters
                       </span>
-                      {errors.reimbursementPurpose && touched.has('reimbursementPurpose') && (
-                        <span className="error-message"><br/>{errors.reimbursementPurpose}</span>
+                      {errors.payable_description && touched.has('payable_description') && (
+                        <span className="error-message"><br/>{errors.payable_description}</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group full-width">
-                    <label htmlFor="reimbursementReceiptFile">Upload Supporting Document</label>
-                    <input
-                      type="file"
-                      id="reimbursementReceiptFile"
-                      name="reimbursementReceiptFile"
-                      onChange={handleFileChange}
-                      accept="image/jpeg,image/png,image/jpg,application/pdf"
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <small className="hint-message">Upload proof of payment or supporting document (JPG, PNG, PDF - Max 5MB)</small>
-                    {errors.reimbursementReceiptFile && (
-                      <span className="error-message">{errors.reimbursementReceiptFile}</span>
-                    )}
-                    {formData.reimbursementReceiptUrl && (
-                      <div className="file-preview">
-                        <i className="ri-file-text-line"></i>
-                        <a href={formData.reimbursementReceiptUrl} target="_blank" rel="noopener noreferrer">
-                          View Current Document
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 <div className="info-box">
                   <i className="ri-information-line"></i>
-                  <span>The reimbursement amount will be automatically set to match the expense amount ({formatMoney(formData.amount)})</span>
+                  <span>The reimbursement amount will be automatically set to match the expense amount ({formatMoney(formData.amount)}). Attachments can be uploaded after saving the expense.</span>
                 </div>
               </div>
             </div>
           )}
 
           <div className="modal-content">
-            {/* Section IV: Supporting Documents */}
+            {/* Section IV: Additional Information */}
             <div className="form-section">
-              <h3 className="section-title">IV. Supporting Documents</h3>
+              <h3 className="section-title">IV. Additional Information</h3>
               <div className="form-row">
                 <div className="form-group full-width">
-                  <label htmlFor="receiptFile">Upload Receipt</label>
-                  <input
-                    type="file"
-                    id="receiptFile"
-                    name="receiptFile"
-                    onChange={handleFileChange}
-                    accept="image/jpeg,image/png,image/jpg,application/pdf"
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <small className="field-note">Accepted formats: JPG, PNG, PDF (Max 5MB)</small>
-                  {errors.receiptFile && (
-                    <span className="error-message">{errors.receiptFile}</span>
-                  )}
-                  {formData.receiptUrl && (
-                    <div className="file-preview">
-                      <i className="ri-file-text-line"></i>
-                      <a href={formData.receiptUrl} target="_blank" rel="noopener noreferrer">
-                        View Current Receipt
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-content">
-            {/* Section V: Additional Information */}
-            <div className="form-section">
-              <h3 className="section-title">V. Additional Information</h3>
-              <div className="form-row">
-                <div className="form-group full-width">
-                  <label htmlFor="remarks">Description</label>
+                  <label htmlFor="description">Description</label>
                   <textarea
-                    id="remarks"
-                    name="remarks"
-                    value={formData.remarks || ''}
+                    id="description"
+                    name="description"
+                    value={formData.description || ''}
                     onChange={handleInputChange}
                     onBlur={handleInputBlur}
                     placeholder="Additional notes or comments about this expense"
                     rows={4}
                     maxLength={500}
-                    className={errors.remarks && touched.has('remarks') ? 'input-error' : ''}
+                    className={errors.description && touched.has('description') ? 'input-error' : ''}
                   />
                   <div className="textarea-footer">
                     <span className="character-count">
-                      {formData.remarks?.length || 0}/500 characters
+                      {formData.description?.length || 0}/500 characters
                     </span>
-                    {errors.remarks && touched.has('remarks') && (
-                      <span className="error-message">{errors.remarks}</span>
+                    {errors.description && touched.has('description') && (
+                      <span className="error-message">{errors.description}</span>
                     )}
                   </div>
                 </div>

@@ -21,6 +21,8 @@ interface RecordOtherRevenueModalProps {
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   departments: Array<{ id: number; name: string }>;
   currentUser: string;
+  revenueTypes?: Array<{ id: number; code: string; name: string; description?: string }>;
+  scheduleFrequencies?: Array<{ value: string; label: string }>;
 }
 
 interface FormErrors {
@@ -29,9 +31,8 @@ interface FormErrors {
   description: string;
   amount: string;
   payment_reference: string;
-  department: string;
+  department_id: string;  // Changed from 'department' to match formData field
   payment_method: string;
-  recognitionSchedule: string;
   numberOfPayments: string;
   scheduleStartDate: string;
   remarks: string;
@@ -46,16 +47,27 @@ const OTHER_REVENUE_CATEGORIES: DropdownOption[] = [
   { value: 'Other', label: 'Other', description: 'Other miscellaneous revenue' },
 ];
 
-export default function RecordOtherRevenueModal({ 
-  mode, 
-  existingData, 
-  onSave, 
-  onClose, 
+export default function RecordOtherRevenueModal({
+  mode,
+  existingData,
+  onSave,
+  onClose,
   paymentMethods,
   departments,
-  currentUser 
+  currentUser,
+  revenueTypes = [],
+  scheduleFrequencies = []
 }: RecordOtherRevenueModalProps) {
-  
+
+  // Build dropdown options from revenue types (use backend data if available, fallback to hardcoded)
+  const revenueTypeOptions: DropdownOption[] = revenueTypes.length > 0
+    ? revenueTypes.map(t => ({
+      value: t.name,
+      label: t.name,
+      description: t.description || `Revenue type: ${t.code}`
+    }))
+    : OTHER_REVENUE_CATEGORIES;
+
   // Generate revenue code for new records
   const generateRevenueCode = () => {
     const timestamp = Date.now().toString(36);
@@ -71,19 +83,14 @@ export default function RecordOtherRevenueModal({
     description: existingData?.description || '',
     amount: existingData?.amount || 0,
     payment_reference: existingData?.payment_reference || '',
-    department: existingData?.department || '',
+    department_id: existingData?.department_id || undefined,
     isUnearnedRevenue: existingData?.isUnearnedRevenue || false,
-    recognitionSchedule: existingData?.recognitionSchedule || '',
     scheduleFrequency: existingData?.scheduleFrequency || undefined,
     scheduleStartDate: existingData?.scheduleStartDate || new Date().toISOString().split('T')[0],
     numberOfPayments: existingData?.numberOfPayments || 2,
     scheduleItems: existingData?.scheduleItems || [],
-    isVerified: existingData?.isVerified || false,
     remarks: existingData?.remarks || '',
     payment_method: existingData?.payment_method || '',
-    verifiedBy: existingData?.verifiedBy || '',
-    verifiedAt: existingData?.verifiedAt || '',
-    receiptUrl: existingData?.receiptUrl || '',
     accountCode: existingData?.accountCode || '',
     createdBy: existingData?.createdBy || currentUser,
   });
@@ -96,9 +103,8 @@ export default function RecordOtherRevenueModal({
     description: '',
     amount: '',
     payment_reference: '',
-    department: '',
+    department_id: '',  // Changed from 'department' to match formData field
     payment_method: '',
-    recognitionSchedule: '',
     remarks: '',
     numberOfPayments: '',
     scheduleStartDate: '',
@@ -108,7 +114,14 @@ export default function RecordOtherRevenueModal({
   const [isDirty, setIsDirty] = useState(false);
 
   // Generate schedule when relevant fields change
+  // In edit mode, preserve existing schedule items from the backend
   useEffect(() => {
+    // In edit mode with existing schedule, don't regenerate - preserve backend data
+    if (mode === 'edit' && existingData?.scheduleItems && existingData.scheduleItems.length > 0) {
+      // Keep existing schedule items, don't regenerate
+      return;
+    }
+
     if (
       formData.isUnearnedRevenue &&
       formData.scheduleFrequency &&
@@ -139,6 +152,8 @@ export default function RecordOtherRevenueModal({
       setFormData(prev => ({ ...prev, scheduleItems: [] }));
     }
   }, [
+    mode,
+    existingData?.scheduleItems,
     formData.isUnearnedRevenue,
     formData.scheduleFrequency,
     formData.scheduleStartDate,
@@ -196,8 +211,8 @@ export default function RecordOtherRevenueModal({
       //   }
       //   break;
 
-      case 'department':
-        if (!value) {
+      case 'department_id':
+        if (value === undefined || value === null || value === '') {
           errorMessage = 'Department is required';
         }
         break;
@@ -205,14 +220,6 @@ export default function RecordOtherRevenueModal({
       case 'payment_method':
         if (!value || value.trim() === '') {
           errorMessage = 'Payment method is required';
-        }
-        break;
-
-      case 'recognitionSchedule':
-        // Recognition schedule is optional when a payment schedule (scheduleItems) is generated.
-        // Require only if unearned revenue is enabled AND there are no schedule items to define the schedule.
-        if (formData.isUnearnedRevenue && (!scheduleItems || scheduleItems.length === 0) && !value) {
-          errorMessage = 'Recognition schedule is required for unearned revenue';
         }
         break;
 
@@ -271,17 +278,14 @@ export default function RecordOtherRevenueModal({
     const dateErr = validateFormField('date_recorded', formData.date_recorded);
     const nameErr = validateFormField('name', formData.name);
     const amountErr = validateFormField('amount', formData.amount);
-    const deptErr = validateFormField('department', formData.department);
+    const deptErr = validateFormField('department_id', formData.department_id);
     const paymentMethodErr = validateFormField('payment_method', formData.payment_method);
     const remarksErr = validateFormField('remarks', formData.remarks);
 
     let unearnedValid = true;
     const unearnedErrors: string[] = [];
     if (formData.isUnearnedRevenue) {
-      const recogErr = validateFormField('recognitionSchedule', formData.recognitionSchedule);
-      if (recogErr) unearnedErrors.push(recogErr);
-
-      // Additional schedule validations for non-custom frequencies
+      // Schedule validations for non-custom frequencies
       if (formData.scheduleFrequency && formData.scheduleFrequency !== RevenueScheduleFrequency.CUSTOM) {
         const npErr = validateFormField('numberOfPayments', formData.numberOfPayments);
         const sdErr = validateFormField('scheduleStartDate', formData.scheduleStartDate);
@@ -311,16 +315,16 @@ export default function RecordOtherRevenueModal({
 
   // Check form validity
   useEffect(() => {
-    const isValid = 
+    const isValid =
       formData.date_recorded !== '' &&
       formData.name !== '' &&
       formData.amount > 0 &&
-      formData.department !== '' &&
+      formData.department_id !== undefined &&
       formData.payment_method !== '' &&
       formErrors.date_recorded === '' &&
       formErrors.name === '' &&
       formErrors.amount === '' &&
-      formErrors.department === '' &&
+      formErrors.department_id === '' &&
       formErrors.payment_method === '' &&
       formErrors.numberOfPayments === '' &&
       formErrors.scheduleStartDate === '' &&
@@ -329,25 +333,42 @@ export default function RecordOtherRevenueModal({
     setIsFormValid(isValid);
   }, [formData, formErrors]);
 
-  // Handle input change
+  // Handle input change - updates form data and clears any existing errors for the field
   const handleInputChange = (field: keyof OtherRevenueData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
 
-    // Clear error when user starts typing
-    if (formErrors[field as keyof FormErrors]) {
+    // Clear error when user provides a value
+    // Map formData field names to formErrors field names where they differ
+    const errorFieldMap: Partial<Record<keyof OtherRevenueData, keyof FormErrors>> = {
+      department_id: 'department_id',
+      name: 'name',
+      date_recorded: 'date_recorded',
+      amount: 'amount',
+      payment_method: 'payment_method',
+      payment_reference: 'payment_reference',
+      remarks: 'remarks',
+      description: 'description',
+      numberOfPayments: 'numberOfPayments',
+      scheduleStartDate: 'scheduleStartDate',
+    };
+
+    const errorField = errorFieldMap[field];
+    if (errorField && formErrors[errorField]) {
       setFormErrors(prev => ({
         ...prev,
-        [field]: ''
+        [errorField]: ''
       }));
     }
   };
 
-  // Handle input blur (validation)
-  const handleInputBlur = (field: keyof FormErrors) => {
-    validateFormField(field, formData[field as keyof OtherRevenueData]);
+  // Handle input blur (validation) - validates with the value passed, not from stale state
+  const handleInputBlur = (field: keyof FormErrors, value?: any) => {
+    // Use provided value or fall back to formData (which may be stale during async updates)
+    const fieldValue = value !== undefined ? value : formData[field as keyof OtherRevenueData];
+    validateFormField(field, fieldValue);
   };
 
   // Handle close with unsaved changes warning
@@ -394,19 +415,27 @@ export default function RecordOtherRevenueModal({
         return;
       }
 
-      if (scheduleItems.length === 0) {
+      // In edit mode, use existing schedule items; in add mode, use generated items
+      const itemsToValidate = mode === 'edit' && existingData?.scheduleItems && existingData.scheduleItems.length > 0
+        ? existingData.scheduleItems
+        : scheduleItems;
+
+      if (itemsToValidate.length === 0 && formData.scheduleItems?.length === 0) {
         showError('Please generate a payment schedule', 'Validation Error');
         return;
       }
 
-      const scheduleValidation = validateSchedule(scheduleItems, formData.amount);
-      if (!scheduleValidation.isValid) {
-        showError(scheduleValidation.errors.join('\n'), 'Schedule Validation Error');
-        return;
+      // Only validate schedule amounts in add mode (existing schedules may have partial payments)
+      if (mode === 'add') {
+        const scheduleValidation = validateSchedule(scheduleItems, formData.amount);
+        if (!scheduleValidation.isValid) {
+          showError(scheduleValidation.errors.join('\n'), 'Schedule Validation Error');
+          return;
+        }
       }
 
       // Block saving if there are overdue payments in edit mode
-      if (mode === 'edit' && scheduleItems.some(item => item.paymentStatus === 'OVERDUE')) {
+      if (mode === 'edit' && scheduleItems.some(item => item.status === 'OVERDUE')) {
         showError(
           'Cannot save schedule with overdue payments. Please resolve all overdue installments before updating.',
           'Overdue Payments Detected'
@@ -417,10 +446,9 @@ export default function RecordOtherRevenueModal({
 
     // Show confirmation dialog
     const result = await showConfirmation(
-      `Are you sure you want to ${mode === 'add' ? 'add' : 'update'} this other revenue record?${
-        formData.isUnearnedRevenue 
-          ? `\n\nThis will create ${scheduleItems.length} payment installments.` 
-          : ''
+      `Are you sure you want to ${mode === 'add' ? 'add' : 'update'} this other revenue record?${formData.isUnearnedRevenue
+        ? `\n\nThis will create ${scheduleItems.length} payment installments.`
+        : ''
       }`,
       `Confirm ${mode === 'add' ? 'Add' : 'Update'}`
     );
@@ -470,13 +498,19 @@ export default function RecordOtherRevenueModal({
                 Revenue Type<span className="requiredTags"> *</span>
               </label>
               <SearchableDropdown
-                options={OTHER_REVENUE_CATEGORIES}
+                options={revenueTypeOptions}
                 value={formData.name}
-                onChange={(value: string) => handleInputChange('name', value)}
-                onBlur={() => handleInputBlur('name')}
+                onChange={(value: string) => {
+                  handleInputChange('name', value);
+                  // Clear validation error immediately on selection
+                  if (value && value.trim() !== '') {
+                    setFormErrors(prev => ({ ...prev, name: '' }));
+                  }
+                }}
+                onBlur={() => { }}
                 placeholder="Select Revenue Type"
                 className={formErrors.name ? 'invalid-input' : ''}
-                disabled={mode === 'edit'}
+                disabled={false}
                 showDescription={true}
                 allowCustomInput={false}
               />
@@ -568,20 +602,20 @@ export default function RecordOtherRevenueModal({
                 Department<span className="requiredTags"> *</span>
               </label>
               <select
-                value={formData.department}
-                onChange={(e) => handleInputChange('department', e.target.value)}
-                onBlur={() => handleInputBlur('department')}
-                className={formErrors.department ? 'invalid-input' : ''}
+                value={formData.department_id ?? ''}
+                onChange={(e) => handleInputChange('department_id', e.target.value ? parseInt(e.target.value) : undefined)}
+                onBlur={() => handleInputBlur('department_id')}
+                className={formErrors.department_id ? 'invalid-input' : ''}
                 required
               >
                 <option value="">Select Department</option>
                 {departments.map(dept => (
-                  <option key={dept.id} value={dept.name}>
+                  <option key={dept.id} value={dept.id}>
                     {dept.name}
                   </option>
                 ))}
               </select>
-              <p className="add-error-message">{formErrors.department}</p>
+              <p className="add-error-message">{formErrors.department_id}</p>
             </div>
 
             {/* Payment Method */}
@@ -624,10 +658,10 @@ export default function RecordOtherRevenueModal({
                   disabled={mode === 'edit'}
                 />
                 <label htmlFor="isUnearnedRevenue">
-                  This is Unearned Revenue (Payment Schedule)<br/><small className="hint-message" style={{ fontWeight:'normal' }}>{mode === 'edit' && formData.isUnearnedRevenue ? 'Cannot change receivable status in edit mode' : 'Check if revenue will be received in multiple installments over time'}</small>
+                  This is Unearned Revenue (Payment Schedule)<br /><small className="hint-message" style={{ fontWeight: 'normal' }}>{mode === 'edit' && formData.isUnearnedRevenue ? 'Cannot change receivable status in edit mode' : 'Check if revenue will be received in multiple installments over time'}</small>
                 </label>
               </div>
-              
+
             </div>
           </div>
 
@@ -646,17 +680,26 @@ export default function RecordOtherRevenueModal({
                     required
                   >
                     <option value="">Select Frequency</option>
-                    <option value={RevenueScheduleFrequency.DAILY}>Daily</option>
-                    <option value={RevenueScheduleFrequency.WEEKLY}>Weekly</option>
-                    <option value={RevenueScheduleFrequency.MONTHLY}>Monthly</option>
-                    <option value={RevenueScheduleFrequency.ANNUAL}>Annual</option>
+                    {scheduleFrequencies.length > 0 ? (
+                      scheduleFrequencies.map((freq) => (
+                        <option key={freq.value} value={freq.value}>{freq.label}</option>
+                      ))
+                    ) : (
+                      // Fallback to hardcoded options if backend data not available
+                      <>
+                        <option value={RevenueScheduleFrequency.DAILY}>Daily</option>
+                        <option value={RevenueScheduleFrequency.WEEKLY}>Weekly</option>
+                        <option value={RevenueScheduleFrequency.MONTHLY}>Monthly</option>
+                      </>
+                    )}
+                    {/* Always include CUSTOM option for manual date entry */}
                     <option value={RevenueScheduleFrequency.CUSTOM}>Custom Dates</option>
                   </select>
                   <small className="hint-message">
-                    {formData.scheduleFrequency === RevenueScheduleFrequency.DAILY && 'Consecutive daily payments'}
-                    {formData.scheduleFrequency === RevenueScheduleFrequency.WEEKLY && 'Same day each week'}
-                    {formData.scheduleFrequency === RevenueScheduleFrequency.MONTHLY && 'Same date each month'}
-                    {formData.scheduleFrequency === RevenueScheduleFrequency.ANNUAL && 'Same date each year'}
+                    {formData.scheduleFrequency === 'DAILY' && 'Consecutive daily payments'}
+                    {formData.scheduleFrequency === 'WEEKLY' && 'Same day each week'}
+                    {formData.scheduleFrequency === 'BIWEEKLY' && 'Same day every two weeks'}
+                    {formData.scheduleFrequency === 'MONTHLY' && 'Same date each month'}
                     {formData.scheduleFrequency === RevenueScheduleFrequency.CUSTOM && 'Enter dates manually in table below'}
                     {mode === 'edit' && ' (Not editable in edit mode)'}
                   </small>
@@ -712,17 +755,17 @@ export default function RecordOtherRevenueModal({
                     <input
                       type="text"
                       value={
-                        formData.scheduleFrequency && 
-                        formData.scheduleStartDate && 
-                        formData.numberOfPayments && 
-                        formData.numberOfPayments > 0
+                        formData.scheduleFrequency &&
+                          formData.scheduleStartDate &&
+                          formData.numberOfPayments &&
+                          formData.numberOfPayments > 0
                           ? formatDate(
-                              generateScheduleDates(
-                                formData.scheduleFrequency,
-                                formData.scheduleStartDate,
-                                formData.numberOfPayments
-                              )[formData.numberOfPayments - 1] || ''
-                            )
+                            generateScheduleDates(
+                              formData.scheduleFrequency,
+                              formData.scheduleStartDate,
+                              formData.numberOfPayments
+                            )[formData.numberOfPayments - 1] || ''
+                          )
                           : 'N/A'
                       }
                       disabled
@@ -737,30 +780,8 @@ export default function RecordOtherRevenueModal({
                 <>
                   <div className="form-row">
                     <div className="form-group full-width">
-                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600 }}>Payment Schedule Preview</span>
-                        {formData.scheduleFrequency !== RevenueScheduleFrequency.CUSTOM && mode === 'add' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (formData.scheduleFrequency && formData.scheduleStartDate && formData.numberOfPayments) {
-                                const dates = generateScheduleDates(
-                                  formData.scheduleFrequency,
-                                  formData.scheduleStartDate,
-                                  formData.numberOfPayments
-                                );
-                                const items = generateScheduleItems(dates, formData.amount);
-                                setScheduleItems(items);
-                                setFormData(prev => ({ ...prev, scheduleItems: items }));
-                              }
-                            }}
-                            className="modal-table-add-btn"
-                            style={{ fontSize: '12px', padding: '6px 12px' }}
-                          >
-                            <i className="ri-restart-line"></i>
-                            Reset
-                          </button>
-                        )}
+                      <label>
+                        <span style={{ fontWeight: 600 }}>Payment Schedule Preview</span>
                       </label>
                     </div>
                   </div>
@@ -794,7 +815,7 @@ export default function RecordOtherRevenueModal({
                         </div>
                       )}
 
-                      {scheduleItems.some(item => item.paymentStatus === 'OVERDUE') && (
+                      {scheduleItems.some(item => item.status === 'OVERDUE') && (
                         <div style={{
                           marginTop: '10px',
                           padding: '12px',
@@ -811,21 +832,6 @@ export default function RecordOtherRevenueModal({
                     </>
                   )}
                 </>
-              )}
-
-              {/* Old Recognition Schedule (for reference/backward compatibility) */}
-              {formData.recognitionSchedule && (
-                <div className="form-row">
-                  <div className="form-group full-width">
-                    <label>Legacy Recognition Schedule</label>
-                    <textarea
-                      value={formData.recognitionSchedule}
-                      onChange={(e) => handleInputChange('recognitionSchedule', e.target.value)}
-                      rows={2}
-                      placeholder="Optional: Additional schedule notes..."
-                    />
-                  </div>
-                </div>
               )}
             </>
           )}

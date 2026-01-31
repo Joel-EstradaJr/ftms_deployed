@@ -75,9 +75,6 @@ interface DisposalRecord {
     manufacturer?: {
       manufacturer_name: string;
     };
-    body_builder?: {
-      body_builder_name: string;
-    };
     chassis_number: string;
     engine_number: string;
     seat_capacity: number;
@@ -210,7 +207,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                 disabled
                 className="disabled-input"
               />
-              <span className="field-note">Not Editable</span>
+              <span className="hint-message">Not Editable</span>
             </div>
 
             <div className="form-group">
@@ -224,7 +221,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                 <option value="APPROVED">Approved</option>
                 <option value="REJECTED">Rejected</option>
               </select>
-              <span className="field-note">Editable</span>
+              <span className="hint-message">Editable</span>
             </div>
           </div>
 
@@ -237,7 +234,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                 disabled
                 className="disabled-input"
               />
-              <span className="field-note">Not Editable</span>
+              <span className="hint-message">Not Editable</span>
             </div>
 
             <div className="form-group">
@@ -248,7 +245,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                 disabled
                 className="disabled-input"
               />
-              <span className="field-note">Not Editable</span>
+              <span className="hint-message">Not Editable</span>
             </div>
           </div>
 
@@ -261,7 +258,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                 disabled
                 className="disabled-input"
               />
-              <span className="field-note">Not Editable</span>
+              <span className="hint-message">Not Editable</span>
             </div>
           </div>
 
@@ -273,7 +270,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               className="disabled-input"
               rows={3}
             />
-            <span className="field-note">Not Editable</span>
+            <span className="hint-message">Not Editable</span>
           </div>
         </div>
 
@@ -315,7 +312,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
 
                 <div className="form-group">
                   <label>Stock Status</label>
-                  <p>
+                  <p className='chip-container'>
                     <span className={`chip ${disposal.stock.status.toLowerCase()}`}>
                       {disposal.stock.status}
                     </span>
@@ -485,7 +482,6 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               <div className="form-row">
                 <div className="form-group">
                   <label>Body Builder</label>
-                  <p>{disposal.bus.body_builder?.body_builder_name || '—'}</p>
                 </div>
 
                 <div className="form-group">
@@ -552,6 +548,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                 type="number"
                 step="0.01"
                 min="0"
+                max="9999999999"
                 value={disposalValue}
                 onChange={(e) => setDisposalValue(e.target.value)}
                 placeholder="Enter disposal value"
@@ -561,7 +558,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               {errors.disposalValue && (
                 <span className="error-text">{errors.disposalValue}</span>
               )}
-              <span className="field-note">Editable</span>
+              <span className="hint-message">Editable</span>
             </div>
 
             <div className="form-group">
@@ -573,6 +570,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                 type="number"
                 step="0.01"
                 min="0"
+                max="9999999999.99"
                 value={bookValue}
                 onChange={(e) => setBookValue(e.target.value)}
                 placeholder="Enter book value"
@@ -582,7 +580,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
               {errors.bookValue && (
                 <span className="error-text">{errors.bookValue}</span>
               )}
-              <span className="field-note">Editable</span>
+              <span className="hint-message">Editable</span>
             </div>
           </div>
 
@@ -599,7 +597,7 @@ const EditDisposal: React.FC<EditDisposalProps> = ({ disposal, onSave, onClose }
                   fontWeight: '600'
                 }}
               />
-              <span className="field-note">Derived: disposal_value - book_value</span>
+              <span className="hint-message">Derived: disposal_value - book_value</span>
             </div>
           </div>
         </div>

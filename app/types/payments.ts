@@ -27,6 +27,7 @@ export interface PaymentRecordData {
   amountToPay: number;
   paymentDate: string;
   paymentMethodId: number;
+  paymentMethodCode?: string; // Prisma enum code (CASH, BANK_TRANSFER, E_WALLET, REIMBURSEMENT)
   paymentMethod?: string;
   referenceNumber?: string;
   remarks?: string;

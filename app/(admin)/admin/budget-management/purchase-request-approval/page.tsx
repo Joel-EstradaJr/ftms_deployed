@@ -19,7 +19,7 @@ import {
 import type { PurchaseRequestApproval } from "../../../../types/purchaseRequestApproval";
 
 // Import existing modal components
-import ViewPurchaseRequest from "./viewPurchaseRequest";
+import ViewPurchaseRequest from "./viewPurchaseRequestNew";
 import AuditTrailPurchaseRequest from "./auditTrailPurchaseRequest";
 import TrackStatusPurchaseRequest from "./trackStatusPurchaseRequest";
 

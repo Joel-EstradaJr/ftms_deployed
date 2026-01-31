@@ -50,35 +50,82 @@ interface PaymentMethod {
   methodCode: string;
 }
 
+interface RevenueType {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+}
+
+interface Department {
+  id: number;
+  department_name: string;
+}
+
+interface ScheduleFrequency {
+  value: string;
+  label: string;
+}
+
 interface OtherRevenueRecord {
   id: number;
   code: string;
   date_recorded: string;
   date_expected?: string;
-  last_payment_date?: string;
-  source: {
+  // Revenue type from backend
+  revenueType: {
     id: number;
+    code: string;
     name: string;
-    sourceCode: string;
   };
-  description: string;
-  amount: number;
-  balance?: number;
-  status?: string;
-  revenue_status?: string;
-  receivable_status?: string;
-  paymentMethod: {
+  // Department relation from backend
+  department?: {
     id: number;
-    methodName: string;
-    methodCode: string;
-  };
-  paymentMethodId: number;
-  sourceId: number;
+    department_name: string;
+  } | null;
+  department_id?: number;
+  // Parsed description fields
+  description: string;
+  remarks?: string;
+  amount: number;
+  remittance_status: string;
+  payment_method?: string;
+  payment_reference?: string;
+  isUnearnedRevenue: boolean;
+  accountCode?: string;
+  created_by?: string;
+  created_at?: string;
+  // Journal Entry link (for edit/delete restrictions)
+  journalEntry?: {
+    id: number;
+    code: string;
+    status: string;
+  } | null;
+  // Receivable data for unearned revenue
+  receivable?: {
+    id: number;
+    status: string;
+    frequency?: string;
+    numberOfPayments?: number;
+    scheduleStartDate?: string;
+    scheduleItems: Array<{
+      id: number;
+      installmentNumber: number;
+      dueDate: string;
+      amountDue: number;
+      amountPaid: number;
+      balance: number;
+      status: string;
+    }>;
+  } | null;
+  // For backward compatibility with transformRecordToFormData
+  source?: { id: number; name: string; sourceCode: string };
+  paymentMethod?: { id: number; methodName: string; methodCode: string };
+  paymentMethodId?: number;
+  sourceId?: number;
   externalRefType?: string;
   externalRefId?: string;
-  createdBy: string;
-  approvedBy?: string;
-  isUnearnedRevenue?: boolean;
+  createdBy?: string;
   scheduleItems?: RevenueScheduleItem[];
 }
 
@@ -90,28 +137,21 @@ export type OtherRevenueData = {
   description: string;
   amount: number;
   payment_reference: string;
-  department: string;
-  discountAmount?: number;
-  discountPercentage?: number;
-  discountReason?: string;
+  department_id?: number;  // Reference to department_local
+  department?: string;     // For display purposes (derived from department relation)
   isUnearnedRevenue: boolean;
-  recognitionSchedule?: string;
-  isVerified: boolean;
   remarks?: string;
-  
+
   // Payment Schedule Fields
   scheduleFrequency?: RevenueScheduleFrequency;
   scheduleStartDate?: string;
   numberOfPayments?: number;
   scheduleItems?: RevenueScheduleItem[];
-  
+
   // Relations
   payment_method: string;
-  
-  // View-only fields
-  verifiedBy?: string;
-  verifiedAt?: string;
-  receiptUrl?: string;
+
+  // View-only fields (derived from journal_entry)
   accountCode?: string;
   createdBy: string;
 };
@@ -140,68 +180,89 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 1,
     code: "REV-OTHER-2024-001",
     date_recorded: "2024-11-01",
-    source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
+    revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of old computer equipment",
     amount: 45000.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: true,
+    receivable: {
+      id: 1,
+      status: "PARTIALLY_PAID",
+      frequency: "MONTHLY",
+      numberOfPayments: 3,
+      scheduleStartDate: "2024-11-15",
+      scheduleItems: [
+        {
+          id: 1,
+          installmentNumber: 1,
+          dueDate: "2024-11-15",
+          amountDue: 15000.00,
+          amountPaid: 15000.00,
+          balance: 0,
+          status: "PAID",
+        },
+        {
+          id: 2,
+          installmentNumber: 2,
+          dueDate: "2024-12-15",
+          amountDue: 15000.00,
+          amountPaid: 10000.00,
+          balance: 5000.00,
+          status: "PARTIALLY_PAID",
+        },
+        {
+          id: 3,
+          installmentNumber: 3,
+          dueDate: "2025-01-15",
+          amountDue: 15000.00,
+          amountPaid: 0,
+          balance: 15000.00,
+          status: "PENDING",
+        }
+      ]
+    },
+    // Backward compatibility fields
+    source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 1,
     externalRefType: "ASSET_SALE",
     externalRefId: "AS-2024-001",
     createdBy: "admin",
-    approvedBy: "finance_manager",
-    isUnearnedRevenue: true,
-      scheduleItems: [
+    scheduleItems: [
       {
         id: '1',
-        installmentNumber: 1,
-        originalDueDate: "2024-11-15",
-        currentDueDate: "2024-11-15",
-        originalDueAmount: 15000.00,
-        currentDueAmount: 15000.00,
-        paidAmount: 15000.00,
-        carriedOverAmount: 0,
+        installment_number: 1,
+        due_date: "2024-11-15",
+        amount_due: 15000.00,
+        amount_paid: 15000.00,
+        balance: 0,
+        status: PaymentStatus.PAID,
         isPastDue: false,
         isEditable: false,
-        paymentStatus: PaymentStatus.PAID,
-        paidAt: "2024-11-14",
-        paidBy: "admin",
-        paymentMethod: "Bank Transfer",
-        referenceNumber: "PAY-001-2024",
-        remarks: "First installment paid on time",
       },
       {
         id: '2',
-        installmentNumber: 2,
-        originalDueDate: "2024-12-15",
-        currentDueDate: "2024-12-15",
-        originalDueAmount: 15000.00,
-        currentDueAmount: 15000.00,
-        paidAmount: 10000.00,
-        carriedOverAmount: 0,
+        installment_number: 2,
+        due_date: "2024-12-15",
+        amount_due: 15000.00,
+        amount_paid: 10000.00,
+        balance: 5000.00,
+        status: PaymentStatus.PARTIALLY_PAID,
         isPastDue: false,
         isEditable: false,
-        paymentStatus: PaymentStatus.PARTIALLY_PAID,
-        paidAt: "2024-12-10",
-        paidBy: "admin",
-        paymentMethod: "Bank Transfer",
-        referenceNumber: "PAY-002-2024",
-        remarks: "Partial payment received",
       },
       {
         id: '3',
-        installmentNumber: 3,
-        originalDueDate: "2025-01-15",
-        currentDueDate: "2025-01-15",
-        originalDueAmount: 15000.00,
-        currentDueAmount: 20000.00,
-        paidAmount: 0,
-        carriedOverAmount: 5000.00,
+        installment_number: 3,
+        due_date: "2025-01-15",
+        amount_due: 15000.00,
+        amount_paid: 0,
+        balance: 15000.00,
+        status: PaymentStatus.PENDING,
         isPastDue: false,
         isEditable: true,
-        paymentStatus: PaymentStatus.PENDING,
-        // Unpaid installment, optional fields omitted
-        remarks: "Carried over balance from installment 2",
       }
     ]
   },
@@ -209,9 +270,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 2,
     code: "REV-OTHER-2024-002",
     date_recorded: "2024-11-02",
-    source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
+    revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Bank interest for Q3 2024",
     amount: 12500.50,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 2,
@@ -222,9 +288,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 3,
     code: "REV-OTHER-2024-003",
     date_recorded: "2024-11-03",
-    source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
+    revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Late payment fees from trip rentals",
     amount: 8750.00,
+    remittance_status: "PAID",
+    payment_method: "Cash",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
     paymentMethod: { id: 2, methodName: "Cash", methodCode: "CASH" },
     paymentMethodId: 2,
     sourceId: 3,
@@ -235,24 +306,33 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 4,
     code: "REV-OTHER-2024-004",
     date_recorded: "2024-11-04",
-    source: { id: 4, name: "Insurance Claims", sourceCode: "INSURANCE" },
+    revenueType: { id: 4, name: "Insurance Claims", code: "INSURANCE" },
     description: "Vehicle accident insurance payout",
     amount: 150000.00,
+    remittance_status: "PAID",
+    payment_method: "Check",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 4, name: "Insurance Claims", sourceCode: "INSURANCE" },
     paymentMethod: { id: 3, methodName: "Check", methodCode: "CHECK" },
     paymentMethodId: 3,
     sourceId: 4,
     externalRefType: "INSURANCE",
     externalRefId: "INS-CLAIM-2024-045",
-    createdBy: "admin",
-    approvedBy: "operations_head"
+    createdBy: "admin"
   },
   {
     id: 5,
     code: "REV-OTHER-2024-005",
     date_recorded: "2024-11-05",
-    source: { id: 5, name: "Donations", sourceCode: "DONATIONS" },
+    revenueType: { id: 5, name: "Donations", code: "DONATIONS" },
     description: "Corporate sponsorship from ABC Corp",
     amount: 75000.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 5, name: "Donations", sourceCode: "DONATIONS" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 5,
@@ -264,9 +344,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 6,
     code: "REV-OTHER-2024-006",
     date_recorded: "2024-11-06",
-    source: { id: 6, name: "Parking Fees", sourceCode: "OTHER" },
+    revenueType: { id: 6, name: "Parking Fees", code: "OTHER" },
     description: "Monthly parking revenue at terminal",
     amount: 32500.00,
+    remittance_status: "PAID",
+    payment_method: "Cash",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 6, name: "Parking Fees", sourceCode: "OTHER" },
     paymentMethod: { id: 2, methodName: "Cash", methodCode: "CASH" },
     paymentMethodId: 2,
     sourceId: 6,
@@ -277,24 +362,33 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 7,
     code: "REV-OTHER-2024-007",
     date_recorded: "2024-11-07",
-    source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
+    revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of retired bus units",
     amount: 280000.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 1,
     externalRefType: "ASSET_SALE",
     externalRefId: "AS-2024-002",
-    createdBy: "admin",
-    approvedBy: "ceo"
+    createdBy: "admin"
   },
   {
     id: 8,
     code: "REV-OTHER-2024-008",
     date_recorded: "2024-11-08",
-    source: { id: 7, name: "Advertising Revenue", sourceCode: "OTHER" },
+    revenueType: { id: 7, name: "Advertising Revenue", code: "OTHER" },
     description: "Bus exterior advertising - November",
     amount: 45000.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 7, name: "Advertising Revenue", sourceCode: "OTHER" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 7,
@@ -305,9 +399,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 9,
     code: "REV-OTHER-2024-009",
     date_recorded: "2024-11-09",
-    source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
+    revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Investment returns - fixed deposit",
     amount: 18200.75,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 2,
@@ -318,9 +417,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 10,
     code: "REV-OTHER-2024-010",
     date_recorded: "2024-11-10",
-    source: { id: 8, name: "Merchandise Sales", sourceCode: "OTHER" },
+    revenueType: { id: 8, name: "Merchandise Sales", code: "OTHER" },
     description: "Company merchandise and souvenirs",
     amount: 15600.00,
+    remittance_status: "PAID",
+    payment_method: "Cash",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 8, name: "Merchandise Sales", sourceCode: "OTHER" },
     paymentMethod: { id: 2, methodName: "Cash", methodCode: "CASH" },
     paymentMethodId: 2,
     sourceId: 8,
@@ -331,9 +435,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 11,
     code: "REV-OTHER-2024-011",
     date_recorded: "2024-11-11",
-    source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
+    revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Penalty fees from contract breaches",
     amount: 12000.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 3,
@@ -344,9 +453,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 12,
     code: "REV-OTHER-2024-012",
     date_recorded: "2024-10-28",
-    source: { id: 9, name: "Terminal Rentals", sourceCode: "OTHER" },
+    revenueType: { id: 9, name: "Terminal Rentals", code: "OTHER" },
     description: "Food stall rental at bus terminal",
     amount: 28000.00,
+    remittance_status: "PAID",
+    payment_method: "Cash",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 9, name: "Terminal Rentals", sourceCode: "OTHER" },
     paymentMethod: { id: 2, methodName: "Cash", methodCode: "CASH" },
     paymentMethodId: 2,
     sourceId: 9,
@@ -357,23 +471,32 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 13,
     code: "REV-OTHER-2024-013",
     date_recorded: "2024-10-25",
-    source: { id: 5, name: "Donations", sourceCode: "DONATIONS" },
+    revenueType: { id: 5, name: "Donations", code: "DONATIONS" },
     description: "Community fund-raising event proceeds",
     amount: 52000.00,
+    remittance_status: "PAID",
+    payment_method: "Cash",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 5, name: "Donations", sourceCode: "DONATIONS" },
     paymentMethod: { id: 2, methodName: "Cash", methodCode: "CASH" },
     paymentMethodId: 2,
     sourceId: 5,
     externalRefType: "DONATIONS",
-    createdBy: "admin",
-    approvedBy: "finance_manager"
+    createdBy: "admin"
   },
   {
     id: 14,
     code: "REV-OTHER-2024-014",
     date_recorded: "2024-10-20",
-    source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
+    revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of office furniture and fixtures",
     amount: 22500.00,
+    remittance_status: "PAID",
+    payment_method: "Check",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
     paymentMethod: { id: 3, methodName: "Check", methodCode: "CHECK" },
     paymentMethodId: 3,
     sourceId: 1,
@@ -385,9 +508,14 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 15,
     code: "REV-OTHER-2024-015",
     date_recorded: "2024-10-15",
-    source: { id: 10, name: "Scrap Sales", sourceCode: "OTHER" },
+    revenueType: { id: 10, name: "Scrap Sales", code: "OTHER" },
     description: "Sale of scrap metal from old parts",
     amount: 8900.50,
+    remittance_status: "PAID",
+    payment_method: "Cash",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 10, name: "Scrap Sales", sourceCode: "OTHER" },
     paymentMethod: { id: 2, methodName: "Cash", methodCode: "CASH" },
     paymentMethodId: 2,
     sourceId: 10,
@@ -398,24 +526,33 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 16,
     code: "REV-OTHER-2024-016",
     date_recorded: "2024-10-10",
-    source: { id: 4, name: "Insurance Claims", sourceCode: "INSURANCE" },
+    revenueType: { id: 4, name: "Insurance Claims", code: "INSURANCE" },
     description: "Property damage insurance claim",
     amount: 95000.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 4, name: "Insurance Claims", sourceCode: "INSURANCE" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 4,
     externalRefType: "INSURANCE",
     externalRefId: "INS-CLAIM-2024-038",
-    createdBy: "admin",
-    approvedBy: "finance_manager"
+    createdBy: "admin"
   },
   {
     id: 17,
     code: "REV-OTHER-2024-017",
     date_recorded: "2024-10-05",
-    source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
+    revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Savings account interest - October",
     amount: 6750.25,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 2,
@@ -426,24 +563,33 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 18,
     code: "REV-OTHER-2024-018",
     date_recorded: "2024-09-30",
-    source: { id: 7, name: "Advertising Revenue", sourceCode: "OTHER" },
+    revenueType: { id: 7, name: "Advertising Revenue", code: "OTHER" },
     description: "Digital billboard advertising - Q3",
     amount: 120000.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 7, name: "Advertising Revenue", sourceCode: "OTHER" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 7,
     externalRefType: "OTHER",
     externalRefId: "ADV-Q3-2024",
-    createdBy: "marketing",
-    approvedBy: "marketing_head"
+    createdBy: "marketing"
   },
   {
     id: 19,
     code: "REV-OTHER-2024-019",
     date_recorded: "2024-09-25",
-    source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
+    revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Overdue invoice penalty charges",
     amount: 15500.00,
+    remittance_status: "PAID",
+    payment_method: "Bank Transfer",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
     paymentMethod: { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
     paymentMethodId: 1,
     sourceId: 3,
@@ -454,15 +600,19 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     id: 20,
     code: "REV-OTHER-2024-020",
     date_recorded: "2024-09-20",
-    source: { id: 6, name: "Parking Fees", sourceCode: "OTHER" },
+    revenueType: { id: 6, name: "Parking Fees", code: "OTHER" },
     description: "Quarterly parking fee collection",
     amount: 98000.00,
+    remittance_status: "PAID",
+    payment_method: "Cash",
+    isUnearnedRevenue: false,
+    // Backward compatibility fields
+    source: { id: 6, name: "Parking Fees", sourceCode: "OTHER" },
     paymentMethod: { id: 2, methodName: "Cash", methodCode: "CASH" },
     paymentMethodId: 2,
     sourceId: 6,
     externalRefType: "OTHER",
-    createdBy: "staff_01",
-    approvedBy: "operations_head"
+    createdBy: "staff_01"
   }
 ];
 
@@ -491,6 +641,9 @@ const AdminOtherRevenuePage = () => {
   // Filter options state
   const [revenueSources, setRevenueSources] = useState<RevenueSource[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [revenueTypes, setRevenueTypes] = useState<RevenueType[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [scheduleFrequencies, setScheduleFrequencies] = useState<ScheduleFrequency[]>([]);
 
   // Search and filter states
   const [search, setSearch] = useState("");
@@ -530,56 +683,111 @@ const AdminOtherRevenuePage = () => {
 
   // Fetch filter options (revenue sources and payment methods)
   const fetchFilterOptions = async () => {
-    // TEMPORARY: API calls disabled - using mock data
-    console.warn('API calls disabled - Using mock filter options');
-    
-    // Set mock revenue sources
-    setRevenueSources([
-      { id: 1, name: "Asset Sale", sourceCode: "ASSET_SALE" },
-      { id: 2, name: "Interest Income", sourceCode: "INTEREST" },
-      { id: 3, name: "Late Payment Penalties", sourceCode: "PENALTIES" },
-      { id: 4, name: "Insurance Claims", sourceCode: "INSURANCE" },
-      { id: 5, name: "Donations", sourceCode: "DONATIONS" },
-      { id: 6, name: "Parking Fees", sourceCode: "OTHER" },
-      { id: 7, name: "Advertising Revenue", sourceCode: "OTHER" },
-      { id: 8, name: "Merchandise Sales", sourceCode: "OTHER" },
-      { id: 9, name: "Terminal Rentals", sourceCode: "OTHER" },
-      { id: 10, name: "Scrap Sales", sourceCode: "OTHER" }
-    ]);
+    try {
+      // Fetch revenue types from backend
+      const typesResponse = await fetch('/api/admin/other-revenue/types');
+      if (typesResponse.ok) {
+        const typesResult = await typesResponse.json();
+        const types = typesResult.data || [];
+        setRevenueTypes(types);
+        // Also set as revenue sources for filter compatibility
+        setRevenueSources(types.map((t: RevenueType) => ({
+          id: t.id,
+          name: t.name,
+          sourceCode: t.code
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching revenue types:', err);
+    }
 
-    // Set mock payment methods
+    // Fetch departments from backend
+    try {
+      const deptResponse = await fetch('/api/admin/other-revenue/departments');
+      if (deptResponse.ok) {
+        const deptResult = await deptResponse.json();
+        setDepartments(deptResult.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching departments:', err);
+    }
+
+    // Fetch schedule frequencies from backend
+    try {
+      const freqResponse = await fetch('/api/admin/other-revenue/schedule-frequencies');
+      if (freqResponse.ok) {
+        const freqResult = await freqResponse.json();
+        setScheduleFrequencies(freqResult.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching schedule frequencies:', err);
+    }
+
+    // Set payment methods (matching schema enum values)
     setPaymentMethods([
-      { id: 1, methodName: "Bank Transfer", methodCode: "BANK" },
-      { id: 2, methodName: "Cash", methodCode: "CASH" },
-      { id: 3, methodName: "Check", methodCode: "CHECK" }
+      { id: 1, methodName: "Cash", methodCode: "CASH" },
+      { id: 2, methodName: "Bank Transfer", methodCode: "BANK_TRANSFER" },
+      { id: 3, methodName: "E-Wallet", methodCode: "E_WALLET" },
+      { id: 4, methodName: "Reimbursement", methodCode: "REIMBURSEMENT" }
     ]);
   };
 
   // Transform OtherRevenueRecord to OtherRevenueData for modals
   const transformRecordToFormData = (record: OtherRevenueRecord): OtherRevenueData => {
+    // Map backend payment method enum to display name
+    const paymentMethodEnumToName: Record<string, string> = {
+      'CASH': 'Cash',
+      'BANK_TRANSFER': 'Bank Transfer',
+      'E_WALLET': 'E-Wallet',
+      'REIMBURSEMENT': 'Reimbursement'
+    };
+    const paymentMethodName = paymentMethodEnumToName[record.payment_method || ''] || record.payment_method || '';
+
+    // Ensure date_recorded is in YYYY-MM-DD format for date input
+    let dateRecorded = record.date_recorded || '';
+    if (dateRecorded && dateRecorded.includes('T')) {
+      dateRecorded = dateRecorded.split('T')[0];
+    }
+
+    // Extract schedule data from receivable if present
+    let scheduleFrequency: RevenueScheduleFrequency | undefined;
+    let scheduleStartDate: string | undefined;
+    let numberOfPayments: number | undefined;
+
+    if (record.receivable) {
+      // Map backend frequency string to RevenueScheduleFrequency enum
+      if (record.receivable.frequency) {
+        scheduleFrequency = record.receivable.frequency as RevenueScheduleFrequency;
+      }
+      numberOfPayments = record.receivable.numberOfPayments;
+
+      // Format scheduleStartDate to YYYY-MM-DD
+      if (record.receivable.scheduleStartDate) {
+        const startDate = record.receivable.scheduleStartDate;
+        scheduleStartDate = startDate.includes('T') ? startDate.split('T')[0] : startDate;
+      }
+    }
+
     return {
       id: record.id,
       code: record.code,
-      name: 'OTHER',
-      date_recorded: record.date_recorded,
-      description: record.description || record.source.name || '',
+      name: record.revenueType?.name || 'OTHER',
+      date_recorded: dateRecorded,
+      description: record.description || record.revenueType?.name || '',
       amount: record.amount,
-      payment_reference: record.externalRefId || '',
-      department: 'Operations', // Default department - will be stored in future backend updates
-      discountAmount: 0,
-      discountPercentage: 0,
-      discountReason: '',
+      payment_reference: record.payment_reference || '',
+      department_id: record.department_id || record.department?.id,
+      department: record.department?.department_name,
       isUnearnedRevenue: record.isUnearnedRevenue || false,
+      // Include schedule fields from receivable
+      scheduleFrequency,
+      scheduleStartDate,
+      numberOfPayments,
       scheduleItems: record.scheduleItems || [],
-      recognitionSchedule: '',
-      isVerified: false,
-      remarks: record.description || '',
-      payment_method: record.paymentMethod?.methodName || '',
-      verifiedBy: record.approvedBy || '',
-      verifiedAt: '',
-      receiptUrl: '',
-      accountCode: '',
-      createdBy: record.createdBy,
+      remarks: record.remarks || '',
+      payment_method: paymentMethodName,
+      accountCode: record.accountCode || '',
+      createdBy: record.created_by || 'admin',
     };
   };
 
@@ -593,7 +801,7 @@ const AdminOtherRevenuePage = () => {
           <ViewOtherRevenueModal
             revenueData={{
               ...transformRecordToFormData(rowData!),
-              paymentMethodName: rowData!.paymentMethod.methodName,
+              paymentMethodName: rowData!.payment_method || 'N/A',
             }}
             onClose={closeModal}
             onRecordPayment={(scheduleItem?: RevenueScheduleItem) => {
@@ -613,8 +821,10 @@ const AdminOtherRevenuePage = () => {
             onClose={closeModal}
             onSave={handleSaveOtherRevenue}
             paymentMethods={paymentMethods}
-            departments={MOCK_DEPARTMENTS}
+            departments={departments.map(d => ({ id: d.id, name: d.department_name }))}
             currentUser="admin"
+            revenueTypes={revenueTypes}
+            scheduleFrequencies={scheduleFrequencies}
           />
         );
         break;
@@ -636,20 +846,20 @@ const AdminOtherRevenuePage = () => {
   // Payment modal handlers
   const openPaymentModal = (scheduleItem: RevenueScheduleItem, revenueRecord: OtherRevenueRecord) => {
     const scheduleItems = revenueRecord.scheduleItems || [];
-    
+
     // Find the earliest unpaid installment: prioritize OVERDUE > PARTIALLY_PAID > PENDING
-    const overdueItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.OVERDUE);
-    const partiallyPaidItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.PARTIALLY_PAID);
-    const pendingItems = scheduleItems.filter(item => item.paymentStatus === PaymentStatus.PENDING);
-    
+    const overdueItems = scheduleItems.filter(item => item.status === PaymentStatus.OVERDUE);
+    const partiallyPaidItems = scheduleItems.filter(item => item.status === PaymentStatus.PARTIALLY_PAID);
+    const pendingItems = scheduleItems.filter(item => item.status === PaymentStatus.PENDING);
+
     let targetItem = scheduleItem;
-    
+
     // If there's an overdue item, always pay that first
     if (overdueItems.length > 0) {
       targetItem = overdueItems[0];
     }
     // Otherwise, if clicked item is PAID, find the next unpaid one
-    else if (scheduleItem.paymentStatus === PaymentStatus.PAID) {
+    else if (scheduleItem.status === PaymentStatus.PAID) {
       if (partiallyPaidItems.length > 0) {
         targetItem = partiallyPaidItems[0];
       } else if (pendingItems.length > 0) {
@@ -658,7 +868,7 @@ const AdminOtherRevenuePage = () => {
     }
     // If clicked item is PARTIALLY_PAID and there's no overdue, allow payment to it
     // (user may want to complete the partial payment)
-    
+
     setSelectedScheduleItem(targetItem);
     setSelectedRevenueRecord(revenueRecord);
     setIsPaymentModalOpen(true);
@@ -672,17 +882,27 @@ const AdminOtherRevenuePage = () => {
 
   const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
     try {
-      // TODO: POST to backend API /api/cash-transactions/payment
-      console.log('Payment data to submit:', paymentData);
+      // POST to backend API to record the payment
+      const response = await fetch('/api/admin/other-revenue/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          revenueId: paymentData.recordId,
+          scheduleItemId: paymentData.scheduleItemId,
+          scheduleItemIds: paymentData.scheduleItemIds,
+          amountPaid: paymentData.amountToPay,
+          paymentDate: paymentData.paymentDate,
+          paymentMethod: paymentData.paymentMethodCode,
+          recordedBy: paymentData.recordedBy,
+          cascadeBreakdown: paymentData.cascadeBreakdown
+        })
+      });
 
-      // Mock success - in production this would be an actual API call
-      // const response = await fetch('/api/cash-transactions/payment', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(paymentData)
-      // });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to record payment');
+      }
 
-      // For now, simulate success and refresh data
       await fetchData();
       closePaymentModal();
     } catch (error) {
@@ -694,101 +914,92 @@ const AdminOtherRevenuePage = () => {
   // Handle save other revenue (both add and edit)
   const handleSaveOtherRevenue = async (formData: OtherRevenueData, mode: 'add' | 'edit') => {
     try {
-      // TODO: Backend API integration
-      // Transform formData to backend-compatible format
-      const payload = {
-        revenueCode: formData.code,
-        name: formData.name,
-        transactionDate: formData.date_recorded,
-        description: formData.description,
-        amount: formData.amount,
-        payment_method: formData.payment_method,
-        payment_reference: formData.payment_reference,
-        createdBy: formData.createdBy,
-        // Additional fields
-        department: formData.department,
-        discountAmount: formData.discountAmount,
-        discountPercentage: formData.discountPercentage,
-        discountReason: formData.discountReason,
-        isUnearnedRevenue: formData.isUnearnedRevenue,
-        recognitionSchedule: formData.recognitionSchedule,
-        isVerified: formData.isVerified,
-        remarks: formData.remarks,
-      };
-
-      const method = mode === 'add' ? 'POST' : 'PUT';
-      const url = mode === 'add'
-        ? '/api/admin/revenue?userId=admin'
-        : `/api/admin/revenue/${activeRow?.id}?userId=admin`;
-
-      // Temporarily use mock data - skip actual API call
-      console.log('Would submit to API:', { method, url, payload });
-
-      // Update mock data locally so UI shows saved changes during development
-      if (mode === 'add') {
-        // Generate simple incrementing numeric id
-        const nextId = (MOCK_OTHER_REVENUE_DATA.reduce((max, r) => Math.max(max, r.id), 0) || 0) + 1;
-
-        const sourceObj = { id: 0, name: formData.description, sourceCode: 'OTHER' };
-        const paymentMethodObj = paymentMethods.find(p => p.methodName === formData.payment_method) || { id: 0, methodName: formData.payment_method, methodCode: '' };
-
-        const newRecord: OtherRevenueRecord = {
-          id: nextId,
-          code: formData.code,
-          date_recorded: formData.date_recorded,
-          source: sourceObj,
-          description: formData.remarks || '',
-          amount: formData.amount,
-          paymentMethod: paymentMethodObj,
-          paymentMethodId: paymentMethodObj.id,
-          sourceId: sourceObj.id,
-          externalRefType: 'OTHER',
-          externalRefId: formData.payment_reference || undefined,
-          createdBy: formData.createdBy || 'admin'
-        };
-
-        if (formData.isUnearnedRevenue) {
-          newRecord.isUnearnedRevenue = true;
-          newRecord.scheduleItems = formData.scheduleItems || [];
-        }
-
-        // Add to the top for visibility
-        MOCK_OTHER_REVENUE_DATA.unshift(newRecord);
-      } else {
-        // Edit existing record in mock data
-        const idx = MOCK_OTHER_REVENUE_DATA.findIndex(r => r.id === activeRow?.id);
-        if (idx !== -1) {
-          const sourceObj = { id: 0, name: formData.description, sourceCode: 'OTHER' };
-          const paymentMethodObj = paymentMethods.find(p => p.methodName === formData.payment_method) || { id: 0, methodName: formData.payment_method, methodCode: '' };
-
-          MOCK_OTHER_REVENUE_DATA[idx] = {
-            ...MOCK_OTHER_REVENUE_DATA[idx],
-            code: formData.code,
-            date_recorded: formData.date_recorded,
-            source: sourceObj,
-            description: formData.description,
-            amount: formData.amount,
-            paymentMethod: paymentMethodObj,
-            paymentMethodId: paymentMethodObj.id,
-            sourceId: sourceObj.id,
-            externalRefType: 'OTHER',
-            externalRefId: formData.payment_reference || undefined,
-            isUnearnedRevenue: formData.isUnearnedRevenue,
-            scheduleItems: formData.scheduleItems || []
-          };
-        }
+      // Find revenue type ID from name
+      const revenueType = revenueTypes.find(t => t.name === formData.name);
+      if (!revenueType && mode === 'add') {
+        showError('Invalid revenue type selected', 'Validation Error');
+        return;
       }
 
-      showSuccess(
-        `Revenue record ${mode === 'add' ? 'added' : 'updated'} successfully`,
-        mode === 'add' ? 'Added' : 'Updated'
-      );
+      // Map payment method name to enum value
+      const paymentMethodMap: Record<string, string> = {
+        'Cash': 'CASH',
+        'Bank Transfer': 'BANK_TRANSFER',
+        'E-Wallet': 'E_WALLET',
+        'Reimbursement': 'REIMBURSEMENT'
+      };
+      const paymentMethodEnum = paymentMethodMap[formData.payment_method] || 'CASH';
 
-      fetchData(); // Refresh data
+      if (mode === 'add') {
+        // Build payload matching backend OtherRevenueCreateInput
+        const payload = {
+          revenue_type_id: revenueType!.id,
+          amount: formData.amount,
+          date_recorded: formData.date_recorded,
+          description: formData.description || formData.name,
+          payment_method: paymentMethodEnum,
+          payment_reference: formData.payment_reference || undefined,
+          department_id: formData.department_id,
+          remarks: formData.remarks || undefined,
+          isUnearnedRevenue: formData.isUnearnedRevenue,
+          scheduleFrequency: formData.isUnearnedRevenue ? formData.scheduleFrequency : undefined,
+          scheduleStartDate: formData.isUnearnedRevenue ? formData.scheduleStartDate : undefined,
+          numberOfPayments: formData.isUnearnedRevenue ? formData.numberOfPayments : undefined,
+          created_by: formData.createdBy || 'admin'
+        };
+
+        const response = await fetch('/api/admin/other-revenue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create revenue record');
+        }
+
+        showSuccess('Revenue record added successfully', 'Added');
+      } else {
+        // Update existing record
+        // Use formData.id (passed from modal) as primary, fallback to activeRow?.id
+        const revenueId = formData.id || activeRow?.id;
+        if (!revenueId) {
+          showError('Invalid revenue ID - unable to update record', 'Error');
+          return;
+        }
+
+        const payload = {
+          revenue_type_id: revenueType?.id,
+          amount: formData.amount,
+          date_recorded: formData.date_recorded,
+          description: formData.description || formData.name,
+          payment_method: paymentMethodEnum,
+          payment_reference: formData.payment_reference || undefined,
+          department_id: formData.department_id,
+          remarks: formData.remarks || undefined,
+          updated_by: formData.createdBy || 'admin'
+        };
+
+        const response = await fetch(`/api/admin/other-revenue/${revenueId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to update revenue record');
+        }
+
+        showSuccess('Revenue record updated successfully', 'Updated');
+      }
+
+      await fetchData(); // Refresh data to show new/updated record
       closeModal();
     } catch (err) {
       console.error(`Error ${mode}ing revenue:`, err);
-      showError(`Failed to ${mode} revenue record`, 'Error');
+      showError(err instanceof Error ? err.message : `Failed to ${mode} revenue record`, 'Error');
     }
   };
 
@@ -802,7 +1013,7 @@ const AdminOtherRevenuePage = () => {
       // Calculate top sources
       const sourceMap = new Map<string, number>();
       allData.forEach(record => {
-        const sourceName = record.source.name;
+        const sourceName = record.revenueType.name;
         const currentAmount = sourceMap.get(sourceName) || 0;
         sourceMap.set(sourceName, currentAmount + record.amount);
       });
@@ -833,8 +1044,7 @@ const AdminOtherRevenuePage = () => {
         page: currentPage.toString(),
         limit: pageSize.toString(),
         sortBy: sortBy,
-        order: sortOrder,
-        excludeSources: 'BUS_TRIP,RENTAL', // Exclude main categories
+        sortOrder: sortOrder,
       });
 
       // Add search parameter if exists
@@ -843,118 +1053,153 @@ const AdminOtherRevenuePage = () => {
       }
 
       // Add filter parameters
-      if (activeFilters.dateRange && typeof activeFilters.dateRange === 'object') {
-        const dateRange = activeFilters.dateRange as { from: string; to: string };
-        if (dateRange.from) {
-          params.append('dateFrom', dateRange.from);
-        }
-        if (dateRange.to) {
-          params.append('dateTo', dateRange.to);
-        }
+      if (activeFilters.dateRange?.from) {
+        params.append('startDate', activeFilters.dateRange.from);
+      }
+      if (activeFilters.dateRange?.to) {
+        params.append('endDate', activeFilters.dateRange.to);
       }
 
-      if (activeFilters.amountRange && typeof activeFilters.amountRange === 'object') {
-        const amountRange = activeFilters.amountRange as { from: string; to: string };
-        if (amountRange.from) {
-          params.append('amountFrom', amountRange.from);
-        }
-        if (amountRange.to) {
-          params.append('amountTo', amountRange.to);
-        }
+      // Add status filter
+      if (activeFilters.paymentStatuses.length > 0) {
+        params.append('status', activeFilters.paymentStatuses[0]);
       }
 
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/revenue
-      // const response = await fetch(`/api/admin/revenue?${params.toString()}`);
-      console.warn('API integration pending - using mock other revenue data');
+      // Call actual API endpoint
+      const response = await fetch(`/api/admin/other-revenue?${params.toString()}`);
 
-      // Use mock data - apply filters and sorting client-side
-      let filteredData = [...MOCK_OTHER_REVENUE_DATA];
-
-      // Apply search filter
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filteredData = filteredData.filter(item =>
-          item.code.toLowerCase().includes(searchLower) ||
-          item.source.name.toLowerCase().includes(searchLower) ||
-          item.description.toLowerCase().includes(searchLower) ||
-          item.amount.toString().includes(searchLower) ||
-          (item.date_expected && item.date_expected.includes(searchLower)) ||
-          (item.last_payment_date && item.last_payment_date.includes(searchLower)) ||
-          (item.status && item.status.toLowerCase().includes(searchLower)) ||
-          (item.revenue_status && item.revenue_status.toLowerCase().includes(searchLower)) ||
-          (item.receivable_status && item.receivable_status.toLowerCase().includes(searchLower))
-        );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      // Apply date range filter
-      if (activeFilters.dateRange?.from || activeFilters.dateRange?.to) {
-        filteredData = filteredData.filter(item => {
-          const itemDate = new Date(item.date_recorded);
-          const fromDate = activeFilters.dateRange?.from ? new Date(activeFilters.dateRange.from) : null;
-          const toDate = activeFilters.dateRange?.to ? new Date(activeFilters.dateRange.to) : null;
+      const result = await response.json();
 
-          if (fromDate && itemDate < fromDate) return false;
-          if (toDate && itemDate > toDate) return false;
-          return true;
-        });
-      }
+      // Map backend response to OtherRevenueRecord format
+      const mappedRecords: OtherRevenueRecord[] = (result.data || []).map((item: Record<string, unknown>) => {
+        const revenueType = item.revenueType as { id: number; code: string; name: string } | undefined;
+        const receivable = item.receivable as {
+          id: number;
+          status: string;
+          frequency?: string;
+          numberOfPayments?: number;
+          scheduleStartDate?: string;
+          scheduleItems?: Array<{
+            id: number;
+            installmentNumber: number;
+            dueDate: string;
+            amountDue: number;
+            amountPaid: number;
+            balance: number;
+            status: string;
+            payments?: Array<{
+              id: number;
+              amountPaid: number;
+              paymentDate: string;
+              paymentMethod: string | null;
+              paymentReference: string | null;
+              createdBy: string | null;
+              createdAt: string;
+            }>;
+          }>;
+        } | null | undefined;
 
-      // Apply amount range filter
-      if (activeFilters.amountRange?.from || activeFilters.amountRange?.to) {
-        filteredData = filteredData.filter(item => {
-          const amount = item.amount;
-          const fromAmount = activeFilters.amountRange?.from ? parseFloat(activeFilters.amountRange.from) : null;
-          const toAmount = activeFilters.amountRange?.to ? parseFloat(activeFilters.amountRange.to) : null;
+        // Map journal entry from backend response for edit/delete restrictions
+        const journalEntry = item.journalEntry as {
+          id: number;
+          code: string;
+          status: string;
+        } | null | undefined;
 
-          if (fromAmount && amount < fromAmount) return false;
-          if (toAmount && amount > toAmount) return false;
-          return true;
-        });
-      }
+        // Map schedule items to frontend format (schema-aligned field names)
+        const scheduleItems: RevenueScheduleItem[] = receivable?.scheduleItems?.map(s => ({
+          id: String(s.id),
+          installment_number: s.installmentNumber,
+          due_date: s.dueDate?.split('T')[0] || s.dueDate,
+          amount_due: s.amountDue,
+          amount_paid: s.amountPaid,
+          balance: s.balance,
+          status: s.status as PaymentStatus,
+          isPastDue: new Date(s.dueDate) < new Date() && s.status !== 'PAID',
+          isEditable: s.status !== 'PAID',
+          // Map payment transaction records for payment history
+          payments: s.payments?.map(p => ({
+            id: p.id,
+            amount_paid: p.amountPaid,
+            payment_date: p.paymentDate?.split('T')[0] || p.paymentDate,
+            payment_method: p.paymentMethod,
+            payment_reference: p.paymentReference,
+            created_by: p.createdBy,
+            created_at: p.createdAt
+          })) || []
+        })) || [];
 
-      // Apply sorting
-      filteredData.sort((a, b) => {
-        let comparison = 0;
-        
-        if (sortBy === 'code') {
-          comparison = a.code.localeCompare(b.code);
-        } else if (sortBy === 'date_recorded') {
-          comparison = new Date(a.date_recorded).getTime() - new Date(b.date_recorded).getTime();
-        } else if (sortBy === 'amount') {
-          comparison = a.amount - b.amount;
-        }
-
-        return sortOrder === 'asc' ? comparison : -comparison;
+        return {
+          id: item.id as number,
+          code: item.code as string,
+          date_recorded: item.date_recorded as string,
+          date_expected: item.date_expected as string | undefined,
+          revenueType: revenueType || { id: 0, code: '', name: 'Unknown' },
+          description: (item.description as string) || '',
+          department: item.department as string | undefined,
+          remarks: item.remarks as string | undefined,
+          amount: item.amount as number,
+          remittance_status: item.remittance_status as string,
+          payment_method: item.payment_method as string | undefined,
+          payment_reference: item.payment_reference as string | undefined,
+          isUnearnedRevenue: item.isUnearnedRevenue as boolean,
+          accountCode: item.accountCode as string | undefined,
+          created_by: item.created_by as string | undefined,
+          created_at: item.created_at as string | undefined,
+          // Journal Entry for edit/delete restrictions - single source of truth
+          journalEntry: journalEntry ? {
+            id: journalEntry.id,
+            code: journalEntry.code,
+            status: journalEntry.status
+          } : null,
+          receivable: receivable ? {
+            id: receivable.id,
+            status: receivable.status,
+            frequency: receivable.frequency,
+            numberOfPayments: receivable.numberOfPayments,
+            scheduleStartDate: receivable.scheduleStartDate,
+            scheduleItems: receivable.scheduleItems || []
+          } : null,
+          // Backward compatibility mappings
+          source: {
+            id: revenueType?.id || 0,
+            name: revenueType?.name || 'Unknown',
+            sourceCode: revenueType?.code || ''
+          },
+          paymentMethod: {
+            id: 0,
+            methodName: (item.payment_method as string) || 'Unknown',
+            methodCode: (item.payment_method as string) || ''
+          },
+          paymentMethodId: 0,
+          sourceId: revenueType?.id || 0,
+          externalRefType: 'OTHER',
+          externalRefId: item.payment_reference as string | undefined,
+          createdBy: (item.created_by as string) || 'system',
+          scheduleItems: scheduleItems
+        };
       });
 
-      // Calculate pagination
-      const totalRecords = filteredData.length;
-      const calculatedTotalPages = Math.ceil(totalRecords / pageSize);
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedData = filteredData.slice(startIndex, endIndex);
+      setData(mappedRecords);
+      setTotalPages(result.pagination?.totalPages || 1);
+      setTotalCount(result.pagination?.totalCount || 0);
 
-      // Process overdue carryover for records with schedule items
-      const processedData = paginatedData.map(record => {
-        if (record.isUnearnedRevenue && record.scheduleItems && record.scheduleItems.length > 0) {
-          const { updatedItems, carryoversProcessed } = processOverdueCarryover(record.scheduleItems);
-          
-          if (carryoversProcessed > 0) {
-            console.log(`Processed ${carryoversProcessed} carryover(s) for revenue ${record.code}`);
-            // TODO: In production, save updatedItems to backend
-          }
-          
-          return {
-            ...record,
-            scheduleItems: updatedItems
-          };
-        }
-        return record;
-      });
-
-      setData(processedData);
-      setTotalPages(calculatedTotalPages);
-      setTotalCount(totalRecords);
+      // Set analytics from backend
+      if (result.analytics) {
+        setAnalytics({
+          totalRevenue: result.analytics.totalAmount || 0,
+          transactionCount: result.analytics.totalRecords || 0,
+          topSources: (result.analytics.byType || []).map((t: { name: string; amount: number }) => ({
+            sourceName: t.name,
+            amount: t.amount
+          }))
+        });
+      }
 
     } catch (err) {
       console.error('Error fetching other revenue data:', err);
@@ -1041,9 +1286,22 @@ const AdminOtherRevenuePage = () => {
   };
 
   const handleDelete = async (id: number) => {
+    // Find the record to verify status
+    const record = data.find(item => item.id === id);
+    if (!record) {
+      showError('Revenue record not found', 'Error');
+      return;
+    }
+
+    // Only allow deletion for PENDING status
+    if (record.remittance_status !== 'PENDING') {
+      showError('Only records with PENDING status can be deleted', 'Cannot Delete');
+      return;
+    }
+
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: 'This will delete the revenue record permanently.',
+      text: 'This will delete the revenue record. This action cannot be undone.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#961C1E',
@@ -1055,14 +1313,22 @@ const AdminOtherRevenuePage = () => {
 
     if (result.isConfirmed) {
       try {
-        // MOCK: UI-only mode - simulate delete without API call
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        showSuccess('Revenue record deleted successfully (UI-only mode)', 'Deleted');
+        // Call API to soft delete the record
+        const response = await fetch(`/api/admin/other-revenue/${id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to delete revenue record');
+        }
+
+        showSuccess('Revenue record deleted successfully', 'Deleted');
         fetchData(); // Refresh the data
       } catch (err) {
         console.error('Error deleting revenue:', err);
-        showError('Failed to delete revenue record', 'Error');
+        showError(err instanceof Error ? err.message : 'Failed to delete revenue record', 'Error');
       }
     }
   };
@@ -1074,14 +1340,13 @@ const AdminOtherRevenuePage = () => {
     revenueCode: string;
     date_recorded: string;
     date_expected?: string;
-    last_payment_date?: string;
-    source: { id: number; name: string; sourceCode: string };
+    source?: { id: number; name: string; sourceCode: string };
     description: string;
     type: 'Receivable' | 'Single';
     amount: number;
     receivable?: number;
     status?: string;
-    paymentMethod: { id: number; methodName: string; methodCode: string };
+    paymentMethod?: { id: number; methodName: string; methodCode: string };
     isInstallmentRow: boolean;
     installmentNumber?: number;
     totalInstallments?: number;
@@ -1098,54 +1363,64 @@ const AdminOtherRevenuePage = () => {
     data.forEach(record => {
       // Check if this is unearned revenue with schedule
       if (record.isUnearnedRevenue && record.scheduleItems && record.scheduleItems.length > 0) {
-        // Create one row per installment
-        record.scheduleItems
-          .sort((a, b) => a.installmentNumber - b.installmentNumber)
-          .forEach((scheduleItem) => {
-            const balance = scheduleItem.currentDueAmount - scheduleItem.paidAmount;
-            const status = calculatePaymentStatus(scheduleItem);
+        // Create ONE row per revenue, aggregating all installment data
+        // Calculate total receivable balance from all installments
+        const totalBalance = record.scheduleItems.reduce(
+          (sum, item) => sum + (item.balance || (item.amount_due - item.amount_paid)),
+          0
+        );
+        const totalPaid = record.scheduleItems.reduce(
+          (sum, item) => sum + (item.amount_paid || 0),
+          0
+        );
 
-            rows.push({
-              id: `${record.id}-${scheduleItem.installmentNumber}`,
-              revenueId: record.id,
-              revenueCode: record.code,
-              date_recorded: record.date_recorded,
-              date_expected: record.date_expected,
-              last_payment_date: scheduleItem.paidAt || record.last_payment_date,
-              source: record.source,
-              description: record.description,
-              type: 'Receivable' as const,
-              amount: record.amount,
-              receivable: balance,
-              status: record.status || record.receivable_status || status,
-              paymentMethod: record.paymentMethod,
-              isInstallmentRow: true,
-              installmentNumber: scheduleItem.installmentNumber,
-              totalInstallments: record.scheduleItems!.length,
-              dueDate: scheduleItem.currentDueDate,
-              balance: balance,
-              paymentStatus: status,
-              scheduleItem: scheduleItem,
-              originalRecord: record
-            });
-          });
+        // Derive status from overall receivable balance (NOT per installment)
+        let derivedStatus: PaymentStatus;
+        if (totalBalance <= 0) {
+          derivedStatus = PaymentStatus.PAID;
+        } else if (totalPaid > 0) {
+          derivedStatus = PaymentStatus.PARTIALLY_PAID;
+        } else {
+          derivedStatus = PaymentStatus.PENDING;
+        }
+
+        rows.push({
+          id: `${record.id}-revenue`,
+          revenueId: record.id,
+          revenueCode: record.code,
+          date_recorded: record.date_recorded,
+          date_expected: record.date_expected,
+          source: record.source,
+          description: record.description,
+          type: 'Receivable' as const,
+          amount: record.amount,
+          receivable: totalBalance,
+          status: record.remittance_status || derivedStatus,
+          paymentMethod: record.paymentMethod,
+          isInstallmentRow: false, // Single row per revenue, not per installment
+          paymentStatus: derivedStatus,
+          originalRecord: record
+        });
       } else {
         // Regular revenue record (single row)
+        // Derive status from remittance_status or default to PAID
+        const status = record.remittance_status as PaymentStatus || PaymentStatus.PAID;
+
         rows.push({
           id: `${record.id}-single`,
           revenueId: record.id,
           revenueCode: record.code,
           date_recorded: record.date_recorded,
           date_expected: record.date_expected,
-          last_payment_date: record.last_payment_date,
           source: record.source,
           description: record.description,
           type: 'Single' as const,
           amount: record.amount,
-          receivable: record.balance || 0,
-          status: record.status || record.revenue_status,
+          receivable: 0,
+          status: status,
           paymentMethod: record.paymentMethod,
           isInstallmentRow: false,
+          paymentStatus: status, // Set paymentStatus so filter works
           originalRecord: record
         });
       }
@@ -1156,13 +1431,41 @@ const AdminOtherRevenuePage = () => {
 
   const tableRows = transformDataToRows();
 
-  // Apply payment status filter to table rows
-  const filteredTableRows = activeFilters.paymentStatuses.length > 0
-    ? tableRows.filter(row => {
-        if (!row.isInstallmentRow) return true; // Always show non-installment rows
-        return row.paymentStatus && activeFilters.paymentStatuses.includes(row.paymentStatus);
-      })
-    : tableRows;
+  // Helper function for client-side search filtering on formatted display values
+  const matchesSearch = (row: TableRow, searchTerm: string): boolean => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+
+    // Match visible columns with formatted display values
+    const matchCode = row.revenueCode.toLowerCase().includes(term);
+    const matchDate = formatDate(row.date_recorded).toLowerCase().includes(term);
+    const matchSource = row.originalRecord.revenueType?.name?.toLowerCase().includes(term) || false;
+    const matchAmount = formatMoney(row.amount).toLowerCase().includes(term) ||
+      row.amount.toString().includes(term);
+    const matchReceivable = row.receivable !== undefined && (
+      formatMoney(row.receivable).toLowerCase().includes(term) ||
+      row.receivable.toString().includes(term)
+    );
+    const matchStatus = (row.status?.toLowerCase().replace('_', ' ').includes(term) || false) ||
+      (row.paymentStatus?.toLowerCase().replace('_', ' ').includes(term) || false);
+
+    return matchCode || matchDate || matchSource || matchAmount || matchReceivable || matchStatus;
+  };
+
+  // Apply payment status filter and client-side search supplement to table rows
+  let filteredTableRows = tableRows;
+
+  // Apply payment status filter
+  if (activeFilters.paymentStatuses.length > 0) {
+    filteredTableRows = filteredTableRows.filter(row =>
+      row.paymentStatus && activeFilters.paymentStatuses.includes(row.paymentStatus)
+    );
+  }
+
+  // Apply client-side search for formatted values (supplements backend search)
+  if (search) {
+    filteredTableRows = filteredTableRows.filter(row => matchesSearch(row, search));
+  }
 
   // Get payment status chip class
   const getPaymentStatusClass = (status: PaymentStatus): string => {
@@ -1218,15 +1521,12 @@ const AdminOtherRevenuePage = () => {
 
             {/* Filter button right next to search bar */}
             <RevenueFilter
-              sources={revenueSources.map(s => ({ id: s.sourceCode, label: s.name }))}
-              paymentMethods={paymentMethods.map(p => ({ id: p.methodCode, label: p.methodName }))}
+              sources={[]} // Not filtering by source - it's searchable but not filterable
+              paymentMethods={[]} // Payment method is NOT a visible column - remove filter
               paymentStatuses={[
                 { id: PaymentStatus.PENDING, label: 'Pending' },
                 { id: PaymentStatus.PAID, label: 'Paid' },
                 { id: PaymentStatus.PARTIALLY_PAID, label: 'Partially Paid' },
-                { id: PaymentStatus.OVERDUE, label: 'Overdue' },
-                { id: PaymentStatus.CANCELLED, label: 'Cancelled' },
-                { id: PaymentStatus.WRITTEN_OFF, label: 'Written Off' }
               ]}
               onApply={handleFilterApply}
               initialValues={activeFilters}
@@ -1246,6 +1546,7 @@ const AdminOtherRevenuePage = () => {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Revenue Code</th>
                   <th
                     onClick={() => handleSort("date_recorded")}
                     className="sortable-header"
@@ -1253,9 +1554,7 @@ const AdminOtherRevenuePage = () => {
                   >
                     Transaction Date{getSortIndicator("date_recorded")}
                   </th>
-                  <th>Received by</th>
                   <th>Source</th>
-                  <th>Type</th>
                   <th
                     onClick={() => handleSort("amount")}
                     className="sortable-header"
@@ -1282,36 +1581,20 @@ const AdminOtherRevenuePage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredTableRows.map((row, index) => {
-                    // Determine if this is the first row of a group for styling
-                    const isFirstInstallmentRow = row.isInstallmentRow && row.installmentNumber === 1;
-                    const rowClass = row.isInstallmentRow ? `installment-row revenue-${row.revenueId}` : '';
-
+                  filteredTableRows.map((row) => {
                     return (
-                      <tr key={row.id} className={rowClass}>
+                      <tr key={row.id}>
+                        {/* Revenue Code Column */}
+                        <td>{row.revenueCode}</td>
                         <td>{formatDate(row.date_recorded)}</td>
-                        {/* Received by Column - show date_expected or last_payment_date */}
-                        <td>
-                          {row.date_expected 
-                            ? formatDate(row.date_expected) 
-                            : row.last_payment_date 
-                              ? formatDate(row.last_payment_date) 
-                              : '—'}
-                        </td>
-                        {/* Source Column - show description */}
-                        <td>{row.description}</td>
-                        {/* Type Column - Receivable or Single */}
-                        <td>
-                          <span className={`chip ${row.type.toLowerCase()}`}>
-                            {row.type}
-                          </span>
-                        </td>
+                        {/* Source Column - show revenue type name */}
+                        <td>{row.originalRecord.revenueType.name}</td>
                         {/* Total Amount Column */}
                         <td>{formatMoney(row.amount)}</td>
                         {/* Receivable Column */}
                         <td>
                           {row.receivable !== undefined && row.receivable !== null ? (
-                            <span style={{ 
+                            <span style={{
                               color: row.receivable > 0 ? '#FF4949' : '#4CAF50',
                               fontWeight: '600'
                             }}>
@@ -1335,23 +1618,24 @@ const AdminOtherRevenuePage = () => {
                             '—'
                           )}
                         </td>
-                        
+
                         {/* Actions Column */}
                         <td className="actionButtons">
                           <div className="actionButtonsContainer">
-                            {/* Show View/Edit/Delete only for first installment or single records */}
-                            {(!row.isInstallmentRow || isFirstInstallmentRow) && (
-                              <>
-                                {/* View button */}
-                                <button
-                                  className="viewBtn"
-                                  onClick={() => openModal('view', row.originalRecord)}
-                                  title="View Record"
-                                >
-                                  <i className="ri-eye-line"></i>
-                                </button>
+                            {/* View button - always visible */}
+                            <button
+                              className="viewBtn"
+                              onClick={() => openModal('view', row.originalRecord)}
+                              title="View Record"
+                            >
+                              <i className="ri-eye-line"></i>
+                            </button>
 
-                                {/* Edit button */}
+                            {/* Edit button - ONLY visible for PENDING status and JE in DRAFT status */}
+                            {/* Journal Entry status is the single source of truth for edit restrictions */}
+                            {(row.originalRecord.remittance_status === 'PENDING' ||
+                              row.paymentStatus === PaymentStatus.PENDING) &&
+                              (!row.originalRecord.journalEntry || row.originalRecord.journalEntry?.status === 'DRAFT') && (
                                 <button
                                   className="editBtn"
                                   onClick={() => openModal('edit', row.originalRecord)}
@@ -1359,8 +1643,13 @@ const AdminOtherRevenuePage = () => {
                                 >
                                   <i className="ri-edit-2-line" />
                                 </button>
+                              )}
 
-                                {/* Delete button */}
+                            {/* Delete button - ONLY visible for PENDING status and JE in DRAFT status */}
+                            {/* Journal Entry status is the single source of truth for delete restrictions */}
+                            {(row.originalRecord.remittance_status === 'PENDING' ||
+                              row.paymentStatus === PaymentStatus.PENDING) &&
+                              (!row.originalRecord.journalEntry || row.originalRecord.journalEntry?.status === 'DRAFT') && (
                                 <button
                                   className="deleteBtn"
                                   onClick={(e) => {
@@ -1371,23 +1660,41 @@ const AdminOtherRevenuePage = () => {
                                 >
                                   <i className="ri-delete-bin-line" />
                                 </button>
-                              </>
+                              )}
+
+                            {/* Locked indicator for non-DRAFT journal entries */}
+                            {row.originalRecord.journalEntry && row.originalRecord.journalEntry?.status !== 'DRAFT' && (
+                              <span
+                                className="lockedIndicator"
+                                title={`Locked - Journal entry ${row.originalRecord.journalEntry?.status?.toLowerCase()}`}
+                                style={{ color: '#888', padding: '4px 8px' }}
+                              >
+                                <i className="ri-lock-line" />
+                              </span>
                             )}
 
-                            {/* Pay button for installment rows */}
-                            {row.isInstallmentRow && 
-                             row.paymentStatus && 
-                             row.paymentStatus !== PaymentStatus.PAID &&
-                             row.paymentStatus !== PaymentStatus.CANCELLED &&
-                             row.paymentStatus !== PaymentStatus.WRITTEN_OFF && (
-                              <button
-                                className="payBtn"
-                                onClick={() => openPaymentModal(row.scheduleItem!, row.originalRecord)}
-                                title="Record Payment"
-                              >
-                                <i className="ri-money-dollar-circle-line"></i>
-                              </button>
-                            )}
+                            {/* Pay button for unearned revenue that's not fully paid */}
+                            {row.originalRecord.isUnearnedRevenue &&
+                              row.paymentStatus &&
+                              row.status !== PaymentStatus.PAID &&
+                              row.status !== PaymentStatus.CANCELLED &&
+                              row.status !== PaymentStatus.WRITTEN_OFF &&
+                              row.originalRecord.scheduleItems &&
+                              row.originalRecord.scheduleItems.length > 0 && (() => {
+                                // Find the first unpaid installment
+                                const firstUnpaid = row.originalRecord.scheduleItems.find(
+                                  item => item.status !== PaymentStatus.PAID
+                                );
+                                return firstUnpaid ? (
+                                  <button
+                                    className="payBtn"
+                                    onClick={() => openPaymentModal(firstUnpaid, row.originalRecord)}
+                                    title="Record Payment"
+                                  >
+                                    <i className="ri-money-dollar-circle-line"></i>
+                                  </button>
+                                ) : null;
+                              })()}
                           </div>
                         </td>
                       </tr>
@@ -1423,7 +1730,7 @@ const AdminOtherRevenuePage = () => {
           onClose={closePaymentModal}
           modalContent={
             <RecordPaymentModal
-              entityType="revenue"
+              entityType="other-revenue"
               recordId={selectedRevenueRecord.id}
               recordRef={selectedRevenueRecord.code}
               scheduleItems={selectedRevenueRecord.scheduleItems || []}
@@ -1433,6 +1740,7 @@ const AdminOtherRevenuePage = () => {
               onPaymentRecorded={handlePaymentRecorded}
               onClose={closePaymentModal}
               processCascadePayment={processRevenueCascade}
+              hideEmployeeFields={true}
             />
           }
         />

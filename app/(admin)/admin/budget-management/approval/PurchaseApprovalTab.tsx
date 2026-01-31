@@ -21,19 +21,20 @@ import type { PurchaseRequestApproval } from "../../../../types/purchaseRequestA
 import ViewPurchaseRequest from "../../budget-management/purchase-request-approval/viewPurchaseRequestNew";
 import AuditTrailPurchaseRequest from "../../budget-management/purchase-request-approval/auditTrailPurchaseRequest";
 import ApprovalModal from "../../budget-management/purchase-request-approval/approvalModal";
-import RejectionModal from "../../budget-management/purchase-request-approval/rejectionModal";
+import RejectionModal from "../../budget-management/purchase-request-approval/rejectionModal"
 import ProcessRefundModal from "../../budget-management/purchase-request-approval/processRefundModal";
 import TrackStatusPurchaseRequest from "../../budget-management/purchase-request-approval/trackStatusPurchaseRequest";
-import PurchaseApprovalModal from "./PurchaseApprovalModal";
-import ModalManager from "../../../../Components/modalManager";
+//import PurchaseApprovalModal from "./PurchaseApprovalModal";
+import ModalManager from "@/Components/modalManager";
 
 // Import styles
-import "../../../../styles/purchase-approval/purchase-approval.css";
-import "../../../../styles/components/table.css";
+import "@/styles/purchase-approval/purchase-approval.css";
+import "@/styles/components/table.css";
 import "@/styles/components/forms.css"
 
 
 import { SharedApprovalFilters } from "../../../../types/approvals";
+import { fetchPurchaseRequests } from "../../../../services/purchaseRequestService";
 
 interface PurchaseApprovalTabProps {
   filters: SharedApprovalFilters;
@@ -675,112 +676,128 @@ export default function PurchaseApprovalTab({
 
   // Transform API data to frontend types
   const transformApiData = (apiData: any[]): PurchaseRequestApproval[] => {
-    return apiData.map((pr) => ({
-      id: String(pr.id),
-      purchase_request_code: pr.purchase_request_code,
-      user_id: pr.requestor?.user_id || pr.requestor?.employee_id || '',
-      department_name: pr.department_name,
-      request_type: pr.request_type as RequestType,
-      reason: pr.reason,
-      purchase_request_status: (pr.status === 'DRAFT' ? 'PENDING' : pr.status) as ApprovalStatus,
-      status: pr.status,
-      type: pr.request_type,
-      total_amount: pr.total_amount,
-      finance_remarks: pr.finance_remarks,
-      budget_request_code: pr.budget_request_code,
-      department_budget_code: pr.department_budget_code,
-      created_at: pr.created_at,
-      updated_at: pr.updated_at,
-      approved_by: pr.approved_by,
-      approved_date: pr.approved_at,
-      rejected_by: pr.rejected_by,
-      rejected_date: pr.rejected_at,
-      rejection_reason: pr.finance_remarks,
-      requestor: {
-        user_id: pr.requestor?.user_id || pr.requestor?.employee_id || '',
-        employee_id: pr.requestor?.employee_id || '',
-        employee_name: pr.requestor?.employee_name || pr.requestor?.first_name || 'N/A',
-        first_name: pr.requestor?.first_name || '',
-        last_name: pr.requestor?.last_name || '',
-        department_id: pr.requestor?.department_id || '',
-        department_name: pr.requestor?.department_name || pr.department_name || '',
-      },
-      items: pr.items?.map((item: any) => ({
-        purchase_request_item_id: item.purchase_request_item_id || item.purchase_request_item_code,
-        purchase_request_item_code: item.purchase_request_item_code,
-        purchase_request_id: String(item.purchase_request_id),
-        status: item.status,
-        remarks: item.remarks || '',
-        quantity: item.quantity,
-        unit_cost: item.unit_cost || item.supplier_item?.unit_cost || 0,
-        total_amount: item.total_amount || (item.quantity * (item.unit_cost || item.supplier_item?.unit_cost || 0)),
-        item_code: item.item_code,
-        supplier_code: item.supplier_code,
-        item: item.item ? {
-          id: String(item.item.id),
-          item_code: item.item.item_code,
-          item_name: item.item.item_name,
-          description: item.item.description,
-          unit: item.item.unit ? {
-            unit_id: String(item.item.unit.unit_id),
-            unit_code: item.item.unit.unit_code,
-            unit_name: item.item.unit.unit_name,
-            abbreviation: item.item.unit.abbreviation,
+    return apiData.map((pr) => {
+      // First map the items so we can calculate total if needed
+      const items = pr.items?.map((item: any) => {
+        const quantity = parseFloat(String(item.quantity || 0));
+        // Check for unit price in various places: direct, supplier_item.unit_price, supplier_item.unit_cost
+        const unitCost = parseFloat(String(item.supplier_item?.unit_price || item.supplier_item?.unit_cost || item.unit_cost || 0));
+
+        return {
+          purchase_request_item_id: item.id || item.purchase_request_item_id || item.purchase_request_item_code,
+          purchase_request_item_code: item.purchase_request_item_code,
+          purchase_request_id: String(item.purchase_request_id),
+          status: item.status,
+          remarks: item.remarks || '',
+          quantity: quantity,
+          unit_cost: unitCost,
+          total_amount: item.total_amount ? parseFloat(String(item.total_amount)) : (quantity * unitCost),
+          item_code: item.item_code,
+          supplier_code: item.supplier_code,
+          item: item.item ? {
+            id: String(item.item.id),
+            item_code: item.item.item_code,
+            item_name: item.item.item_name,
+            description: item.item.description,
+            unit: item.item.unit ? {
+              unit_id: String(item.item.unit.id || item.item.unit.unit_id),
+              unit_code: item.item.unit.unit_code,
+              unit_name: item.item.unit.unit_name,
+              abbreviation: item.item.unit.abbreviation,
+            } : undefined,
+            category: item.item.category ? {
+              category_id: String(item.item.category.id || item.item.category.category_id),
+              category_code: item.item.category.category_code,
+              category_name: item.item.category.category_name,
+            } : undefined,
           } : undefined,
-          category: item.item.category ? {
-            category_id: String(item.item.category.category_id),
-            category_code: item.item.category.category_code,
-            category_name: item.item.category.category_name,
+          supplier: item.supplier ? {
+            supplier_id: String(item.supplier.id || item.supplier.supplier_id),
+            supplier_code: item.supplier.supplier_code || item.supplier_code,
+            supplier_name: item.supplier.supplier_name,
+            contact_number: item.supplier.contact_number,
+            email: item.supplier.email,
           } : undefined,
-        } : undefined,
-        supplier: item.supplier ? {
-          supplier_id: item.supplier.supplier_id,
-          supplier_code: item.supplier.supplier_code,
-          supplier_name: item.supplier.supplier_name,
-          contact_number: item.supplier.contact_number,
-          email: item.supplier.email,
-        } : undefined,
-        supplier_item: item.supplier_item ? {
-          unit_cost: item.supplier_item.unit_cost,
-          conversion_amount: item.supplier_item.conversion_amount,
-          supplier_unit: item.supplier_item.supplier_unit,
-        } : undefined,
-        adjusted_quantity: item.adjusted_quantity,
-        adjustment_reason: item.adjustment_reason,
-      })) || [],
-    }));
+          supplier_item: item.supplier_item ? {
+            unit_cost: parseFloat(String(item.supplier_item.unit_price || item.supplier_item.unit_cost || 0)),
+            conversion_amount: parseFloat(String(item.supplier_item.conversion_amount || 1)),
+            supplier_unit: item.supplier_item.supplier_unit,
+          } : undefined,
+          adjusted_quantity: item.adjusted_quantity,
+          adjustment_reason: item.adjustment_reason,
+        };
+      }) || [];
+
+      // Calculate total amount if it's 0 but there are items
+      let totalAmount = parseFloat(String(pr.total_amount || 0));
+      if (totalAmount === 0 && items.length > 0) {
+        totalAmount = items.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0);
+      }
+
+      return {
+        id: String(pr.id),
+        purchase_request_code: pr.request_code || pr.purchase_request_code,
+        user_id: pr.requestor?.user_id || pr.requestor?.employee_id || pr.requestor_id || '',
+        department_name: pr.department_id || pr.department_name, // API returns department name in department_id field sometimes
+        request_type: (pr.type || pr.request_type) as RequestType,
+        reason: pr.reason,
+        purchase_request_status: (pr.status === 'DRAFT' ? 'PENDING' : pr.status) as ApprovalStatus,
+        status: pr.status,
+        type: pr.type || pr.request_type,
+        total_amount: totalAmount,
+        finance_remarks: pr.finance_remarks,
+        budget_request_code: pr.budget_request_code,
+        department_budget_code: pr.department_buget_code || pr.department_budget_code,
+        created_at: pr.created_at,
+        updated_at: pr.updated_at,
+        approved_by: pr.approved_by,
+        approved_date: pr.approved_at,
+        rejected_by: pr.rejected_by,
+        rejected_date: pr.rejected_at,
+        rejection_reason: pr.finance_remarks,
+        requestor: {
+          user_id: pr.requestor?.user_id || pr.requestor?.employee_id || String(pr.requestor_id) || '',
+          employee_id: pr.requestor?.employee_id || String(pr.requestor_id) || '',
+          employee_name: pr.requestor?.employee_name || pr.requestor?.first_name || 'N/A',
+          first_name: pr.requestor?.first_name || '',
+          last_name: pr.requestor?.last_name || '',
+          department_id: pr.requestor?.department_id || '',
+          department_name: pr.requestor?.department_name || pr.department_name || '',
+        },
+        items: items,
+      };
+    });
   };
 
   // Fetch data from API
-  const fetchPurchaseRequests = async (showLoading = true) => {
+  const loadPurchaseRequests = async (showLoading = true) => {
     if (showLoading) {
       onLoadingChange(true);
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/api/integration/purchase-request`);
+      console.log('PurchaseApprovalTab: Fetching with filters:', filters);
+      const response = await fetchPurchaseRequests({
+        status: filters.status, // Pass filters if needed
+        // page: currentPage, 
+        // limit: pageSize 
+      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        const transformed = transformApiData(result.data);
+      if (response.success && response.data) {
+        const transformed = transformApiData(response.data);
         setData(transformed);
         console.log('PurchaseApprovalTab: Loaded', transformed.length, 'records from API');
         onError(null);
       } else {
-        throw new Error(result.message || 'Failed to load purchase requests');
+        throw new Error(response.message || 'Failed to load purchase requests');
       }
     } catch (err: any) {
       console.error('PurchaseApprovalTab: Error loading data', err);
-      // If backend is unavailable on port 4001/4000, we show sample data as fallback
+      // If backend is unavailable, we show sample data fallback only if no data
       if (data.length === 0) {
-        console.warn('PurchaseApprovalTab: Backend unavailable - using sample data fallback');
-        setData(sampleApprovalData);
-        // Don't show error to user if we have sample data fallback
-        onError(null);
+        console.warn('PurchaseApprovalTab: Backend unavailable/error - using sample data fallback');
+        // setData(sampleApprovalData); // Commented out to force real data check or empty state
+        // onError(null);
+        onError(err?.message || 'Failed to load purchase requests');
       } else {
         onError(err?.message || 'Failed to load purchase requests');
       }
@@ -794,11 +811,11 @@ export default function PurchaseApprovalTab({
   // Initial fetch and 5-second polling
   useEffect(() => {
     // Initial fetch with loading
-    fetchPurchaseRequests(true);
+    loadPurchaseRequests(true);
 
     // Set up 5-second polling interval
     const pollInterval = setInterval(() => {
-      fetchPurchaseRequests(false); // Don't show loading spinner for background polling
+      loadPurchaseRequests(false); // Don't show loading spinner for background polling
     }, 5000);
 
     // Cleanup interval on unmount
@@ -885,12 +902,14 @@ export default function PurchaseApprovalTab({
 
   const openApproveModal = (request: PurchaseRequestApproval) => {
     setSelectedRequest(request);
-    setShowApproveModal(true);
+    setShowApproveModal(true);  //./approvalModal
+    //setShowApprovalModal(true); // Use PurchaseApprovalModal
   };
 
   const openRejectModal = (request: PurchaseRequestApproval) => {
     setSelectedRequest(request);
     setShowRejectModal(true);
+    //setShowApprovalModal(true); // Use PurchaseApprovalModal
   };
 
   const closeAllModals = () => {
@@ -922,7 +941,7 @@ export default function PurchaseApprovalTab({
       }
 
       // Refresh data after successful approval
-      await fetchPurchaseRequests(false);
+      await loadPurchaseRequests(false);
       return true;
     } catch (error: any) {
       console.error('Error approving request:', error);
@@ -948,7 +967,7 @@ export default function PurchaseApprovalTab({
       }
 
       // Refresh data after successful rejection
-      await fetchPurchaseRequests(false);
+      await loadPurchaseRequests(false);
       return true;
     } catch (error: any) {
       console.error('Error rejecting request:', error);
@@ -1119,7 +1138,7 @@ export default function PurchaseApprovalTab({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filteredData.length > 0 && (
         <PaginationComponent
           currentPage={currentPage}
           totalPages={totalPages}
@@ -1189,7 +1208,7 @@ export default function PurchaseApprovalTab({
       )}
 
       {/* Legacy modal - can be removed once all modals are properly integrated */}
-      {showApprovalModal && selectedRequest && (
+      {/* {showApprovalModal && selectedRequest && (
         <PurchaseApprovalModal
           request={selectedRequest}
           onClose={() => {
@@ -1199,7 +1218,7 @@ export default function PurchaseApprovalTab({
           onApprove={handleApprove}
           onReject={handleReject}
         />
-      )}
+      )} */}
     </>
   );
 }

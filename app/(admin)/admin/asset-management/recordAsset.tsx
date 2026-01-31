@@ -51,7 +51,6 @@ interface BusInventoryData {
   model: string;
   year_model: string;
   warranty_expiration_date: string;
-  body_builder: string;
   manufacturer: string;
   dealer_name: string;
   dealer_contact: string;
@@ -275,7 +274,6 @@ export default function RecordAssetModal({
       model: bus.model,
       year_model: bus.year_model,
       warranty_expiration_date: bus.warranty_expiration_date,
-      body_builder: bus.body_builder.body_builder_name,
       manufacturer: bus.manufacturer.manufacturer_name,
       dealer_name: bus.brand_new_details?.dealer_name || 'N/A',
       dealer_contact: bus.brand_new_details?.dealer_contact || 'N/A',
@@ -674,6 +672,7 @@ export default function RecordAssetModal({
                 onBlur={() => handleInputBlur('name')}
                 className={formErrors.name ? 'invalid-input' : ''}
                 placeholder="Enter asset name"
+                maxLength={100}
                 disabled={isBusOrItem}
                 required
               />
@@ -706,7 +705,7 @@ export default function RecordAssetModal({
               {isBusOrItem && (
                 <small className="hint-message">Auto-filled from inventory</small>
               )}
-              <p className="add-error-message">{formErrors.date_acquired}</p>
+              <p className="hint-message">{formErrors.date_acquired}</p>
             </div>
           </div>
 
@@ -722,6 +721,7 @@ export default function RecordAssetModal({
                 onChange={(e) => handleInputChange('original_value', parseFloat(e.target.value) || 0)}
                 onBlur={() => handleInputBlur('original_value')}
                 min="0.01"
+                max={"9999999999.99"}
                 step="0.01"
                 className={formErrors.original_value ? 'invalid-input' : ''}
                 placeholder="0.00"
@@ -750,6 +750,7 @@ export default function RecordAssetModal({
                 onChange={(e) => handleInputChange('estimated_life_years', parseInt(e.target.value) || 0)}
                 onBlur={() => handleInputBlur('estimated_life_years')}
                 min="1"
+                step="1"
                 max="100"
                 className={formErrors.estimated_life_years ? 'invalid-input' : ''}
                 placeholder="10"
@@ -768,11 +769,11 @@ export default function RecordAssetModal({
                 type="text"
                 value={formData.status || 'PENDING'}
                 disabled
+                maxLength={20}
                 className="disabled-field"
               />
               <small className="hint-message">Auto-determined based on asset lifecycle</small>
             </div>
-
             {/* Asset Location */}
             <div className="form-group">
               <label>
@@ -785,6 +786,8 @@ export default function RecordAssetModal({
                 onBlur={() => handleInputBlur('asset_location')}
                 className={formErrors.asset_location ? 'invalid-input' : ''}
                 placeholder="e.g., Main Office, Warehouse"
+                maxLength={50}
+                minLength={2}
                 required
               />
               <p className="add-error-message">{formErrors.asset_location}</p>
@@ -829,6 +832,8 @@ export default function RecordAssetModal({
                 onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 0)}
                 onBlur={() => handleInputBlur('quantity')}
                 min="1"
+                step="1"
+                max={"10000"}
                 className={formErrors.quantity ? 'invalid-input' : ''}
                 disabled={formData.type === 'EQUIPMENT'}
                 required
@@ -849,7 +854,7 @@ export default function RecordAssetModal({
                 onBlur={() => handleInputBlur('notes')}
                 className={formErrors.notes ? 'invalid-input' : ''}
                 maxLength={500}
-                rows={3}
+                rows={5}
                 placeholder="Additional notes or remarks (optional)..."
               />
               <small className="hint-message">{formData.notes?.length || 0}/500 characters</small>
@@ -938,7 +943,6 @@ export default function RecordAssetModal({
                 </div>
                 <div className="form-group">
                   <label>Body Builder</label>
-                  <input type="text" value={busData.body_builder} disabled className="disabled-field" />
                 </div>
               </div>
 
