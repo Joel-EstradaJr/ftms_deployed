@@ -89,8 +89,7 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
         const matchesSearch =
           item.allocation_id.toLowerCase().includes(searchLower) ||
           item.allocated_by.toLowerCase().includes(searchLower) ||
-          item.notes.toLowerCase().includes(searchLower) ||
-          item.reference_id?.toLowerCase().includes(searchLower);
+          item.notes.toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }
 
