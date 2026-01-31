@@ -183,14 +183,12 @@ const generateInstallmentSchedule = (
 
     installments.push({
       id: `inst-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-      installmentNumber: i + 1,
-      originalDueDate: dueDateStr,
-      currentDueDate: dueDateStr,
-      originalDueAmount: amountPerInstallment,
-      currentDueAmount: amountPerInstallment,
-      paidAmount: installmentPaid,
-      carriedOverAmount: 0,
-      paymentStatus: status,
+      installment_number: i + 1,
+      due_date: dueDateStr,
+      amount_due: amountPerInstallment,
+      amount_paid: installmentPaid,
+      balance: balance,
+      status: status,
       isPastDue: new Date(dueDateStr) < new Date() && balance > 0,
       isEditable: status !== PaymentStatus.PAID
     });
@@ -473,14 +471,12 @@ const AdminTripRevenuePage = () => {
         if (driverReceivable?.installments) {
           updatedItem.driverInstallments = driverReceivable.installments.map((inst: any, index: number) => ({
             id: `driver-inst-${Date.now()}-${index}`,
-            installmentNumber: inst.installment_number,
-            originalDueDate: inst.due_date,
-            currentDueDate: inst.due_date,
-            originalDueAmount: inst.amount_due,
-            currentDueAmount: inst.amount_due,
-            paidAmount: inst.amount_paid || 0,
-            carriedOverAmount: 0,
-            paymentStatus: inst.status || PaymentStatus.PENDING,
+            installment_number: inst.installment_number,
+            due_date: inst.due_date,
+            amount_due: inst.amount_due,
+            amount_paid: inst.amount_paid || 0,
+            balance: inst.amount_due - (inst.amount_paid || 0),
+            status: inst.status || PaymentStatus.PENDING,
             isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
             isEditable: inst.status !== PaymentStatus.PAID
           }));
@@ -489,14 +485,12 @@ const AdminTripRevenuePage = () => {
         if (hasConductor && conductorReceivable?.installments) {
           updatedItem.conductorInstallments = conductorReceivable.installments.map((inst: any, index: number) => ({
             id: `conductor-inst-${Date.now()}-${index}`,
-            installmentNumber: inst.installment_number,
-            originalDueDate: inst.due_date,
-            currentDueDate: inst.due_date,
-            originalDueAmount: inst.amount_due,
-            currentDueAmount: inst.amount_due,
-            paidAmount: inst.amount_paid || 0,
-            carriedOverAmount: 0,
-            paymentStatus: inst.status || PaymentStatus.PENDING,
+            installment_number: inst.installment_number,
+            due_date: inst.due_date,
+            amount_due: inst.amount_due,
+            amount_paid: inst.amount_paid || 0,
+            balance: inst.amount_due - (inst.amount_paid || 0),
+            status: inst.status || PaymentStatus.PENDING,
             isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
             isEditable: inst.status !== PaymentStatus.PAID
           }));
@@ -926,27 +920,33 @@ const AdminTripRevenuePage = () => {
                             <i className="ri-eye-line" />
                           </button>
 
-                          {/* Record Receivable Payment - only visible when status = PARTIALLY_PAID */}
-                          {item.remittance_status === 'PARTIALLY_PAID' && (
-                            <button
-                              className="editBtn"
-                              onClick={() => openModal("payReceivable", item)}
-                              title="Record Receivable Payment"
-                            >
-                              <i className="ri-hand-coin-line" />
-                            </button>
-                          )}
+                          {/* Record Receivable Payment */}
+                          <button
+                            className="editBtn"
+                            onClick={() => openModal("payReceivable", item)}
+                            title={item.remittance_status === 'PARTIALLY_PAID' ? "Record Receivable Payment" : "Only available for Partial Payments"}
+                            disabled={item.remittance_status !== 'PARTIALLY_PAID'}
+                            style={{
+                              opacity: item.remittance_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
+                              cursor: item.remittance_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <i className="ri-hand-coin-line" />
+                          </button>
 
-                          {/* Edit button - only visible when status = PARTIALLY_PAID */}
-                          {item.remittance_status === 'PARTIALLY_PAID' && (
-                            <button
-                              className="editBtn"
-                              onClick={() => openModal("edit", item)}
-                              title="Edit Receivable Details"
-                            >
-                              <i className="ri-edit-line" />
-                            </button>
-                          )}
+                          {/* Edit button */}
+                          <button
+                            className="editBtn"
+                            onClick={() => openModal("edit", item)}
+                            title={item.remittance_status === 'PARTIALLY_PAID' ? "Edit Receivable Details" : "Only available for Partial Payments"}
+                            disabled={item.remittance_status !== 'PARTIALLY_PAID'}
+                            style={{
+                              opacity: item.remittance_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
+                              cursor: item.remittance_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <i className="ri-edit-line" />
+                          </button>
                         </div>
                       </td>
                     </tr>

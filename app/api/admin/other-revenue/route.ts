@@ -20,6 +20,10 @@ export async function GET(request: Request) {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
+                // Forward authorization header if present
+                ...(request.headers.get('authorization') && {
+                    'Authorization': request.headers.get('authorization')!,
+                }),
             },
             cache: 'no-store'
         });
@@ -52,6 +56,10 @@ export async function POST(request: Request) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                // Forward authorization header if present
+                ...(request.headers.get('authorization') && {
+                    'Authorization': request.headers.get('authorization')!,
+                }),
             },
             body: JSON.stringify(body)
         });
