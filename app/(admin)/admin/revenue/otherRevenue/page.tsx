@@ -95,6 +95,8 @@ interface OtherRevenueRecord {
   accountCode?: string;
   created_by?: string;
   created_at?: string;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  approvalRemarks?: string;
   // Journal Entry link (for edit/delete restrictions)
   journalEntry?: {
     id: number;
@@ -1151,6 +1153,8 @@ const AdminOtherRevenuePage = () => {
           accountCode: item.accountCode as string | undefined,
           created_by: item.created_by as string | undefined,
           created_at: item.created_at as string | undefined,
+          status: (item.status as any) || 'PENDING',
+          approvalRemarks: item.approvalRemarks as string | undefined,
           // Journal Entry for edit/delete restrictions - single source of truth
           journalEntry: journalEntry ? {
             id: journalEntry.id,
@@ -1328,7 +1332,80 @@ const AdminOtherRevenuePage = () => {
         fetchData(); // Refresh the data
       } catch (err) {
         console.error('Error deleting revenue:', err);
-        showError(err instanceof Error ? err.message : 'Failed to delete revenue record', 'Error');
+      }
+    }
+  };
+
+  const handleApprove = async (id: number) => {
+    const record = data.find(item => item.id === id);
+    if (!record) return;
+
+    const result = await Swal.fire({
+      title: 'Approve Revenue?',
+      text: `Are you sure you want to approve ${record.code}? This will generate a journal entry and allow payments.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, approve it!',
+      background: 'white',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`/api/admin/other-revenue/${id}/approve`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: 'admin' })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to approve revenue');
+        }
+
+        showSuccess('Revenue record approved successfully', 'Approved');
+        fetchData();
+      } catch (err) {
+        console.error('Error approving revenue:', err);
+        showError(err instanceof Error ? err.message : 'Failed to approve revenue', 'Error');
+      }
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    const record = data.find(item => item.id === id);
+    if (!record) return;
+
+    const result = await Swal.fire({
+      title: 'Reject Revenue?',
+      text: `Are you sure you want to reject ${record.code}? This record will be locked and cannot be processed further.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, reject it!',
+      background: 'white',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`/api/admin/other-revenue/${id}/reject`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: 'admin' })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to reject revenue');
+        }
+
+        showSuccess('Revenue record rejected', 'Rejected');
+        fetchData();
+      } catch (err) {
+        console.error('Error rejecting revenue:', err);
+        showError(err instanceof Error ? err.message : 'Failed to reject revenue', 'Error');
       }
     }
   };
@@ -1429,9 +1506,7 @@ const AdminOtherRevenuePage = () => {
     return rows;
   };
 
-  const tableRows = transformDataToRows();
-
-  // Helper function for client-side search filtering on formatted display values
+  // Update matchesSearch to include approval status and formatted values
   const matchesSearch = (row: TableRow, searchTerm: string): boolean => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -1447,10 +1522,13 @@ const AdminOtherRevenuePage = () => {
       row.receivable.toString().includes(term)
     );
     const matchStatus = (row.status?.toLowerCase().replace('_', ' ').includes(term) || false) ||
-      (row.paymentStatus?.toLowerCase().replace('_', ' ').includes(term) || false);
+      (row.paymentStatus?.toLowerCase().replace('_', ' ').includes(term) || false) ||
+      (row.originalRecord.status?.toLowerCase().includes(term) || false);
 
     return matchCode || matchDate || matchSource || matchAmount || matchReceivable || matchStatus;
   };
+
+  const tableRows = transformDataToRows();
 
   // Apply payment status filter and client-side search supplement to table rows
   let filteredTableRows = tableRows;
@@ -1467,9 +1545,11 @@ const AdminOtherRevenuePage = () => {
     filteredTableRows = filteredTableRows.filter(row => matchesSearch(row, search));
   }
 
-  // Get payment status chip class
-  const getPaymentStatusClass = (status: PaymentStatus): string => {
-    return `chip ${status.toLowerCase().replace('_', '-')}`;
+  // Get status chip class - uses classes from chips.css
+  const getStatusClass = (status: string): string => {
+    // Normalize status: lowercase and replace underscores with hyphens
+    const normalized = status.toLowerCase().replace(/_/g, '-');
+    return `chip ${normalized}`;
   };
 
   // Loading state
@@ -1563,7 +1643,8 @@ const AdminOtherRevenuePage = () => {
                     Total Amount{getSortIndicator("amount")}
                   </th>
                   <th>Receivable</th>
-                  <th>Status</th>
+                  <th>Approval Status</th>
+                  <th>Payment Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1604,14 +1685,21 @@ const AdminOtherRevenuePage = () => {
                             '—'
                           )}
                         </td>
-                        {/* Status Column */}
+                        {/* Approval Status Column */}
+                        <td>
+                          <span className={getStatusClass(row.originalRecord.status || 'PENDING')}>
+                            {row.originalRecord.status?.replace('_', ' ') || 'PENDING'}
+                          </span>
+                        </td>
+
+                        {/* Payment Status Column */}
                         <td>
                           {row.status ? (
-                            <span className={getPaymentStatusClass(row.paymentStatus || PaymentStatus.PENDING)}>
+                            <span className={getStatusClass(row.paymentStatus || PaymentStatus.PENDING)}>
                               {row.status.replace('_', ' ')}
                             </span>
                           ) : row.paymentStatus ? (
-                            <span className={getPaymentStatusClass(row.paymentStatus)}>
+                            <span className={getStatusClass(row.paymentStatus)}>
                               {row.paymentStatus.replace('_', ' ')}
                             </span>
                           ) : (
@@ -1631,36 +1719,74 @@ const AdminOtherRevenuePage = () => {
                               <i className="ri-eye-line"></i>
                             </button>
 
+                            {/* Approve button - ONLY visible for PENDING status */}
+                            {/* Approve button */}
+                            <button
+                              className="approveBtn"
+                              onClick={() => handleApprove(row.revenueId)}
+                              title={row.originalRecord.status === 'PENDING' ? "Approve Record" : `Already ${row.originalRecord.status}`}
+                              disabled={row.originalRecord.status !== 'PENDING'}
+                              style={{
+                                color: '#28a745',
+                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                marginRight: '4px'
+                              }}
+                            >
+                              <i className="ri-checkbox-circle-line"></i>
+                            </button>
+
+                            {/* Reject button - ONLY visible for PENDING status */}
+                            {/* Reject button */}
+                            <button
+                              className="rejectBtn"
+                              onClick={() => handleReject(row.revenueId)}
+                              title={row.originalRecord.status === 'PENDING' ? "Reject Record" : `Already ${row.originalRecord.status}`}
+                              disabled={row.originalRecord.status !== 'PENDING'}
+                              style={{
+                                color: '#dc3545',
+                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                marginRight: '4px'
+                              }}
+                            >
+                              <i className="ri-close-circle-line"></i>
+                            </button>
+
                             {/* Edit button - ONLY visible for PENDING status and JE in DRAFT status */}
                             {/* Journal Entry status is the single source of truth for edit restrictions */}
-                            {(row.originalRecord.remittance_status === 'PENDING' ||
-                              row.paymentStatus === PaymentStatus.PENDING) &&
-                              (!row.originalRecord.journalEntry || row.originalRecord.journalEntry?.status === 'DRAFT') && (
-                                <button
-                                  className="editBtn"
-                                  onClick={() => openModal('edit', row.originalRecord)}
-                                  title="Edit Record"
-                                >
-                                  <i className="ri-edit-2-line" />
-                                </button>
-                              )}
+                            {/* Edit button */}
+                            <button
+                              className="editBtn"
+                              onClick={() => openModal('edit', row.originalRecord)}
+                              title={row.originalRecord.status === 'PENDING' ? "Edit Record" : "Cannot edit non-pending record"}
+                              disabled={row.originalRecord.status !== 'PENDING'}
+                              style={{
+                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              <i className="ri-edit-2-line" />
+                            </button>
 
                             {/* Delete button - ONLY visible for PENDING status and JE in DRAFT status */}
                             {/* Journal Entry status is the single source of truth for delete restrictions */}
-                            {(row.originalRecord.remittance_status === 'PENDING' ||
-                              row.paymentStatus === PaymentStatus.PENDING) &&
-                              (!row.originalRecord.journalEntry || row.originalRecord.journalEntry?.status === 'DRAFT') && (
-                                <button
-                                  className="deleteBtn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(row.revenueId);
-                                  }}
-                                  title="Delete Record"
-                                >
-                                  <i className="ri-delete-bin-line" />
-                                </button>
-                              )}
+                            {/* Delete button */}
+                            <button
+                              className="deleteBtn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(row.revenueId);
+                              }}
+                              title={row.originalRecord.status === 'PENDING' ? "Delete Record" : "Cannot delete non-pending record"}
+                              disabled={row.originalRecord.status !== 'PENDING'}
+                              style={{
+                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              <i className="ri-delete-bin-line" />
+                            </button>
 
                             {/* Locked indicator for non-DRAFT journal entries */}
                             {row.originalRecord.journalEntry && row.originalRecord.journalEntry?.status !== 'DRAFT' && (
@@ -1675,6 +1801,7 @@ const AdminOtherRevenuePage = () => {
 
                             {/* Pay button for unearned revenue that's not fully paid */}
                             {row.originalRecord.isUnearnedRevenue &&
+                              (row.originalRecord.status === 'APPROVED' || row.originalRecord.status === 'COMPLETED') &&
                               row.paymentStatus &&
                               row.status !== PaymentStatus.PAID &&
                               row.status !== PaymentStatus.CANCELLED &&
