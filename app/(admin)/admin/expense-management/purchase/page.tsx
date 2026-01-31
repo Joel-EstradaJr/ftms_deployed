@@ -274,14 +274,12 @@ const PurchaseExpensePage: React.FC = () => {
     // For purchase expenses, create a single installment for the full amount
     const singleInstallment: ExpenseScheduleItem = {
       id: `${expense.id}-SINGLE`,
-      installmentNumber: 1,
-      originalDueDate: expense.date,
-      currentDueDate: expense.date,
-      originalDueAmount: expense.amount,
-      currentDueAmount: expense.amount,
-      paidAmount: 0,
-      carriedOverAmount: 0,
-      paymentStatus: PaymentStatus.PENDING,
+      installment_number: 1,
+      due_date: expense.date,
+      amount_due: expense.amount,
+      amount_paid: 0,
+      balance: expense.amount,
+      status: PaymentStatus.PENDING,
       isPastDue: false,
       isEditable: false
     };

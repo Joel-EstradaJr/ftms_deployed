@@ -125,10 +125,6 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
           aValue = a.type;
           bValue = b.type;
           break;
-        case 'status':
-          aValue = a.status;
-          bValue = b.status;
-          break;
         case 'allocated_by':
           aValue = a.allocated_by;
           bValue = b.allocated_by;
@@ -521,10 +517,10 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({
                               borderRadius: '20px',
                               fontSize: '0.875rem',
                               fontWeight: '600',
-                              backgroundColor: item.status === 'Allocated' ? 'var(--success-color)' : item.status === 'Closed' ? 'var(--secondary-text-color)' : item.status === 'Pending' ? 'var(--warning-color)' : 'var(--error-color)',
+                              backgroundColor: item.type === 'Allocation' ? 'var(--success-color)' : 'var(--error-color)',
                               color: 'white'
                             }}>
-                              {item.status}
+                              {item.type}
                             </span>
                           </td>
                         </tr>

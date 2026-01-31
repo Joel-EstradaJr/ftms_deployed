@@ -183,14 +183,12 @@ const generateInstallmentSchedule = (
 
     installments.push({
       id: `inst-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-      installmentNumber: i + 1,
-      originalDueDate: dueDateStr,
-      currentDueDate: dueDateStr,
-      originalDueAmount: amountPerInstallment,
-      currentDueAmount: amountPerInstallment,
-      paidAmount: installmentPaid,
-      carriedOverAmount: 0,
-      paymentStatus: status,
+      installment_number: i + 1,
+      due_date: dueDateStr,
+      amount_due: amountPerInstallment,
+      amount_paid: installmentPaid,
+      balance: balance,
+      status: status,
       isPastDue: new Date(dueDateStr) < new Date() && balance > 0,
       isEditable: status !== PaymentStatus.PAID
     });

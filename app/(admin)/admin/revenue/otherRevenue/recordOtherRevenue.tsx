@@ -435,7 +435,7 @@ export default function RecordOtherRevenueModal({
       }
 
       // Block saving if there are overdue payments in edit mode
-      if (mode === 'edit' && scheduleItems.some(item => item.paymentStatus === 'OVERDUE')) {
+      if (mode === 'edit' && scheduleItems.some(item => item.status === 'OVERDUE')) {
         showError(
           'Cannot save schedule with overdue payments. Please resolve all overdue installments before updating.',
           'Overdue Payments Detected'
@@ -815,7 +815,7 @@ export default function RecordOtherRevenueModal({
                         </div>
                       )}
 
-                      {scheduleItems.some(item => item.paymentStatus === 'OVERDUE') && (
+                      {scheduleItems.some(item => item.status === 'OVERDUE') && (
                         <div style={{
                           marginTop: '10px',
                           padding: '12px',

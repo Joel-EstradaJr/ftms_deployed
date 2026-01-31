@@ -14,14 +14,18 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import RecordPaymentModal, { SimpleScheduleItem } from "@/Components/RecordPaymentModal";
+import RecordPaymentModal from "@/Components/RecordPaymentModal";
 import { processCascadePayment } from "../../../../utils/revenueScheduleCalculations";
 import { formatMoney, formatDate } from "@/utils/formatting";
 import { PaymentRecordData } from "@/app/types/payments";
 import { RevenueScheduleItem } from "../../../../types/revenue";
+import { ScheduleItem, PaymentStatus } from "@/app/types/schedule";
 import "@/styles/components/forms.css";
 import "@/styles/components/modal2.css";
 import "@/styles/components/chips.css";
+
+// Use ScheduleItem directly instead of SimpleScheduleItem for type compatibility
+type SimpleScheduleItem = ScheduleItem;
 
 // Internal enriched trip data interface (populated from API)
 interface EnrichedTripData {
@@ -226,12 +230,12 @@ export default function TripReceivablePaymentModal({
     // Convert RevenueScheduleItem to SimpleScheduleItem
     return items.map(item => ({
       id: item.id,
-      installmentNumber: item.installmentNumber,
-      currentDueDate: item.currentDueDate,
-      currentDueAmount: item.currentDueAmount,
-      paidAmount: item.paidAmount,
-      carriedOverAmount: item.carriedOverAmount,
-      paymentStatus: item.paymentStatus
+      installment_number: item.installment_number,
+      due_date: item.due_date,
+      amount_due: item.amount_due,
+      amount_paid: item.amount_paid,
+      balance: item.balance,
+      status: item.status
     }));
   };
 
@@ -247,8 +251,8 @@ export default function TripReceivablePaymentModal({
     if (items.length === 0) {
       return { totalDue: driverShare, totalPaid: 0, balance: driverShare };
     }
-    const totalDue = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
-    const totalPaid = items.reduce((sum, item) => sum + item.paidAmount, 0);
+    const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
+    const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
     return { totalDue, totalPaid, balance: totalDue - totalPaid };
   }, [tripData.driverInstallments, driverShare]);
 
@@ -257,8 +261,8 @@ export default function TripReceivablePaymentModal({
     if (items.length === 0) {
       return { totalDue: conductorShare, totalPaid: 0, balance: conductorShare };
     }
-    const totalDue = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
-    const totalPaid = items.reduce((sum, item) => sum + item.paidAmount, 0);
+    const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
+    const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
     return { totalDue, totalPaid, balance: totalDue - totalPaid };
   }, [tripData.conductorInstallments, conductorShare]);
 
@@ -281,8 +285,8 @@ export default function TripReceivablePaymentModal({
     if (!items || items.length === 0) {
       return share > 0 ? 'PENDING' : 'N/A';
     }
-    const totalDue = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
-    const totalPaid = items.reduce((sum, item) => sum + item.paidAmount, 0);
+    const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
+    const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
 
     if (totalDue > 0 && totalPaid >= totalDue) return 'PAID';
     if (totalPaid > 0) return 'PARTIAL';
@@ -334,9 +338,9 @@ export default function TripReceivablePaymentModal({
   // Get first unpaid installment for the selected employee
   const getFirstUnpaidInstallment = (): SimpleScheduleItem | null => {
     const unpaid = scheduleItems.find(item =>
-      item.paymentStatus !== 'PAID' &&
-      item.paymentStatus !== 'CANCELLED' &&
-      item.paymentStatus !== 'WRITTEN_OFF'
+      item.status !== 'PAID' &&
+      item.status !== 'CANCELLED' &&
+      item.status !== 'WRITTEN_OFF'
     );
     return unpaid || null;
   };
@@ -574,12 +578,12 @@ export default function TripReceivablePaymentModal({
                   // Create a synthetic installment for direct payment
                   const syntheticInstallment: SimpleScheduleItem = {
                     id: `synthetic-${tripData.assignment_id}-${selectedEmployee}`,
-                    installmentNumber: 1,
-                    currentDueDate: tripData.receivableDetails?.dueDate || new Date().toISOString(),
-                    currentDueAmount: currentBalance,
-                    paidAmount: 0,
-                    carriedOverAmount: 0,
-                    paymentStatus: 'PENDING'
+                    installment_number: 1,
+                    due_date: tripData.receivableDetails?.dueDate || new Date().toISOString(),
+                    amount_due: currentBalance,
+                    amount_paid: 0,
+                    balance: currentBalance,
+                    status: PaymentStatus.PENDING
                   };
                   setSelectedInstallment(syntheticInstallment);
                 }
