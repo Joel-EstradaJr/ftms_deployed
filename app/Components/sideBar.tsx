@@ -16,6 +16,7 @@ const Sidebar: React.FC = () => {
 
   // External microservice URLs from environment variables
   const budgetRequestUrl = process.env.NEXT_PUBLIC_BUDGET_REQUEST_URL || 'https://budget-request-micro-frontend.vercel.app';
+  const auditLogsUrl = process.env.NEXT_PUBLIC_AUDIT_LOGS_URL || 'https://agila-audit-frontend.vercel.app';
 
   const auditActiveKey = 'audit';
   const auditIconClass = 'ri-booklet-line';
@@ -38,7 +39,6 @@ const Sidebar: React.FC = () => {
     "/loan-management/loanRequest": "loan-request",
     "/loan-management/loanPayment": "loan-payment",
     "/report": "report",
-    "/audit": "audit",
     "/budget-management/budgetAllocation": "budgetAllocation",
     "/budget-management/approval": "approval",
     "/budget-management/budgetRequest": "budget-request",
@@ -320,16 +320,20 @@ const Sidebar: React.FC = () => {
             </Link>
           )*/}
 
-          {/* Audit Logs - Admin only */}
+          {/* Audit Logs - Admin only - External microservice */}
           {userRole === 'admin' && (
-            <Link
-              href={getUrl("/audit")}
+            <a
+              href={auditLogsUrl}
               className={`nav-item ${activeItem === auditActiveKey ? "active" : ""}`}
-              onClick={() => setActiveItem(auditActiveKey)}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveItem(auditActiveKey);
+                window.location.href = auditLogsUrl;
+              }}
             >
               <i className={auditIconClass} />
               <span>Audit Logs</span>
-            </Link>
+            </a>
           )}
         </div>
 
