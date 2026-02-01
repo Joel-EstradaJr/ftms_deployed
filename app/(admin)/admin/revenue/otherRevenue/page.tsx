@@ -1320,18 +1320,21 @@ const AdminOtherRevenuePage = () => {
         // Call API to soft delete the record
         const response = await fetch(`/api/admin/other-revenue/${id}`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deleted_by: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to delete revenue record');
+          throw new Error(responseData.message || 'Failed to delete revenue record');
         }
 
         showSuccess('Revenue record deleted successfully', 'Deleted');
         fetchData(); // Refresh the data
       } catch (err) {
         console.error('Error deleting revenue:', err);
+        showError(err instanceof Error ? err.message : 'Failed to delete revenue record', 'Delete Failed');
       }
     }
   };
