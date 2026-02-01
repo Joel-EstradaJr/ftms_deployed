@@ -199,78 +199,89 @@ const Sidebar: React.FC = () => {
           )}
 
           {/* Payroll - Both roles */}
-          <Link
-            href={getUrl("/financial-management/payroll")}
-            className={`nav-item ${activeItem === "payroll" ? "active" : ""}`}
-            onClick={() => setActiveItem("payroll")}
-          >
-            <i className="ri-group-line" />
-            <span>Payroll</span>
-          </Link>
+          {/* Payroll - Admin only */}
+          {userRole === 'admin' && (
+            <Link
+              href={getUrl("/financial-management/payroll")}
+              className={`nav-item ${activeItem === "payroll" ? "active" : ""}`}
+              onClick={() => setActiveItem("payroll")}
+            >
+              <i className="ri-group-line" />
+              <span>Payroll</span>
+            </Link>
+          )}
 
           {/* Budget Management Submenu */}
-          <div
-            className={`nav-item module ${["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
-              }`}
-            onClick={() => toggleSubMenu("budget-management")}
-          >
-            <i className="ri-wallet-3-line"></i>
-            <span>Budget Management</span>
-            <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "budget-management" ? "rotate" : ""
-                }`}
-            />
-          </div>
-
-          {openSubMenu === "budget-management" && (
-            <div className="sub-menu active">
-              {/* Budget Request - Both roles - External microservice */}
-              <a
-                href={budgetRequestUrl}
-                className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setActiveItem("budget-request");
-                  window.location.href = budgetRequestUrl;
-                }}
+          {/* Budget Management Submenu - Admin only */}
+          {userRole === 'admin' && (
+            <>
+              <div
+                className={`nav-item module ${["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
+                  }`}
+                onClick={() => toggleSubMenu("budget-management")}
               >
-                Budget Request
-              </a>
+                <i className="ri-wallet-3-line"></i>
+                <span>Budget Management</span>
+                <i
+                  className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "budget-management" ? "rotate" : ""
+                    }`}
+                />
+              </div>
 
-              {/* Budget Allocation - Admin only */}
-              {userRole === 'admin' && (
-                <Link
-                  href={getUrl("/budget-management/budgetAllocation")}
-                  className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
-                  onClick={() => setActiveItem("budgetAllocation")}
-                >
-                  Budget Allocation
-                </Link>
-              )}
+              {openSubMenu === "budget-management" && (
+                <div className="sub-menu active">
+                  {/* Budget Request - Both roles - External microservice */}
+                  <a
+                    href={budgetRequestUrl}
+                    className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setActiveItem("budget-request");
+                      window.location.href = budgetRequestUrl;
+                    }}
+                  >
+                    Budget Request
+                  </a>
 
-              {/* Approvals - Admin only */}
-              {userRole === 'admin' && (
-                <Link
-                  href={getUrl("/budget-management/approval")}
-                  className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
-                  onClick={() => setActiveItem("approval")}
-                >
-                  Approvals
-                </Link>
+                  {/* Budget Allocation - Admin only */}
+                  {userRole === 'admin' && (
+                    <Link
+                      href={getUrl("/budget-management/budgetAllocation")}
+                      className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
+                      onClick={() => setActiveItem("budgetAllocation")}
+                    >
+                      Budget Allocation
+                    </Link>
+                  )}
+
+                  {/* Approvals - Admin only */}
+                  {userRole === 'admin' && (
+                    <Link
+                      href={getUrl("/budget-management/approval")}
+                      className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
+                      onClick={() => setActiveItem("approval")}
+                    >
+                      Approvals
+                    </Link>
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
 
 
           {/* Financial Reports - Both roles */}
-          <Link
-            href={getUrl("/report")}
-            className={`nav-item ${activeItem === "report" ? "active" : ""}`}
-            onClick={() => setActiveItem("report")}
-          >
-            <i className="ri-file-chart-line" />
-            <span>Financial Reports</span>
-          </Link>
+          {/* Financial Reports - Admin only */}
+          {userRole === 'admin' && (
+            <Link
+              href={getUrl("/report")}
+              className={`nav-item ${activeItem === "report" ? "active" : ""}`}
+              onClick={() => setActiveItem("report")}
+            >
+              <i className="ri-file-chart-line" />
+              <span>Financial Reports</span>
+            </Link>
+          )}
 
           {/* Chart of Accounts - Admin only */}
           {userRole === 'admin' && (
