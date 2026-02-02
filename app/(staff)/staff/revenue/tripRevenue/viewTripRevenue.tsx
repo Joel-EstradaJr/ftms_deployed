@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
+import Loading from "@/Components/loading";
 import { formatDate, formatMoney } from "@/utils/formatting";
 
 // ============================================================================
@@ -119,13 +120,13 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
 
         // Use the Next.js API proxy route
         const response = await fetch(`/api/admin/revenue/${revenueId}`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch revenue details: ${response.statusText}`);
         }
 
         const result = await response.json();
-        
+
         if (result.success && result.data) {
           setData(result.data);
         } else {
@@ -215,9 +216,9 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   };
 
   // Check if shortage section should be shown
-  const showShortageSection = data?.remittance_status === 'PARTIALLY_PAID' || 
-                              data?.remittance_status === 'OVERDUE' ||
-                              (data?.shortage_details !== undefined);
+  const showShortageSection = data?.remittance_status === 'PARTIALLY_PAID' ||
+    data?.remittance_status === 'OVERDUE' ||
+    (data?.shortage_details !== undefined);
 
   // Check if conductor exists
   const hasConductor = data?.employees.conductor !== null;
@@ -232,9 +233,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             <i className="ri-close-line"></i>
           </button>
         </div>
-        <div className="modal-content view" style={{ textAlign: 'center', padding: '40px' }}>
-          <p>Loading revenue details...</p>
-        </div>
+        <Loading />
       </>
     );
   }
@@ -389,7 +388,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             <div className="form-group">
               <label>Driver</label>
               <p>
-                {data.employees.driver 
+                {data.employees.driver
                   ? `${data.employees.driver.name} (${data.employees.driver.employee_number})`
                   : 'N/A'
                 }
@@ -399,7 +398,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             <div className="form-group">
               <label>Conductor</label>
               <p>
-                {data.employees.conductor 
+                {data.employees.conductor
                   ? `${data.employees.conductor.name} (${data.employees.conductor.employee_number})`
                   : 'N/A'
                 }
@@ -565,8 +564,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
                 <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
                   <span className="employee-name" style={{ fontWeight: '600' }}>{data.shortage_details.conductor_receivable.debtor_name}</span>
                   <span className="employee-share" style={{ fontWeight: '500', color: '#666' }}>
-                    Total: {formatMoney(data.shortage_details.conductor_receivable.total_amount)} | 
-                    Paid: {formatMoney(data.shortage_details.conductor_receivable.paid_amount)} | 
+                    Total: {formatMoney(data.shortage_details.conductor_receivable.total_amount)} |
+                    Paid: {formatMoney(data.shortage_details.conductor_receivable.paid_amount)} |
                     Balance: {formatMoney(data.shortage_details.conductor_receivable.balance)}
                   </span>
                 </div>
@@ -616,8 +615,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
                 <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
                   <span className="employee-name" style={{ fontWeight: '600' }}>{data.shortage_details.driver_receivable.debtor_name}</span>
                   <span className="employee-share" style={{ fontWeight: '500', color: '#666' }}>
-                    Total: {formatMoney(data.shortage_details.driver_receivable.total_amount)} | 
-                    Paid: {formatMoney(data.shortage_details.driver_receivable.paid_amount)} | 
+                    Total: {formatMoney(data.shortage_details.driver_receivable.total_amount)} |
+                    Paid: {formatMoney(data.shortage_details.driver_receivable.paid_amount)} |
                     Balance: {formatMoney(data.shortage_details.driver_receivable.balance)}
                   </span>
                 </div>
