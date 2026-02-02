@@ -661,7 +661,7 @@ const AdminOtherRevenuePage = () => {
   });
 
   // Sort states
-  const [sortBy, setSortBy] = useState<"code" | "date_recorded" | "amount">("date_recorded");
+  const [sortBy, setSortBy] = useState<"code" | "date_recorded" | "amount" | "updated_at">("updated_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
