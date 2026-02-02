@@ -203,6 +203,7 @@ const AdminTripRevenuePage = () => {
   const [data, setData] = useState<BusTripRecord[]>([]);
   const [fullDataset, setFullDataset] = useState<BusTripRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false); // Separate state for search to prevent blink
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
 
@@ -513,17 +514,11 @@ const AdminTripRevenuePage = () => {
   };
 
   // Helper function to get display label for payment status
+  // CRITICAL: Only transformation allowed is replacing underscore with space
   const getStatusDisplayLabel = (status: BusTripRecord['payment_status'] | undefined | null): string => {
-    if (!status) return 'Pending';
-    const labels: Record<BusTripRecord['payment_status'], string> = {
-      'PENDING': 'Pending',
-      'PARTIALLY_PAID': 'Partially Paid',
-      'COMPLETED': 'Paid',
-      'OVERDUE': 'Overdue',
-      'CANCELLED': 'Cancelled',
-      'WRITTEN_OFF': 'Written Off'
-    };
-    return labels[status] || status;
+    if (!status) return 'PENDING';
+    // Only replace underscores with spaces - no other transformations allowed
+    return status.replace(/_/g, ' ');
   };
 
   // Helper function to get CSS class for payment status chip
@@ -531,18 +526,23 @@ const AdminTripRevenuePage = () => {
     if (!status) return 'pending';
     const classes: Record<BusTripRecord['payment_status'], string> = {
       'PENDING': 'pending',
-      'PARTIALLY_PAID': 'receivable',
-      'COMPLETED': 'paid',
+      'PARTIALLY_PAID': 'partial',
+      'COMPLETED': 'completed',
       'OVERDUE': 'overdue',
-      'CANCELLED': 'rejected',
-      'WRITTEN_OFF': 'rejected'
+      'CANCELLED': 'cancelled',
+      'WRITTEN_OFF': 'written-off'
     };
     return classes[status] || 'pending';
   };
 
   // Fetch data from API
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isInitialLoad = false) => {
+    // Only show full loading state on true initial load, use subtle indicator for all other fetches
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setIsSearching(true);
+    }
     setError(null);
 
     try {
@@ -590,15 +590,12 @@ const AdminTripRevenuePage = () => {
         params.set('assignment_type', typeMap[activeFilters.types[0]] || activeFilters.types[0]);
       }
 
-      // Status filter
+      // Status filter - now using payment_status enum values directly
       if (activeFilters.statuses.length === 1) {
-        // Map UI status names to backend enum values
-        const statusMap: Record<string, string> = {
-          'Remitted': 'COMPLETED',
-          'Pending': 'PENDING',
-          'Receivable': 'PARTIALLY_PAID'
-        };
-        params.set('status', statusMap[activeFilters.statuses[0]] || activeFilters.statuses[0]);
+        params.set('status', activeFilters.statuses[0]);
+      } else if (activeFilters.statuses.length > 1) {
+        // Support multiple status filters
+        params.set('statuses', activeFilters.statuses.join(','));
       }
 
       console.log('[TripRevenue] Fetching data with params:', params.toString());
@@ -676,21 +673,23 @@ const AdminTripRevenuePage = () => {
       setTotalPages(result.pages || 1);
       setTotalCount(result.total || mappedData.length);
       setLoading(false);
+      setIsSearching(false);
 
     } catch (err) {
       console.error('[TripRevenue] Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
       setErrorCode(500);
       setLoading(false);
+      setIsSearching(false);
     }
   };
 
-  // Debounce search input
+  // Debounce search input - reduced to 300ms for faster real-time filtering
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
       setCurrentPage(1);
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchInput]);
@@ -722,16 +721,20 @@ const AdminTripRevenuePage = () => {
     fetchConfig();
   }, []);
 
+  // Track if this is the first load
+  const isFirstLoad = React.useRef(true);
+
   // Fetch data when dependencies change
   useEffect(() => {
-    fetchData();
+    fetchData(isFirstLoad.current);
+    isFirstLoad.current = false;
   }, [currentPage, pageSize, search, sortBy, sortOrder, activeFilters]);
 
   // Periodic data refresh (runs every 5 minutes to sync with backend)
   useEffect(() => {
     const checkInterval = setInterval(() => {
       console.log('Running periodic data refresh...');
-      fetchData(); // Refresh data from backend (source of truth for status)
+      fetchData(false); // Refresh data from backend (source of truth for status)
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(checkInterval);
@@ -828,10 +831,12 @@ const AdminTripRevenuePage = () => {
                 { id: 'Percentage', label: 'Percentage' }
               ]}
               statuses={[
-                { id: 'Remitted', label: 'Remitted' },
-                { id: 'Receivable', label: 'Receivable' },
-                { id: 'Closed', label: 'Closed' },
-                { id: 'Pending', label: 'Pending' }
+                { id: 'PENDING', label: 'Pending' },
+                { id: 'PARTIALLY_PAID', label: 'Partially Paid' },
+                { id: 'COMPLETED', label: 'Completed' },
+                { id: 'OVERDUE', label: 'Overdue' },
+                { id: 'CANCELLED', label: 'Cancelled' },
+                { id: 'WRITTEN_OFF', label: 'Written Off' }
               ]}
               onApply={handleFilterApply}
               initialValues={activeFilters}
@@ -879,7 +884,7 @@ const AdminTripRevenuePage = () => {
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody style={{ opacity: isSearching ? 0.6 : 1, transition: 'opacity 0.15s ease' }}>
                 {loading ? (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
@@ -889,7 +894,7 @@ const AdminTripRevenuePage = () => {
                 ) : data.length === 0 ? (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                      No bus trip records found.
+                      {isSearching ? 'Searching...' : 'No bus trip records found.'}
                     </td>
                   </tr>
                 ) : (
