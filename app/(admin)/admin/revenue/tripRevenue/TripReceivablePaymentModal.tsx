@@ -33,7 +33,7 @@ interface EnrichedTripData {
   body_number: string;
   bus_route: string;
   date_assigned: string;
-  remittance_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   // Driver details
   driverId?: string;
@@ -67,7 +67,7 @@ interface TripReceivablePaymentModalProps {
     body_number: string;
     bus_route: string;
     date_assigned: string;
-    remittance_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+    payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
   };
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   currentUser: string;
@@ -99,7 +99,7 @@ export default function TripReceivablePaymentModal({
     body_number: initialTripData.body_number,
     bus_route: initialTripData.bus_route,
     date_assigned: initialTripData.date_assigned,
-    remittance_status: initialTripData.remittance_status,
+    payment_status: initialTripData.payment_status,
   });
 
   // Fetch detail data from API
@@ -124,7 +124,7 @@ export default function TripReceivablePaymentModal({
           body_number: data.bus_details?.body_number || initialTripData.body_number,
           bus_route: data.bus_details?.route || initialTripData.bus_route || 'N/A',
           date_assigned: data.bus_details?.date_assigned || initialTripData.date_assigned,
-          remittance_status: data.remittance_status || initialTripData.remittance_status,
+          payment_status: data.payment_status || initialTripData.payment_status,
 
           // Driver details
           driverId: data.employees?.driver?.employee_number || undefined,
@@ -164,7 +164,7 @@ export default function TripReceivablePaymentModal({
               carriedOverAmount: 0,
               paymentStatus: inst.status || 'PENDING',
               isPastDue: new Date(inst.due_date) < new Date() && inst.balance > 0,
-              isEditable: inst.status !== 'PAID',
+              isEditable: inst.status !== 'COMPLETED',
             }));
           }
 
@@ -181,7 +181,7 @@ export default function TripReceivablePaymentModal({
               carriedOverAmount: 0,
               paymentStatus: inst.status || 'PENDING',
               isPastDue: new Date(inst.due_date) < new Date() && inst.balance > 0,
-              isEditable: inst.status !== 'PAID',
+              isEditable: inst.status !== 'COMPLETED',
             }));
           }
         }
@@ -202,7 +202,7 @@ export default function TripReceivablePaymentModal({
 
   // Helper to map receivable status
   const mapReceivableStatus = (driverStatus?: string, conductorStatus?: string): 'Pending' | 'Partial' | 'Paid' | 'Overdue' | 'Closed' => {
-    if (driverStatus === 'PAID' && (!conductorStatus || conductorStatus === 'PAID')) return 'Paid';
+    if (driverStatus === 'COMPLETED' && (!conductorStatus || conductorStatus === 'COMPLETED')) return 'Paid';
     if (driverStatus === 'PARTIALLY_PAID' || conductorStatus === 'PARTIALLY_PAID') return 'Partial';
     if (driverStatus === 'OVERDUE' || conductorStatus === 'OVERDUE') return 'Overdue';
     return 'Pending';
@@ -288,7 +288,7 @@ export default function TripReceivablePaymentModal({
     const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
     const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
 
-    if (totalDue > 0 && totalPaid >= totalDue) return 'PAID';
+    if (totalDue > 0 && totalPaid >= totalDue) return 'COMPLETED';
     if (totalPaid > 0) return 'PARTIAL';
     return 'PENDING';
   };
@@ -296,7 +296,7 @@ export default function TripReceivablePaymentModal({
   // Get status chip class
   const getStatusClass = (status: string): string => {
     switch (status) {
-      case 'PAID': return 'paid';
+      case 'COMPLETED': return 'paid';
       case 'PARTIAL': return 'partially-paid';
       case 'OVERDUE': return 'overdue';
       default: return 'pending';
@@ -338,7 +338,7 @@ export default function TripReceivablePaymentModal({
   // Get first unpaid installment for the selected employee
   const getFirstUnpaidInstallment = (): SimpleScheduleItem | null => {
     const unpaid = scheduleItems.find(item =>
-      item.status !== 'PAID' &&
+      item.status !== 'COMPLETED' &&
       item.status !== 'CANCELLED' &&
       item.status !== 'WRITTEN_OFF'
     );

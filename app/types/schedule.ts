@@ -4,20 +4,51 @@
  * This file contains unified type definitions for payment schedules used across
  * both expense and revenue modules. It eliminates duplicate type definitions
  * and provides a single source of truth for schedule-related types.
+ * 
+ * Updated to align with new status model:
+ * - payment_status enum (replaces receivable_status and payable_status)
+ * - approval_status enum (replaces revenue_status and expense_status)
+ * - accounting_status uses journal_status enum
  */
 
 /**
- * Payment status for schedule items
- * Consolidated from expenses.ts and revenue.ts (previously duplicated)
+ * Payment status for revenue/expense records and schedule items
+ * Aligned with backend payment_status enum
  */
 export enum PaymentStatus {
+  PENDING = 'PENDING',           // Not yet paid at all
+  PARTIALLY_PAID = 'PARTIALLY_PAID', // Some payments received, balance exists
+  COMPLETED = 'COMPLETED',       // Fully settled, balance = 0 (replaces PAID)
+  OVERDUE = 'OVERDUE',           // Past due date
+  CANCELLED = 'CANCELLED',       // Invalidated before collection
+  WRITTEN_OFF = 'WRITTEN_OFF'    // Cannot be collected; bad debts
+}
+
+/**
+ * @deprecated Use PaymentStatus.COMPLETED instead of PaymentStatus.PAID
+ * Alias maintained for backward compatibility during migration
+ */
+export const PAID_STATUS = PaymentStatus.COMPLETED;
+
+/**
+ * Approval status for revenue and expense records
+ * Aligned with backend approval_status enum
+ */
+export enum ApprovalStatus {
   PENDING = 'PENDING',
-  PARTIAL = 'PARTIAL',
-  PARTIALLY_PAID = 'PARTIALLY_PAID',
-  PAID = 'PAID',
-  OVERDUE = 'OVERDUE',
-  CANCELLED = 'CANCELLED',
-  WRITTEN_OFF = 'WRITTEN_OFF'
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
+
+/**
+ * Accounting status for revenue and expense records
+ * Aligned with backend journal_status enum
+ */
+export enum AccountingStatus {
+  DRAFT = 'DRAFT',
+  POSTED = 'POSTED',
+  ADJUSTED = 'ADJUSTED',
+  REVERSED = 'REVERSED'
 }
 
 /**

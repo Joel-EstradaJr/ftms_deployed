@@ -40,7 +40,7 @@ interface RevenueDetailResponse {
   code: string;
   assignment_id: string;
   bus_trip_id: string;
-  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   bus_details: {
     date_assigned: string | null;
@@ -150,7 +150,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
     const statusMap: Record<string, string> = {
       'PENDING': 'Pending',
       'PARTIALLY_PAID': 'Partially Paid',
-      'PAID': 'Paid',
+      'COMPLETED': 'Completed',
       'OVERDUE': 'Overdue',
       'CANCELLED': 'Cancelled',
       'WRITTEN_OFF': 'Written Off',
@@ -163,7 +163,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
     const classMap: Record<string, string> = {
       'PENDING': 'pending',
       'PARTIALLY_PAID': 'receivable',
-      'PAID': 'completed',
+      'COMPLETED': 'completed',
       'OVERDUE': 'overdue',
       'CANCELLED': 'rejected',
       'WRITTEN_OFF': 'rejected',
@@ -175,7 +175,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   const formatInstallmentStatus = (status: string): string => {
     const statusMap: Record<string, string> = {
       'PENDING': 'Pending',
-      'PAID': 'Paid',
+      'COMPLETED': 'Completed',
       'PARTIALLY_PAID': 'Partial',
       'OVERDUE': 'Overdue',
     };
@@ -186,7 +186,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   const getInstallmentChipClass = (status: string): string => {
     const classMap: Record<string, string> = {
       'PENDING': 'pending',
-      'PAID': 'completed',
+      'COMPLETED': 'completed',
       'PARTIALLY_PAID': 'receivable',
       'OVERDUE': 'overdue',
     };
@@ -216,9 +216,9 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   };
 
   // Check if shortage section should be shown
-  const showShortageSection = data?.remittance_status === 'PARTIALLY_PAID' ||
-    data?.remittance_status === 'OVERDUE' ||
-    (data?.shortage_details !== undefined);
+  const showShortageSection = data?.payment_status === 'PARTIALLY_PAID' || 
+                              data?.payment_status === 'OVERDUE' ||
+                              (data?.shortage_details !== undefined);
 
   // Check if conductor exists
   const hasConductor = data?.employees.conductor !== null;
@@ -294,8 +294,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             {/* Status */}
             <div className="form-group">
               <label>Status</label>
-              <p className={`chip ${getStatusChipClass(data.remittance_status)}`}>
-                {formatStatus(data.remittance_status)}
+              <p className={`chip ${getStatusChipClass(data.payment_status)}`}>
+                {formatStatus(data.payment_status)}
               </p>
             </div>
           </div>
@@ -443,9 +443,9 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             </div>
 
             <div className="form-group">
-              <label>Remittance Status</label>
-              <p className={`chip ${getStatusChipClass(data.remittance_status)}`}>
-                {formatStatus(data.remittance_status)}
+              <label>Payment Status</label>
+              <p className={`chip ${getStatusChipClass(data.payment_status)}`}>
+                {formatStatus(data.payment_status)}
               </p>
             </div>
           </div>

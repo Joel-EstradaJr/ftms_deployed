@@ -88,7 +88,7 @@ interface OtherRevenueRecord {
   description: string;
   remarks?: string;
   amount: number;
-  remittance_status: string;
+  payment_status: string;
   payment_method?: string;
   payment_reference?: string;
   isUnearnedRevenue: boolean;
@@ -185,7 +185,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of old computer equipment",
     amount: 45000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: true,
     receivable: {
@@ -275,7 +275,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Bank interest for Q3 2024",
     amount: 12500.50,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -293,7 +293,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Late payment fees from trip rentals",
     amount: 8750.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -311,7 +311,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 4, name: "Insurance Claims", code: "INSURANCE" },
     description: "Vehicle accident insurance payout",
     amount: 150000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Check",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -330,7 +330,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 5, name: "Donations", code: "DONATIONS" },
     description: "Corporate sponsorship from ABC Corp",
     amount: 75000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -349,7 +349,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 6, name: "Parking Fees", code: "OTHER" },
     description: "Monthly parking revenue at terminal",
     amount: 32500.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -367,7 +367,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of retired bus units",
     amount: 280000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -386,7 +386,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 7, name: "Advertising Revenue", code: "OTHER" },
     description: "Bus exterior advertising - November",
     amount: 45000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -404,7 +404,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Investment returns - fixed deposit",
     amount: 18200.75,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -422,7 +422,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 8, name: "Merchandise Sales", code: "OTHER" },
     description: "Company merchandise and souvenirs",
     amount: 15600.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -440,7 +440,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Penalty fees from contract breaches",
     amount: 12000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -458,7 +458,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 9, name: "Terminal Rentals", code: "OTHER" },
     description: "Food stall rental at bus terminal",
     amount: 28000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -476,7 +476,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 5, name: "Donations", code: "DONATIONS" },
     description: "Community fund-raising event proceeds",
     amount: 52000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -494,7 +494,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of office furniture and fixtures",
     amount: 22500.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Check",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -513,7 +513,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 10, name: "Scrap Sales", code: "OTHER" },
     description: "Sale of scrap metal from old parts",
     amount: 8900.50,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -531,7 +531,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 4, name: "Insurance Claims", code: "INSURANCE" },
     description: "Property damage insurance claim",
     amount: 95000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -550,7 +550,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Savings account interest - October",
     amount: 6750.25,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -568,7 +568,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 7, name: "Advertising Revenue", code: "OTHER" },
     description: "Digital billboard advertising - Q3",
     amount: 120000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -587,7 +587,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Overdue invoice penalty charges",
     amount: 15500.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -605,7 +605,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 6, name: "Parking Fees", code: "OTHER" },
     description: "Quarterly parking fee collection",
     amount: 98000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -1146,7 +1146,7 @@ const AdminOtherRevenuePage = () => {
           department: item.department as string | undefined,
           remarks: item.remarks as string | undefined,
           amount: item.amount as number,
-          remittance_status: item.remittance_status as string,
+          payment_status: item.payment_status as string,
           payment_method: item.payment_method as string | undefined,
           payment_reference: item.payment_reference as string | undefined,
           isUnearnedRevenue: item.isUnearnedRevenue as boolean,
@@ -1298,7 +1298,7 @@ const AdminOtherRevenuePage = () => {
     }
 
     // Only allow deletion for PENDING status
-    if (record.remittance_status !== 'PENDING') {
+    if (record.payment_status !== 'PENDING') {
       showError('Only records with PENDING status can be deleted', 'Cannot Delete');
       return;
     }
@@ -1475,7 +1475,7 @@ const AdminOtherRevenuePage = () => {
           type: 'Receivable' as const,
           amount: record.amount,
           receivable: totalBalance,
-          status: record.remittance_status || derivedStatus,
+          status: record.payment_status || derivedStatus,
           paymentMethod: record.paymentMethod,
           isInstallmentRow: false, // Single row per revenue, not per installment
           paymentStatus: derivedStatus,
@@ -1483,8 +1483,8 @@ const AdminOtherRevenuePage = () => {
         });
       } else {
         // Regular revenue record (single row)
-        // Derive status from remittance_status or default to PAID
-        const status = record.remittance_status as PaymentStatus || PaymentStatus.PAID;
+        // Derive status from payment_status or default to COMPLETED
+        const status = record.payment_status as PaymentStatus || PaymentStatus.COMPLETED;
 
         rows.push({
           id: `${record.id}-single`,
