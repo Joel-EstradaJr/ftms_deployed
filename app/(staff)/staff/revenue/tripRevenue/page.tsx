@@ -182,7 +182,7 @@ const generateInstallmentSchedule = (
     let status: PaymentStatus;
 
     if (balance <= 0.01) {
-      status = PaymentStatus.PAID;
+      status = PaymentStatus.COMPLETED;
     } else if (installmentPaid > 0) {
       status = PaymentStatus.PARTIALLY_PAID;
     } else if (new Date(dueDateStr) < new Date()) {
@@ -200,7 +200,7 @@ const generateInstallmentSchedule = (
       balance: balance,
       status: status,
       isPastDue: new Date(dueDateStr) < new Date() && balance > 0,
-      isEditable: status !== PaymentStatus.PAID
+      isEditable: status !== PaymentStatus.COMPLETED
     });
   }
 
@@ -474,7 +474,7 @@ const AdminTripRevenuePage = () => {
             balance: inst.amount_due - (inst.amount_paid || 0),
             status: inst.status || PaymentStatus.PENDING,
             isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
-            isEditable: inst.status !== PaymentStatus.PAID
+            isEditable: inst.status !== PaymentStatus.COMPLETED
           }));
         }
 
@@ -488,7 +488,7 @@ const AdminTripRevenuePage = () => {
             balance: inst.amount_due - (inst.amount_paid || 0),
             status: inst.status || PaymentStatus.PENDING,
             isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
-            isEditable: inst.status !== PaymentStatus.PAID
+            isEditable: inst.status !== PaymentStatus.COMPLETED
           }));
         }
       }
