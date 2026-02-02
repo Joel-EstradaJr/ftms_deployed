@@ -67,7 +67,7 @@ interface BusTripRecord {
   date_recorded: string | null; // Maps to revenue.date_recorded
   amount: number | null; // Maps to revenue.amount
   total_amount: number | null; // Maps to receivable.total_amount
-  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
+  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
   remarks: string | null; // Maps to revenue.description
   due_date: string | null; // Maps to receivable.due_date
 
@@ -277,8 +277,8 @@ const AdminTripRevenuePage = () => {
       case "add":
       case "edit":
         // Edit is only allowed for PARTIALLY_PAID status
-        if (mode === "edit" && rowData && rowData.remittance_status !== 'PARTIALLY_PAID') {
-          showError(`This record cannot be edited because its status is "${rowData.remittance_status}". Only PARTIALLY_PAID records can be edited.`, 'Cannot Edit');
+        if (mode === "edit" && rowData && rowData.payment_status !== 'PARTIALLY_PAID') {
+          showError(`This record cannot be edited because its status is "${rowData.payment_status}". Only PARTIALLY_PAID records can be edited.`, 'Cannot Edit');
           return;
         }
 
@@ -299,7 +299,7 @@ const AdminTripRevenuePage = () => {
             body_number: rowData!.body_number,
             bus_route: rowData!.bus_route,
             date_assigned: rowData!.date_assigned,
-            remittance_status: rowData!.remittance_status,
+            payment_status: rowData!.payment_status,
           }}
           paymentMethods={paymentMethods}
           currentUser="Admin User" // TODO: Get from auth context
@@ -377,19 +377,19 @@ const AdminTripRevenuePage = () => {
     await fetchData();
   };
 
-  // Handle close receivable - updates remittance_status to PAID via backend API
+  // Handle close receivable - updates payment_status to COMPLETED via backend API
   const handleCloseReceivable = async (revenueId: number) => {
     console.log('Closing receivable for revenue ID:', revenueId);
 
     try {
-      // Call the PATCH API to update remittance_status to PAID
+      // Call the PATCH API to update payment_status to COMPLETED
       const response = await fetch(`/api/admin/revenue/${revenueId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          remittance_status: 'PAID',
+          payment_status: 'COMPLETED',
         }),
       });
 
@@ -431,12 +431,12 @@ const AdminTripRevenuePage = () => {
         ...item,
         date_recorded: formData.date_recorded,
         amount: formData.amount,
-        remittance_status: formData.remittance_status || 'PAID',
+        payment_status: formData.payment_status || 'COMPLETED',
         remarks: formData.description
       };
 
       // Handle receivable case with separate driver and conductor receivables
-      if (formData.remittance_status === 'PARTIALLY_PAID') {
+      if (formData.payment_status === 'PARTIALLY_PAID') {
         const hasConductor = !!formData.conductorReceivable;
         const driverReceivable = formData.driverReceivable;
         const conductorReceivable = formData.conductorReceivable;
@@ -508,13 +508,13 @@ const AdminTripRevenuePage = () => {
     console.log('Fetching filter options...');
   };
 
-  // Helper function to get display label for remittance status
-  const getStatusDisplayLabel = (status: BusTripRecord['remittance_status'] | undefined | null): string => {
+  // Helper function to get display label for payment status
+  const getStatusDisplayLabel = (status: BusTripRecord['payment_status'] | undefined | null): string => {
     if (!status) return 'Pending';
-    const labels: Record<BusTripRecord['remittance_status'], string> = {
+    const labels: Record<BusTripRecord['payment_status'], string> = {
       'PENDING': 'Pending',
       'PARTIALLY_PAID': 'Partially Paid',
-      'PAID': 'Paid',
+      'COMPLETED': 'Paid',
       'OVERDUE': 'Overdue',
       'CANCELLED': 'Cancelled',
       'WRITTEN_OFF': 'Written Off'
@@ -522,13 +522,13 @@ const AdminTripRevenuePage = () => {
     return labels[status] || status;
   };
 
-  // Helper function to get CSS class for remittance status chip
-  const getStatusChipClass = (status: BusTripRecord['remittance_status'] | undefined | null): string => {
+  // Helper function to get CSS class for payment status chip
+  const getStatusChipClass = (status: BusTripRecord['payment_status'] | undefined | null): string => {
     if (!status) return 'pending';
-    const classes: Record<BusTripRecord['remittance_status'], string> = {
+    const classes: Record<BusTripRecord['payment_status'], string> = {
       'PENDING': 'pending',
       'PARTIALLY_PAID': 'receivable',
-      'PAID': 'paid',
+      'COMPLETED': 'paid',
       'OVERDUE': 'overdue',
       'CANCELLED': 'rejected',
       'WRITTEN_OFF': 'rejected'
@@ -590,7 +590,7 @@ const AdminTripRevenuePage = () => {
       if (activeFilters.statuses.length === 1) {
         // Map UI status names to backend enum values
         const statusMap: Record<string, string> = {
-          'Remitted': 'PAID',
+          'Remitted': 'COMPLETED',
           'Pending': 'PENDING',
           'Receivable': 'PARTIALLY_PAID'
         };
@@ -643,7 +643,7 @@ const AdminTripRevenuePage = () => {
         date_recorded: item.date_recorded ? new Date(item.date_recorded).toISOString().split('T')[0] : null,
         amount: item.trip_revenue,
         total_amount: item.shortage > 0 ? item.shortage : null,
-        remittance_status: (item.remittance_status as BusTripRecord['remittance_status']) || 'PENDING',
+        payment_status: (item.payment_status as BusTripRecord['payment_status']) || 'PENDING',
         remarks: null,
         due_date: null,
 
@@ -889,9 +889,9 @@ const AdminTripRevenuePage = () => {
                       <td>{formatMoney(item.trip_revenue)}</td>
                       <td>{item.assignment_type}</td>
                       <td>
-                        {/* Status chips based on backend remittance_status - source of truth */}
-                        <span className={`chip ${getStatusChipClass(item.remittance_status)}`}>
-                          {getStatusDisplayLabel(item.remittance_status)}
+                        {/* Status chips based on backend payment_status - source of truth */}
+                        <span className={`chip ${getStatusChipClass(item.payment_status)}`}>
+                          {getStatusDisplayLabel(item.payment_status)}
                         </span>
                       </td>
                       <td>
@@ -913,11 +913,11 @@ const AdminTripRevenuePage = () => {
                           <button
                             className="editBtn"
                             onClick={() => openModal("payReceivable", item)}
-                            title={item.remittance_status === 'PARTIALLY_PAID' ? "Record Receivable Payment" : "Only available for Partial Payments"}
-                            disabled={item.remittance_status !== 'PARTIALLY_PAID'}
+                            title={item.payment_status === 'PARTIALLY_PAID' ? "Record Receivable Payment" : "Only available for Partial Payments"}
+                            disabled={item.payment_status !== 'PARTIALLY_PAID'}
                             style={{
-                              opacity: item.remittance_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
-                              cursor: item.remittance_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
+                              opacity: item.payment_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
+                              cursor: item.payment_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
                             }}
                           >
                             <i className="ri-hand-coin-line" />
@@ -927,11 +927,11 @@ const AdminTripRevenuePage = () => {
                           <button
                             className="editBtn"
                             onClick={() => openModal("edit", item)}
-                            title={item.remittance_status === 'PARTIALLY_PAID' ? "Edit Receivable Details" : "Only available for Partial Payments"}
-                            disabled={item.remittance_status !== 'PARTIALLY_PAID'}
+                            title={item.payment_status === 'PARTIALLY_PAID' ? "Edit Receivable Details" : "Only available for Partial Payments"}
+                            disabled={item.payment_status !== 'PARTIALLY_PAID'}
                             style={{
-                              opacity: item.remittance_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
-                              cursor: item.remittance_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
+                              opacity: item.payment_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
+                              cursor: item.payment_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
                             }}
                           >
                             <i className="ri-edit-line" />

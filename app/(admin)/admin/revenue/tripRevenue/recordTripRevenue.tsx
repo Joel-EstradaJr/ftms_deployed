@@ -31,7 +31,7 @@
  *   date_expected: string,            // Maps to revenue.date_expected
  *   duration_to_late: number,
  *   duration_to_receivable: number,
- *   remittance_status: string,
+ *   payment_status: string,
  *   status: 'remitted' | 'receivable',
  *   
  *   // Driver receivable - only when shouldCreateReceivable() returns true
@@ -94,7 +94,7 @@ interface RevenueDetailResponse {
   code: string;
   assignment_id: string;
   bus_trip_id: string;
-  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   bus_details: {
     date_assigned: string | null;
@@ -225,7 +225,7 @@ interface RecordTripRevenueModalProps {
     date_recorded?: string | null;
     date_expected?: string | null;
     amount?: number | null;
-    remittance_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
+    payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
     remarks?: string | null;
 
     // Shortage/Receivable details
@@ -520,11 +520,11 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
           amount_due: inst.amount_due,
           amount_paid: inst.amount_paid,
           balance: inst.amount_due - inst.amount_paid,
-          status: inst.status === 'PAID' ? PaymentStatus.PAID 
+          status: inst.status === 'COMPLETED' ? PaymentStatus.PAID 
             : inst.status === 'PARTIAL' ? PaymentStatus.PARTIAL 
             : PaymentStatus.PENDING,
           isPastDue: new Date(inst.due_date) < new Date(),
-          isEditable: inst.status !== 'PAID'
+          isEditable: inst.status !== 'COMPLETED'
         }));
       };
       
@@ -824,7 +824,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     
     // In edit mode: if original status was PARTIALLY_PAID but now status is PENDING (due date changed to future)
     // Don't show receivable section - it will be deleted on save
-    if (mode === 'edit' && tripData.remittance_status === 'PARTIALLY_PAID' && status === 'PENDING') {
+    if (mode === 'edit' && tripData.payment_status === 'PARTIALLY_PAID' && status === 'PENDING') {
       return false;
     }
 
@@ -1111,16 +1111,16 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
     const remittanceStatus = calculateRemittanceStatus();
 
-    // Determine the final remittance_status for backend
-    let finalRemittanceStatus: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' = 'PAID';
+    // Determine the final payment_status for backend
+    let finalPaymentStatus: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' = 'COMPLETED';
     let shouldDeleteReceivables = false;
 
     if (isPending) {
-      finalRemittanceStatus = 'PENDING';
+      finalPaymentStatus = 'PENDING';
     } else if (shouldCreateReceivable()) {
       // Converted to receivable (late remittance or shortage)
-      finalRemittanceStatus = 'PARTIALLY_PAID';
-    } else if (mode === 'edit' && tripData.remittance_status === 'PARTIALLY_PAID') {
+      finalPaymentStatus = 'PARTIALLY_PAID';
+    } else if (mode === 'edit' && tripData.payment_status === 'PARTIALLY_PAID') {
       // Was a receivable but now reverted to paid (due date changed to future)
       // Signal to backend to delete existing receivable records
       shouldDeleteReceivables = true;
@@ -1136,7 +1136,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
       date_expected: formData.remittanceDueDate,
       duration_to_late: formData.durationToLate,
       duration_to_receivable: formData.durationToReceivable,
-      remittance_status: finalRemittanceStatus,
+      payment_status: finalPaymentStatus,
       delete_receivables: shouldDeleteReceivables,
     };
 
