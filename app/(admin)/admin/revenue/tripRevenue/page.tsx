@@ -611,7 +611,7 @@ const AdminTripRevenuePage = () => {
         date_recorded: item.date_recorded ? new Date(item.date_recorded).toISOString().split('T')[0] : null,
         amount: item.trip_revenue,
         total_amount: item.shortage > 0 ? item.shortage : null,
-        payment_status: (item.remittance_status as BusTripRecord['payment_status']) || 'PENDING',
+        payment_status: (item.payment_status as BusTripRecord['payment_status']) || 'PENDING',
         remarks: null,
         due_date: null,
 

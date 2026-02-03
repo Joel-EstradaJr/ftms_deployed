@@ -229,16 +229,8 @@ export default function TripReceivablePaymentModal({
 
     if (!items || items.length === 0) return [];
 
-    // Convert enriched data (camelCase) to SimpleScheduleItem (snake_case)
-    return items.map((item: any) => ({
-      id: item.id,
-      installment_number: item.installmentNumber,
-      due_date: item.currentDueDate,
-      amount_due: item.currentDueAmount,
-      amount_paid: item.paidAmount,
-      balance: item.currentDueAmount - item.paidAmount,
-      status: item.paymentStatus
-    }));
+    // Return items directly as they already have snake_case properties from the API mapping
+    return items;
   };
 
   const scheduleItems = getScheduleItems();
@@ -339,11 +331,15 @@ export default function TripReceivablePaymentModal({
 
   // Get first unpaid installment for the selected employee
   const getFirstUnpaidInstallment = (): SimpleScheduleItem | null => {
-    const unpaid = scheduleItems.find(item =>
-      item.status !== 'COMPLETED' &&
-      item.status !== 'CANCELLED' &&
-      item.status !== 'WRITTEN_OFF'
-    );
+    const unpaid = scheduleItems.find(item => {
+      // Calculate balance if not provided
+      const balance = item.balance ?? (item.amount_due - (item.amount_paid || 0));
+      // Must have positive balance AND not be in a terminal status
+      return balance > 0 &&
+        item.status !== 'COMPLETED' &&
+        item.status !== 'CANCELLED' &&
+        item.status !== 'WRITTEN_OFF';
+    });
     return unpaid || null;
   };
 

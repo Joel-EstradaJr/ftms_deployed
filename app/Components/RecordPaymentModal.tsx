@@ -25,7 +25,7 @@ interface RecordPaymentModalProps {
   currentUser: string;
   onPaymentRecorded: (paymentData: PaymentRecordData) => Promise<void>;
   onClose: () => void;
-  processCascadePayment: (amount: number, items: any[], startIndex: number) => any;
+  processCascadePayment: (amount: number, items: any[], startIndex: number, enableCascade?: boolean) => any;
   // Employee information for revenue payments (bus trip revenue)
   employeeNumber?: string;
   employeeName?: string;
@@ -84,13 +84,23 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     : availablePaymentMethods;
 
   const currentIndex = scheduleItems.findIndex(item => item.id === selectedInstallment.id);
+  const getAmountDue = (item: any) => item.amount_due ?? item.amountDue ?? 0;
+  const getAmountPaid = (item: any) => item.amount_paid ?? item.amountPaid ?? 0;
+
   // Use schema-aligned field names: amount_due, amount_paid, balance
-  const currentBalance = (selectedInstallment.amount_due || 0) - (selectedInstallment.amount_paid || 0);
-  const totalOutstanding = scheduleItems.reduce((sum, s) => sum + ((s.amount_due || 0) - (s.amount_paid || 0)), 0);
+  const currentBalance = getAmountDue(selectedInstallment) - getAmountPaid(selectedInstallment);
+  const totalOutstanding = scheduleItems.reduce((sum, s) => sum + (getAmountDue(s) - getAmountPaid(s)), 0);
+
+  // Check if selected installment is overdue
+  const isOverdue = selectedInstallment.status === 'OVERDUE';
+
+  // Max allowed payment is always totalOutstanding - overpayment cascades to next installments
+  const maxPaymentAllowed = totalOutstanding;
 
   const cascadePreview = useMemo(() => {
     if (amountToPay <= 0 || currentIndex === -1) return null;
-    const result = processCascadePayment(amountToPay, scheduleItems, currentIndex);
+    // Always enable cascade - overpayment applies to subsequent installments
+    const result = processCascadePayment(amountToPay, scheduleItems, currentIndex, true);
     return result;
   }, [amountToPay, scheduleItems, currentIndex, processCascadePayment]);
 
@@ -102,7 +112,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       setAmountToPay(0);
     } else {
       setAmountToPay(value);
-      const err = validatePaymentAmount(value, totalOutstanding);
+      // Validate against total outstanding balance
+      const err = validatePaymentAmount(value, maxPaymentAllowed);
       setPaymentError(err);
     }
   };
@@ -252,7 +263,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Installment:</strong></span>
-                    <span>#{selectedInstallment.installment_number}</span>
+                    <span>#{selectedInstallment.installment_number || (selectedInstallment as any).installmentNumber}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Due Date:</strong></span>
@@ -330,7 +341,9 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     </thead>
                     <tbody>
                       {previewItems.map((item, index) => {
-                        const balance = (item.amount_due || 0) - (item.amount_paid || 0);
+                        const amountDue = getAmountDue(item);
+                        const amountPaid = getAmountPaid(item);
+                        const balance = amountDue - amountPaid;
                         const isAffected = cascadePreview?.affectedInstallments.some((a: any) => a.scheduleItemId === item.id);
                         const statusStr = String(item.status || 'PENDING');
 
@@ -343,8 +356,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                             }}
                           >
                             <td>{formatDate(item.due_date)}</td>
-                            <td>{formatMoney(item.amount_due || 0)}</td>
-                            <td>{formatMoney(item.amount_paid || 0)}</td>
+                            <td>{formatMoney(amountDue)}</td>
+                            <td>{formatMoney(amountPaid)}</td>
                             <td>
                               <span style={{
                                 color: balance > 0 ? '#FF4949' : '#4CAF50',

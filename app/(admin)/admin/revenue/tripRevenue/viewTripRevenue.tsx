@@ -40,7 +40,7 @@ interface RevenueDetailResponse {
   code: string;
   assignment_id: string;
   bus_trip_id: string;
-  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   bus_details: {
     date_assigned: string | null;
@@ -218,8 +218,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   };
 
   // Check if shortage section should be shown
-  const showShortageSection = data?.remittance_status === 'PARTIALLY_PAID' ||
-    data?.remittance_status === 'OVERDUE' ||
+  const showShortageSection = data?.payment_status === 'PARTIALLY_PAID' ||
+    data?.payment_status === 'OVERDUE' ||
     (data?.shortage_details !== undefined);
 
   // Check if conductor exists
@@ -297,8 +297,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             <div className="form-group">
               <label>Status</label>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span className={`chip ${getStatusChipClass(data.remittance_status)}`}>
-                  {formatStatus(data.remittance_status)}
+                <span className={`chip ${getStatusChipClass(data.payment_status)}`}>
+                  {formatStatus(data.payment_status)}
                 </span>
               </div>
             </div>
@@ -449,8 +449,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
 
             <div className="form-group">
               <label>Payment Status</label>
-              <p className={`chip ${getStatusChipClass(data.remittance_status)}`}>
-                {formatStatus(data.remittance_status)}
+              <p className={`chip ${getStatusChipClass(data.payment_status)}`}>
+                {formatStatus(data.payment_status)}
               </p>
             </div>
           </div>

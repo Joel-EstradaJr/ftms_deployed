@@ -117,6 +117,7 @@ export default function TripReceivablePaymentModal({
         }
 
         const data = result.data;
+        console.log("TripReceivablePaymentModal API Data:", data);
 
         // Map API response to enriched trip data
         const enrichedData: EnrichedTripData = {
@@ -230,15 +231,8 @@ export default function TripReceivablePaymentModal({
     if (!items || items.length === 0) return [];
 
     // Convert RevenueScheduleItem to SimpleScheduleItem
-    return items.map(item => ({
-      id: item.id,
-      installment_number: item.installment_number,
-      due_date: item.due_date,
-      amount_due: item.amount_due,
-      amount_paid: item.amount_paid,
-      balance: item.balance,
-      status: item.status
-    }));
+    // Return items directly as they match the interface. avoid redundant mapping that may strip fields.
+    return items;
   };
 
   const scheduleItems = getScheduleItems();
@@ -339,11 +333,15 @@ export default function TripReceivablePaymentModal({
 
   // Get first unpaid installment for the selected employee
   const getFirstUnpaidInstallment = (): SimpleScheduleItem | null => {
-    const unpaid = scheduleItems.find(item =>
-      item.status !== 'COMPLETED' &&
-      item.status !== 'CANCELLED' &&
-      item.status !== 'WRITTEN_OFF'
-    );
+    const unpaid = scheduleItems.find(item => {
+      // Calculate balance if not provided
+      const balance = item.balance ?? (item.amount_due - (item.amount_paid || 0));
+      // Must have positive balance AND not be in a terminal status
+      return balance > 0 &&
+        item.status !== 'COMPLETED' &&
+        item.status !== 'CANCELLED' &&
+        item.status !== 'WRITTEN_OFF';
+    });
     return unpaid || null;
   };
 

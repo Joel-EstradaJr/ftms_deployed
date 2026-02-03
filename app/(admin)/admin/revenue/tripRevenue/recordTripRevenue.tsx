@@ -554,7 +554,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
           amount_due: inst.amount_due,
           amount_paid: inst.amount_paid,
           balance: inst.amount_due - inst.amount_paid,
-          status: inst.status === 'COMPLETED' ? PaymentStatus.COMPLETED
+          status: (inst.status === 'COMPLETED' || inst.status === 'PAID') ? PaymentStatus.COMPLETED
             : inst.status === 'PARTIALLY_PAID' ? PaymentStatus.PARTIALLY_PAID
               : PaymentStatus.PENDING,
           isPastDue: new Date(inst.due_date) < new Date(),
