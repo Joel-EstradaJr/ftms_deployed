@@ -95,7 +95,7 @@ interface RevenueDetailResponse {
   code: string;
   assignment_id: string;
   bus_trip_id: string;
-  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   bus_details: {
     date_assigned: string | null;
@@ -226,7 +226,7 @@ interface RecordTripRevenueModalProps {
     date_recorded?: string | null;
     date_expected?: string | null;
     amount?: number | null;
-    payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
+    payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
     remarks?: string | null;
 
     // Shortage/Receivable details
@@ -685,6 +685,43 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
     // Otherwise it's on time or pending
     return 'PENDING';
+  };
+
+  // Get the display status - in edit mode, show actual backend status; in create mode, use computed status
+  const getDisplayStatus = (): string => {
+    // In edit mode with fetched data, show the actual backend status
+    if (mode === 'edit' && fetchedData?.remittance_status) {
+      // Format the backend status for display
+      const statusMap: Record<string, string> = {
+        'PENDING': 'PENDING',
+        'PARTIALLY_PAID': 'PARTIALLY PAID',
+        'PAID': 'PAID',
+        'OVERDUE': 'OVERDUE',
+        'CANCELLED': 'CANCELLED',
+        'WRITTEN_OFF': 'WRITTEN OFF',
+      };
+      return statusMap[fetchedData.remittance_status] || fetchedData.remittance_status;
+    }
+    // In create mode, use the computed status
+    return calculateRemittanceStatus();
+  };
+
+  // Get the CSS class for the status field
+  const getStatusFieldClass = (): string => {
+    if (mode === 'edit' && fetchedData?.remittance_status) {
+      const classMap: Record<string, string> = {
+        'PENDING': 'status-pending',
+        'PARTIALLY_PAID': 'status-partial',
+        'PAID': 'status-on-time',
+        'OVERDUE': 'status-converted-to-receivable',
+        'CANCELLED': 'status-pending',
+        'WRITTEN_OFF': 'status-pending',
+      };
+      return classMap[fetchedData.remittance_status] || 'status-pending';
+    }
+    const status = calculateRemittanceStatus();
+    return status === 'CONVERTED_TO_RECEIVABLE' ? 'status-converted-to-receivable' :
+      status === 'ON_TIME' ? 'status-on-time' : 'status-pending';
   };
 
   // Initialize remittance calculation
@@ -1518,13 +1555,11 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
               <label>Remittance Status</label>
               <input
                 type="text"
-                value={calculateRemittanceStatus()}
+                value={getDisplayStatus()}
                 disabled
-                className={`remittance-status-field ${calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' ? 'status-converted-to-receivable' :
-                  calculateRemittanceStatus() === 'ON_TIME' ? 'status-on-time' : 'status-pending'
-                  }`}
+                className={`remittance-status-field ${getStatusFieldClass()}`}
               />
-              {calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' && (
+              {mode === 'add' && calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' && (
                 <small className="add-error-message">
                   ⚠️ Deadline exceeded. This will be converted to a receivable.
                 </small>

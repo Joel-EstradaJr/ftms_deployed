@@ -40,7 +40,7 @@ interface RevenueDetailResponse {
   code: string;
   assignment_id: string;
   bus_trip_id: string;
-  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   bus_details: {
     date_assigned: string | null;
@@ -150,7 +150,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
     const statusMap: Record<string, string> = {
       'PENDING': 'Pending',
       'PARTIALLY_PAID': 'Partially Paid',
-      'COMPLETED': 'Paid',
+      'PAID': 'Paid',
+      'COMPLETED': 'Completed',
       'OVERDUE': 'Overdue',
       'CANCELLED': 'Cancelled',
       'WRITTEN_OFF': 'Written Off',
@@ -162,11 +163,12 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   const getStatusChipClass = (status: string): string => {
     const classMap: Record<string, string> = {
       'PENDING': 'pending',
-      'PARTIALLY_PAID': 'receivable',
+      'PARTIALLY_PAID': 'partial',
+      'PAID': 'paid',
       'COMPLETED': 'completed',
       'OVERDUE': 'overdue',
-      'CANCELLED': 'rejected',
-      'WRITTEN_OFF': 'rejected',
+      'CANCELLED': 'cancelled',
+      'WRITTEN_OFF': 'written-off',
     };
     return classMap[status] || 'pending';
   };
@@ -215,10 +217,9 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
     return typeMap[type] || type;
   };
 
-  // Check if shortage section should be shown
-  const showShortageSection = data?.payment_status === 'PARTIALLY_PAID' || 
-                              data?.payment_status === 'OVERDUE' ||
-                              (data?.shortage_details !== undefined);
+  const showShortageSection = data?.remittance_status === 'PARTIALLY_PAID' ||
+    data?.remittance_status === 'OVERDUE' ||
+    (data?.shortage_details !== undefined);
 
   // Check if conductor exists
   const hasConductor = data?.employees.conductor !== null;
@@ -294,10 +295,13 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             {/* Status */}
             <div className="form-group">
               <label>Status</label>
-              <p className={`chip ${getStatusChipClass(data.payment_status)}`}>
-                {formatStatus(data.payment_status)}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className={`chip ${getStatusChipClass(data.remittance_status)}`}>
+                  {formatStatus(data.remittance_status)}
+                </span>
+              </div>
             </div>
+
           </div>
         </form>
       </div>
@@ -444,8 +448,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
 
             <div className="form-group">
               <label>Remittance Status</label>
-              <p className={`chip ${getStatusChipClass(data.payment_status)}`}>
-                {formatStatus(data.payment_status)}
+              <p className={`chip ${getStatusChipClass(data.remittance_status)}`}>
+                {formatStatus(data.remittance_status)}
               </p>
             </div>
           </div>

@@ -57,7 +57,7 @@ interface BusTripRecord {
   date_recorded: string | null; // Maps to revenue.date_recorded
   amount: number | null; // Maps to revenue.amount
   total_amount: number | null; // Maps to receivable.total_amount
-  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
+  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
   remarks: string | null; // Maps to revenue.description
   due_date: string | null; // Maps to receivable.due_date
 
@@ -267,9 +267,11 @@ const AdminTripRevenuePage = () => {
         break;
       case "add":
       case "edit":
-        // Edit is only allowed for PARTIALLY_PAID status
-        if (mode === "edit" && rowData && rowData.payment_status !== 'PARTIALLY_PAID') {
-          showError(`This record cannot be edited because its status is "${rowData.payment_status}". Only PARTIALLY_PAID records can be edited.`, 'Cannot Edit');
+        // Edit is allowed for PENDING (to record remittance) and PARTIALLY_PAID (to manage receivables)
+        if (mode === "edit" && rowData &&
+          rowData.payment_status !== 'PARTIALLY_PAID' &&
+          rowData.payment_status !== 'PENDING') {
+          showError(`This record cannot be edited because its status is "${rowData.payment_status}". Only PENDING or PARTIALLY_PAID records can be edited.`, 'Cannot Edit');
           return;
         }
 
@@ -527,6 +529,7 @@ const AdminTripRevenuePage = () => {
     const classes: Record<BusTripRecord['payment_status'], string> = {
       'PENDING': 'pending',
       'PARTIALLY_PAID': 'partial',
+      'PAID': 'paid',
       'COMPLETED': 'completed',
       'OVERDUE': 'overdue',
       'CANCELLED': 'cancelled',
@@ -644,7 +647,7 @@ const AdminTripRevenuePage = () => {
         date_recorded: item.date_recorded ? new Date(item.date_recorded).toISOString().split('T')[0] : null,
         amount: item.trip_revenue,
         total_amount: item.shortage > 0 ? item.shortage : null,
-        payment_status: (item.payment_status as BusTripRecord['payment_status']) || 'PENDING',
+        payment_status: (item.remittance_status as BusTripRecord['payment_status']) || 'PENDING',
         remarks: null,
         due_date: null,
 
@@ -939,15 +942,21 @@ const AdminTripRevenuePage = () => {
                             <i className="ri-hand-coin-line" />
                           </button>
 
-                          {/* Edit button */}
+                          {/* Edit button - enabled for PENDING (to record remittance) and PARTIALLY_PAID (to manage receivables) */}
                           <button
                             className="editBtn"
                             onClick={() => openModal("edit", item)}
-                            title={item.payment_status === 'PARTIALLY_PAID' ? "Edit Receivable Details" : "Only available for Partial Payments"}
-                            disabled={item.payment_status !== 'PARTIALLY_PAID'}
+                            title={
+                              item.payment_status === 'PENDING'
+                                ? "Record Remittance"
+                                : item.payment_status === 'PARTIALLY_PAID'
+                                  ? "Edit Receivable Details"
+                                  : "Not editable"
+                            }
+                            disabled={item.payment_status !== 'PENDING' && item.payment_status !== 'PARTIALLY_PAID'}
                             style={{
-                              opacity: item.payment_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
-                              cursor: item.payment_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
+                              opacity: (item.payment_status !== 'PENDING' && item.payment_status !== 'PARTIALLY_PAID') ? 0.5 : 1,
+                              cursor: (item.payment_status !== 'PENDING' && item.payment_status !== 'PARTIALLY_PAID') ? 'not-allowed' : 'pointer'
                             }}
                           >
                             <i className="ri-edit-line" />
