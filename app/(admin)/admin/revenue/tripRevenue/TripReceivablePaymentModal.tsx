@@ -229,15 +229,15 @@ export default function TripReceivablePaymentModal({
 
     if (!items || items.length === 0) return [];
 
-    // Convert RevenueScheduleItem to SimpleScheduleItem
-    return items.map(item => ({
+    // Convert enriched data (camelCase) to SimpleScheduleItem (snake_case)
+    return items.map((item: any) => ({
       id: item.id,
-      installment_number: item.installment_number,
-      due_date: item.due_date,
-      amount_due: item.amount_due,
-      amount_paid: item.amount_paid,
-      balance: item.balance,
-      status: item.status
+      installment_number: item.installmentNumber,
+      due_date: item.currentDueDate,
+      amount_due: item.currentDueAmount,
+      amount_paid: item.paidAmount,
+      balance: item.currentDueAmount - item.paidAmount,
+      status: item.paymentStatus
     }));
   };
 

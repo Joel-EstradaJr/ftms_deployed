@@ -423,90 +423,54 @@ const AdminTripRevenuePage = () => {
   const handleSaveTripRevenue = async (formData: any, mode: "add" | "edit") => {
     console.log(`${mode === 'add' ? 'Recording' : 'Updating'} trip revenue:`, formData);
 
-    // TODO: Replace with actual API call
-    // Simulate success for now
-    showSuccess(`Trip revenue ${mode === 'add' ? 'recorded' : 'updated'} successfully (MOCK)`, 'Success');
+    try {
+      let response: Response;
+      let url: string;
+      let method: string;
 
-    // Update persistent mock data
-    setFullDataset(prevData => prevData.map(item => {
-      if (item.assignment_id !== formData.assignment_id) {
-        return item;
+      if (mode === 'add') {
+        // POST for new records
+        url = '/api/admin/revenue';
+        method = 'POST';
+      } else {
+        // PATCH for updates - use revenue_id from formData (set by modal) or fallback to activeRow
+        const revenueId = formData.revenue_id || activeRow?.revenue_id;
+        if (!revenueId) {
+          showError('Cannot update: missing revenue ID', 'Error');
+          return;
+        }
+        url = `/api/admin/revenue/${revenueId}`;
+        method = 'PATCH';
       }
 
-      // Base update for all cases
-      const updatedItem: BusTripRecord = {
-        ...item,
-        date_recorded: formData.date_recorded,
-        amount: formData.amount,
-        payment_status: formData.payment_status || 'COMPLETED',
-        remarks: formData.description
-      };
+      console.log(`[handleSaveTripRevenue] ${method} ${url}`);
+      console.log('[handleSaveTripRevenue] Payload:', JSON.stringify(formData, null, 2));
 
-      // Handle receivable case with separate driver and conductor receivables
-      if (formData.payment_status === 'PARTIALLY_PAID') {
-        const hasConductor = !!formData.conductorReceivable;
-        const driverReceivable = formData.driverReceivable;
-        const conductorReceivable = formData.conductorReceivable;
+      response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-        // Calculate total amount from both receivables
-        const totalAmount = (driverReceivable?.total_amount || 0) + (conductorReceivable?.total_amount || 0);
+      const result = await response.json();
 
-        updatedItem.total_amount = totalAmount;
-        updatedItem.due_date = driverReceivable?.due_date || null;
-        updatedItem.receivableDetails = {
-          totalAmount,
-          dueDate: driverReceivable?.due_date || '',
-          createdDate: formData.date_recorded,
-          driverShare: driverReceivable?.total_amount || 0,
-          driverPaid: 0,
-          driverStatus: 'Pending',
-          driverPayments: [],
-          ...(hasConductor && {
-            conductorShare: conductorReceivable?.total_amount || 0,
-            conductorPaid: 0,
-            conductorStatus: 'Pending',
-            conductorPayments: []
-          }),
-          overallStatus: 'Pending'
-        };
+      console.log(`[handleSaveTripRevenue] Response status: ${response.status}`);
+      console.log('[handleSaveTripRevenue] Response:', JSON.stringify(result, null, 2));
 
-        // Convert installments from API format to internal format
-        if (driverReceivable?.installments) {
-          updatedItem.driverInstallments = driverReceivable.installments.map((inst: any, index: number) => ({
-            id: `driver-inst-${Date.now()}-${index}`,
-            installment_number: inst.installment_number,
-            due_date: inst.due_date,
-            amount_due: inst.amount_due,
-            amount_paid: inst.amount_paid || 0,
-            balance: inst.amount_due - (inst.amount_paid || 0),
-            status: inst.status || PaymentStatus.PENDING,
-            isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
-            isEditable: inst.status !== PaymentStatus.COMPLETED
-          }));
-        }
-
-        if (hasConductor && conductorReceivable?.installments) {
-          updatedItem.conductorInstallments = conductorReceivable.installments.map((inst: any, index: number) => ({
-            id: `conductor-inst-${Date.now()}-${index}`,
-            installment_number: inst.installment_number,
-            due_date: inst.due_date,
-            amount_due: inst.amount_due,
-            amount_paid: inst.amount_paid || 0,
-            balance: inst.amount_due - (inst.amount_paid || 0),
-            status: inst.status || PaymentStatus.PENDING,
-            isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
-            isEditable: inst.status !== PaymentStatus.COMPLETED
-          }));
-        }
+      if (!response.ok || !result.success) {
+        showError(result.message || result.error || `Failed to ${mode} revenue`, 'Error');
+        return;
       }
 
-      return updatedItem;
-    }));
+      showSuccess(`Trip revenue ${mode === 'add' ? 'recorded' : 'updated'} successfully`, 'Success');
 
-    // Refresh displayed data
-    fetchData();
-
-    closeModal();
+      // Refresh data from server
+      await fetchData();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving trip revenue:', error);
+      showError('An unexpected error occurred', 'Error');
+    }
   };
 
   // Fetch filter options (revenue sources)

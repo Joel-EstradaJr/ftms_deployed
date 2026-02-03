@@ -425,6 +425,39 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     return installments;
   };
 
+  // Helper function to apply existing payments to new installment schedule
+  // This preserves payments when installments are recalculated
+  const applyPaymentsToInstallments = (
+    installments: RevenueScheduleItem[],
+    totalPaid: number
+  ): RevenueScheduleItem[] => {
+    if (totalPaid <= 0) return installments;
+
+    let remainingPaid = totalPaid;
+    return installments.map(inst => {
+      if (remainingPaid <= 0) return inst;
+
+      const paymentToApply = Math.min(remainingPaid, inst.amount_due);
+      remainingPaid -= paymentToApply;
+
+      const newBalance = inst.amount_due - paymentToApply;
+      let newStatus = PaymentStatus.PENDING;
+      if (paymentToApply >= inst.amount_due) {
+        newStatus = PaymentStatus.COMPLETED;
+      } else if (paymentToApply > 0) {
+        newStatus = PaymentStatus.PARTIALLY_PAID;
+      }
+
+      return {
+        ...inst,
+        amount_paid: paymentToApply,
+        balance: newBalance,
+        status: newStatus,
+        isEditable: newStatus !== PaymentStatus.COMPLETED
+      };
+    });
+  };
+
   // Calculate expected remittance for initial state based on conditions
   const getInitialRemittanceAmount = () => {
     // Check if deadline has been exceeded (CONVERTED_TO_LOAN status)
@@ -726,30 +759,42 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
   // Initialize remittance calculation
   useEffect(() => {
+    // Skip due date initialization in edit mode - values are loaded from fetchedData
+    if (mode === 'edit' && fetchedData) {
+      // Only update remittanceCalc, don't reset form values
+      const calc = calculateRemittance();
+      setRemittanceCalc(calc);
+      return;
+    }
+
     const calc = calculateRemittance();
     setRemittanceCalc(calc);
 
-    // Set default remittance due date (e.g., 72 hours from date assigned)
+    // Set default remittance due date (e.g., 72 hours from date assigned) - only for add mode
     const assignedDate = new Date(tripData.date_assigned);
     assignedDate.setHours(assignedDate.getHours() + 72); // Add 72 hours (3 days)
     setFormData(prev => ({
       ...prev,
       remittanceDueDate: assignedDate.toISOString().split('T')[0]
     }));
-  }, [tripData]);
+  }, [tripData, mode, fetchedData]);
 
-  // Auto-set amount to 0 when status becomes CONVERTED_TO_RECEIVABLE, allow manual entry when status reverts to PENDING
+  // Auto-set amount to 0 when status becomes CONVERTED_TO_RECEIVABLE - only on initial load, not on date changes
   useEffect(() => {
     const status = calculateRemittanceStatus();
-    if (status === 'CONVERTED_TO_RECEIVABLE' && formData.amount !== 0) {
+    // Only auto-set to 0 if:
+    // 1. Status is CONVERTED_TO_RECEIVABLE
+    // 2. Not in edit mode (edit mode preserves existing values)
+    // 3. Amount hasn't been manually set yet (still at initial 0)
+    if (status === 'CONVERTED_TO_RECEIVABLE' && mode !== 'edit') {
       setFormData(prev => ({
         ...prev,
         amount: 0
       }));
     }
-    // When status reverts from receivable to pending, allow amount entry again
-    // Amount will remain at whatever value it was (0 or user-entered)
-  }, [formData.remittanceDueDate]);
+    // Note: Do NOT depend on remittanceDueDate to avoid resetting on date changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   // Update receivable amount when remitted amount changes or when conversion to receivable detected
   useEffect(() => {
@@ -779,14 +824,25 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
   // Generate installment schedules when receivable parameters change
   useEffect(() => {
     if (shouldCreateReceivable() && formData.conductorShare > 0 && formData.driverShare > 0) {
+      // Capture existing payments BEFORE regenerating (to preserve in edit mode)
+      const existingConductorPaid = formData.conductorInstallments
+        .reduce((sum, inst) => sum + (inst.amount_paid || 0), 0);
+      const existingDriverPaid = formData.driverInstallments
+        .reduce((sum, inst) => sum + (inst.amount_paid || 0), 0);
+
       // Generate conductor installments (if conductor exists)
       if (hasConductor() && formData.conductorShare > 0) {
-        const conductorInstallments = generateInstallmentSchedule(
+        let conductorInstallments = generateInstallmentSchedule(
           formData.conductorShare,
           formData.frequency,
           formData.numberOfPayments,
           formData.startDate
         );
+
+        // Apply existing payments to new schedule (preserves payment history)
+        if (existingConductorPaid > 0) {
+          conductorInstallments = applyPaymentsToInstallments(conductorInstallments, existingConductorPaid);
+        }
 
         setFormData(prev => ({
           ...prev,
@@ -796,12 +852,17 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
       // Generate driver installments
       if (formData.driverShare > 0) {
-        const driverInstallments = generateInstallmentSchedule(
+        let driverInstallments = generateInstallmentSchedule(
           formData.driverShare,
           formData.frequency,
           formData.numberOfPayments,
           formData.startDate
         );
+
+        // Apply existing payments to new schedule (preserves payment history)
+        if (existingDriverPaid > 0) {
+          driverInstallments = applyPaymentsToInstallments(driverInstallments, existingDriverPaid);
+        }
 
         setFormData(prev => ({
           ...prev,
@@ -859,17 +920,13 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
   const shouldCreateReceivable = (): boolean => {
     const status = calculateRemittanceStatus();
     const expectedRemittance = calculateExpectedRemittance();
+    const hasShortage = formData.amount < expectedRemittance;
 
-    // In edit mode: if original status was PARTIALLY_PAID but now status is PENDING (due date changed to future)
-    // Don't show receivable section - it will be deleted on save
-    if (mode === 'edit' && tripData.payment_status === 'PARTIALLY_PAID' && status === 'PENDING') {
-      return false;
-    }
-
-    // Create receivable if:
-    // 1. Status is CONVERTED_TO_RECEIVABLE (deadline exceeded)
-    // 2. Amount remitted is less than expected remittance (shortage)
-    return status === 'CONVERTED_TO_RECEIVABLE' || formData.amount < expectedRemittance;
+    // Show receivable section if EITHER condition is true:
+    // 1. There's a shortage (amount remitted < expected remittance)
+    // 2. Status is CONVERTED_TO_RECEIVABLE (beyond due date)
+    // Note: Do NOT hide based on due date alone if there's a shortage
+    return hasShortage || status === 'CONVERTED_TO_RECEIVABLE';
   };
 
   // Calculate maximum remittance amount (when condition isn't met)
@@ -1018,7 +1075,9 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     // Amount validation based on status
     let amountValid = false;
     if (isConvertedToReceivable) {
-      amountValid = formData.amount === 0; // Must be 0 when converted to receivable
+      // In edit mode: accept existing amount (preserves user's already-paid amount)
+      // In add mode: must be 0 when converted to receivable (auto-set by system)
+      amountValid = mode === 'edit' ? formData.amount >= 0 : formData.amount === 0;
     } else {
       amountValid = formData.amount >= 0; // Can be 0 or positive
     }
@@ -1129,13 +1188,28 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     // Only show confirmation dialog if finalizing (not pending)
     if (!isPending) {
       // Show confirmation dialog with preview
-      const result = await showRemittanceConfirmation({
-        dateRecorded: formData.dateRecorded,
-        busPlateNumber: tripData.bus_plate_number,
+      // Use fetchedData (API response) in edit mode, tripData in add mode
+      const confirmData = fetchedData ? {
+        busPlateNumber: fetchedData.bus_details.license_plate || 'N/A',
+        tripRevenue: fetchedData.bus_details.trip_revenue,
+        assignmentType: fetchedData.bus_details.assignment_type === 'BOUNDARY' ? 'Boundary' : 'Percentage',
+        assignmentValue: fetchedData.bus_details.assignment_value || 0,
+        paymentMethod: fetchedData.bus_details.payment_method || 'CASH',
+      } : {
+        busPlateNumber: tripData.bus_plate_number || 'N/A',
         tripRevenue: tripData.trip_revenue,
         assignmentType: tripData.assignment_type,
         assignmentValue: tripData.assignment_value,
         paymentMethod: tripData.payment_method || 'CASH',
+      };
+
+      const result = await showRemittanceConfirmation({
+        dateRecorded: formData.dateRecorded,
+        busPlateNumber: confirmData.busPlateNumber,
+        tripRevenue: confirmData.tripRevenue,
+        assignmentType: confirmData.assignmentType,
+        assignmentValue: confirmData.assignmentValue,
+        paymentMethod: confirmData.paymentMethod,
         remittedAmount: formData.amount,
         hasLoan: shouldCreateReceivable(),
         loanAmount: shouldCreateReceivable() ? formData.receivableAmount : undefined
@@ -1166,6 +1240,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
     // Prepare data for submission
     const submissionData: any = {
+      revenue_id: revenueId, // Include revenue ID for edit mode
       assignment_id: tripData.assignment_id,
       bus_trip_id: tripData.bus_trip_id,
       date_recorded: formData.dateRecorded,
@@ -1612,19 +1687,19 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                         <strong>Calculation:</strong>
                       </div>
 
-                      {tripData.assignment_type === 'Boundary' ? (
+                      {displayData.assignment_type === 'Boundary' ? (
                         <>
                           <div className="breakdown-row">
                             <span>Boundary/Quota Amount:</span>
-                            <span>{formatMoney(tripData.assignment_value)}</span>
+                            <span>{formatMoney(displayData.assignment_value)}</span>
                           </div>
                           <div className="breakdown-row">
                             <span>Fuel Expense:</span>
-                            <span>{formatMoney(tripData.trip_fuel_expense)}</span>
+                            <span>{formatMoney(displayData.trip_fuel_expense)}</span>
                           </div>
                           <div className="breakdown-row-bold">
                             <span>Expected Remittance:</span>
-                            <span>{formatMoney(tripData.assignment_value + tripData.trip_fuel_expense)}</span>
+                            <span>{formatMoney(displayData.assignment_value + displayData.trip_fuel_expense)}</span>
                           </div>
                           <div className="breakdown-row-negative">
                             <span>(-) Amount Remitted:</span>
@@ -1639,19 +1714,19 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                         <>
                           <div className="breakdown-row">
                             <span>Trip Revenue:</span>
-                            <span>{formatMoney(tripData.trip_revenue)}</span>
+                            <span>{formatMoney(displayData.trip_revenue)}</span>
                           </div>
                           <div className="breakdown-row">
-                            <span>Company Share ({tripData.assignment_value}%):</span>
-                            <span>{formatMoney(tripData.trip_revenue * (tripData.assignment_value / 100))}</span>
+                            <span>Company Share ({displayData.assignment_value}%):</span>
+                            <span>{formatMoney(displayData.trip_revenue * (displayData.assignment_value / 100))}</span>
                           </div>
                           <div className="breakdown-row">
                             <span>Fuel Expense:</span>
-                            <span>{formatMoney(tripData.trip_fuel_expense)}</span>
+                            <span>{formatMoney(displayData.trip_fuel_expense)}</span>
                           </div>
                           <div className="breakdown-row-bold">
                             <span>Expected Remittance:</span>
-                            <span>{formatMoney((tripData.trip_revenue * (tripData.assignment_value / 100)) + tripData.trip_fuel_expense)}</span>
+                            <span>{formatMoney((displayData.trip_revenue * (displayData.assignment_value / 100)) + displayData.trip_fuel_expense)}</span>
                           </div>
                           <div className="breakdown-row-negative">
                             <span>(-) Amount Remitted:</span>
