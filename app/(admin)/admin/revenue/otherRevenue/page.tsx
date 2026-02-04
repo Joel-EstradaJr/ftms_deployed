@@ -782,7 +782,8 @@ const AdminOtherRevenuePage = () => {
       payment_reference: record.payment_reference || '',
       department_id: record.department_id || record.department?.id,
       department: record.department?.department_name,
-      isUnearnedRevenue: record.isUnearnedRevenue || false,
+      // Use receivable existence as ground truth for isUnearnedRevenue
+      isUnearnedRevenue: !!record.receivable || record.isUnearnedRevenue || false,
       // Include schedule fields from receivable
       scheduleFrequency,
       scheduleStartDate,
@@ -829,6 +830,7 @@ const AdminOtherRevenuePage = () => {
             currentUser="admin"
             revenueTypes={revenueTypes}
             scheduleFrequencies={scheduleFrequencies}
+            approvalStatus={rowData?.approval_status || 'PENDING'}
           />
         );
         break;
@@ -973,7 +975,22 @@ const AdminOtherRevenuePage = () => {
           return;
         }
 
-        const payload = {
+        // Check if unearned revenue status changed (conversion)
+        // Use activeRow?.receivable as ground truth - if record has a receivable, it was unearned revenue
+        const wasUnearnedRevenue = !!activeRow?.receivable;
+        const isNowUnearnedRevenue = formData.isUnearnedRevenue;
+        const unearnedStatusChanged = wasUnearnedRevenue !== isNowUnearnedRevenue;
+
+        console.log('[DEBUG] Conversion check:', {
+          wasUnearnedRevenue,
+          isNowUnearnedRevenue,
+          unearnedStatusChanged,
+          activeRowReceivable: activeRow?.receivable,
+          activeRowIsUnearnedRevenue: activeRow?.isUnearnedRevenue,
+          formDataIsUnearned: formData.isUnearnedRevenue
+        });
+
+        const payload: Record<string, unknown> = {
           revenue_type_id: revenueType?.id,
           amount: formData.amount,
           date_recorded: formData.date_recorded,
@@ -982,8 +999,21 @@ const AdminOtherRevenuePage = () => {
           payment_reference: formData.payment_reference || undefined,
           department_id: formData.department_id,
           remarks: formData.remarks || undefined,
-          updated_by: formData.createdBy || 'admin'
+          updated_by: formData.createdBy || 'admin',
+          // ALWAYS include isUnearnedRevenue so backend knows current state
+          isUnearnedRevenue: isNowUnearnedRevenue
         };
+
+        console.log('[DEBUG] Payload isUnearnedRevenue:', isNowUnearnedRevenue);
+
+        // Include schedule details if converting to receivable
+        if (isNowUnearnedRevenue) {
+          payload.scheduleFrequency = formData.scheduleFrequency;
+          payload.scheduleStartDate = formData.scheduleStartDate;
+          payload.numberOfPayments = formData.numberOfPayments;
+        }
+
+        console.log('[DEBUG] Final payload:', JSON.stringify(payload, null, 2));
 
         const response = await fetch(`/api/admin/other-revenue/${revenueId}`, {
           method: 'PATCH',
@@ -1300,9 +1330,9 @@ const AdminOtherRevenuePage = () => {
       return;
     }
 
-    // Only allow deletion for PENDING status
-    if (record.payment_status !== 'PENDING') {
-      showError('Only records with PENDING status can be deleted', 'Cannot Delete');
+    // Only allow deletion for PENDING approval status (before approval)
+    if (record.approval_status !== 'PENDING') {
+      showError('Only records with PENDING approval status can be deleted', 'Cannot Delete');
       return;
     }
 
