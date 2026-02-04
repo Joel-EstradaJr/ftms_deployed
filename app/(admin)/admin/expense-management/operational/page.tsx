@@ -42,7 +42,7 @@ interface OperationalExpenseViewData {
   payment_method: string;
   is_reimbursable: boolean;
   description?: string;
-  status?: string;
+  approval_status?: string;
   created_by: string;
   approved_by?: string;
   created_at?: string;
@@ -84,7 +84,7 @@ const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
     payment_method: expense.payment_method || '',
     is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
     description: expense.description || '',
-    status: expense.status,
+    approval_status: expense.approval_status,
     created_by: expense.created_by || '',
     approved_by: expense.approved_by,
     created_at: expense.created_at,
@@ -377,14 +377,27 @@ const OperationalExpensePage = () => {
     );
   }
 
+  // Payment status display mapping
+  const getPaymentStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'PENDING': 'Pending',
+      'PARTIALLY_PAID': 'Partially Paid',
+      'COMPLETED': 'Completed',
+      'OVERDUE': 'Overdue',
+      'CANCELLED': 'Cancelled',
+      'WRITTEN_OFF': 'Written Off',
+    };
+    return labels[status] || status;
+  };
+
   // Prepare export data - matches visible table columns exactly
   const exportData = data.map(expense => ({
     'Date Recorded': formatDate(expense.date_recorded),
     'Expense Code': expense.code,
     'Body Number': expense.body_number || '-',
     'Amount': formatMoney(expense.amount),
-    'Reimbursable': expense.is_reimbursable ? 'Yes' : 'No',
-    'Status': expense.status,
+    'Payment Status': getPaymentStatusLabel(expense.payment_status),
+    'Status': expense.approval_status,
   }));
 
   return (
@@ -459,7 +472,7 @@ const OperationalExpensePage = () => {
                   <th>Expense Code</th>
                   <th>Body Number</th>
                   <th>Amount</th>
-                  <th>Reimbursable</th>
+                  <th>Payment Status</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -485,13 +498,13 @@ const OperationalExpensePage = () => {
                       <td>{expense.body_number || '-'}</td>
                       <td className="expense-amount">{formatMoney(expense.amount)}</td>
                       <td>
-                        <span className={`chip ${expense.is_reimbursable ? 'reimbursable' : 'not-reimbursable'}`}>
-                          {expense.is_reimbursable ? 'Yes' : 'No'}
+                        <span className={`chip ${expense.payment_status?.toLowerCase().replace('_', '-')}`}>
+                          {getPaymentStatusLabel(expense.payment_status)}
                         </span>
                       </td>
                       <td>
-                        <span className={`chip ${expense.status?.toLowerCase()}`}>
-                          {expense.status}
+                        <span className={`chip ${expense.approval_status?.toLowerCase()}`}>
+                          {expense.approval_status}
                         </span>
                       </td>
                       <td className="actionButtons">
@@ -506,7 +519,7 @@ const OperationalExpensePage = () => {
                           </button>
 
                           {/* Approve button - only for PENDING */}
-                          {expense.status === 'PENDING' && (
+                          {expense.approval_status === 'PENDING' && (
                             <button
                               className="approveBtn"
                               onClick={() => handleApprove(expense.id)}
@@ -517,7 +530,7 @@ const OperationalExpensePage = () => {
                           )}
 
                           {/* Reject button - only for PENDING */}
-                          {expense.status === 'PENDING' && (
+                          {expense.approval_status === 'PENDING' && (
                             <button
                               className="rejectBtn"
                               onClick={() => handleReject(expense.id)}
@@ -528,7 +541,7 @@ const OperationalExpensePage = () => {
                           )}
 
                           {/* Delete button - only for PENDING */}
-                          {expense.status === 'PENDING' && (
+                          {expense.approval_status === 'PENDING' && (
                             <button
                               className="deleteBtn"
                               onClick={() => handleDelete(expense.id)}

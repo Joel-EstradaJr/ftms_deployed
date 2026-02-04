@@ -39,14 +39,16 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
     }).format(Math.abs(amount));
   };
 
-  // Calculate financial ratios
+  // Calculate financial ratios - EQUITY REMOVED per requirements
   const financialRatios = React.useMemo(() => {
     const currentRatio = (data.currentAssets.subtotal / (data.currentLiabilities.subtotal || 1)).toFixed(2);
-    const debtToEquity = (data.totalLiabilities / (data.equity.subtotal || 1)).toFixed(2);
-    const equityRatio = ((data.equity.subtotal / (data.totalAssets || 1)) * 100).toFixed(1);
+    // REMOVED: Equity-related ratios - no equity logic in frontend per requirements
+    // const debtToEquity = (data.totalLiabilities / (data.equity.subtotal || 1)).toFixed(2);
+    // const equityRatio = ((data.equity.subtotal / (data.totalAssets || 1)) * 100).toFixed(1);
     const assetToLiability = (data.totalAssets / (data.totalLiabilities || 1)).toFixed(2);
+    const liabilityRatio = ((data.totalLiabilities / (data.totalAssets || 1)) * 100).toFixed(1);
     
-    return { currentRatio, debtToEquity, equityRatio, assetToLiability };
+    return { currentRatio, assetToLiability, liabilityRatio };
   }, [data]);
 
   // Asset composition data (combining current and non-current)
@@ -103,17 +105,18 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
     ],
   };
 
-  // Non-Current Assets breakdown (excluding accumulated depreciation for cleaner visualization)
+  // DEFERRED: Non-Current Assets breakdown - accumulated depreciation filtering commented out
+  // Original filtered out isAccumulatedDepreciation for cleaner visualization
   const nonCurrentAssetsChartData = {
     labels: data.nonCurrentAssets.items
-      .filter((item) => !item.isAccumulatedDepreciation)
+      // DEFERRED: .filter((item) => !item.isAccumulatedDepreciation)
       .map((item) => 
         item.accountName.length > 18 ? item.accountName.substring(0, 15) + "..." : item.accountName
       ),
     datasets: [
       {
         data: data.nonCurrentAssets.items
-          .filter((item) => !item.isAccumulatedDepreciation)
+          // DEFERRED: .filter((item) => !item.isAccumulatedDepreciation)
           .map((item) => Math.abs(item.amount)),
         backgroundColor: [
           "rgba(155, 89, 182, 0.8)",
@@ -139,25 +142,25 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
     ],
   };
 
-  // Liabilities and Equity composition
+  // Liabilities composition - EQUITY REMOVED per requirements
   const liabilitiesEquityData = {
-    labels: ["Current Liabilities", "Long-term Liabilities", "Equity"],
+    labels: ["Current Liabilities", "Long-term Liabilities"],
     datasets: [
       {
         data: [
           data.currentLiabilities.subtotal,
           data.longTermLiabilities.subtotal,
-          data.equity.subtotal,
+          // REMOVED: data.equity.subtotal - no equity logic in frontend
         ],
         backgroundColor: [
           "rgba(231, 76, 60, 0.8)",
           "rgba(230, 126, 34, 0.8)",
-          "rgba(46, 204, 113, 0.8)",
+          // REMOVED: "rgba(46, 204, 113, 0.8)" - equity color
         ],
         hoverBackgroundColor: [
           "rgba(231, 76, 60, 1)",
           "rgba(230, 126, 34, 1)",
-          "rgba(46, 204, 113, 1)",
+          // REMOVED: "rgba(46, 204, 113, 1)" - equity color
         ],
         borderColor: "#fff",
         borderWidth: 3,
@@ -167,9 +170,9 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
     ],
   };
 
-  // Balance Sheet structure (stacked bar)
+  // Balance Sheet structure (stacked bar) - EQUITY REMOVED per requirements
   const balanceSheetStructureData = {
-    labels: ["Assets", "Liabilities & Equity"],
+    labels: ["Assets", "Liabilities"],
     datasets: [
       {
         label: "Current Assets",
@@ -207,45 +210,28 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
         borderWidth: 2,
         borderRadius: 6,
       },
-      {
-        label: "Equity",
-        data: [0, data.equity.subtotal],
-        backgroundColor: "rgba(155, 89, 182, 0.8)",
-        hoverBackgroundColor: "rgba(155, 89, 182, 1)",
-        borderColor: "rgba(155, 89, 182, 1)",
-        borderWidth: 2,
-        borderRadius: 6,
-      },
+      // REMOVED: Equity dataset - no equity logic in frontend per requirements
+      // {
+      //   label: "Equity",
+      //   data: [0, data.equity.subtotal],
+      //   backgroundColor: "rgba(155, 89, 182, 0.8)",
+      //   ...
+      // },
     ],
   };
 
-  // Equity breakdown
-  const equityBreakdownData = {
-    labels: data.equity.items.map((item) => 
-      item.accountName.length > 20 ? item.accountName.substring(0, 17) + "..." : item.accountName
-    ),
-    datasets: [
-      {
-        data: data.equity.items.map((item) => item.amount),
-        backgroundColor: [
-          "rgba(46, 204, 113, 0.8)",
-          "rgba(39, 174, 96, 0.8)",
-          "rgba(22, 160, 133, 0.8)",
-          "rgba(26, 188, 156, 0.8)",
-        ],
-        hoverBackgroundColor: [
-          "rgba(46, 204, 113, 1)",
-          "rgba(39, 174, 96, 1)",
-          "rgba(22, 160, 133, 1)",
-          "rgba(26, 188, 156, 1)",
-        ],
-        borderColor: "#fff",
-        borderWidth: 3,
-        hoverBorderWidth: 4,
-        hoverOffset: 12,
-      },
-    ],
-  };
+  // REMOVED: Equity breakdown chart - no equity logic in frontend per requirements
+  // const equityBreakdownData = {
+  //   labels: data.equity.items.map((item) => 
+  //     item.accountName.length > 20 ? item.accountName.substring(0, 17) + "..." : item.accountName
+  //   ),
+  //   datasets: [
+  //     {
+  //       data: data.equity.items.map((item) => item.amount),
+  //       backgroundColor: [...],
+  //     },
+  //   ],
+  // };
 
   // Liabilities breakdown (combined)
   const liabilitiesBreakdownData = {
@@ -556,7 +542,7 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
         </p>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - EQUITY REMOVED per requirements */}
       <div className="summary-cards">
         <div className="summary-card assets-card">
           <div className="summary-icon">
@@ -576,15 +562,8 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
             <span className="summary-value">₱{formatCurrency(data.totalLiabilities)}</span>
           </div>
         </div>
-        <div className="summary-card equity-card">
-          <div className="summary-icon">
-            <i className="ri-shield-check-line"></i>
-          </div>
-          <div className="summary-content">
-            <span className="summary-label">Total Equity</span>
-            <span className="summary-value">₱{formatCurrency(data.equity.subtotal)}</span>
-          </div>
-        </div>
+        {/* REMOVED: Equity summary card - no equity logic in frontend per requirements */}
+        {/* <div className="summary-card equity-card">...</div> */}
         <div className="summary-card ratio-card">
           <div className="summary-icon">
             <i className="ri-scales-3-line"></i>
@@ -596,7 +575,7 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
         </div>
       </div>
 
-      {/* Financial Ratios Section */}
+      {/* Financial Ratios Section - EQUITY RATIOS REMOVED per requirements */}
       <div className="financial-ratios">
         <h4 className="ratios-title">
           <i className="ri-calculator-line"></i>
@@ -608,16 +587,23 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
             <span className="ratio-value">{financialRatios.currentRatio}x</span>
             <span className="ratio-desc">Current Assets / Current Liabilities</span>
           </div>
-          <div className="ratio-item">
+          {/* REMOVED: Debt to Equity ratio - no equity logic in frontend per requirements */}
+          {/* <div className="ratio-item">
             <span className="ratio-name">Debt to Equity</span>
             <span className="ratio-value">{financialRatios.debtToEquity}x</span>
             <span className="ratio-desc">Total Liabilities / Total Equity</span>
-          </div>
+          </div> */}
           <div className="ratio-item">
+            <span className="ratio-name">Liability Ratio</span>
+            <span className="ratio-value">{financialRatios.liabilityRatio}%</span>
+            <span className="ratio-desc">Liabilities / Total Assets</span>
+          </div>
+          {/* REMOVED: Equity Ratio - no equity logic in frontend per requirements */}
+          {/* <div className="ratio-item">
             <span className="ratio-name">Equity Ratio</span>
             <span className="ratio-value">{financialRatios.equityRatio}%</span>
             <span className="ratio-desc">Equity / Total Assets</span>
-          </div>
+          </div> */}
           <div className="ratio-item">
             <span className="ratio-name">Asset Coverage</span>
             <span className="ratio-value">{financialRatios.assetToLiability}x</span>
@@ -650,11 +636,11 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
           </div>
         </div>
 
-        {/* Liabilities & Equity Composition */}
+        {/* Liabilities Composition - RENAMED from Liabilities & Equity */}
         <div className="chart-container">
           <h4 className="chart-title">
             <i className="ri-donut-chart-line"></i>
-            Liabilities & Equity
+            Liabilities Breakdown
           </h4>
           <div className="chart-wrapper doughnut-wrapper">
             <Doughnut data={liabilitiesEquityData} options={doughnutOptions} />
@@ -683,8 +669,8 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
           </div>
         </div>
 
-        {/* Equity Breakdown */}
-        <div className="chart-container">
+        {/* REMOVED: Equity Breakdown chart - no equity logic in frontend per requirements */}
+        {/* <div className="chart-container">
           <h4 className="chart-title">
             <i className="ri-shield-star-line"></i>
             Equity Breakdown
@@ -692,7 +678,7 @@ const FinancialPositionCharts: React.FC<FinancialPositionChartsProps> = ({ data 
           <div className="chart-wrapper doughnut-wrapper">
             <Doughnut data={equityBreakdownData} options={doughnutOptions} />
           </div>
-        </div>
+        </div> */}
 
         {/* Liabilities Breakdown */}
         <div className="chart-container">

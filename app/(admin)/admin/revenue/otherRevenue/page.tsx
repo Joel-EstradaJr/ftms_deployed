@@ -88,14 +88,15 @@ interface OtherRevenueRecord {
   description: string;
   remarks?: string;
   amount: number;
-  remittance_status: string;
+  payment_status: string;
   payment_method?: string;
   payment_reference?: string;
   isUnearnedRevenue: boolean;
   accountCode?: string;
   created_by?: string;
   created_at?: string;
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  approval_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  accounting_status?: 'DRAFT' | 'POSTED' | 'ADJUSTED' | 'REVERSED';
   approvalRemarks?: string;
   // Journal Entry link (for edit/delete restrictions)
   journalEntry?: {
@@ -185,7 +186,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of old computer equipment",
     amount: 45000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: true,
     receivable: {
@@ -275,7 +276,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Bank interest for Q3 2024",
     amount: 12500.50,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -293,7 +294,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Late payment fees from trip rentals",
     amount: 8750.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -311,7 +312,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 4, name: "Insurance Claims", code: "INSURANCE" },
     description: "Vehicle accident insurance payout",
     amount: 150000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Check",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -330,7 +331,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 5, name: "Donations", code: "DONATIONS" },
     description: "Corporate sponsorship from ABC Corp",
     amount: 75000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -349,7 +350,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 6, name: "Parking Fees", code: "OTHER" },
     description: "Monthly parking revenue at terminal",
     amount: 32500.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -367,7 +368,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of retired bus units",
     amount: 280000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -386,7 +387,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 7, name: "Advertising Revenue", code: "OTHER" },
     description: "Bus exterior advertising - November",
     amount: 45000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -404,7 +405,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Investment returns - fixed deposit",
     amount: 18200.75,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -422,7 +423,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 8, name: "Merchandise Sales", code: "OTHER" },
     description: "Company merchandise and souvenirs",
     amount: 15600.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -440,7 +441,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Penalty fees from contract breaches",
     amount: 12000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -458,7 +459,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 9, name: "Terminal Rentals", code: "OTHER" },
     description: "Food stall rental at bus terminal",
     amount: 28000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -476,7 +477,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 5, name: "Donations", code: "DONATIONS" },
     description: "Community fund-raising event proceeds",
     amount: 52000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -494,7 +495,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 1, name: "Asset Sale", code: "ASSET_SALE" },
     description: "Sale of office furniture and fixtures",
     amount: 22500.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Check",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -513,7 +514,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 10, name: "Scrap Sales", code: "OTHER" },
     description: "Sale of scrap metal from old parts",
     amount: 8900.50,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -531,7 +532,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 4, name: "Insurance Claims", code: "INSURANCE" },
     description: "Property damage insurance claim",
     amount: 95000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -550,7 +551,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 2, name: "Interest Income", code: "INTEREST" },
     description: "Savings account interest - October",
     amount: 6750.25,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -568,7 +569,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 7, name: "Advertising Revenue", code: "OTHER" },
     description: "Digital billboard advertising - Q3",
     amount: 120000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -587,7 +588,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 3, name: "Late Payment Penalties", code: "PENALTIES" },
     description: "Overdue invoice penalty charges",
     amount: 15500.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Bank Transfer",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -605,7 +606,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
     revenueType: { id: 6, name: "Parking Fees", code: "OTHER" },
     description: "Quarterly parking fee collection",
     amount: 98000.00,
-    remittance_status: "PAID",
+    payment_status: "COMPLETED",
     payment_method: "Cash",
     isUnearnedRevenue: false,
     // Backward compatibility fields
@@ -661,7 +662,7 @@ const AdminOtherRevenuePage = () => {
   });
 
   // Sort states
-  const [sortBy, setSortBy] = useState<"code" | "date_recorded" | "amount">("date_recorded");
+  const [sortBy, setSortBy] = useState<"code" | "date_recorded" | "amount" | "updated_at">("updated_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
@@ -726,24 +727,25 @@ const AdminOtherRevenuePage = () => {
     }
 
     // Set payment methods (matching schema enum values)
+    // Note: REIMBURSEMENT is excluded from revenue payment methods.
+    // Reimbursement is only applicable to expense records, not revenue records.
     setPaymentMethods([
       { id: 1, methodName: "Cash", methodCode: "CASH" },
       { id: 2, methodName: "Bank Transfer", methodCode: "BANK_TRANSFER" },
-      { id: 3, methodName: "E-Wallet", methodCode: "E_WALLET" },
-      { id: 4, methodName: "Reimbursement", methodCode: "REIMBURSEMENT" }
+      { id: 3, methodName: "E-Wallet", methodCode: "E_WALLET" }
     ]);
   };
 
   // Transform OtherRevenueRecord to OtherRevenueData for modals
   const transformRecordToFormData = (record: OtherRevenueRecord): OtherRevenueData => {
     // Map backend payment method enum to display name
+    // Note: REIMBURSEMENT from legacy data is treated as Cash
     const paymentMethodEnumToName: Record<string, string> = {
       'CASH': 'Cash',
       'BANK_TRANSFER': 'Bank Transfer',
-      'E_WALLET': 'E-Wallet',
-      'REIMBURSEMENT': 'Reimbursement'
+      'E_WALLET': 'E-Wallet'
     };
-    const paymentMethodName = paymentMethodEnumToName[record.payment_method || ''] || record.payment_method || '';
+    const paymentMethodName = paymentMethodEnumToName[record.payment_method || ''] || 'Cash';
 
     // Ensure date_recorded is in YYYY-MM-DD format for date input
     let dateRecorded = record.date_recorded || '';
@@ -780,7 +782,8 @@ const AdminOtherRevenuePage = () => {
       payment_reference: record.payment_reference || '',
       department_id: record.department_id || record.department?.id,
       department: record.department?.department_name,
-      isUnearnedRevenue: record.isUnearnedRevenue || false,
+      // Use receivable existence as ground truth for isUnearnedRevenue
+      isUnearnedRevenue: !!record.receivable || record.isUnearnedRevenue || false,
       // Include schedule fields from receivable
       scheduleFrequency,
       scheduleStartDate,
@@ -827,6 +830,7 @@ const AdminOtherRevenuePage = () => {
             currentUser="admin"
             revenueTypes={revenueTypes}
             scheduleFrequencies={scheduleFrequencies}
+            approvalStatus={rowData?.approval_status || 'PENDING'}
           />
         );
         break;
@@ -971,7 +975,22 @@ const AdminOtherRevenuePage = () => {
           return;
         }
 
-        const payload = {
+        // Check if unearned revenue status changed (conversion)
+        // Use activeRow?.receivable as ground truth - if record has a receivable, it was unearned revenue
+        const wasUnearnedRevenue = !!activeRow?.receivable;
+        const isNowUnearnedRevenue = formData.isUnearnedRevenue;
+        const unearnedStatusChanged = wasUnearnedRevenue !== isNowUnearnedRevenue;
+
+        console.log('[DEBUG] Conversion check:', {
+          wasUnearnedRevenue,
+          isNowUnearnedRevenue,
+          unearnedStatusChanged,
+          activeRowReceivable: activeRow?.receivable,
+          activeRowIsUnearnedRevenue: activeRow?.isUnearnedRevenue,
+          formDataIsUnearned: formData.isUnearnedRevenue
+        });
+
+        const payload: Record<string, unknown> = {
           revenue_type_id: revenueType?.id,
           amount: formData.amount,
           date_recorded: formData.date_recorded,
@@ -980,8 +999,21 @@ const AdminOtherRevenuePage = () => {
           payment_reference: formData.payment_reference || undefined,
           department_id: formData.department_id,
           remarks: formData.remarks || undefined,
-          updated_by: formData.createdBy || 'admin'
+          updated_by: formData.createdBy || 'admin',
+          // ALWAYS include isUnearnedRevenue so backend knows current state
+          isUnearnedRevenue: isNowUnearnedRevenue
         };
+
+        console.log('[DEBUG] Payload isUnearnedRevenue:', isNowUnearnedRevenue);
+
+        // Include schedule details if converting to receivable
+        if (isNowUnearnedRevenue) {
+          payload.scheduleFrequency = formData.scheduleFrequency;
+          payload.scheduleStartDate = formData.scheduleStartDate;
+          payload.numberOfPayments = formData.numberOfPayments;
+        }
+
+        console.log('[DEBUG] Final payload:', JSON.stringify(payload, null, 2));
 
         const response = await fetch(`/api/admin/other-revenue/${revenueId}`, {
           method: 'PATCH',
@@ -1146,14 +1178,15 @@ const AdminOtherRevenuePage = () => {
           department: item.department as string | undefined,
           remarks: item.remarks as string | undefined,
           amount: item.amount as number,
-          remittance_status: item.remittance_status as string,
+          payment_status: item.payment_status as string,
           payment_method: item.payment_method as string | undefined,
           payment_reference: item.payment_reference as string | undefined,
           isUnearnedRevenue: item.isUnearnedRevenue as boolean,
           accountCode: item.accountCode as string | undefined,
           created_by: item.created_by as string | undefined,
           created_at: item.created_at as string | undefined,
-          status: (item.status as any) || 'PENDING',
+          approval_status: (item.approval_status as any) || 'PENDING',
+          accounting_status: item.accounting_status as string | undefined,
           approvalRemarks: item.approvalRemarks as string | undefined,
           // Journal Entry for edit/delete restrictions - single source of truth
           journalEntry: journalEntry ? {
@@ -1297,9 +1330,9 @@ const AdminOtherRevenuePage = () => {
       return;
     }
 
-    // Only allow deletion for PENDING status
-    if (record.remittance_status !== 'PENDING') {
-      showError('Only records with PENDING status can be deleted', 'Cannot Delete');
+    // Only allow deletion for PENDING approval status (before approval)
+    if (record.approval_status !== 'PENDING') {
+      showError('Only records with PENDING approval status can be deleted', 'Cannot Delete');
       return;
     }
 
@@ -1343,6 +1376,12 @@ const AdminOtherRevenuePage = () => {
     const record = data.find(item => item.id === id);
     if (!record) return;
 
+    // Check if already approved
+    if (record.approval_status !== 'PENDING') {
+      showError(`Record is already ${record.approval_status}`, 'Cannot Approve');
+      return;
+    }
+
     const result = await Swal.fire({
       title: 'Approve Revenue?',
       text: `Are you sure you want to approve ${record.code}? This will generate a journal entry and allow payments.`,
@@ -1362,13 +1401,14 @@ const AdminOtherRevenuePage = () => {
           body: JSON.stringify({ userId: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to approve revenue');
+          throw new Error(responseData.message || 'Failed to approve revenue');
         }
 
         showSuccess('Revenue record approved successfully', 'Approved');
-        fetchData();
+        await fetchData(); // Await to ensure data refreshes before user can click again
       } catch (err) {
         console.error('Error approving revenue:', err);
         showError(err instanceof Error ? err.message : 'Failed to approve revenue', 'Error');
@@ -1379,6 +1419,12 @@ const AdminOtherRevenuePage = () => {
   const handleReject = async (id: number) => {
     const record = data.find(item => item.id === id);
     if (!record) return;
+
+    // Check if already rejected or approved
+    if (record.approval_status !== 'PENDING') {
+      showError(`Record is already ${record.approval_status}`, 'Cannot Reject');
+      return;
+    }
 
     const result = await Swal.fire({
       title: 'Reject Revenue?',
@@ -1399,13 +1445,14 @@ const AdminOtherRevenuePage = () => {
           body: JSON.stringify({ userId: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to reject revenue');
+          throw new Error(responseData.message || 'Failed to reject revenue');
         }
 
         showSuccess('Revenue record rejected', 'Rejected');
-        fetchData();
+        await fetchData(); // Await to ensure data refreshes before user can click again
       } catch (err) {
         console.error('Error rejecting revenue:', err);
         showError(err instanceof Error ? err.message : 'Failed to reject revenue', 'Error');
@@ -1475,7 +1522,7 @@ const AdminOtherRevenuePage = () => {
           type: 'Receivable' as const,
           amount: record.amount,
           receivable: totalBalance,
-          status: record.remittance_status || derivedStatus,
+          status: record.payment_status || derivedStatus,
           paymentMethod: record.paymentMethod,
           isInstallmentRow: false, // Single row per revenue, not per installment
           paymentStatus: derivedStatus,
@@ -1483,8 +1530,8 @@ const AdminOtherRevenuePage = () => {
         });
       } else {
         // Regular revenue record (single row)
-        // Derive status from remittance_status or default to PAID
-        const status = record.remittance_status as PaymentStatus || PaymentStatus.PAID;
+        // Derive status from payment_status or default to COMPLETED
+        const status = record.payment_status as PaymentStatus || PaymentStatus.COMPLETED;
 
         rows.push({
           id: `${record.id}-single`,
@@ -1526,7 +1573,7 @@ const AdminOtherRevenuePage = () => {
     );
     const matchStatus = (row.status?.toLowerCase().replace('_', ' ').includes(term) || false) ||
       (row.paymentStatus?.toLowerCase().replace('_', ' ').includes(term) || false) ||
-      (row.originalRecord.status?.toLowerCase().includes(term) || false);
+      (row.originalRecord.approval_status?.toLowerCase().includes(term) || false);
 
     return matchCode || matchDate || matchSource || matchAmount || matchReceivable || matchStatus;
   };
@@ -1690,8 +1737,8 @@ const AdminOtherRevenuePage = () => {
                         </td>
                         {/* Approval Status Column */}
                         <td>
-                          <span className={getStatusClass(row.originalRecord.status || 'PENDING')}>
-                            {row.originalRecord.status?.replace('_', ' ') || 'PENDING'}
+                          <span className={getStatusClass(row.originalRecord.approval_status || 'PENDING')}>
+                            {row.originalRecord.approval_status?.replace('_', ' ') || 'PENDING'}
                           </span>
                         </td>
 
@@ -1727,12 +1774,12 @@ const AdminOtherRevenuePage = () => {
                             <button
                               className="approveBtn"
                               onClick={() => handleApprove(row.revenueId)}
-                              title={row.originalRecord.status === 'PENDING' ? "Approve Record" : `Already ${row.originalRecord.status}`}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Approve Record" : `Already ${row.originalRecord.approval_status}`}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
                                 color: '#28a745',
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer',
                                 marginRight: '4px'
                               }}
                             >
@@ -1744,12 +1791,12 @@ const AdminOtherRevenuePage = () => {
                             <button
                               className="rejectBtn"
                               onClick={() => handleReject(row.revenueId)}
-                              title={row.originalRecord.status === 'PENDING' ? "Reject Record" : `Already ${row.originalRecord.status}`}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Reject Record" : `Already ${row.originalRecord.approval_status}`}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
                                 color: '#dc3545',
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer',
                                 marginRight: '4px'
                               }}
                             >
@@ -1762,11 +1809,11 @@ const AdminOtherRevenuePage = () => {
                             <button
                               className="editBtn"
                               onClick={() => openModal('edit', row.originalRecord)}
-                              title={row.originalRecord.status === 'PENDING' ? "Edit Record" : "Cannot edit non-pending record"}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Edit Record" : "Cannot edit non-pending record"}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer'
                               }}
                             >
                               <i className="ri-edit-2-line" />
@@ -1781,11 +1828,11 @@ const AdminOtherRevenuePage = () => {
                                 e.stopPropagation();
                                 handleDelete(row.revenueId);
                               }}
-                              title={row.originalRecord.status === 'PENDING' ? "Delete Record" : "Cannot delete non-pending record"}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Delete Record" : "Cannot delete non-pending record"}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer'
                               }}
                             >
                               <i className="ri-delete-bin-line" />
@@ -1804,7 +1851,7 @@ const AdminOtherRevenuePage = () => {
 
                             {/* Pay button for unearned revenue that's not fully paid */}
                             {row.originalRecord.isUnearnedRevenue &&
-                              (row.originalRecord.status === 'APPROVED' || row.originalRecord.status === 'COMPLETED') &&
+                              row.originalRecord.approval_status === 'APPROVED' &&
                               row.paymentStatus &&
                               row.status !== PaymentStatus.PAID &&
                               row.status !== PaymentStatus.CANCELLED &&

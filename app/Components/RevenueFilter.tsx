@@ -121,7 +121,7 @@ export default function RevenueFilter(props: RevenueFilterProps) {
             },
             {
                 id: 'dueDateRange',
-                title: 'Due Date',
+                title: 'Date Recorded',
                 type: 'dateRange',
                 defaultValue: { from: '', to: '' }
             },

@@ -33,7 +33,7 @@ interface EnrichedTripData {
   body_number: string;
   bus_route: string;
   date_assigned: string;
-  remittance_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   // Driver details
   driverId?: string;
@@ -67,7 +67,7 @@ interface TripReceivablePaymentModalProps {
     body_number: string;
     bus_route: string;
     date_assigned: string;
-    remittance_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+    payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
   };
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   currentUser: string;
@@ -99,7 +99,7 @@ export default function TripReceivablePaymentModal({
     body_number: initialTripData.body_number,
     bus_route: initialTripData.bus_route,
     date_assigned: initialTripData.date_assigned,
-    remittance_status: initialTripData.remittance_status,
+    payment_status: initialTripData.payment_status,
   });
 
   // Fetch detail data from API
@@ -124,7 +124,7 @@ export default function TripReceivablePaymentModal({
           body_number: data.bus_details?.body_number || initialTripData.body_number,
           bus_route: data.bus_details?.route || initialTripData.bus_route || 'N/A',
           date_assigned: data.bus_details?.date_assigned || initialTripData.date_assigned,
-          remittance_status: data.remittance_status || initialTripData.remittance_status,
+          payment_status: data.payment_status || initialTripData.payment_status,
 
           // Driver details
           driverId: data.employees?.driver?.employee_number || undefined,
@@ -154,17 +154,18 @@ export default function TripReceivablePaymentModal({
           // Map driver installments
           if (driverReceivable?.installment_schedules) {
             enrichedData.driverInstallments = driverReceivable.installment_schedules.map((inst: any) => ({
-              id: `driver-inst-${inst.id}`,
-              installmentNumber: inst.installment_number,
-              originalDueDate: inst.due_date,
-              currentDueDate: inst.due_date,
-              originalDueAmount: inst.amount_due,
-              currentDueAmount: inst.amount_due,
-              paidAmount: inst.amount_paid || 0,
-              carriedOverAmount: 0,
-              paymentStatus: inst.status || 'PENDING',
-              isPastDue: new Date(inst.due_date) < new Date() && inst.balance > 0,
-              isEditable: inst.status !== 'PAID',
+              id: `driver-inst-${inst.id}`, // Maintain unique ID for React keys
+              // Map to ScheduleItem properties
+              installment_number: inst.installment_number,
+              due_date: inst.due_date,
+              amount_due: inst.amount_due,
+              amount_paid: inst.amount_paid || 0,
+              balance: inst.balance || ((inst.amount_due || 0) - (inst.amount_paid || 0)),
+              status: inst.status || 'PENDING',
+
+              // UI computed properties
+              isPastDue: new Date(inst.due_date) < new Date() && (inst.balance > 0 || ((inst.amount_due || 0) - (inst.amount_paid || 0)) > 0),
+              isEditable: inst.status !== 'COMPLETED',
             }));
           }
 
@@ -172,16 +173,17 @@ export default function TripReceivablePaymentModal({
           if (conductorReceivable?.installment_schedules) {
             enrichedData.conductorInstallments = conductorReceivable.installment_schedules.map((inst: any) => ({
               id: `conductor-inst-${inst.id}`,
-              installmentNumber: inst.installment_number,
-              originalDueDate: inst.due_date,
-              currentDueDate: inst.due_date,
-              originalDueAmount: inst.amount_due,
-              currentDueAmount: inst.amount_due,
-              paidAmount: inst.amount_paid || 0,
-              carriedOverAmount: 0,
-              paymentStatus: inst.status || 'PENDING',
-              isPastDue: new Date(inst.due_date) < new Date() && inst.balance > 0,
-              isEditable: inst.status !== 'PAID',
+              // Map to ScheduleItem properties
+              installment_number: inst.installment_number,
+              due_date: inst.due_date,
+              amount_due: inst.amount_due,
+              amount_paid: inst.amount_paid || 0,
+              balance: inst.balance || ((inst.amount_due || 0) - (inst.amount_paid || 0)),
+              status: inst.status || 'PENDING',
+
+              // UI computed properties
+              isPastDue: new Date(inst.due_date) < new Date() && (inst.balance > 0 || ((inst.amount_due || 0) - (inst.amount_paid || 0)) > 0),
+              isEditable: inst.status !== 'COMPLETED',
             }));
           }
         }
@@ -202,7 +204,7 @@ export default function TripReceivablePaymentModal({
 
   // Helper to map receivable status
   const mapReceivableStatus = (driverStatus?: string, conductorStatus?: string): 'Pending' | 'Partial' | 'Paid' | 'Overdue' | 'Closed' => {
-    if (driverStatus === 'PAID' && (!conductorStatus || conductorStatus === 'PAID')) return 'Paid';
+    if (driverStatus === 'COMPLETED' && (!conductorStatus || conductorStatus === 'COMPLETED')) return 'Paid';
     if (driverStatus === 'PARTIALLY_PAID' || conductorStatus === 'PARTIALLY_PAID') return 'Partial';
     if (driverStatus === 'OVERDUE' || conductorStatus === 'OVERDUE') return 'Overdue';
     return 'Pending';
@@ -227,16 +229,8 @@ export default function TripReceivablePaymentModal({
 
     if (!items || items.length === 0) return [];
 
-    // Convert RevenueScheduleItem to SimpleScheduleItem
-    return items.map(item => ({
-      id: item.id,
-      installment_number: item.installment_number,
-      due_date: item.due_date,
-      amount_due: item.amount_due,
-      amount_paid: item.amount_paid,
-      balance: item.balance,
-      status: item.status
-    }));
+    // Return items directly as they already have snake_case properties from the API mapping
+    return items;
   };
 
   const scheduleItems = getScheduleItems();
@@ -288,7 +282,7 @@ export default function TripReceivablePaymentModal({
     const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
     const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
 
-    if (totalDue > 0 && totalPaid >= totalDue) return 'PAID';
+    if (totalDue > 0 && totalPaid >= totalDue) return 'COMPLETED';
     if (totalPaid > 0) return 'PARTIAL';
     return 'PENDING';
   };
@@ -296,7 +290,7 @@ export default function TripReceivablePaymentModal({
   // Get status chip class
   const getStatusClass = (status: string): string => {
     switch (status) {
-      case 'PAID': return 'paid';
+      case 'COMPLETED': return 'paid';
       case 'PARTIAL': return 'partially-paid';
       case 'OVERDUE': return 'overdue';
       default: return 'pending';
@@ -337,11 +331,15 @@ export default function TripReceivablePaymentModal({
 
   // Get first unpaid installment for the selected employee
   const getFirstUnpaidInstallment = (): SimpleScheduleItem | null => {
-    const unpaid = scheduleItems.find(item =>
-      item.status !== 'PAID' &&
-      item.status !== 'CANCELLED' &&
-      item.status !== 'WRITTEN_OFF'
-    );
+    const unpaid = scheduleItems.find(item => {
+      // Calculate balance if not provided
+      const balance = item.balance ?? (item.amount_due - (item.amount_paid || 0));
+      // Must have positive balance AND not be in a terminal status
+      return balance > 0 &&
+        item.status !== 'COMPLETED' &&
+        item.status !== 'CANCELLED' &&
+        item.status !== 'WRITTEN_OFF';
+    });
     return unpaid || null;
   };
 

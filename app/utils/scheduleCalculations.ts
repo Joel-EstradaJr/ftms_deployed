@@ -25,10 +25,6 @@ export function generateScheduleDates(
   startDate: string,
   numberOfPayments: number
 ): string[] {
-  if (frequency === ScheduleFrequency.CUSTOM) {
-    return []; // User will input dates manually
-  }
-
   const dates: string[] = [];
   const start = new Date(startDate + 'T00:00:00');
 
@@ -66,7 +62,7 @@ export function generateScheduleDates(
         }
         break;
 
-      case ScheduleFrequency.ANNUAL:
+      case ScheduleFrequency.ANNUALLY:
         // Same month/day each year
         nextDate = new Date(start);
         nextDate.setFullYear(start.getFullYear() + i);
@@ -309,7 +305,7 @@ export function calculatePaymentStatus<T extends ScheduleItem>(item: T): Payment
 
   // Fully paid
   if (paid >= amount_due) {
-    return PaymentStatus.PAID;
+    return PaymentStatus.COMPLETED;
   }
 
   // Check if past due
@@ -370,22 +366,27 @@ export function processOverdueCarryover<T extends ScheduleItem>(
  * @param amount - Total amount to pay
  * @param scheduleItems - All schedule items
  * @param startIndex - Index to start applying payment
+ * @param enableCascade - Whether to cascade overpayment to subsequent installments (default: true)
  * @returns Cascade result with affected installments
  */
 export function processCascadePayment<T extends ScheduleItem>(
   amount: number,
   scheduleItems: T[],
-  startIndex: number
+  startIndex: number,
+  enableCascade: boolean = true
 ): PaymentCascadeResult {
   let remainingAmount = amount;
   const affectedInstallments: PaymentCascadeResult['affectedInstallments'] = [];
 
-  for (let i = startIndex; i < scheduleItems.length && remainingAmount > 0; i++) {
+  // If cascade is disabled, only process the single item at startIndex
+  const endIndex = enableCascade ? scheduleItems.length : startIndex + 1;
+
+  for (let i = startIndex; i < endIndex && remainingAmount > 0; i++) {
     const item = scheduleItems[i];
 
     // Skip already paid, cancelled, or written-off items
     if (
-      item.status === PaymentStatus.PAID ||
+      item.status === PaymentStatus.COMPLETED ||
       item.status === PaymentStatus.CANCELLED ||
       item.status === PaymentStatus.WRITTEN_OFF
     ) {
@@ -393,14 +394,18 @@ export function processCascadePayment<T extends ScheduleItem>(
     }
 
     const itemBalance = item.balance ?? (item.amount_due - (item.amount_paid || 0));
-    const amountToApply = Math.min(remainingAmount, itemBalance);
+
+    // If cascade is disabled, cap at item balance
+    const amountToApply = enableCascade
+      ? Math.min(remainingAmount, itemBalance)
+      : Math.min(remainingAmount, itemBalance);
 
     const previousBalance = itemBalance;
     const newPaidAmount = (item.amount_paid || 0) + amountToApply;
     const newBalance = itemBalance - amountToApply;
 
     const newStatus = newBalance === 0
-      ? PaymentStatus.PAID
+      ? PaymentStatus.COMPLETED
       : newPaidAmount > 0
         ? PaymentStatus.PARTIALLY_PAID
         : item.status;
