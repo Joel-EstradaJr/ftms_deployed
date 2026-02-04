@@ -358,7 +358,7 @@ export default function RecordAdminExpenseModal({
                 <option value="">Select Vendor</option>
                 {vendors.map(vendor => (
                   <option key={vendor.id} value={vendor.id}>
-                    {vendor.name} {vendor.type === 'supplier' ? `(${vendor.supplier_id})` : ''}
+                    {vendor.name}
                   </option>
                 ))}
               </select>

@@ -211,7 +211,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   const previewItems = useMemo(() => {
     if (!cascadePreview) return scheduleItems;
     return scheduleItems.map(item => {
-      const affected = cascadePreview.affectedInstallments.find((a: any) => a.scheduleItemId === item.id);
+      const affected = cascadePreview.affectedInstallments.find((a: any) => String(a.scheduleItemId) === String(item.id));
       if (affected) return { ...item, amount_paid: (item.amount_paid || 0) + affected.amountApplied, status: affected.newStatus };
       return item;
     });
@@ -344,7 +344,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                         const amountDue = getAmountDue(item);
                         const amountPaid = getAmountPaid(item);
                         const balance = amountDue - amountPaid;
-                        const isAffected = cascadePreview?.affectedInstallments.some((a: any) => a.scheduleItemId === item.id);
+                        const isAffected = cascadePreview?.affectedInstallments.some((a: any) => String(a.scheduleItemId) === String(item.id));
                         const statusStr = String(item.status || 'PENDING');
 
                         return (
