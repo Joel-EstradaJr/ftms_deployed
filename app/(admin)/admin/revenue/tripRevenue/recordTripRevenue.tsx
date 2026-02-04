@@ -1626,7 +1626,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
             </div>
 
             {/* Remittance Status */}
-            <div className="form-group">
+            {/* <div className="form-group">
               <label>Remittance Status</label>
               <input
                 type="text"
@@ -1639,7 +1639,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                   ⚠️ Deadline exceeded. This will be converted to a receivable.
                 </small>
               )}
-            </div>
+            </div> */}
           </div>
 
           {/* Remarks */}
