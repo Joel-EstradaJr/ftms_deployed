@@ -91,7 +91,7 @@ const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
     payment_method: expense.payment_method || '',
     is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
     description: expense.description || '',
-    status: expense.status,
+    status: expense.approval_status,
     created_by: expense.created_by || '',
     approved_by: expense.approved_by,
     created_at: expense.created_at,
