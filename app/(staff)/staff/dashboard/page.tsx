@@ -648,6 +648,7 @@ const DashboardPage = () => {
             </div>
 
             <div className="graphSection">
+
               {/* Financial Breakdown */}
               <div className="graphContainer">
                 <div className="title">

@@ -177,7 +177,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   const formatInstallmentStatus = (status: string): string => {
     const statusMap: Record<string, string> = {
       'PENDING': 'Pending',
-      'COMPLETED': 'Paid',
+      'COMPLETED': 'Completed',
       'PARTIALLY_PAID': 'Partial',
       'OVERDUE': 'Overdue',
     };
@@ -217,6 +217,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
     return typeMap[type] || type;
   };
 
+  // Check if shortage section should be shown
   const showShortageSection = data?.payment_status === 'PARTIALLY_PAID' ||
     data?.payment_status === 'OVERDUE' ||
     (data?.shortage_details !== undefined);
@@ -447,7 +448,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             </div>
 
             <div className="form-group">
-              <label>Remittance Status</label>
+              <label>Payment Status</label>
               <p className={`chip ${getStatusChipClass(data.payment_status)}`}>
                 {formatStatus(data.payment_status)}
               </p>

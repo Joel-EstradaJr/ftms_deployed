@@ -117,7 +117,6 @@ export default function TripReceivablePaymentModal({
         }
 
         const data = result.data;
-        console.log("TripReceivablePaymentModal API Data:", data);
 
         // Map API response to enriched trip data
         const enrichedData: EnrichedTripData = {
@@ -230,8 +229,7 @@ export default function TripReceivablePaymentModal({
 
     if (!items || items.length === 0) return [];
 
-    // Convert RevenueScheduleItem to SimpleScheduleItem
-    // Return items directly as they match the interface. avoid redundant mapping that may strip fields.
+    // Return items directly as they already have snake_case properties from the API mapping
     return items;
   };
 

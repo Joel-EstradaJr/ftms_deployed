@@ -240,7 +240,7 @@ const MOCK_OTHER_REVENUE_DATA: OtherRevenueRecord[] = [
         amount_due: 15000.00,
         amount_paid: 15000.00,
         balance: 0,
-        status: PaymentStatus.PAID,
+        status: PaymentStatus.COMPLETED,
         isPastDue: false,
         isEditable: false,
       },
@@ -861,7 +861,7 @@ const AdminOtherRevenuePage = () => {
       targetItem = overdueItems[0];
     }
     // Otherwise, if clicked item is PAID, find the next unpaid one
-    else if (scheduleItem.status === PaymentStatus.PAID) {
+    else if (scheduleItem.status === PaymentStatus.COMPLETED) {
       if (partiallyPaidItems.length > 0) {
         targetItem = partiallyPaidItems[0];
       } else if (pendingItems.length > 0) {
@@ -1320,18 +1320,21 @@ const AdminOtherRevenuePage = () => {
         // Call API to soft delete the record
         const response = await fetch(`/api/admin/other-revenue/${id}`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deleted_by: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to delete revenue record');
+          throw new Error(responseData.message || 'Failed to delete revenue record');
         }
 
         showSuccess('Revenue record deleted successfully', 'Deleted');
         fetchData(); // Refresh the data
       } catch (err) {
         console.error('Error deleting revenue:', err);
+        showError(err instanceof Error ? err.message : 'Failed to delete revenue record', 'Delete Failed');
       }
     }
   };
@@ -1454,7 +1457,7 @@ const AdminOtherRevenuePage = () => {
         // Derive status from overall receivable balance (NOT per installment)
         let derivedStatus: PaymentStatus;
         if (totalBalance <= 0) {
-          derivedStatus = PaymentStatus.PAID;
+          derivedStatus = PaymentStatus.COMPLETED;
         } else if (totalPaid > 0) {
           derivedStatus = PaymentStatus.PARTIALLY_PAID;
         } else {
@@ -1605,7 +1608,7 @@ const AdminOtherRevenuePage = () => {
               paymentMethods={[]} // Payment method is NOT a visible column - remove filter
               paymentStatuses={[
                 { id: PaymentStatus.PENDING, label: 'Pending' },
-                { id: PaymentStatus.PAID, label: 'Paid' },
+                { id: PaymentStatus.COMPLETED, label: 'Paid' },
                 { id: PaymentStatus.PARTIALLY_PAID, label: 'Partially Paid' },
               ]}
               onApply={handleFilterApply}
@@ -1719,7 +1722,39 @@ const AdminOtherRevenuePage = () => {
                               <i className="ri-eye-line"></i>
                             </button>
 
+                            {/* Approve button - ONLY visible for PENDING status */}
+                            {/* Approve button */}
+                            <button
+                              className="approveBtn"
+                              onClick={() => handleApprove(row.revenueId)}
+                              title={row.originalRecord.status === 'PENDING' ? "Approve Record" : `Already ${row.originalRecord.status}`}
+                              disabled={row.originalRecord.status !== 'PENDING'}
+                              style={{
+                                color: '#28a745',
+                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                marginRight: '4px'
+                              }}
+                            >
+                              <i className="ri-checkbox-circle-line"></i>
+                            </button>
 
+                            {/* Reject button - ONLY visible for PENDING status */}
+                            {/* Reject button */}
+                            <button
+                              className="rejectBtn"
+                              onClick={() => handleReject(row.revenueId)}
+                              title={row.originalRecord.status === 'PENDING' ? "Reject Record" : `Already ${row.originalRecord.status}`}
+                              disabled={row.originalRecord.status !== 'PENDING'}
+                              style={{
+                                color: '#dc3545',
+                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                marginRight: '4px'
+                              }}
+                            >
+                              <i className="ri-close-circle-line"></i>
+                            </button>
 
                             {/* Edit button - ONLY visible for PENDING status and JE in DRAFT status */}
                             {/* Journal Entry status is the single source of truth for edit restrictions */}
@@ -1771,14 +1806,14 @@ const AdminOtherRevenuePage = () => {
                             {row.originalRecord.isUnearnedRevenue &&
                               (row.originalRecord.status === 'APPROVED' || row.originalRecord.status === 'COMPLETED') &&
                               row.paymentStatus &&
-                              row.status !== PaymentStatus.PAID &&
+                              row.status !== PaymentStatus.COMPLETED &&
                               row.status !== PaymentStatus.CANCELLED &&
                               row.status !== PaymentStatus.WRITTEN_OFF &&
                               row.originalRecord.scheduleItems &&
                               row.originalRecord.scheduleItems.length > 0 && (() => {
                                 // Find the first unpaid installment
                                 const firstUnpaid = row.originalRecord.scheduleItems.find(
-                                  item => item.status !== PaymentStatus.PAID
+                                  item => item.status !== PaymentStatus.COMPLETED
                                 );
                                 return firstUnpaid ? (
                                   <button

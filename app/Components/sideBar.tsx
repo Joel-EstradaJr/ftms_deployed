@@ -198,18 +198,15 @@ const Sidebar: React.FC = () => {
             </div>
           )}
 
-          {/* Payroll - Both roles */}
-          {/* Payroll - Admin only */}
-          {userRole === 'admin' && (
-            <Link
-              href={getUrl("/financial-management/payroll")}
-              className={`nav-item ${activeItem === "payroll" ? "active" : ""}`}
-              onClick={() => setActiveItem("payroll")}
-            >
-              <i className="ri-group-line" />
-              <span>Payroll</span>
-            </Link>
-          )}
+          {/* Payroll - Both roles (read-only for staff) */}
+          <Link
+            href={getUrl(userRole === 'admin' ? "/financial-management/payroll" : "/payroll")}
+            className={`nav-item ${activeItem === "payroll" ? "active" : ""}`}
+            onClick={() => setActiveItem("payroll")}
+          >
+            <i className="ri-group-line" />
+            <span>Payroll</span>
+          </Link>
 
           {/* Budget Management Submenu */}
           {/* Budget Management Submenu - Admin only */}
@@ -270,42 +267,55 @@ const Sidebar: React.FC = () => {
           )}
 
 
-          {/* Financial Reports - Both roles */}
-          {/* Financial Reports - Admin only */}
-          {userRole === 'admin' && (
-            <Link
-              href={getUrl("/report")}
-              className={`nav-item ${activeItem === "report" ? "active" : ""}`}
-              onClick={() => setActiveItem("report")}
-            >
-              <i className="ri-file-chart-line" />
-              <span>Financial Reports</span>
-            </Link>
-          )}
+          {/* Financial Reports - Both roles (read-only for staff) */}
+          <Link
+            href={getUrl("/report")}
+            className={`nav-item ${activeItem === "report" ? "active" : ""}`}
+            onClick={() => setActiveItem("report")}
+          >
+            <i className="ri-file-chart-line" />
+            <span>Financial Reports</span>
+          </Link>
 
-          {/* Chart of Accounts - Admin only */}
-          {userRole === 'admin' && (
-            <Link
-              href={getUrl("/jev/chart-of-accounts")}
-              className={`nav-item ${activeItem === "chart-of-accounts" ? "active" : ""}`}
-              onClick={() => setActiveItem("chart-of-accounts")}
-            >
-              <i className="ri-file-list-3-line" />
-              <span>Chart of Accounts</span>
-            </Link>
-          )}
+          {/* Chart of Accounts - Both roles (read-only for staff) */}
+          <Link
+            href={getUrl("/jev/chart-of-accounts")}
+            className={`nav-item ${activeItem === "chart-of-accounts" ? "active" : ""}`}
+            onClick={() => setActiveItem("chart-of-accounts")}
+          >
+            <i className="ri-file-list-3-line" />
+            <span>Chart of Accounts</span>
+          </Link>
 
-          {/* Journal Entries - Admin only */}
-          {userRole === 'admin' && (
-            <Link
-              href={getUrl("/jev/journal-entries")}
-              className={`nav-item ${activeItem === "journal-entries" ? "active" : ""}`}
-              onClick={() => setActiveItem("journal-entries")}
-            >
-              <i className="ri-draft-line" />
-              <span>Journal Entries</span>
-            </Link>
-          )}
+          {/* Journal Entries - Both roles (read-only for staff) */}
+          <Link
+            href={getUrl("/jev/journal-entries")}
+            className={`nav-item ${activeItem === "journal-entries" ? "active" : ""}`}
+            onClick={() => setActiveItem("journal-entries")}
+          >
+            <i className="ri-draft-line" />
+            <span>Journal Entries</span>
+          </Link>
+
+          {/* Loan Management - Both roles (staff can submit) */}
+          <Link
+            href={getUrl("/loan-management/loanRequest")}
+            className={`nav-item ${activeItem === "loan-request" ? "active" : ""}`}
+            onClick={() => setActiveItem("loan-request")}
+          >
+            <i className="ri-hand-coin-line" />
+            <span>Loan Requests</span>
+          </Link>
+
+          {/* Reimbursement - Both roles (staff can submit) */}
+          <Link
+            href={getUrl("/reimbursement")}
+            className={`nav-item ${activeItem === "reimbursement" ? "active" : ""}`}
+            onClick={() => setActiveItem("reimbursement")}
+          >
+            <i className="ri-refund-line" />
+            <span>Reimbursement</span>
+          </Link>
 
           {/* Asset Management - Admin only */}
           {/*userRole === 'admin' && (
