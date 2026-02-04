@@ -113,7 +113,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
   const getStatusChipClass = (status: PaymentStatus): string => {
     switch (status) {
-      case PaymentStatus.PAID:
+      case PaymentStatus.COMPLETED:
         return 'paid';
       case PaymentStatus.PARTIALLY_PAID:
         return 'partially-paid';
@@ -257,7 +257,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
                   {onRecordPayment && (
                     <td style={{ textAlign: 'center' }}>
-                      {itemStatus !== PaymentStatus.PAID &&
+                      {itemStatus !== PaymentStatus.COMPLETED &&
                         itemStatus !== PaymentStatus.CANCELLED &&
                         itemStatus !== PaymentStatus.WRITTEN_OFF && (
                           <button

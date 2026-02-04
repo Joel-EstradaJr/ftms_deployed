@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo } from "react";
 import PaginationComponent from "../../../../Components/pagination";
@@ -651,9 +651,9 @@ const LoanPaymentPage = () => {
                     <td>{formatLoanType(loan.loan_type)}</td>
                     <td>
                       <div>
-                        <strong>₱{loan.approved_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong><br />
+                        <strong>?{loan.approved_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong><br />
                         <small style={{ color: loan.remaining_balance === 0 ? '#23915F' : '#961C1E' }}>
-                          Balance: ₱{loan.remaining_balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Balance: ?{loan.remaining_balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </small>
                       </div>
                     </td>
@@ -667,7 +667,7 @@ const LoanPaymentPage = () => {
                       {loan.next_payment_date ? (
                         <div>
                           <strong>{formatDate(loan.next_payment_date)}</strong><br />
-                          <small>₱{loan.next_payment_amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</small>
+                          <small>?{loan.next_payment_amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</small>
                           {loan.is_overdue && (
                             <><br /><small style={{ color: '#FF4949' }}>{loan.days_overdue} days overdue</small></>
                           )}

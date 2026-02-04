@@ -100,7 +100,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
 
     // Can only remove if it's the last item and not paid
     const item = scheduleItems[index];
-    if (index !== scheduleItems.length - 1 || item.status === PaymentStatus.PAID || item.status === PaymentStatus.PARTIALLY_PAID) {
+    if (index !== scheduleItems.length - 1 || item.status === PaymentStatus.COMPLETED || item.status === PaymentStatus.PARTIALLY_PAID) {
       return;
     }
 
@@ -116,7 +116,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
   const getStatusChipClass = (status: PaymentStatus | string | undefined): string => {
     const statusStr = status?.toString() || 'PENDING';
     switch (statusStr) {
-      case PaymentStatus.PAID:
+      case PaymentStatus.COMPLETED:
       case 'PAID':
         return 'paid';
       case PaymentStatus.PARTIALLY_PAID:
@@ -300,7 +300,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
                   {canRecordPayment && (
                     <td className="actionButtons">
                       <div className="actionButtonsContainer">
-                        {item.status !== PaymentStatus.PAID && (
+                        {item.status !== PaymentStatus.COMPLETED && (
                           <button
                             onClick={() => onRecordPayment(item)}
                             className="payBtn"

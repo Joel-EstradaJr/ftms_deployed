@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import ViewExpenseModal from '../../../(staff)/staff/expense/viewExpense';
+// import ViewExpenseModal from '../../../(staff)/staff/expense/viewExpense';
 import '../../../styles/reimbursement/viewReimbursement.css';
 import ModalHeader from '@/app/Components/ModalHeader';
 
@@ -162,12 +162,12 @@ const ViewReimbursement: React.FC<ViewReimbursementProps> = ({
       </div>
 
       {/* Expense Modal */}
-      {showExpenseModal && record.expense && (
+      {/* {showExpenseModal && record.expense && (
         <ViewExpenseModal
           record={record.expense}
           onClose={() => setShowExpenseModal(false)}
         />
-      )}
+      )} */}
     </>
   );
 };

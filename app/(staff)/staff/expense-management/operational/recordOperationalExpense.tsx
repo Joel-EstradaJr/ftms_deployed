@@ -9,6 +9,9 @@ import { isValidAmount } from "@/utils/validation";
 import SearchableDropdown, { DropdownOption } from "@/Components/SearchableDropdown";
 import CustomDropdown from "@/Components/CustomDropdown";
 import TripSelectorModal from '@/Components/TripSelector';
+import PaymentScheduleTable from '@/Components/PaymentScheduleTable';
+import { ScheduleFrequency, PaymentStatus, ScheduleItem } from '@/app/types/schedule';
+import { generateScheduleDates, distributeAmount } from '@/app/utils/scheduleCalculations';
 
 // Payment method enum values (matching schema)
 const PAYMENT_METHOD_OPTIONS = [
@@ -24,22 +27,26 @@ interface RecordOperationalExpenseModalProps {
   onSave: (formData: OperationalExpenseData, mode: "add" | "edit" | "approve") => void;
   onClose: () => void;
   departments: Array<{ id: number; name: string }>;
-  cachedTrips: Array<{ 
+  cachedTrips: Array<{
     assignment_id: string;
     bus_trip_id: string;
-    plate_number: string; 
+    plate_number: string;
     body_number: string;
     bus_type: string;
-    bus_route: string; 
+    bus_route: string;
     date_assigned: string;
     departmentId: number;
     departmentName: string;
+    driver_id?: string | null;
+    driver_name?: string | null;
+    conductor_id?: string | null;
+    conductor_name?: string | null;
   }>;
   chartOfAccounts: Array<{ id: number; account_code: string; account_name: string }>;
-  employees: Array<{ 
-    employee_id: string; 
-    name: string; 
-    job_title: string; 
+  employees: Array<{
+    employee_id: string;
+    name: string;
+    job_title: string;
     department: string;
     employee_number: string;
   }>;
@@ -62,18 +69,55 @@ export interface OperationalExpenseData {
   payment_method: string; // enum value: CASH, BANK_TRANSFER, E_WALLET, REIMBURSEMENT
   is_reimbursable: boolean;
   description?: string;
-  
+
   // Reimbursement fields (maps to payable)
   employee_reference?: string;
   creditor_name?: string;
   payable_description?: string;
-  
+
+  // Crew details for fallback display
+  driver_name?: string;
+  conductor_name?: string;
+  driver_id?: string;
+  conductor_id?: string;
+
+  // Additional trip details for edit mode display
+  body_number?: string;
+  bus_type?: string;
+  date_assigned?: string;
+
   // View-only fields
   status?: string;
   created_by: string;
   approved_by?: string;
   created_at?: string;
   approved_at?: string;
+
+  // Reimbursement Schedule fields
+  scheduleFrequency?: ScheduleFrequency;
+  scheduleStartDate?: string;
+  numberOfPayments?: number;
+  scheduleItems?: ScheduleItem[];
+  
+  // Driver and Conductor installment details (for edit mode with reimbursement split)
+  driverInstallments?: {
+    employee_name: string;
+    employee_number: string;
+    total_share: number;
+    paid_amount: number;
+    balance: number;
+    status: string;
+    installments: ScheduleItem[];
+  };
+  conductorInstallments?: {
+    employee_name: string;
+    employee_number: string;
+    total_share: number;
+    paid_amount: number;
+    balance: number;
+    status: string;
+    installments: ScheduleItem[];
+  };
 }
 
 interface FormErrors {
@@ -86,6 +130,8 @@ interface FormErrors {
   description: string;
   employee_reference: string;
   payable_description: string;
+  scheduleStartDate: string;
+  numberOfPayments: string;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -98,18 +144,18 @@ const EXPENSE_CATEGORIES = [
   { value: 'TERMINAL_FEES', label: 'Terminal Fees' },
 ];
 
-export default function RecordOperationalExpenseModal({ 
-  mode, 
-  existingData, 
-  onSave, 
-  onClose, 
+export default function RecordOperationalExpenseModal({
+  mode,
+  existingData,
+  onSave,
+  onClose,
   departments,
   cachedTrips,
   chartOfAccounts,
   employees = [],
-  currentUser 
+  currentUser
 }: RecordOperationalExpenseModalProps) {
-  
+
   // Generate expense code for new records
   const generateExpenseCode = () => {
     const timestamp = Date.now().toString(36);
@@ -136,7 +182,95 @@ export default function RecordOperationalExpenseModal({
     creditor_name: existingData?.creditor_name || '',
     payable_description: existingData?.payable_description || '',
     created_by: existingData?.created_by || currentUser,
+
+    // Trip fields
+    body_number: existingData?.body_number || '',
+    bus_type: existingData?.bus_type || '',
+    date_assigned: existingData?.date_assigned || '',
+
+    // Crew fields
+    driver_id: existingData?.driver_id || '',
+    driver_name: existingData?.driver_name || '',
+    conductor_id: existingData?.conductor_id || '',
+    conductor_name: existingData?.conductor_name || '',
+
+    // Reimbursement Schedule fields
+    scheduleFrequency: existingData?.scheduleFrequency,
+    scheduleStartDate: existingData?.scheduleStartDate || '',
+    numberOfPayments: existingData?.numberOfPayments || 2,
+    scheduleItems: existingData?.scheduleItems || [],
+
+    // Installment data
+    driverInstallments: existingData?.driverInstallments,
+    conductorInstallments: existingData?.conductorInstallments,
   });
+
+  // Debug logging for edit mode data
+  useEffect(() => {
+    if (mode === 'edit' && existingData) {
+      console.log('Staff RecordOperationalExpenseModal - existingData received:', existingData);
+      console.log('Staff RecordOperationalExpenseModal - driverInstallments:', existingData.driverInstallments);
+      console.log('Staff RecordOperationalExpenseModal - conductorInstallments:', existingData.conductorInstallments);
+    }
+  }, [mode, existingData]);
+
+  // Schedule items state for reimbursement
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(existingData?.scheduleItems || []);
+
+  // Effect to initialize selectedTripDetails when in edit mode
+  useEffect(() => {
+    if (existingData) {
+      setSelectedTripDetails({
+        date_assigned: existingData.date_assigned || '',
+        body_number: existingData.body_number || '',
+        bus_type: existingData.bus_type || '',
+        bus_route: existingData.bus_route || ''
+      });
+    }
+  }, [existingData]);
+
+  // Effect to generate schedule items when schedule parameters change
+  useEffect(() => {
+    if (
+      formData.is_reimbursable &&
+      formData.scheduleFrequency &&
+      formData.scheduleFrequency !== 'CUSTOM' as any &&
+      formData.scheduleStartDate &&
+      formData.numberOfPayments &&
+      formData.numberOfPayments >= 2 &&
+      formData.amount > 0
+    ) {
+      const dates = generateScheduleDates(
+        formData.scheduleFrequency,
+        formData.scheduleStartDate,
+        formData.numberOfPayments
+      );
+
+      const newItems: ScheduleItem[] = dates.map((date, index) => ({
+        id: `temp-${index}`,
+        installment_number: index + 1,
+        due_date: date,
+        amount_due: 0,
+        amount_paid: 0,
+        balance: 0,
+        status: PaymentStatus.PENDING,
+      }));
+
+      const distributedItems = distributeAmount(formData.amount, newItems);
+      setScheduleItems(distributedItems);
+      setFormData(prev => ({ ...prev, scheduleItems: distributedItems }));
+    } else if (!formData.is_reimbursable) {
+      // Clear schedule items if reimbursable is unchecked
+      setScheduleItems([]);
+      setFormData(prev => ({ ...prev, scheduleItems: [] }));
+    }
+  }, [
+    formData.is_reimbursable,
+    formData.scheduleFrequency,
+    formData.scheduleStartDate,
+    formData.numberOfPayments,
+    formData.amount
+  ]);
 
   const [errors, setErrors] = useState<FormErrors>({
     date_recorded: '',
@@ -148,6 +282,8 @@ export default function RecordOperationalExpenseModal({
     description: '',
     employee_reference: '',
     payable_description: '',
+    scheduleStartDate: '',
+    numberOfPayments: '',
   });
 
   const [touched, setTouched] = useState<Set<keyof FormErrors>>(new Set());
@@ -170,7 +306,7 @@ export default function RecordOperationalExpenseModal({
       bus_route: trip.bus_route,
       department: trip.departmentName,
     }));
-    
+
     setSelectedTripDetails({
       date_assigned: trip.date_assigned || '',
       body_number: trip.body_number || '',
@@ -185,33 +321,28 @@ export default function RecordOperationalExpenseModal({
       case 'date_recorded':
         if (!value) return 'Date is required';
         return '';
-      
+
       case 'expense_type_name':
         if (!value) return 'Expense name is required';
         return '';
-      
+
       case 'amount':
         if (!value || value <= 0) return 'Amount must be greater than 0';
         if (!isValidAmount(value.toString())) return 'Invalid amount format';
         return '';
-      
+
       case 'payment_method':
         if (!value) return 'Payment method is required';
         return '';
-      
+
       case 'description':
         if (value && value.length > 500) return 'Description must not exceed 500 characters';
         return '';
-      
+
       case 'employee_reference':
         if (formData.is_reimbursable && !value) return 'Employee is required for reimbursable expenses';
         return '';
-      
-      case 'payable_description':
-        if (formData.is_reimbursable && !value) return 'Purpose is required for reimbursable expenses';
-        if (value && value.length > 500) return 'Purpose must not exceed 500 characters';
-        return '';
-      
+
       default:
         return '';
     }
@@ -227,7 +358,9 @@ export default function RecordOperationalExpenseModal({
       payment_method: validateFormField('payment_method', formData.payment_method),
       description: validateFormField('description', formData.description),
       employee_reference: validateFormField('employee_reference', formData.employee_reference),
-      payable_description: validateFormField('payable_description', formData.payable_description),
+      payable_description: '',
+      scheduleStartDate: '',
+      numberOfPayments: '',
     };
 
     setErrors(newErrors);
@@ -236,9 +369,9 @@ export default function RecordOperationalExpenseModal({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     let processedValue: any = value;
-    
+
     if (type === 'number') {
       processedValue = value === '' ? 0 : parseFloat(value);
     } else if (type === 'checkbox') {
@@ -389,6 +522,7 @@ export default function RecordOperationalExpenseModal({
                     className={errors.expense_type_name && touched.has('expense_type_name') ? 'input-error' : ''}
                     showDescription={false}
                     allowCustomInput={true}
+                    disabled={mode === 'edit'}
                   />
                   {errors.expense_type_name && touched.has('expense_type_name') && (
                     <span className="error-message">{errors.expense_type_name}</span>
@@ -427,6 +561,7 @@ export default function RecordOperationalExpenseModal({
                     onBlur={handleInputBlur}
                     className={errors.payment_method && touched.has('payment_method') ? 'input-error' : ''}
                     required
+                    disabled={mode === 'edit'}
                   >
                     <option value="">Select Payment Method</option>
                     {PAYMENT_METHOD_OPTIONS.map(method => (
@@ -460,15 +595,16 @@ export default function RecordOperationalExpenseModal({
                       className="input-disabled"
                       style={{ flex: 1 }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setIsTripSelectorOpen(true)}
-                      className="submit-btn"
-                      style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}
-                      disabled={mode === 'edit'}
-                    >
-                      <i className="ri-search-line"></i> Select Trip
-                    </button>
+                    {mode === 'add' && (
+                      <button
+                        type="button"
+                        onClick={() => setIsTripSelectorOpen(true)}
+                        className="submit-btn"
+                        style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}
+                      >
+                        <i className="ri-search-line"></i> Select Trip
+                      </button>
+                    )}
                   </div>
                   <small className="field-note">Trip Selector returns: Date Assigned, Body Number, Type, Route</small>
                 </div>
@@ -493,7 +629,7 @@ export default function RecordOperationalExpenseModal({
                     type="text"
                     id="body_number"
                     name="body_number"
-                    value={selectedTripDetails.body_number || ''} 
+                    value={selectedTripDetails.body_number || ''}
                     disabled
                     className="input-disabled"
                   />
@@ -528,48 +664,32 @@ export default function RecordOperationalExpenseModal({
             </div>
           </div>
 
+          {/* Section III: Accounting Details - REMOVED as per request */}
+          {/* 
           <div className="modal-content">
-            {/* Section III: Accounting Details */}
             <div className="form-section">
               <h3 className="section-title">III. Accounting Details</h3>
+               ... 
+            </div>
+          </div>
+          */}
+
+          <div className="modal-content">
+            <div className="form-section">
+              <h3 className="section-title">III. Reimbursable Settings</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="account_id">Accounting Code<span className="requiredTags"> *</span></label>
-                  <select
-                    id="account_id"
-                    name="account_id"
-                    value={formData.account_id || ''}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Account Code</option>
-                    {chartOfAccounts.map(account => (
-                      <option key={account.id} value={account.id}>
-                        {account.account_code} - {account.account_name}
-                      </option>
-                    ))}
-                  </select>
-                  <small className="field-note">Pre-select when Expense Name is selected, but still editable</small>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="is_reimbursable">Reimbursable Expense</label>
                   <div className="checkbox-wrapper">
-                    {/* <div className="checkbox-label"> */}
-                      <input
-                        type="checkbox"
-                        id="is_reimbursable"
-                        name="is_reimbursable"
-                        checked={formData.is_reimbursable}
-                        onChange={handleInputChange}
-                      />
-                    {/* </div> */}
-
-                    {/* <div className="checkbox-label"> */}
-                      <label htmlFor="is_reimbursable">
-                        This expense is reimbursable to an employee
-                      </label>
-                    {/* </div> */}
+                    <input
+                      type="checkbox"
+                      id="is_reimbursable"
+                      name="is_reimbursable"
+                      checked={formData.is_reimbursable}
+                      onChange={handleInputChange}
+                    />
+                    <label htmlFor="is_reimbursable">
+                      This expense is reimbursable to an employee
+                    </label>
                   </div>
                 </div>
               </div>
@@ -582,81 +702,323 @@ export default function RecordOperationalExpenseModal({
               <div className="form-section reimbursement-section">
                 <h3 className="section-title">III-A. Reimbursement Details</h3>
                 <small className="section-note">Specify who will be reimbursed for this expense</small>
-                <br/>
-                <br/>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="employee_reference" className="required">Employee to Reimburse</label>
-                    <SearchableDropdown
-                      options={employees.map(emp => ({
-                        value: emp.employee_number,
-                        label: `${emp.employee_number} - ${emp.name}`,
-                        description: `${emp.job_title} | ${emp.department}`
-                      }))}
-                      value={formData.employee_reference || ''}
-                      onChange={(value) => {
-                        // Find employee to also set creditor_name
-                        const selectedEmployee = employees.find(e => e.employee_number === value);
-                        setFormData(prev => ({ 
-                          ...prev, 
-                          employee_reference: value,
-                          creditor_name: selectedEmployee?.name || ''
-                        }));
-                        if (touched.has('employee_reference')) {
-                          setErrors(prev => ({
-                            ...prev,
-                            employee_reference: validateFormField('employee_reference', value)
-                          }));
-                        }
-                      }}
-                      onBlur={() => {
-                        setTouched(prev => new Set(prev).add('employee_reference'));
-                        setErrors(prev => ({
-                          ...prev,
-                          employee_reference: validateFormField('employee_reference', formData.employee_reference)
-                        }));
-                      }}
-                      placeholder="Select Employee"
-                      className={errors.employee_reference && touched.has('employee_reference') ? 'input-error' : ''}
-                      showDescription={true}
-                    />
-                    <small className="field-note">Searchable Dropdown - No Custom Input</small>
-                    {errors.employee_reference && touched.has('employee_reference') && (
-                      <span className="error-message">{errors.employee_reference}</span>
-                    )}
-                  </div>
-                </div>
+                <br />
+                <br />
 
-                <div className="form-row">
-                  <div className="form-group full-width">
-                    <label htmlFor="payable_description" className="required">Purpose of Reimbursement</label>
-                    <textarea
-                      id="payable_description"
-                      name="payable_description"
-                      value={formData.payable_description || ''}
-                      onChange={handleInputChange}
-                      onBlur={handleInputBlur}
-                      placeholder="Describe the purpose and reason for this reimbursement"
-                      rows={3}
-                      maxLength={500}
-                      className={errors.payable_description && touched.has('payable_description') ? 'input-error' : ''}
-                      required
-                    />
-                    <div className="textarea-footer">
-                      <span className="hint-message">
-                        {formData.payable_description?.length || 0}/500 characters
-                      </span>
-                      {errors.payable_description && touched.has('payable_description') && (
-                        <span className="error-message"><br/>{errors.payable_description}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                {/* Show driver/conductor options if trip is selected OR if we have crew data from edit mode */}
+                {(formData.bus_trip_assignment_id || formData.driver_id || formData.conductor_id || formData.employee_reference) ? (
+                  // If trip selected or crew data exists, show Driver/Conductor options
+                  (() => {
+                    const trip = cachedTrips.find(t => t.assignment_id === formData.bus_trip_assignment_id);
+
+                    // Use trip details if available, otherwise fallback to formData (for Edit mode)
+                    const driverId = trip?.driver_id || formData.driver_id;
+                    const driverName = trip?.driver_name || formData.driver_name;
+                    const conductorId = trip?.conductor_id || formData.conductor_id;
+                    const conductorName = trip?.conductor_name || formData.conductor_name;
+
+                    return (
+                      <div className="form-row">
+                        <div className="form-group full-width">
+                          <label className="required">Employee to Reimburse</label>
+                          <div className="reimburse-options" style={{ display: 'flex', gap: '20px', flexDirection: 'column' }}>
+                            {driverId && (
+                              <div
+                                className={`option-card ${formData.employee_reference === driverId ? 'selected' : ''}`}
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    employee_reference: driverId,
+                                    creditor_name: driverName || ''
+                                  }));
+                                }}
+                                style={{
+                                  padding: '15px',
+                                  border: formData.employee_reference === driverId ? '2px solid #007bff' : '1px solid #ddd',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  backgroundColor: formData.employee_reference === driverId ? '#f0f7ff' : '#fff'
+                                }}
+                              >
+                                <strong>Driver:</strong> {driverName} <br />
+                                <small>{driverId}</small>
+                              </div>
+                            )}
+                            {conductorId && (
+                              <div
+                                className={`option-card ${formData.employee_reference === conductorId ? 'selected' : ''}`}
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    employee_reference: conductorId,
+                                    creditor_name: conductorName || ''
+                                  }));
+                                }}
+                                style={{
+                                  padding: '15px',
+                                  border: formData.employee_reference === conductorId ? '2px solid #007bff' : '1px solid #ddd',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  backgroundColor: formData.employee_reference === conductorId ? '#f0f7ff' : '#fff'
+                                }}
+                              >
+                                <strong>Conductor:</strong> {conductorName} <br />
+                                <small>{conductorId}</small>
+                              </div>
+                            )}
+                            {/* In edit mode, show selected employee even if no driver/conductor cards */}
+                            {(!driverId && !conductorId && formData.employee_reference) && (
+                              <div
+                                className="option-card selected"
+                                style={{
+                                  padding: '15px',
+                                  border: '2px solid #007bff',
+                                  borderRadius: '8px',
+                                  backgroundColor: '#f0f7ff'
+                                }}
+                              >
+                                <strong>Selected Employee:</strong> {formData.creditor_name || formData.employee_reference} <br />
+                                <small>{formData.employee_reference}</small>
+                              </div>
+                            )}
+                            {(!driverId && !conductorId && !formData.employee_reference) && (
+                              <p className="error-text">No crew details found for this trip.</p>
+                            )}
+                          </div>
+                          {errors.employee_reference && touched.has('employee_reference') && (
+                            <span className="error-message">{errors.employee_reference}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="hint-message">Select a trip to specify the employee to reimburse.</p>
+                )}
 
                 <div className="info-box">
                   <i className="ri-information-line"></i>
                   <span>The reimbursement amount will be automatically set to match the expense amount ({formatMoney(formData.amount)}). Attachments can be uploaded after saving the expense.</span>
                 </div>
+
+                {/* Display Driver/Conductor Installments in Edit Mode */}
+                {mode === 'edit' && formData.is_reimbursable && (formData.driverInstallments || formData.conductorInstallments) ? (
+                  <>
+                    {/* Conductor Installment Schedule */}
+                    {formData.conductorInstallments && (
+                      <>
+                        <p className="details-subtitle">Conductor Installment Schedule</p>
+                        <div className="modal-content view">
+                          <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
+                            <strong>{formData.conductorInstallments.employee_name}</strong>
+                            <strong>Total: {formatMoney(formData.conductorInstallments.total_share)}</strong>
+                          </div>
+                          <PaymentScheduleTable
+                            scheduleItems={formData.conductorInstallments.installments}
+                            mode="view"
+                            totalAmount={formData.conductorInstallments.total_share}
+                            isUnearnedRevenue={true}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Driver Installment Schedule */}
+                    {formData.driverInstallments && (
+                      <>
+                        <p className="details-subtitle">Driver Installment Schedule</p>
+                        <div className="modal-content view">
+                          <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
+                            <strong>{formData.driverInstallments.employee_name}</strong>
+                            <strong>Total: {formatMoney(formData.driverInstallments.total_share)}</strong>
+                          </div>
+                          <PaymentScheduleTable
+                            scheduleItems={formData.driverInstallments.installments}
+                            mode="view"
+                            totalAmount={formData.driverInstallments.total_share}
+                            isUnearnedRevenue={true}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  /* Show Schedule Form for Add Mode or Edit Mode without installments */
+                  (formData.employee_reference || (mode === 'edit' && formData.is_reimbursable)) && (
+                    <>
+                      <div className="form-row" style={{ marginTop: '20px' }}>
+                      <div className="form-group">
+                        <label>
+                          Schedule Frequency<span className="requiredTags"> *</span>
+                        </label>
+                        <select
+                          value={formData.scheduleFrequency || ''}
+                          onChange={(e) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              scheduleFrequency: e.target.value as ScheduleFrequency
+                            }));
+                          }}
+                          disabled={mode === 'edit' && existingData?.status !== 'PENDING'}
+                        >
+                          <option value="">Select Frequency</option>
+                          <option value={ScheduleFrequency.DAILY}>Daily</option>
+                          <option value={ScheduleFrequency.WEEKLY}>Weekly</option>
+                          <option value={ScheduleFrequency.BIWEEKLY}>Bi-Weekly</option>
+                          <option value={ScheduleFrequency.MONTHLY}>Monthly</option>
+                        </select>
+                        <small className="hint-message">
+                          {formData.scheduleFrequency === ScheduleFrequency.DAILY && 'Consecutive daily payments'}
+                          {formData.scheduleFrequency === ScheduleFrequency.WEEKLY && 'Same day each week'}
+                          {formData.scheduleFrequency === ScheduleFrequency.BIWEEKLY && 'Same day every two weeks'}
+                          {formData.scheduleFrequency === ScheduleFrequency.MONTHLY && 'Same date each month'}
+                          {mode === 'edit' && existingData?.status !== 'PENDING' && ' (Not editable - record is not PENDING)'}
+                        </small>
+                      </div>
+
+                      <div className="form-group">
+                        <label>
+                          Start Date<span className="requiredTags"> *</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.scheduleStartDate || ''}
+                          onChange={(e) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              scheduleStartDate: e.target.value
+                            }));
+                          }}
+                          min={new Date().toISOString().split('T')[0]}
+                          disabled={mode === 'edit' && existingData?.status !== 'PENDING'}
+                          className={mode === 'edit' && existingData?.status !== 'PENDING' ? 'disabled-field' : ''}
+                        />
+                        {formData.scheduleStartDate && (
+                          <small className="hint-message">
+                            {formatDate(formData.scheduleStartDate)}
+                          </small>
+                        )}
+                        {errors.scheduleStartDate && (
+                          <p className="add-error-message" style={{ marginTop: '0px' }}>{errors.scheduleStartDate}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Number of Payments */}
+                    {formData.scheduleFrequency && (
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>
+                            Number of Payments<span className="requiredTags"> *</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.numberOfPayments || ''}
+                            onChange={(e) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                numberOfPayments: parseInt(e.target.value) || 0
+                              }));
+                            }}
+                            min="2"
+                            max="100"
+                            disabled={mode === 'edit' && existingData?.status !== 'PENDING'}
+                            className={mode === 'edit' && existingData?.status !== 'PENDING' ? 'disabled-field' : ''}
+                          />
+                          <small className="hint-message">
+                            {mode === 'edit' && existingData?.status !== 'PENDING'
+                              ? 'Not editable - record is not PENDING'
+                              : 'Total installments: minimum 2, maximum 100'}
+                          </small>
+                          {errors.numberOfPayments && (
+                            <p className="add-error-message">{errors.numberOfPayments}</p>
+                          )}
+                        </div>
+                        <div className="form-group">
+                          <label>Estimated End Date</label>
+                          <input
+                            type="text"
+                            value={
+                              formData.scheduleFrequency &&
+                              formData.scheduleStartDate &&
+                              formData.numberOfPayments &&
+                              formData.numberOfPayments > 0
+                                ? formatDate(
+                                    generateScheduleDates(
+                                      formData.scheduleFrequency,
+                                      formData.scheduleStartDate,
+                                      formData.numberOfPayments
+                                    )[formData.numberOfPayments - 1] || ''
+                                  )
+                                : 'N/A'
+                            }
+                            disabled
+                            className="disabled-field"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Payment Schedule Table */}
+                    {formData.scheduleFrequency && formData.amount > 0 && scheduleItems.length > 0 && (
+                      <>
+                        <div className="form-row">
+                          <div className="form-group full-width">
+                            <label>
+                              <span style={{ fontWeight: 600 }}>Payment Schedule Preview</span>
+                            </label>
+                          </div>
+                        </div>
+                        <PaymentScheduleTable
+                          scheduleItems={scheduleItems}
+                          mode={mode === 'edit' ? 'edit' : 'add'}
+                          onItemChange={(items) => {
+                            setScheduleItems(items);
+                            setFormData(prev => ({ ...prev, scheduleItems: items }));
+                          }}
+                          totalAmount={formData.amount}
+                          isUnearnedRevenue={true}
+                          frequency={formData.scheduleFrequency}
+                        />
+
+                        {/* Edit Mode Warnings */}
+                        {mode === 'edit' && scheduleItems.length > 0 && (
+                          <>
+                            {scheduleItems.filter(item => item.status !== PaymentStatus.PENDING).length > 0 && (
+                              <div style={{
+                                marginTop: '10px',
+                                padding: '12px',
+                                backgroundColor: '#E3F2FD',
+                                borderRadius: '6px',
+                                border: '1px solid #90CAF9'
+                              }}>
+                                <i className="ri-information-line" style={{ color: '#1976D2', marginRight: '8px' }}></i>
+                                <span style={{ color: '#1565C0', fontSize: '14px', fontWeight: '500' }}>
+                                  {scheduleItems.filter(item => item.status !== PaymentStatus.PENDING).length} installment(s) have been paid and cannot be modified
+                                </span>
+                              </div>
+                            )}
+
+                            {scheduleItems.some(item => item.status === PaymentStatus.OVERDUE) && (
+                              <div style={{
+                                marginTop: '10px',
+                                padding: '12px',
+                                backgroundColor: '#FFEBEE',
+                                borderRadius: '6px',
+                                border: '1px solid #FFCDD2'
+                              }}>
+                                <i className="ri-alert-line" style={{ color: '#C62828', marginRight: '8px' }}></i>
+                                <span style={{ color: '#B71C1C', fontSize: '14px', fontWeight: '500' }}>
+                                  Cannot save schedule with overdue payments - please resolve overdue installments first
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -695,16 +1057,16 @@ export default function RecordOperationalExpenseModal({
       </div>
 
       <div className="modal-actions">
-        <button 
-          className="cancel-btn" 
+        <button
+          className="cancel-btn"
           onClick={handleCancel}
           disabled={isSaving}
         >
           <i className="ri-close-line"></i>
           Cancel
         </button>
-        <button 
-          className="submit-btn" 
+        <button
+          className="submit-btn"
           onClick={handleSubmit}
           disabled={isSaving}
         >
