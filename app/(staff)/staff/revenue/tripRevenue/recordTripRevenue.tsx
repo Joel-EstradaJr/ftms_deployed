@@ -275,7 +275,7 @@ interface FormData {
   receivableDueDate: string;
 
   // Installment schedule fields
-  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM';
+  frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY';
   numberOfPayments: number;
   startDate: string;
 
@@ -375,7 +375,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
   // Helper function to generate installment schedule
   const generateInstallmentSchedule = (
     totalAmount: number,
-    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM',
+    frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY',
     numberOfPayments: number,
     startDate: string
   ): RevenueScheduleItem[] => {
@@ -395,15 +395,14 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
         case 'WEEKLY':
           dueDate.setDate(dueDate.getDate() + (i * 7));
           break;
+        case 'BIWEEKLY':
+          dueDate.setDate(dueDate.getDate() + (i * 14));
+          break;
         case 'MONTHLY':
           dueDate.setMonth(dueDate.getMonth() + i);
           break;
-        case 'ANNUAL':
+        case 'ANNUALLY':
           dueDate.setFullYear(dueDate.getFullYear() + i);
-          break;
-        case 'CUSTOM':
-          // For custom, default to monthly spacing
-          dueDate.setMonth(dueDate.getMonth() + i);
           break;
       }
 
@@ -485,7 +484,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
     // Installment schedule fields - use config defaults
     frequency: mode === 'edit' && tripData.frequency
-      ? tripData.frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM'
+      ? tripData.frequency as 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY'
       : (config?.default_frequency ?? 'WEEKLY'),
     numberOfPayments: mode === 'edit' && tripData.numberOfPayments
       ? tripData.numberOfPayments
@@ -566,7 +565,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
         driverShare: data.shortage_details?.driver_share || 0,
         conductorShare: data.shortage_details?.conductor_share || 0,
         receivableDueDate: receivableDueDate,
-        frequency: frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM',
+        frequency: frequency as 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY',
         numberOfPayments: numberOfPayments,
         startDate: startDate,
         driverInstallments: mapInstallments(data.shortage_details?.driver_receivable?.installment_schedules),
@@ -1739,8 +1738,9 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                   >
                     <option value="DAILY">Daily</option>
                     <option value="WEEKLY">Weekly</option>
+                    <option value="BIWEEKLY">Bi-Weekly</option>
                     <option value="MONTHLY">Monthly</option>
-                    <option value="ANNUAL">Annual</option>
+                    <option value="ANNUALLY">Annually</option>
                   </select>
                   <p className="add-error-message">{formErrors.frequency}</p>
                 </div>

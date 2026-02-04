@@ -25,10 +25,6 @@ export function generateScheduleDates(
   startDate: string,
   numberOfPayments: number
 ): string[] {
-  if (frequency === ScheduleFrequency.CUSTOM) {
-    return []; // User will input dates manually
-  }
-
   const dates: string[] = [];
   const start = new Date(startDate + 'T00:00:00');
 
@@ -66,7 +62,7 @@ export function generateScheduleDates(
         }
         break;
 
-      case ScheduleFrequency.ANNUAL:
+      case ScheduleFrequency.ANNUALLY:
         // Same month/day each year
         nextDate = new Date(start);
         nextDate.setFullYear(start.getFullYear() + i);

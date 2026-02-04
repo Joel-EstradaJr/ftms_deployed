@@ -60,8 +60,7 @@ export enum ScheduleFrequency {
   WEEKLY = 'WEEKLY',
   BIWEEKLY = 'BIWEEKLY',
   MONTHLY = 'MONTHLY',
-  ANNUAL = 'ANNUAL',
-  CUSTOM = 'CUSTOM'
+  ANNUALLY = 'ANNUALLY'
 }
 
 /**
