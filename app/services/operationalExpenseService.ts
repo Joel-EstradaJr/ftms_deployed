@@ -718,7 +718,7 @@ export function transformExpenseForTable(expense: ExpenseListItem) {
         amount: expense.amount,
         description: '', // Not in list view
         category: '',
-        status: expense.status,
+        status: expense.approval_status,
         bus_id: expense.operational_trip?.assignment_id || expense.rental_trip?.assignment_id || undefined,
         body_number: expense.body_number || expense.operational_trip?.body_number || expense.rental_trip?.body_number || undefined,
         employee_id: undefined,

@@ -83,7 +83,7 @@ const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
     payment_method: expense.payment_method || '',
     is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
     description: expense.description || '',
-    status: expense.status,
+    status: expense.approval_status,
     created_by: expense.created_by || '',
     approved_by: expense.approved_by,
     created_at: expense.created_at,
@@ -320,7 +320,7 @@ const OperationalExpensePage = () => {
     'Body Number': expense.body_number || '-',
     'Amount': formatMoney(expense.amount),
     'Reimbursable': expense.is_reimbursable ? 'Yes' : 'No',
-    'Status': expense.status,
+    'Status': expense.approval_status,
   }));
 
   return (
@@ -426,8 +426,8 @@ const OperationalExpensePage = () => {
                         </span>
                       </td>
                       <td>
-                        <span className={`chip ${expense.status?.toLowerCase()}`}>
-                          {expense.status}
+                        <span className={`chip ${expense.approval_status?.toLowerCase()}`}>
+                          {expense.approval_status}
                         </span>
                       </td>
                       <td className="actionButtons">
@@ -444,7 +444,7 @@ const OperationalExpensePage = () => {
 
 
                           {/* Delete button - only for PENDING */}
-                          {expense.status === 'PENDING' && (
+                          {expense.approval_status === 'PENDING' && (
                             <button
                               className="deleteBtn"
                               onClick={() => handleDelete(expense.id)}
