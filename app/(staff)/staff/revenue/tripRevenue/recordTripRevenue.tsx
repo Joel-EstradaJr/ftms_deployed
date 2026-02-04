@@ -206,7 +206,7 @@ interface RecordTripRevenueModalProps {
     trip_revenue: number;
     assignment_type: string; // 'Percentage' or 'Boundary'
     assignment_value: number; // quota if Boundary, company share% if Percentage
-    payment_method?: string; // 'Company Cash' or 'Reimbursement'
+    payment_method?: string; // External data may be 'Company Cash' or 'Reimbursement' - will be mapped to CASH for revenue
 
     // Employee details (from Human Resource table)
     employee_id: string;

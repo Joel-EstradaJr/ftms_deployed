@@ -17,6 +17,7 @@
  * - assignment_id: string (from rental_local)
  * - description: string (from revenue)
  * - payment_method: PaymentMethodEnum (from revenue)
+ * - installment_payments: array (balance payments via receivable system)
  */
 import React from "react";
 import { formatMoney, formatDate } from "@/utils/formatting";
@@ -25,14 +26,29 @@ import "@/styles/components/modal2.css";
 import "@/styles/components/chips.css";
 
 // Payment method enum values matching database schema
-type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET' | 'REIMBURSEMENT';
+// Note: REIMBURSEMENT is excluded from revenue payment methods.
+// Reimbursement is only applicable to expense records, not revenue records.
+type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET';
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethodEnum, string> = {
     'CASH': 'Cash',
     'BANK_TRANSFER': 'Bank Transfer',
-    'E_WALLET': 'E-Wallet',
-    'REIMBURSEMENT': 'Reimbursement'
+    'E_WALLET': 'E-Wallet'
 };
+
+// Installment payment interface (balance payments)
+interface InstallmentPayment {
+    id: number;
+    amount_paid: number;
+    payment_date: string | null;
+    payment_method: PaymentMethodEnum | null;
+    payment_reference: string | null;
+    journal_entry: {
+        id: number;
+        code: string;
+        status: string;
+    } | null;
+}
 
 // Schema-aligned interface for bus rental records
 interface BusRentalRecord {
@@ -55,6 +71,8 @@ interface BusRentalRecord {
     bodyNumber?: string;
     rental_start_date?: string;
     rental_end_date?: string;
+    // Balance payments via receivable/installment system
+    installment_payments?: InstallmentPayment[];
 }
 
 interface ViewRentalDetailsModalProps {
@@ -232,46 +250,108 @@ export default function ViewRentalDetailsModal({ record, onClose, status }: View
                 </form>
             </div>
 
-            {/* Phase 3: Balance Payment (if paid) */}
-            {record.full_payment_date && (
+            {/* Phase 3: Balance Payment (if paid - from installment_payments) */}
+            {(record.installment_payments && record.installment_payments.length > 0) || record.full_payment_date ? (
                 <>
                     <p className="details-title">III. Balance Payment</p>
                     <div className="modal-content add">
                         <form className="add-form">
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Balance Amount Paid</label>
-                                    <input
-                                        type="text"
-                                        value={formatMoney(record.total_rental_amount - record.down_payment_amount)}
-                                        disabled
-                                        style={{ 
-                                            backgroundColor: '#e8f5e9', 
-                                            fontWeight: 'bold', 
-                                            fontSize: '1.1em', 
-                                            color: '#2e7d32'
-                                        }}
-                                    />
-                                </div>
+                            {record.installment_payments && record.installment_payments.length > 0 ? (
+                                // Show installment payment details
+                                record.installment_payments.map((payment, index) => (
+                                    <React.Fragment key={payment.id}>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Balance Amount Paid</label>
+                                                <input
+                                                    type="text"
+                                                    value={formatMoney(payment.amount_paid)}
+                                                    disabled
+                                                    style={{ 
+                                                        backgroundColor: '#e8f5e9', 
+                                                        fontWeight: 'bold', 
+                                                        fontSize: '1.1em', 
+                                                        color: '#2e7d32'
+                                                    }}
+                                                />
+                                            </div>
 
-                                <div className="form-group">
-                                    <label>Balance Received Date</label>
-                                    <input
-                                        type="text"
-                                        value={formatDate(record.full_payment_date)}
-                                        disabled
-                                        style={{ 
-                                            backgroundColor: '#e8f5e9', 
-                                            color: '#2e7d32',
-                                            fontWeight: 'bold'
-                                        }}
-                                    />
+                                            <div className="form-group">
+                                                <label>Balance Received Date</label>
+                                                <input
+                                                    type="text"
+                                                    value={payment.payment_date ? formatDate(payment.payment_date) : 'N/A'}
+                                                    disabled
+                                                    style={{ 
+                                                        backgroundColor: '#e8f5e9', 
+                                                        color: '#2e7d32',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Payment Method</label>
+                                                <input
+                                                    type="text"
+                                                    value={payment.payment_method ? PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method : 'N/A'}
+                                                    disabled
+                                                    style={{ backgroundColor: '#f5f5f5' }}
+                                                />
+                                            </div>
+
+                                            {payment.journal_entry && (
+                                                <div className="form-group">
+                                                    <label>Journal Entry</label>
+                                                    <input
+                                                        type="text"
+                                                        value={payment.journal_entry.code}
+                                                        disabled
+                                                        style={{ backgroundColor: '#f5f5f5' }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </React.Fragment>
+                                ))
+                            ) : (
+                                // Fallback to calculated values if no installment payments
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Balance Amount Paid</label>
+                                        <input
+                                            type="text"
+                                            value={formatMoney(record.total_rental_amount - record.down_payment_amount)}
+                                            disabled
+                                            style={{ 
+                                                backgroundColor: '#e8f5e9', 
+                                                fontWeight: 'bold', 
+                                                fontSize: '1.1em', 
+                                                color: '#2e7d32'
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Balance Received Date</label>
+                                        <input
+                                            type="text"
+                                            value={formatDate(record.full_payment_date)}
+                                            disabled
+                                            style={{ 
+                                                backgroundColor: '#e8f5e9', 
+                                                color: '#2e7d32',
+                                                fontWeight: 'bold'
+                                            }}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </form>
                     </div>
                 </>
-            )}
+            ) : null}
 
             {/* Cancellation Information (if applicable) */}
             {record.rental_status === 'cancelled' && (

@@ -727,24 +727,25 @@ const AdminOtherRevenuePage = () => {
     }
 
     // Set payment methods (matching schema enum values)
+    // Note: REIMBURSEMENT is excluded from revenue payment methods.
+    // Reimbursement is only applicable to expense records, not revenue records.
     setPaymentMethods([
       { id: 1, methodName: "Cash", methodCode: "CASH" },
       { id: 2, methodName: "Bank Transfer", methodCode: "BANK_TRANSFER" },
-      { id: 3, methodName: "E-Wallet", methodCode: "E_WALLET" },
-      { id: 4, methodName: "Reimbursement", methodCode: "REIMBURSEMENT" }
+      { id: 3, methodName: "E-Wallet", methodCode: "E_WALLET" }
     ]);
   };
 
   // Transform OtherRevenueRecord to OtherRevenueData for modals
   const transformRecordToFormData = (record: OtherRevenueRecord): OtherRevenueData => {
     // Map backend payment method enum to display name
+    // Note: REIMBURSEMENT from legacy data is treated as Cash
     const paymentMethodEnumToName: Record<string, string> = {
       'CASH': 'Cash',
       'BANK_TRANSFER': 'Bank Transfer',
-      'E_WALLET': 'E-Wallet',
-      'REIMBURSEMENT': 'Reimbursement'
+      'E_WALLET': 'E-Wallet'
     };
-    const paymentMethodName = paymentMethodEnumToName[record.payment_method || ''] || record.payment_method || '';
+    const paymentMethodName = paymentMethodEnumToName[record.payment_method || ''] || 'Cash';
 
     // Ensure date_recorded is in YYYY-MM-DD format for date input
     let dateRecorded = record.date_recorded || '';

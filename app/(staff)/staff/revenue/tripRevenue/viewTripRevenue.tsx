@@ -196,15 +196,15 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   };
 
   // Format payment method for display
+  // Note: REIMBURSEMENT from external data is treated as CASH for revenue
   const formatPaymentMethod = (method: string | null): string => {
     if (!method) return 'N/A';
     const methodMap: Record<string, string> = {
       'CASH': 'Cash',
       'BANK_TRANSFER': 'Bank Transfer',
       'E_WALLET': 'E-Wallet',
-      'REIMBURSEMENT': 'Reimbursement',
     };
-    return methodMap[method] || method;
+    return methodMap[method] || 'Cash'; // Default to Cash for unknown methods
   };
 
   // Format assignment type for display
