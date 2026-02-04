@@ -121,7 +121,15 @@ const AdministrativeExpensePage: React.FC = () => {
       const response = await fetch('/api/admin/other-expense/vendors');
       const result = await response.json();
       if (result.success && result.data) {
-        setVendors(result.data);
+        // Transform backend vendor format to frontend expected format
+        const transformedVendors = result.data.map((v: any) => ({
+          id: v.id,
+          code: v.code,
+          name: v.name,
+          type: v.isSupplier ? 'supplier' : 'standalone',
+          supplier_id: v.isSupplier ? v.code : undefined
+        }));
+        setVendors(transformedVendors);
       }
     } catch (err) {
       console.error('Failed to fetch vendors:', err);
@@ -304,17 +312,21 @@ const AdministrativeExpensePage: React.FC = () => {
         const response = await fetch(`/api/admin/other-expense/${rowData.id}`);
         const result = await response.json();
         if (result.success && result.data) {
-          // Extract vendor name from object if needed
+          // Extract vendor info from object if needed
           const vendorData = result.data.vendor;
           const vendorName = typeof vendorData === 'object' && vendorData !== null
             ? (vendorData.supplier_local?.supplier_name || vendorData.name || '')
             : (vendorData || '');
+          // Extract vendor_id - prioritize direct field, then from vendor object
+          const vendorId = result.data.vendor_id 
+            || (typeof vendorData === 'object' && vendorData !== null ? vendorData.id : null)
+            || rowData.vendor_id;
 
           fullExpenseData = {
             ...rowData,
             ...result.data,
             vendor: vendorName,  // Ensure vendor is a string, not object
-            vendor_id: result.data.vendor_id || rowData.vendor_id,
+            vendor_id: vendorId,
             scheduleItems: result.data.scheduleItems || [],
             frequency: result.data.frequency || rowData.frequency,
           };

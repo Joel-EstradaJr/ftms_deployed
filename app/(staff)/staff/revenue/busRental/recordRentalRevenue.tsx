@@ -16,7 +16,10 @@
  * - date_recorded: string (from revenue)
  * - assignment_id: string (from rental_local - rental assignment reference)
  * - description: string (from revenue - notes/remarks)
- * - payment_method: PaymentMethodEnum (from revenue: CASH, BANK_TRANSFER, E_WALLET, REIMBURSEMENT)
+ * - payment_method: PaymentMethodEnum (from revenue: CASH, BANK_TRANSFER, E_WALLET)
+ * 
+ * Note: REIMBURSEMENT is not used for revenue records (only for expenses).
+ * If external data has "Reimbursement", it's mapped to CASH on the backend.
  */
 import React, { useState, useEffect } from "react";
 import {
@@ -30,13 +33,14 @@ import "@/styles/components/forms.css";
 import "@/styles/components/modal2.css";
 
 // Payment method enum values matching database schema
-export type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET' | 'REIMBURSEMENT';
+// Note: REIMBURSEMENT is excluded from revenue payment methods.
+// Reimbursement is only applicable to expense records, not revenue records.
+export type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET';
 
 export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethodEnum; label: string }[] = [
     { value: 'CASH', label: 'Cash' },
     { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-    { value: 'E_WALLET', label: 'E-Wallet' },
-    { value: 'REIMBURSEMENT', label: 'Reimbursement' }
+    { value: 'E_WALLET', label: 'E-Wallet' }
 ];
 
 // Export the interface so it can be imported by other components

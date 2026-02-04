@@ -30,15 +30,30 @@ import RecordRentalRevenueModal from './recordRentalRevenue';
 import ViewRentalDetailsModal from './viewRentalDetails';
 
 // Payment method enum matching schema
-type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET' | 'REIMBURSEMENT';
+// Note: REIMBURSEMENT is excluded from revenue payment methods.
+// Reimbursement is only applicable to expense records, not revenue records.
+type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET';
 
 // Payment method options matching schema enum
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethodEnum; label: string }[] = [
   { value: 'CASH', label: 'Cash' },
   { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
   { value: 'E_WALLET', label: 'E-Wallet (GCash, PayMaya, etc.)' },
-  { value: 'REIMBURSEMENT', label: 'Reimbursement' },
 ];
+
+// Installment payment interface (balance payments)
+interface InstallmentPayment {
+  id: number;
+  amount_paid: number;
+  payment_date: string | null;
+  payment_method: PaymentMethodEnum | null;
+  payment_reference: string | null;
+  journal_entry: {
+    id: number;
+    code: string;
+    status: string;
+  } | null;
+}
 
 // TypeScript interface aligned with schema
 interface BusRentalRecord {
@@ -57,6 +72,8 @@ interface BusRentalRecord {
   description?: string; // revenue.description
   payment_method: PaymentMethodEnum; // revenue.payment_method (enum)
   rental_package: string | null; // rental_local.rental_package (destination/package info)
+  // Balance payments via receivable/installment system
+  installment_payments?: InstallmentPayment[];
 }
 
 interface PaginationMeta {
@@ -331,10 +348,28 @@ const AdminBusRentalPage = () => {
   };
 
   // Action handlers
-  const handleView = (id: number) => {
-    const record = data.find(item => item.id === id);
-    if (record) {
-      openModal("view-rental", record);
+  const handleView = async (id: number) => {
+    try {
+      // Fetch full record details (includes installment_payments)
+      const response = await fetch(`/api/admin/rental-revenue/${id}`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        openModal("view-rental", result.data);
+      } else {
+        // Fallback to list data if fetch fails
+        const record = data.find(item => item.id === id);
+        if (record) {
+          openModal("view-rental", record);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching rental details:', error);
+      // Fallback to list data
+      const record = data.find(item => item.id === id);
+      if (record) {
+        openModal("view-rental", record);
+      }
     }
   };
 

@@ -19,6 +19,7 @@ export enum PaymentStatus {
   PENDING = 'PENDING',           // Not yet paid at all
   PARTIALLY_PAID = 'PARTIALLY_PAID', // Some payments received, balance exists
   COMPLETED = 'COMPLETED',       // Fully settled, balance = 0 (replaces PAID)
+  PAID = 'COMPLETED',            // @deprecated Alias for COMPLETED - use COMPLETED instead
   OVERDUE = 'OVERDUE',           // Past due date
   CANCELLED = 'CANCELLED',       // Invalidated before collection
   WRITTEN_OFF = 'WRITTEN_OFF'    // Cannot be collected; bad debts
@@ -60,8 +61,8 @@ export enum ScheduleFrequency {
   WEEKLY = 'WEEKLY',
   BIWEEKLY = 'BIWEEKLY',
   MONTHLY = 'MONTHLY',
-  ANNUAL = 'ANNUAL',
-  CUSTOM = 'CUSTOM'
+  ANNUALLY = 'ANNUALLY',
+  CUSTOM = 'CUSTOM'           // Custom schedule
 }
 
 /**

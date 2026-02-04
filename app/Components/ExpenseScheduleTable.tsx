@@ -100,7 +100,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
 
     // Can only remove if it's the last item and not paid
     const item = scheduleItems[index];
-    if (index !== scheduleItems.length - 1 || item.status === PaymentStatus.PAID || item.status === PaymentStatus.PARTIALLY_PAID) {
+    if (index !== scheduleItems.length - 1 || item.status === PaymentStatus.COMPLETED || item.status === PaymentStatus.PARTIALLY_PAID) {
       return;
     }
 
@@ -116,7 +116,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
   const getStatusChipClass = (status: PaymentStatus | string | undefined): string => {
     const statusStr = status?.toString() || 'PENDING';
     switch (statusStr) {
-      case PaymentStatus.PAID:
+      case PaymentStatus.COMPLETED:
       case 'PAID':
         return 'paid';
       case PaymentStatus.PARTIALLY_PAID:
@@ -164,9 +164,38 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
             transform: scale(1.2);
           }
         }
+        .expense-schedule-wrapper {
+          max-height: 300px;
+          overflow-y: auto;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          margin-bottom: 20px;
+        }
+        .expense-schedule-wrapper table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .expense-schedule-wrapper thead {
+          position: sticky;
+          top: 0;
+          z-index: 2;
+          background-color: var(--table-header-color, #f5f5f5);
+        }
+        .expense-schedule-wrapper thead th {
+          border-bottom: 2px solid var(--border-color);
+        }
+        .expense-schedule-wrapper tfoot {
+          position: sticky;
+          bottom: 0;
+          z-index: 2;
+          background-color: var(--table-header-color, #f5f5f5);
+        }
+        .expense-schedule-wrapper tfoot td {
+          border-top: 2px solid var(--border-color);
+        }
       `}</style>
 
-      <div className="table-wrapper" style={{ maxHeight: '400px', marginBottom: '20px' }}>
+      <div className="expense-schedule-wrapper">
         <table className="modal-table">
           <thead className="modal-table-heading">
             <tr>
@@ -271,7 +300,7 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
                   {canRecordPayment && (
                     <td className="actionButtons">
                       <div className="actionButtonsContainer">
-                        {item.status !== PaymentStatus.PAID && (
+                        {item.status !== PaymentStatus.COMPLETED && (
                           <button
                             onClick={() => onRecordPayment(item)}
                             className="payBtn"
@@ -286,18 +315,19 @@ const ExpenseScheduleTable: React.FC<ExpenseScheduleTableProps> = ({
                 </tr>
               );
             })}
-
+          </tbody>
+          <tfoot>
             {/* Totals Row */}
-            <tr style={{ borderTop: '2px solid var(--border-color)', fontWeight: '600', backgroundColor: 'var(--table-header-color)' }}>
+            <tr style={{ fontWeight: '600' }}>
               <td colSpan={2}>
                 TOTAL:
               </td>
               <td>{formatMoney(totalDue)}</td>
               {showPaidColumn && <td>{formatMoney(totalPaid)}</td>}
               <td style={{ color: totalBalance > 0 ? '#FF4949' : '#4CAF50' }}>{formatMoney(totalBalance)}</td>
-              <td colSpan={isEditable ? 2 : 1}></td>
+              <td colSpan={canRecordPayment ? 2 : 1}></td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
 

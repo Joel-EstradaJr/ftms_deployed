@@ -41,7 +41,8 @@ export interface ExpenseListItem {
     body_number: string | null;
     amount: number;
     is_reimbursable: boolean;
-    status: string;
+    payment_status: string;
+    approval_status: string;
     payment_method: string | null;
     trip_type: 'operational' | 'rental' | null;
     operational_trip: {
@@ -212,6 +213,10 @@ export interface OperationalTripItem {
     bus_type: string | null;
     date_assigned: string | null;
     trip_fuel_expense: number | null;
+    driver_id: string | null;
+    driver_name: string | null;
+    conductor_id: string | null;
+    conductor_name: string | null;
 }
 
 export interface RentalTripItem {
@@ -331,6 +336,63 @@ export async function createExpense(data: CreateExpenseDTO): Promise<{ id: numbe
     }
 
     return response.data;
+}
+
+/**
+ * Reimbursement details structure with driver/conductor split
+ */
+export interface ReimbursementEmployeeDetails {
+    employee_number: string;
+    employee_name: string;
+    share_amount: number;
+    paid_amount: number;
+    balance: number;
+    status: string;
+    installments: Array<{
+        id: number;
+        installment_number: number;
+        due_date: string;
+        amount_due: number;
+        amount_paid: number;
+        balance: number;
+        status: string;
+        payment_date?: string;
+    }>;
+}
+
+export interface ReimbursementDetailsResponse {
+    expense_id: number;
+    expense_code: string;
+    total_amount: number;
+    payment_status: string;
+    date_recorded: string;
+    body_number?: string;
+    expense_type_name?: string;
+    driver?: ReimbursementEmployeeDetails;
+    conductor?: ReimbursementEmployeeDetails;
+}
+
+/**
+ * Fetch reimbursement details for an expense with driver/conductor split
+ */
+export async function fetchReimbursementDetails(id: number): Promise<ReimbursementDetailsResponse | null> {
+    try {
+        const response = await api.get<{
+            success: boolean;
+            data: ReimbursementDetailsResponse;
+        }>(`${EXPENSE_API_BASE}/${id}/reimbursement`);
+
+        if (!response.success || !response.data) {
+            console.error('fetchReimbursementDetails: No data returned for expense', id);
+            return null;
+        }
+
+        console.log('fetchReimbursementDetails: Received data:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching reimbursement details:', error);
+        return null;
+    }
 }
 
 /**
@@ -717,7 +779,7 @@ export function transformExpenseForTable(expense: ExpenseListItem) {
         amount: expense.amount,
         description: '', // Not in list view
         category: '',
-        status: expense.status,
+        status: expense.approval_status,
         bus_id: expense.operational_trip?.assignment_id || expense.rental_trip?.assignment_id || undefined,
         body_number: expense.body_number || expense.operational_trip?.body_number || expense.rental_trip?.body_number || undefined,
         employee_id: undefined,
@@ -769,6 +831,7 @@ export function transformFormToDTO(formData: any, isReimbursable: boolean): Crea
 export default {
     fetchExpenses,
     fetchExpenseById,
+    fetchReimbursementDetails,
     updateExpense,
     softDeleteExpense,
     hardDeleteExpense,

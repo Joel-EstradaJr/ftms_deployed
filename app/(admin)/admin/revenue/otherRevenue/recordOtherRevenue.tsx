@@ -23,6 +23,7 @@ interface RecordOtherRevenueModalProps {
   currentUser: string;
   revenueTypes?: Array<{ id: number; code: string; name: string; description?: string }>;
   scheduleFrequencies?: Array<{ value: string; label: string }>;
+  approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'; // For controlling editability of unearned revenue toggle
 }
 
 interface FormErrors {
@@ -56,8 +57,13 @@ export default function RecordOtherRevenueModal({
   departments,
   currentUser,
   revenueTypes = [],
-  scheduleFrequencies = []
+  scheduleFrequencies = [],
+  approvalStatus = 'PENDING'
 }: RecordOtherRevenueModalProps) {
+
+  // Determine if unearned revenue toggle can be changed
+  // Only editable if: add mode OR (edit mode AND approval_status is PENDING)
+  const canToggleUnearnedRevenue = mode === 'add' || approvalStatus === 'PENDING';
 
   // Build dropdown options from revenue types (use backend data if available, fallback to hardcoded)
   const revenueTypeOptions: DropdownOption[] = revenueTypes.length > 0
@@ -655,10 +661,15 @@ export default function RecordOtherRevenueModal({
                   id="isUnearnedRevenue"
                   checked={formData.isUnearnedRevenue}
                   onChange={(e) => handleInputChange('isUnearnedRevenue', e.target.checked)}
-                  disabled={mode === 'edit'}
+                  disabled={!canToggleUnearnedRevenue}
                 />
                 <label htmlFor="isUnearnedRevenue">
-                  This is Unearned Revenue (Payment Schedule)<br /><small className="hint-message" style={{ fontWeight: 'normal' }}>{mode === 'edit' && formData.isUnearnedRevenue ? 'Cannot change receivable status in edit mode' : 'Check if revenue will be received in multiple installments over time'}</small>
+                  This is Unearned Revenue (Payment Schedule)<br />
+                  <small className="hint-message" style={{ fontWeight: 'normal' }}>
+                    {!canToggleUnearnedRevenue 
+                      ? `Cannot change receivable status - record is ${approvalStatus}` 
+                      : 'Check if revenue will be received in multiple installments over time'}
+                  </small>
                 </label>
               </div>
 
@@ -676,7 +687,7 @@ export default function RecordOtherRevenueModal({
                   <select
                     value={formData.scheduleFrequency || ''}
                     onChange={(e) => handleInputChange('scheduleFrequency', e.target.value as RevenueScheduleFrequency)}
-                    disabled={mode === 'edit'}
+                    disabled={!canToggleUnearnedRevenue}
                     required
                   >
                     <option value="">Select Frequency</option>
@@ -701,7 +712,7 @@ export default function RecordOtherRevenueModal({
                     {formData.scheduleFrequency === 'BIWEEKLY' && 'Same day every two weeks'}
                     {formData.scheduleFrequency === 'MONTHLY' && 'Same date each month'}
                     {formData.scheduleFrequency === RevenueScheduleFrequency.CUSTOM && 'Enter dates manually in table below'}
-                    {mode === 'edit' && ' (Not editable in edit mode)'}
+                    {!canToggleUnearnedRevenue && ' (Not editable - record is not PENDING)'}
                   </small>
                 </div>
 
@@ -715,8 +726,8 @@ export default function RecordOtherRevenueModal({
                     value={formData.scheduleStartDate || ''}
                     onChange={(e) => handleInputChange('scheduleStartDate', e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
-                    disabled={mode === 'edit'}
-                    className={mode === 'edit' ? 'disabled-field' : ''}
+                    disabled={!canToggleUnearnedRevenue}
+                    className={!canToggleUnearnedRevenue ? 'disabled-field' : ''}
                     required
                   />
                   {formData.scheduleStartDate && (
@@ -741,12 +752,12 @@ export default function RecordOtherRevenueModal({
                       onChange={(e) => handleInputChange('numberOfPayments', parseInt(e.target.value) || 0)}
                       min="1"
                       max="100"
-                      disabled={mode === 'edit'}
-                      className={mode === 'edit' ? 'disabled-field' : ''}
+                      disabled={!canToggleUnearnedRevenue}
+                      className={!canToggleUnearnedRevenue ? 'disabled-field' : ''}
                       required
                     />
                     <small className="hint-message">
-                      {mode === 'edit' ? 'Not editable in edit mode' : 'Total installments: minimum 2, maximum 100'}
+                      {!canToggleUnearnedRevenue ? 'Not editable - record is not PENDING' : 'Total installments: minimum 2, maximum 100'}
                     </small>
                     <p className="add-error-message">{formErrors.numberOfPayments}</p>
                   </div>

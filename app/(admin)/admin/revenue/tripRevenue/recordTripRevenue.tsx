@@ -206,7 +206,7 @@ interface RecordTripRevenueModalProps {
     trip_revenue: number;
     assignment_type: string; // 'Percentage' or 'Boundary'
     assignment_value: number; // quota if Boundary, company share% if Percentage
-    payment_method?: string; // 'Company Cash' or 'Reimbursement'
+    payment_method?: string; // External data may be 'Company Cash' or 'Reimbursement' - will be mapped to CASH for revenue
 
     // Employee details (from Human Resource table)
     employee_id: string;
@@ -1626,7 +1626,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
             </div>
 
             {/* Remittance Status */}
-            <div className="form-group">
+            {/* <div className="form-group">
               <label>Remittance Status</label>
               <input
                 type="text"
@@ -1639,7 +1639,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                   ⚠️ Deadline exceeded. This will be converted to a receivable.
                 </small>
               )}
-            </div>
+            </div> */}
           </div>
 
           {/* Remarks */}

@@ -95,7 +95,8 @@ interface OtherRevenueRecord {
   accountCode?: string;
   created_by?: string;
   created_at?: string;
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  approval_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  accounting_status?: 'DRAFT' | 'POSTED' | 'ADJUSTED' | 'REVERSED';
   approvalRemarks?: string;
   // Journal Entry link (for edit/delete restrictions)
   journalEntry?: {
@@ -726,24 +727,25 @@ const AdminOtherRevenuePage = () => {
     }
 
     // Set payment methods (matching schema enum values)
+    // Note: REIMBURSEMENT is excluded from revenue payment methods.
+    // Reimbursement is only applicable to expense records, not revenue records.
     setPaymentMethods([
       { id: 1, methodName: "Cash", methodCode: "CASH" },
       { id: 2, methodName: "Bank Transfer", methodCode: "BANK_TRANSFER" },
-      { id: 3, methodName: "E-Wallet", methodCode: "E_WALLET" },
-      { id: 4, methodName: "Reimbursement", methodCode: "REIMBURSEMENT" }
+      { id: 3, methodName: "E-Wallet", methodCode: "E_WALLET" }
     ]);
   };
 
   // Transform OtherRevenueRecord to OtherRevenueData for modals
   const transformRecordToFormData = (record: OtherRevenueRecord): OtherRevenueData => {
     // Map backend payment method enum to display name
+    // Note: REIMBURSEMENT from legacy data is treated as Cash
     const paymentMethodEnumToName: Record<string, string> = {
       'CASH': 'Cash',
       'BANK_TRANSFER': 'Bank Transfer',
-      'E_WALLET': 'E-Wallet',
-      'REIMBURSEMENT': 'Reimbursement'
+      'E_WALLET': 'E-Wallet'
     };
-    const paymentMethodName = paymentMethodEnumToName[record.payment_method || ''] || record.payment_method || '';
+    const paymentMethodName = paymentMethodEnumToName[record.payment_method || ''] || 'Cash';
 
     // Ensure date_recorded is in YYYY-MM-DD format for date input
     let dateRecorded = record.date_recorded || '';
@@ -780,7 +782,8 @@ const AdminOtherRevenuePage = () => {
       payment_reference: record.payment_reference || '',
       department_id: record.department_id || record.department?.id,
       department: record.department?.department_name,
-      isUnearnedRevenue: record.isUnearnedRevenue || false,
+      // Use receivable existence as ground truth for isUnearnedRevenue
+      isUnearnedRevenue: !!record.receivable || record.isUnearnedRevenue || false,
       // Include schedule fields from receivable
       scheduleFrequency,
       scheduleStartDate,
@@ -827,6 +830,7 @@ const AdminOtherRevenuePage = () => {
             currentUser="admin"
             revenueTypes={revenueTypes}
             scheduleFrequencies={scheduleFrequencies}
+            approvalStatus={rowData?.approval_status || 'PENDING'}
           />
         );
         break;
@@ -971,7 +975,22 @@ const AdminOtherRevenuePage = () => {
           return;
         }
 
-        const payload = {
+        // Check if unearned revenue status changed (conversion)
+        // Use activeRow?.receivable as ground truth - if record has a receivable, it was unearned revenue
+        const wasUnearnedRevenue = !!activeRow?.receivable;
+        const isNowUnearnedRevenue = formData.isUnearnedRevenue;
+        const unearnedStatusChanged = wasUnearnedRevenue !== isNowUnearnedRevenue;
+
+        console.log('[DEBUG] Conversion check:', {
+          wasUnearnedRevenue,
+          isNowUnearnedRevenue,
+          unearnedStatusChanged,
+          activeRowReceivable: activeRow?.receivable,
+          activeRowIsUnearnedRevenue: activeRow?.isUnearnedRevenue,
+          formDataIsUnearned: formData.isUnearnedRevenue
+        });
+
+        const payload: Record<string, unknown> = {
           revenue_type_id: revenueType?.id,
           amount: formData.amount,
           date_recorded: formData.date_recorded,
@@ -980,8 +999,21 @@ const AdminOtherRevenuePage = () => {
           payment_reference: formData.payment_reference || undefined,
           department_id: formData.department_id,
           remarks: formData.remarks || undefined,
-          updated_by: formData.createdBy || 'admin'
+          updated_by: formData.createdBy || 'admin',
+          // ALWAYS include isUnearnedRevenue so backend knows current state
+          isUnearnedRevenue: isNowUnearnedRevenue
         };
+
+        console.log('[DEBUG] Payload isUnearnedRevenue:', isNowUnearnedRevenue);
+
+        // Include schedule details if converting to receivable
+        if (isNowUnearnedRevenue) {
+          payload.scheduleFrequency = formData.scheduleFrequency;
+          payload.scheduleStartDate = formData.scheduleStartDate;
+          payload.numberOfPayments = formData.numberOfPayments;
+        }
+
+        console.log('[DEBUG] Final payload:', JSON.stringify(payload, null, 2));
 
         const response = await fetch(`/api/admin/other-revenue/${revenueId}`, {
           method: 'PATCH',
@@ -1153,7 +1185,8 @@ const AdminOtherRevenuePage = () => {
           accountCode: item.accountCode as string | undefined,
           created_by: item.created_by as string | undefined,
           created_at: item.created_at as string | undefined,
-          status: (item.status as any) || 'PENDING',
+          approval_status: (item.approval_status as any) || 'PENDING',
+          accounting_status: item.accounting_status as string | undefined,
           approvalRemarks: item.approvalRemarks as string | undefined,
           // Journal Entry for edit/delete restrictions - single source of truth
           journalEntry: journalEntry ? {
@@ -1297,9 +1330,9 @@ const AdminOtherRevenuePage = () => {
       return;
     }
 
-    // Only allow deletion for PENDING status
-    if (record.payment_status !== 'PENDING') {
-      showError('Only records with PENDING status can be deleted', 'Cannot Delete');
+    // Only allow deletion for PENDING approval status (before approval)
+    if (record.approval_status !== 'PENDING') {
+      showError('Only records with PENDING approval status can be deleted', 'Cannot Delete');
       return;
     }
 
@@ -1526,7 +1559,7 @@ const AdminOtherRevenuePage = () => {
     );
     const matchStatus = (row.status?.toLowerCase().replace('_', ' ').includes(term) || false) ||
       (row.paymentStatus?.toLowerCase().replace('_', ' ').includes(term) || false) ||
-      (row.originalRecord.status?.toLowerCase().includes(term) || false);
+      (row.originalRecord.approval_status?.toLowerCase().includes(term) || false);
 
     return matchCode || matchDate || matchSource || matchAmount || matchReceivable || matchStatus;
   };
@@ -1690,8 +1723,8 @@ const AdminOtherRevenuePage = () => {
                         </td>
                         {/* Approval Status Column */}
                         <td>
-                          <span className={getStatusClass(row.originalRecord.status || 'PENDING')}>
-                            {row.originalRecord.status?.replace('_', ' ') || 'PENDING'}
+                          <span className={getStatusClass(row.originalRecord.approval_status || 'PENDING')}>
+                            {row.originalRecord.approval_status?.replace('_', ' ') || 'PENDING'}
                           </span>
                         </td>
 
@@ -1762,11 +1795,11 @@ const AdminOtherRevenuePage = () => {
                             <button
                               className="editBtn"
                               onClick={() => openModal('edit', row.originalRecord)}
-                              title={row.originalRecord.status === 'PENDING' ? "Edit Record" : "Cannot edit non-pending record"}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Edit Record" : "Cannot edit non-pending record"}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer'
                               }}
                             >
                               <i className="ri-edit-2-line" />
@@ -1781,11 +1814,11 @@ const AdminOtherRevenuePage = () => {
                                 e.stopPropagation();
                                 handleDelete(row.revenueId);
                               }}
-                              title={row.originalRecord.status === 'PENDING' ? "Delete Record" : "Cannot delete non-pending record"}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Delete Record" : "Cannot delete non-pending record"}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer'
                               }}
                             >
                               <i className="ri-delete-bin-line" />
@@ -1804,7 +1837,7 @@ const AdminOtherRevenuePage = () => {
 
                             {/* Pay button for unearned revenue that's not fully paid */}
                             {row.originalRecord.isUnearnedRevenue &&
-                              (row.originalRecord.status === 'APPROVED' || row.originalRecord.status === 'COMPLETED') &&
+                              row.originalRecord.approval_status === 'APPROVED' &&
                               row.paymentStatus &&
                               row.status !== PaymentStatus.COMPLETED &&
                               row.status !== PaymentStatus.CANCELLED &&

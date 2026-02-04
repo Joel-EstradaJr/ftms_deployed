@@ -211,7 +211,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   const previewItems = useMemo(() => {
     if (!cascadePreview) return scheduleItems;
     return scheduleItems.map(item => {
-      const affected = cascadePreview.affectedInstallments.find((a: any) => a.scheduleItemId === item.id);
+      const affected = cascadePreview.affectedInstallments.find((a: any) => String(a.scheduleItemId) === String(item.id));
       if (affected) return { ...item, amount_paid: (item.amount_paid || 0) + affected.amountApplied, status: affected.newStatus };
       return item;
     });
@@ -284,12 +284,12 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     <label>Amount Received<span className="requiredTags"> *</span></label>
                     <input type="number" value={amountToPay} onChange={(e) => handleAmountChange(parseFloat(e.target.value) || 0)} min="1" placeholder="0.00" required disabled={isProcessing} style={{ fontSize: '16px', fontWeight: '600' }} />
                     {paymentError && <p className="add-error-message">{paymentError}</p>}
-                    {isOverflow && <small style={{ color: '#FF8C00', fontWeight: '600' }}>⚠️ Amount exceeds this installment: will cascade to next {affectedCount - 1} installment(s)</small>}
+                    {isOverflow && !paymentError && <small style={{ color: '#FF8C00', fontWeight: '600' }}>⚠️ Amount exceeds this installment: will cascade to next {affectedCount - 1} installment(s)</small>}
                     {!isOverflow && amountToPay > 0 && amountToPay < currentBalance && (<small style={{ color: '#FF8C00' }}>Partial payment: {formatMoney(currentBalance - amountToPay)} will remain for this installment</small>)}
                   </div>
                 </div>
 
-                {isOverflow && cascadePreview && (
+                {isOverflow && !paymentError && cascadePreview && (
                   <div style={{ padding: '10px', backgroundColor: '#FFF9E6', border: '1px solid #FFE69C', borderRadius: '6px', marginBottom: '15px' }}>
                     <strong style={{ fontSize: '14px', marginBottom: '8px', display: 'block' }}>Payment will be applied to:</strong>
                     {cascadePreview.affectedInstallments.map((affected: any, idx: number) => (
@@ -344,7 +344,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                         const amountDue = getAmountDue(item);
                         const amountPaid = getAmountPaid(item);
                         const balance = amountDue - amountPaid;
-                        const isAffected = cascadePreview?.affectedInstallments.some((a: any) => a.scheduleItemId === item.id);
+                        const isAffected = cascadePreview?.affectedInstallments.some((a: any) => String(a.scheduleItemId) === String(item.id));
                         const statusStr = String(item.status || 'PENDING');
 
                         return (
