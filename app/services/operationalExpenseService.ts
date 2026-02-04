@@ -41,7 +41,8 @@ export interface ExpenseListItem {
     body_number: string | null;
     amount: number;
     is_reimbursable: boolean;
-    status: string;
+    payment_status: string;
+    approval_status: string;
     payment_method: string | null;
     trip_type: 'operational' | 'rental' | null;
     operational_trip: {
