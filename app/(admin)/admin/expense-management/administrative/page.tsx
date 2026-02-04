@@ -20,7 +20,7 @@ import { formatDate, formatMoney } from '../../../../utils/formatting';
 import Swal from 'sweetalert2';
 import { showSuccess, showError } from '@/app/utils/Alerts';
 
-import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseStatus } from '../../../../types/expenses';
+import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseStatus, ApprovalStatus, AccountingStatus } from '../../../../types/expenses';
 import { PaymentRecordData } from '@/app/types/payments';
 
 // Expense type interface from API
@@ -176,10 +176,13 @@ const AdministrativeExpensePage: React.FC = () => {
           description: exp.description,
           vendor: exp.vendor,
           invoice_number: exp.invoice_number,
-          status: exp.status as ExpenseStatus,
+          status: exp.approval_status as ExpenseStatus, // Map approval_status to deprecated status for backwards compat
+          approval_status: exp.approval_status as ApprovalStatus,
+          accounting_status: exp.accounting_status as AccountingStatus,
           payment_method: exp.payment_method,
           payable_id: exp.payable_id,
           paymentStatus: exp.paymentStatus as PaymentStatus,
+          payment_status: exp.payment_status as PaymentStatus,
           balance: exp.balance,
           scheduleItems: exp.scheduleItems || [],
           frequency: exp.frequency,

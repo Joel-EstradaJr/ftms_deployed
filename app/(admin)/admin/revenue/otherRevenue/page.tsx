@@ -95,7 +95,8 @@ interface OtherRevenueRecord {
   accountCode?: string;
   created_by?: string;
   created_at?: string;
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  approval_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  accounting_status?: 'DRAFT' | 'POSTED' | 'ADJUSTED' | 'REVERSED';
   approvalRemarks?: string;
   // Journal Entry link (for edit/delete restrictions)
   journalEntry?: {
@@ -1153,7 +1154,8 @@ const AdminOtherRevenuePage = () => {
           accountCode: item.accountCode as string | undefined,
           created_by: item.created_by as string | undefined,
           created_at: item.created_at as string | undefined,
-          status: (item.status as any) || 'PENDING',
+          approval_status: (item.approval_status as any) || 'PENDING',
+          accounting_status: item.accounting_status as string | undefined,
           approvalRemarks: item.approvalRemarks as string | undefined,
           // Journal Entry for edit/delete restrictions - single source of truth
           journalEntry: journalEntry ? {
@@ -1526,7 +1528,7 @@ const AdminOtherRevenuePage = () => {
     );
     const matchStatus = (row.status?.toLowerCase().replace('_', ' ').includes(term) || false) ||
       (row.paymentStatus?.toLowerCase().replace('_', ' ').includes(term) || false) ||
-      (row.originalRecord.status?.toLowerCase().includes(term) || false);
+      (row.originalRecord.approval_status?.toLowerCase().includes(term) || false);
 
     return matchCode || matchDate || matchSource || matchAmount || matchReceivable || matchStatus;
   };
@@ -1690,8 +1692,8 @@ const AdminOtherRevenuePage = () => {
                         </td>
                         {/* Approval Status Column */}
                         <td>
-                          <span className={getStatusClass(row.originalRecord.status || 'PENDING')}>
-                            {row.originalRecord.status?.replace('_', ' ') || 'PENDING'}
+                          <span className={getStatusClass(row.originalRecord.approval_status || 'PENDING')}>
+                            {row.originalRecord.approval_status?.replace('_', ' ') || 'PENDING'}
                           </span>
                         </td>
 
@@ -1727,12 +1729,12 @@ const AdminOtherRevenuePage = () => {
                             <button
                               className="approveBtn"
                               onClick={() => handleApprove(row.revenueId)}
-                              title={row.originalRecord.status === 'PENDING' ? "Approve Record" : `Already ${row.originalRecord.status}`}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Approve Record" : `Already ${row.originalRecord.approval_status}`}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
                                 color: '#28a745',
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer',
                                 marginRight: '4px'
                               }}
                             >
@@ -1744,12 +1746,12 @@ const AdminOtherRevenuePage = () => {
                             <button
                               className="rejectBtn"
                               onClick={() => handleReject(row.revenueId)}
-                              title={row.originalRecord.status === 'PENDING' ? "Reject Record" : `Already ${row.originalRecord.status}`}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Reject Record" : `Already ${row.originalRecord.approval_status}`}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
                                 color: '#dc3545',
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer',
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer',
                                 marginRight: '4px'
                               }}
                             >
@@ -1762,11 +1764,11 @@ const AdminOtherRevenuePage = () => {
                             <button
                               className="editBtn"
                               onClick={() => openModal('edit', row.originalRecord)}
-                              title={row.originalRecord.status === 'PENDING' ? "Edit Record" : "Cannot edit non-pending record"}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Edit Record" : "Cannot edit non-pending record"}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer'
                               }}
                             >
                               <i className="ri-edit-2-line" />
@@ -1781,11 +1783,11 @@ const AdminOtherRevenuePage = () => {
                                 e.stopPropagation();
                                 handleDelete(row.revenueId);
                               }}
-                              title={row.originalRecord.status === 'PENDING' ? "Delete Record" : "Cannot delete non-pending record"}
-                              disabled={row.originalRecord.status !== 'PENDING'}
+                              title={row.originalRecord.approval_status === 'PENDING' ? "Delete Record" : "Cannot delete non-pending record"}
+                              disabled={row.originalRecord.approval_status !== 'PENDING'}
                               style={{
-                                opacity: row.originalRecord.status !== 'PENDING' ? 0.5 : 1,
-                                cursor: row.originalRecord.status !== 'PENDING' ? 'not-allowed' : 'pointer'
+                                opacity: row.originalRecord.approval_status !== 'PENDING' ? 0.5 : 1,
+                                cursor: row.originalRecord.approval_status !== 'PENDING' ? 'not-allowed' : 'pointer'
                               }}
                             >
                               <i className="ri-delete-bin-line" />
@@ -1804,7 +1806,7 @@ const AdminOtherRevenuePage = () => {
 
                             {/* Pay button for unearned revenue that's not fully paid */}
                             {row.originalRecord.isUnearnedRevenue &&
-                              (row.originalRecord.status === 'APPROVED' || row.originalRecord.status === 'COMPLETED') &&
+                              row.originalRecord.approval_status === 'APPROVED' &&
                               row.paymentStatus &&
                               row.status !== PaymentStatus.PAID &&
                               row.status !== PaymentStatus.CANCELLED &&
