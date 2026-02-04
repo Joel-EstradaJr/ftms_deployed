@@ -1345,6 +1345,12 @@ const AdminOtherRevenuePage = () => {
     const record = data.find(item => item.id === id);
     if (!record) return;
 
+    // Check if already approved
+    if (record.approval_status !== 'PENDING') {
+      showError(`Record is already ${record.approval_status}`, 'Cannot Approve');
+      return;
+    }
+
     const result = await Swal.fire({
       title: 'Approve Revenue?',
       text: `Are you sure you want to approve ${record.code}? This will generate a journal entry and allow payments.`,
@@ -1364,13 +1370,14 @@ const AdminOtherRevenuePage = () => {
           body: JSON.stringify({ userId: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to approve revenue');
+          throw new Error(responseData.message || 'Failed to approve revenue');
         }
 
         showSuccess('Revenue record approved successfully', 'Approved');
-        fetchData();
+        await fetchData(); // Await to ensure data refreshes before user can click again
       } catch (err) {
         console.error('Error approving revenue:', err);
         showError(err instanceof Error ? err.message : 'Failed to approve revenue', 'Error');
@@ -1381,6 +1388,12 @@ const AdminOtherRevenuePage = () => {
   const handleReject = async (id: number) => {
     const record = data.find(item => item.id === id);
     if (!record) return;
+
+    // Check if already rejected or approved
+    if (record.approval_status !== 'PENDING') {
+      showError(`Record is already ${record.approval_status}`, 'Cannot Reject');
+      return;
+    }
 
     const result = await Swal.fire({
       title: 'Reject Revenue?',
@@ -1401,13 +1414,14 @@ const AdminOtherRevenuePage = () => {
           body: JSON.stringify({ userId: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to reject revenue');
+          throw new Error(responseData.message || 'Failed to reject revenue');
         }
 
         showSuccess('Revenue record rejected', 'Rejected');
-        fetchData();
+        await fetchData(); // Await to ensure data refreshes before user can click again
       } catch (err) {
         console.error('Error rejecting revenue:', err);
         showError(err instanceof Error ? err.message : 'Failed to reject revenue', 'Error');
