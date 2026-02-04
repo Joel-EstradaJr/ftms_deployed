@@ -69,7 +69,7 @@ export interface OperationalExpenseData {
   payable_description?: string;
   
   // View-only fields
-  status?: string;
+  approval_status?: string;
   created_by: string;
   approved_by?: string;
   created_at?: string;

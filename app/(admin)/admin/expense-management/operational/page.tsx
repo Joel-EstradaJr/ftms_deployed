@@ -42,7 +42,7 @@ interface OperationalExpenseViewData {
   payment_method: string;
   is_reimbursable: boolean;
   description?: string;
-  status?: string;
+  approval_status?: string;
   created_by: string;
   approved_by?: string;
   created_at?: string;
@@ -84,7 +84,7 @@ const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
     payment_method: expense.payment_method || '',
     is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
     description: expense.description || '',
-    status: expense.status,
+    approval_status: expense.approval_status,
     created_by: expense.created_by || '',
     approved_by: expense.approved_by,
     created_at: expense.created_at,
