@@ -67,7 +67,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   };
 
   const handleAddDate = () => {
-    if (!onItemChange || frequency !== ScheduleFrequency.CUSTOM) return;
+    if (!onItemChange) return;
 
     const today = new Date();
     const lastItem = scheduleItems[scheduleItems.length - 1];
@@ -95,7 +95,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   };
 
   const handleRemoveDate = (index: number) => {
-    if (!onItemChange || frequency !== ScheduleFrequency.CUSTOM) return;
+    if (!onItemChange) return;
 
     // Can only remove if it's the last item and not paid
     if (index !== scheduleItems.length - 1 || scheduleItems[index].status !== PaymentStatus.PENDING) {
@@ -113,7 +113,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
   const getStatusChipClass = (status: PaymentStatus): string => {
     switch (status) {
-      case PaymentStatus.PAID:
+      case PaymentStatus.COMPLETED:
         return 'paid';
       case PaymentStatus.PARTIALLY_PAID:
         return 'partially-paid';
@@ -141,7 +141,6 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
   const isEditable = mode === 'add' || mode === 'edit';
   const showPaidColumn = mode === 'edit' || mode === 'view';
-  const isCustomFrequency = frequency === ScheduleFrequency.CUSTOM;
 
   return (
     <>
@@ -167,9 +166,6 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
               {showPaidColumn && <th style={{ width: '120px' }}>Paid Amount</th>}
               <th style={{ width: '120px' }}>Balance</th>
               <th style={{ width: '110px' }}>Status</th>
-              {isEditable && isCustomFrequency && (
-                <th style={{ width: '80px' }}>Actions</th>
-              )}
               {onRecordPayment && (
                 <th style={{ width: '80px' }}>Action</th>
               )}
@@ -259,26 +255,9 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                     </span>
                   </td>
 
-                  {/* Actions (Custom frequency only) */}
-                  {isEditable && isCustomFrequency && (
-                    <td style={{ textAlign: 'center' }}>
-                      {index === scheduleItems.length - 1 && itemStatus === PaymentStatus.PENDING && (
-                        <div className='actionButtonsContainer'>
-                          <button
-                            onClick={() => handleRemoveDate(index)}
-                            className="deleteBtn"
-                            title="Remove"
-                          >
-                            <i className="ri-delete-bin-line"></i>
-                          </button>
-                        </div>
-
-                      )}
-                    </td>
-                  )}
                   {onRecordPayment && (
                     <td style={{ textAlign: 'center' }}>
-                      {itemStatus !== PaymentStatus.PAID &&
+                      {itemStatus !== PaymentStatus.COMPLETED &&
                         itemStatus !== PaymentStatus.CANCELLED &&
                         itemStatus !== PaymentStatus.WRITTEN_OFF && (
                           <button
@@ -304,25 +283,11 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
               <td>{formatMoney(totalDue)}</td>
               {showPaidColumn && <td>{formatMoney(totalPaid)}</td>}
               <td style={{ color: totalBalance > 0 ? '#FF4949' : '#4CAF50' }}>{formatMoney(totalBalance)}</td>
-              <td colSpan={isCustomFrequency && isEditable ? 2 : 1}></td>
+              <td colSpan={onRecordPayment ? 2 : 1}></td>
             </tr>
           </tbody>
         </table>
       </div>
-
-      {/* Add Date Button for Custom Frequency */}
-      {isEditable && isCustomFrequency && (
-        <div>
-          <button
-            type="button"
-            onClick={handleAddDate}
-            className="modal-table-add-btn"
-          >
-            <i className="ri-add-line"></i>
-            Add  Date
-          </button>
-        </div>
-      )}
 
       {/* Warning if total mismatch */}
       {Math.abs(totalDue - totalAmount) > 0.01 && (

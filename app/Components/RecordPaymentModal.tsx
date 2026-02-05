@@ -25,7 +25,7 @@ interface RecordPaymentModalProps {
   currentUser: string;
   onPaymentRecorded: (paymentData: PaymentRecordData) => Promise<void>;
   onClose: () => void;
-  processCascadePayment: (amount: number, items: any[], startIndex: number) => any;
+  processCascadePayment: (amount: number, items: any[], startIndex: number, enableCascade?: boolean) => any;
   // Employee information for revenue payments (bus trip revenue)
   employeeNumber?: string;
   employeeName?: string;
@@ -84,13 +84,23 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     : availablePaymentMethods;
 
   const currentIndex = scheduleItems.findIndex(item => item.id === selectedInstallment.id);
+  const getAmountDue = (item: any) => item.amount_due ?? item.amountDue ?? 0;
+  const getAmountPaid = (item: any) => item.amount_paid ?? item.amountPaid ?? 0;
+
   // Use schema-aligned field names: amount_due, amount_paid, balance
-  const currentBalance = (selectedInstallment.amount_due || 0) - (selectedInstallment.amount_paid || 0);
-  const totalOutstanding = scheduleItems.reduce((sum, s) => sum + ((s.amount_due || 0) - (s.amount_paid || 0)), 0);
+  const currentBalance = getAmountDue(selectedInstallment) - getAmountPaid(selectedInstallment);
+  const totalOutstanding = scheduleItems.reduce((sum, s) => sum + (getAmountDue(s) - getAmountPaid(s)), 0);
+
+  // Check if selected installment is overdue
+  const isOverdue = selectedInstallment.status === 'OVERDUE';
+
+  // Max allowed payment is always totalOutstanding - overpayment cascades to next installments
+  const maxPaymentAllowed = totalOutstanding;
 
   const cascadePreview = useMemo(() => {
     if (amountToPay <= 0 || currentIndex === -1) return null;
-    const result = processCascadePayment(amountToPay, scheduleItems, currentIndex);
+    // Always enable cascade - overpayment applies to subsequent installments
+    const result = processCascadePayment(amountToPay, scheduleItems, currentIndex, true);
     return result;
   }, [amountToPay, scheduleItems, currentIndex, processCascadePayment]);
 
@@ -102,7 +112,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       setAmountToPay(0);
     } else {
       setAmountToPay(value);
-      const err = validatePaymentAmount(value, totalOutstanding);
+      // Validate against total outstanding balance
+      const err = validatePaymentAmount(value, maxPaymentAllowed);
       setPaymentError(err);
     }
   };
@@ -200,7 +211,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   const previewItems = useMemo(() => {
     if (!cascadePreview) return scheduleItems;
     return scheduleItems.map(item => {
-      const affected = cascadePreview.affectedInstallments.find((a: any) => a.scheduleItemId === item.id);
+      const affected = cascadePreview.affectedInstallments.find((a: any) => String(a.scheduleItemId) === String(item.id));
       if (affected) return { ...item, amount_paid: (item.amount_paid || 0) + affected.amountApplied, status: affected.newStatus };
       return item;
     });
@@ -252,7 +263,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Installment:</strong></span>
-                    <span>#{selectedInstallment.installment_number}</span>
+                    <span>#{selectedInstallment.installment_number || (selectedInstallment as any).installmentNumber}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span><strong>Due Date:</strong></span>
@@ -273,12 +284,12 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     <label>Amount Received<span className="requiredTags"> *</span></label>
                     <input type="number" value={amountToPay} onChange={(e) => handleAmountChange(parseFloat(e.target.value) || 0)} min="1" placeholder="0.00" required disabled={isProcessing} style={{ fontSize: '16px', fontWeight: '600' }} />
                     {paymentError && <p className="add-error-message">{paymentError}</p>}
-                    {isOverflow && <small style={{ color: '#FF8C00', fontWeight: '600' }}>⚠️ Amount exceeds this installment: will cascade to next {affectedCount - 1} installment(s)</small>}
+                    {isOverflow && !paymentError && <small style={{ color: '#FF8C00', fontWeight: '600' }}>⚠️ Amount exceeds this installment: will cascade to next {affectedCount - 1} installment(s)</small>}
                     {!isOverflow && amountToPay > 0 && amountToPay < currentBalance && (<small style={{ color: '#FF8C00' }}>Partial payment: {formatMoney(currentBalance - amountToPay)} will remain for this installment</small>)}
                   </div>
                 </div>
 
-                {isOverflow && cascadePreview && (
+                {isOverflow && !paymentError && cascadePreview && (
                   <div style={{ padding: '10px', backgroundColor: '#FFF9E6', border: '1px solid #FFE69C', borderRadius: '6px', marginBottom: '15px' }}>
                     <strong style={{ fontSize: '14px', marginBottom: '8px', display: 'block' }}>Payment will be applied to:</strong>
                     {cascadePreview.affectedInstallments.map((affected: any, idx: number) => (
@@ -330,8 +341,10 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     </thead>
                     <tbody>
                       {previewItems.map((item, index) => {
-                        const balance = (item.amount_due || 0) - (item.amount_paid || 0);
-                        const isAffected = cascadePreview?.affectedInstallments.some((a: any) => a.scheduleItemId === item.id);
+                        const amountDue = getAmountDue(item);
+                        const amountPaid = getAmountPaid(item);
+                        const balance = amountDue - amountPaid;
+                        const isAffected = cascadePreview?.affectedInstallments.some((a: any) => String(a.scheduleItemId) === String(item.id));
                         const statusStr = String(item.status || 'PENDING');
 
                         return (
@@ -343,8 +356,8 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                             }}
                           >
                             <td>{formatDate(item.due_date)}</td>
-                            <td>{formatMoney(item.amount_due || 0)}</td>
-                            <td>{formatMoney(item.amount_paid || 0)}</td>
+                            <td>{formatMoney(amountDue)}</td>
+                            <td>{formatMoney(amountPaid)}</td>
                             <td>
                               <span style={{
                                 color: balance > 0 ? '#FF4949' : '#4CAF50',

@@ -2,6 +2,8 @@
 
 import {
   PaymentStatus as BasePaymentStatus,
+  ApprovalStatus as BaseApprovalStatus,
+  AccountingStatus as BaseAccountingStatus,
   ScheduleFrequency as BaseScheduleFrequency,
   ScheduleItem as BaseScheduleItem
 } from './schedule';
@@ -28,12 +30,23 @@ export enum AdministrativeExpenseType {
   GENERAL_ADMIN = 'GENERAL_ADMIN'
 }
 
-// Expense Status
+// Re-export approval status from schedule.ts
+export const ApprovalStatus = BaseApprovalStatus;
+export type ApprovalStatus = BaseApprovalStatus;
+
+// Re-export accounting status from schedule.ts  
+export const AccountingStatus = BaseAccountingStatus;
+export type AccountingStatus = BaseAccountingStatus;
+
+/**
+ * @deprecated Use ApprovalStatus from './schedule' instead
+ * ExpenseStatus enum maintained for backward compatibility
+ */
 export enum ExpenseStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  POSTED = 'POSTED'
+  REJECTED = 'REJECTED'
+  // Note: POSTED is now handled by AccountingStatus, not ExpenseStatus
 }
 
 // Purchase Expense Status (more detailed)
@@ -137,7 +150,16 @@ export interface AdministrativeExpense {
   vendor_name?: string;               // Computed vendor name from relation
   vendor_code?: string;               // Vendor code (supplier_id or standalone code)
   invoice_number?: string;            // expense.invoice_number
-  status?: ExpenseStatus;             // expense.status enum
+  
+  /**
+   * @deprecated Use approval_status instead. Kept for backward compatibility.
+   */
+  status?: ExpenseStatus;             // expense.status enum (DEPRECATED)
+  
+  // New unified status fields (aligned with schema changes)
+  approval_status?: ApprovalStatus;   // expense.approval_status enum (PENDING, APPROVED, REJECTED)
+  accounting_status?: AccountingStatus; // expense.accounting_status enum (DRAFT, POSTED, ADJUSTED, REVERSED)
+  
   payment_method?: string;            // expense.payment_method enum
   payment_reference?: string;         // expense.payment_reference
 
@@ -145,7 +167,8 @@ export interface AdministrativeExpense {
   payable_id?: number | null;         // expense.payable_id FK
 
   // Computed/derived fields for UI
-  paymentStatus?: PaymentStatus;      // Computed from payable.status or installments
+  paymentStatus?: PaymentStatus;      // Computed from payable.payment_status or installments
+  payment_status?: PaymentStatus;     // Direct mapping from payable.payment_status
   balance?: number;                   // payable.balance
 
   // Schedule items (from expense_installment_schedule via payable)

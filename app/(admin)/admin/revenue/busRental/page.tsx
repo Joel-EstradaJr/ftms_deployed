@@ -30,15 +30,30 @@ import RecordRentalRevenueModal from './recordRentalRevenue';
 import ViewRentalDetailsModal from './viewRentalDetails';
 
 // Payment method enum matching schema
-type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET' | 'REIMBURSEMENT';
+// Note: REIMBURSEMENT is excluded from revenue payment methods.
+// Reimbursement is only applicable to expense records, not revenue records.
+type PaymentMethodEnum = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET';
 
 // Payment method options matching schema enum
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethodEnum; label: string }[] = [
   { value: 'CASH', label: 'Cash' },
   { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
   { value: 'E_WALLET', label: 'E-Wallet (GCash, PayMaya, etc.)' },
-  { value: 'REIMBURSEMENT', label: 'Reimbursement' },
 ];
+
+// Installment payment interface (balance payments)
+interface InstallmentPayment {
+  id: number;
+  amount_paid: number;
+  payment_date: string | null;
+  payment_method: PaymentMethodEnum | null;
+  payment_reference: string | null;
+  journal_entry: {
+    id: number;
+    code: string;
+    status: string;
+  } | null;
+}
 
 // TypeScript interface aligned with schema
 interface BusRentalRecord {
@@ -57,6 +72,8 @@ interface BusRentalRecord {
   description?: string; // revenue.description
   payment_method: PaymentMethodEnum; // revenue.payment_method (enum)
   rental_package: string | null; // rental_local.rental_package (destination/package info)
+  // Balance payments via receivable/installment system
+  installment_payments?: InstallmentPayment[];
 }
 
 interface PaginationMeta {
@@ -104,7 +121,7 @@ const AdminBusRentalPage = () => {
   });
 
   // Sort states
-  const [sortBy, setSortBy] = useState<"code" | "date_recorded" | "total_rental_amount" | "balance_amount">("date_recorded");
+  const [sortBy, setSortBy] = useState<"code" | "date_recorded" | "total_rental_amount" | "balance_amount" | "updated_at">("updated_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
@@ -214,7 +231,7 @@ const AdminBusRentalPage = () => {
         // Ensure amount values are valid numbers before appending
         const minAmount = amountRange.from?.trim();
         const maxAmount = amountRange.to?.trim();
-        
+
         if (minAmount && !isNaN(Number(minAmount)) && Number(minAmount) >= 0) {
           params.append('amount_min', minAmount);
         }
@@ -331,10 +348,28 @@ const AdminBusRentalPage = () => {
   };
 
   // Action handlers
-  const handleView = (id: number) => {
-    const record = data.find(item => item.id === id);
-    if (record) {
-      openModal("view-rental", record);
+  const handleView = async (id: number) => {
+    try {
+      // Fetch full record details (includes installment_payments)
+      const response = await fetch(`/api/admin/rental-revenue/${id}`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        openModal("view-rental", result.data);
+      } else {
+        // Fallback to list data if fetch fails
+        const record = data.find(item => item.id === id);
+        if (record) {
+          openModal("view-rental", record);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching rental details:', error);
+      // Fallback to list data
+      const record = data.find(item => item.id === id);
+      if (record) {
+        openModal("view-rental", record);
+      }
     }
   };
 
@@ -783,7 +818,6 @@ const AdminBusRentalPage = () => {
                   >
                     Date Recorded{getSortIndicator("date_recorded")}
                   </th>
-                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -808,51 +842,46 @@ const AdminBusRentalPage = () => {
                       return ['completed', 'approved', 'cancelled'].includes(status);
                     })
                     .map((item) => {
-                    // Get dynamic status - guaranteed non-null after filter
-                    const statusInfo = getRentalStatus(item)!;
+                      // Get dynamic status - guaranteed non-null after filter
+                      const statusInfo = getRentalStatus(item)!;
 
-                    return (
-                      <tr key={item.id}>
-                        <td style={{ maxWidth: 10 }}>{item.code}</td>
-                        <td>{item.assignment_id}</td>
-                        <td>{item.rental_package || '—'}</td>
-                        <td>{formatMoney(item.total_rental_amount)}</td>
-                        <td>{formatMoney(item.balance_amount)}</td>
-                        <td>{item.date_recorded ? formatDate(item.date_recorded) : '—'}</td>
-                        <td style={{ maxWidth: 10 }}>
-                          <span className={`chip ${statusInfo.className}`}>
-                            {statusInfo.label}
-                          </span>
-                        </td>
-                        <td className="actionButtons">
-                          <div className="actionButtonsContainer">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleView(item.id);
-                              }}
-                              className="viewBtn"
-                              title="View Details"
-                            >
-                              <i className="ri-eye-line"></i>
-                            </button>
+                      return (
+                        <tr key={item.id}>
+                          <td style={{ maxWidth: 10 }}>{item.code}</td>
+                          <td>{item.assignment_id}</td>
+                          <td>{item.rental_package || '—'}</td>
+                          <td>{formatMoney(item.total_rental_amount)}</td>
+                          <td>{formatMoney(item.balance_amount)}</td>
+                          <td>{item.date_recorded ? formatDate(item.date_recorded) : '—'}</td>
+                          <td className="actionButtons">
+                            <div className="actionButtonsContainer">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleView(item.id);
+                                }}
+                                className="viewBtn"
+                                title="View Details"
+                              >
+                                <i className="ri-eye-line"></i>
+                              </button>
 
-                            {/* Show Pay Balance button if rental has balance and downpayment is paid */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePayBalance(item.id);
-                              }}
-                              className="editBtn"
-                              title="Pay Balance"
-                              style={{ backgroundColor: '#28a745' }}
-                              disabled={item.rental_status === 'cancelled' || (item.balance_amount === 0 && item.down_payment_amount > 0)}
-                            >
-                              <i className="ri-money-dollar-circle-line"></i>
-                            </button>
+                              {/* Show Pay Balance button if rental has balance and downpayment is paid */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePayBalance(item.id);
+                                }}
+                                className="editBtn"
+                                title="Pay Balance"
+                                style={{ backgroundColor: '#28a745' }}
+                                disabled={item.rental_status === 'cancelled' || (item.balance_amount === 0 && item.down_payment_amount > 0)}
+                              >
+                                <i className="ri-money-dollar-circle-line"></i>
+                              </button>
 
-                            {/* Show Edit button if not cancelled and has balance */}
-                            {/* <button
+                              {/* Show Edit button if not cancelled and has balance */}
+                              {/* <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEdit(item.id);
@@ -864,23 +893,23 @@ const AdminBusRentalPage = () => {
                               <i className="ri-edit-line"></i>
                             </button> */}
 
-                            {/* Show Cancel button if not cancelled, has downpayment, and has balance */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCancelRental(item.id);
-                              }}
-                              className="deleteBtn"
-                              title="Cancel Rental"
-                              disabled={item.rental_status === 'cancelled' || (item.balance_amount === 0 && item.down_payment_amount > 0)}
-                            >
-                              <i className="ri-close-circle-line"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                              {/* Show Cancel button if not cancelled, has downpayment, and has balance */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelRental(item.id);
+                                }}
+                                className="deleteBtn"
+                                title="Cancel Rental"
+                                disabled={item.rental_status === 'cancelled' || (item.balance_amount === 0 && item.down_payment_amount > 0)}
+                              >
+                                <i className="ri-close-circle-line"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>

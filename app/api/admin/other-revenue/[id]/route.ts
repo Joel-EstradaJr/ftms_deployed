@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
 
 export async function GET(
     request: Request,
@@ -88,6 +88,15 @@ export async function DELETE(
 ) {
     try {
         const { id } = await params;
+        
+        // Parse request body to forward deleted_by
+        let body = {};
+        try {
+            body = await request.json();
+        } catch {
+            // No body provided, use default
+            body = { deleted_by: 'system' };
+        }
 
         const response = await fetch(`${BACKEND_URL}/api/v1/admin/other-revenue/${id}`, {
             method: 'DELETE',
@@ -97,7 +106,8 @@ export async function DELETE(
                 ...(request.headers.get('authorization') && {
                     'Authorization': request.headers.get('authorization')!,
                 }),
-            }
+            },
+            body: JSON.stringify(body)
         });
 
         const data = await response.json();

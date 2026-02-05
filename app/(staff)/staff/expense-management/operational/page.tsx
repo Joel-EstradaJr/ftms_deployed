@@ -11,6 +11,7 @@ import FilterDropdown, { FilterSection } from '../../../../Components/filter';
 import ExportButton from '../../../../Components/ExportButton';
 import ModalManager from '../../../../Components/modalManager';
 import ViewOperationalExpenseModal from './viewOperationalExpense';
+import RecordOperationalExpenseModal, { OperationalExpenseData } from './recordOperationalExpense';
 import { OperationalExpenseFilters } from '../../../../types/expenses';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
@@ -20,10 +21,17 @@ import Swal from 'sweetalert2';
 import {
   fetchExpenses,
   fetchExpenseById,
+  fetchReimbursementDetails,
   softDeleteExpense,
 
   ExpenseListItem,
   ExpenseSummary,
+  updateExpense,
+  fetchChartOfAccounts,
+  fetchEmployees,
+  fetchOperationalTrips,
+  fetchRentalTrips,
+  transformFormToDTO,
 } from '../../../../services/operationalExpenseService';
 
 // Transform API expense to form data format for viewing
@@ -83,7 +91,7 @@ const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
     payment_method: expense.payment_method || '',
     is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
     description: expense.description || '',
-    status: expense.status,
+    status: expense.approval_status,
     created_by: expense.created_by || '',
     approved_by: expense.approved_by,
     created_at: expense.created_at,
@@ -139,6 +147,83 @@ const OperationalExpensePage = () => {
   const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
   const [activeRow, setActiveRow] = useState<number | null>(null);
 
+  // Reference tables for Edit Modal
+  const [employeesRef, setEmployeesRef] = useState<any[]>([]);
+  const [coaRef, setCoaRef] = useState<any[]>([]);
+  const [tripsRef, setTripsRef] = useState<any[]>([]);
+  const [refDataLoaded, setRefDataLoaded] = useState(false);
+  const [currentUser] = useState('Staff'); // Placeholder
+
+  const loadReferenceData = async () => {
+    if (refDataLoaded) return;
+    try {
+      const [empData, coaData, opTrips, rentalTrips] = await Promise.all([
+        fetchEmployees(),
+        fetchChartOfAccounts(),
+        fetchOperationalTrips(),
+        fetchRentalTrips(),
+      ]);
+
+      // Transform Employees
+      const formattedEmps = empData.map(e => ({
+        employee_id: e.employeeNumber,
+        name: `${e.firstName} ${e.lastName}`,
+        job_title: e.position || '',
+        department: e.department || '',
+        employee_number: e.employeeNumber
+      }));
+      setEmployeesRef(formattedEmps);
+      setCoaRef(coaData);
+
+      // Transform Trips
+      const mappedTrips = [
+        ...opTrips.map(t => ({
+          assignment_id: t.assignment_id,
+          bus_trip_id: t.bus_trip_id,
+          plate_number: t.bus_plate_number || '',
+          body_number: t.body_number || '',
+          bus_type: t.bus_type || '',
+          bus_route: t.bus_route || '',
+          date_assigned: t.date_assigned || '',
+          departmentId: 0,
+          departmentName: 'Operations'
+        })),
+        ...rentalTrips.map(t => ({
+          assignment_id: t.assignment_id,
+          bus_trip_id: 'RENTAL',
+          plate_number: t.bus_plate_number || '',
+          body_number: t.body_number || '',
+          bus_type: t.bus_type || '',
+          bus_route: t.rental_destination || '',
+          date_assigned: t.rental_start_date || '',
+          departmentId: 0,
+          departmentName: 'Rental'
+        }))
+      ];
+      setTripsRef(mappedTrips);
+
+      setRefDataLoaded(true);
+    } catch (err) {
+      console.error("Failed to load reference data", err);
+      showError("Error", "Failed to load form data.");
+    }
+  };
+
+  const handleSaveExpense = async (formData: OperationalExpenseData, mode: "add" | "edit" | "approve") => {
+    try {
+      if (mode === 'edit' && formData.id) {
+        const dto = transformFormToDTO(formData, formData.is_reimbursable);
+        await updateExpense(formData.id, dto);
+        await showSuccess("Success", "Expense updated successfully.");
+        setIsModalOpen(false);
+        fetchData(); // Refresh list
+      }
+    } catch (err) {
+      console.error("Error updating expense", err);
+      await showError("Error", "Failed to update expense.");
+    }
+  };
+
   // Debounce search term to prevent excessive API calls
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -178,24 +263,129 @@ const OperationalExpensePage = () => {
 
 
   // Modal management functions
-  const openModal = async (mode: 'view', rowData: ExpenseListItem) => {
+  const openModal = async (mode: 'view' | 'edit', rowData: ExpenseListItem) => {
     let content: React.ReactNode = null;
 
-    // Fetch full details for view
+    if (mode === 'edit') {
+      await loadReferenceData();
+    }
+
+    // Fetch full details
     const fullDetails = await fetchExpenseById(rowData.id);
     if (!fullDetails) {
       await showError('Error', 'Failed to load expense details');
       return;
     }
+    
+    console.log('Backend returned full details:', fullDetails);
 
-    const expenseData = transformApiToFormData(fullDetails);
+    if (mode === 'view') {
+      const expenseData = transformApiToFormData(fullDetails);
+      content = (
+        <ViewOperationalExpenseModal
+          expenseData={expenseData}
+          onClose={closeModal}
+        />
+      );
+    } else {
+      // Transform for Edit
+      // Transform for Edit
+      // Cast to any because backend returns flat structure but interface defines nested
+      const flatDetails = fullDetails as any;
+      const editData: OperationalExpenseData = {
+        id: flatDetails.id,
+        code: flatDetails.code,
+        date_recorded: (flatDetails.date_recorded || '').split('T')[0],
+        expense_type_name: flatDetails.expense_type_name || flatDetails.expense_name,
+        amount: flatDetails.amount,
+        payment_method: flatDetails.payment_method || '',
+        bus_trip_assignment_id: rowData.operational_trip?.assignment_id || rowData.rental_trip?.assignment_id || flatDetails.bus_trip_assignment_id || undefined,
+        bus_trip_id: rowData.operational_trip?.bus_trip_id || flatDetails.bus_trip_id || undefined,
+        department: 'Operations',
+        account_id: flatDetails.account_id || undefined,
+        is_reimbursable: flatDetails.is_reimbursable,
+        description: flatDetails.description || '',
+        employee_reference: flatDetails.payable?.employee_reference || flatDetails.employee_reference || '',
+        creditor_name: flatDetails.payable?.creditor_name || flatDetails.creditor_name || '',
+        payable_description: flatDetails.payable?.description || flatDetails.payable_description || '',
+        created_by: flatDetails.created_by,
+        plate_number: rowData.operational_trip?.bus_plate_number || rowData.rental_trip?.bus_plate_number || flatDetails.plate_number || '',
+        bus_route: rowData.operational_trip?.bus_route || rowData.rental_trip?.rental_destination || flatDetails.bus_route || '',
+        body_number: flatDetails.body_number || '',
+        bus_type: flatDetails.bus_type || '',
+        date_assigned: flatDetails.date_assigned || '',
+        driver_id: flatDetails.driver_id || null,
+        driver_name: flatDetails.driver_name || null,
+        conductor_id: flatDetails.conductor_id || null,
+        conductor_name: flatDetails.conductor_name || null,
+      };
 
-    content = (
-      <ViewOperationalExpenseModal
-        expenseData={expenseData}
-        onClose={closeModal}
-      />
-    );
+      // Fetch reimbursement details with driver/conductor split if expense is reimbursable
+      if (flatDetails.is_reimbursable) {
+        const reimbursementDetails = await fetchReimbursementDetails(flatDetails.id);
+        if (reimbursementDetails) {
+          // Store driver installments
+          if (reimbursementDetails.driver) {
+            editData.driverInstallments = {
+              employee_name: reimbursementDetails.driver.employee_name,
+              employee_number: reimbursementDetails.driver.employee_number,
+              total_share: reimbursementDetails.driver.share_amount,
+              paid_amount: reimbursementDetails.driver.paid_amount,
+              balance: reimbursementDetails.driver.balance,
+              status: reimbursementDetails.driver.status,
+              installments: reimbursementDetails.driver.installments.map((inst: any) => ({
+                id: inst.id,
+                installment_number: inst.installment_number,
+                due_date: inst.due_date.split('T')[0],
+                amount_due: inst.amount_due,
+                status: inst.status.toUpperCase() as any,
+                payment_date: inst.payment_date ? inst.payment_date.split('T')[0] : undefined,
+                amount_paid: inst.amount_paid,
+                balance: inst.balance,
+              }))
+            };
+          }
+          
+          // Store conductor installments
+          if (reimbursementDetails.conductor) {
+            editData.conductorInstallments = {
+              employee_name: reimbursementDetails.conductor.employee_name,
+              employee_number: reimbursementDetails.conductor.employee_number,
+              total_share: reimbursementDetails.conductor.share_amount,
+              paid_amount: reimbursementDetails.conductor.paid_amount,
+              balance: reimbursementDetails.conductor.balance,
+              status: reimbursementDetails.conductor.status,
+              installments: reimbursementDetails.conductor.installments.map((inst: any) => ({
+                id: inst.id,
+                installment_number: inst.installment_number,
+                due_date: inst.due_date.split('T')[0],
+                amount_due: inst.amount_due,
+                status: inst.status.toUpperCase() as any,
+                payment_date: inst.payment_date ? inst.payment_date.split('T')[0] : undefined,
+                amount_paid: inst.amount_paid,
+                balance: inst.balance,
+              }))
+            };
+          }
+        }
+      }
+      
+      console.log('Edit Data being sent to modal:', editData);
+
+      content = (
+        <RecordOperationalExpenseModal
+          mode="edit"
+          existingData={editData}
+          onSave={handleSaveExpense}
+          onClose={closeModal}
+          departments={[{ id: 1, name: "Operations" }]}
+          cachedTrips={tripsRef}
+          chartOfAccounts={coaRef}
+          employees={employeesRef}
+          currentUser={currentUser}
+        />
+      );
+    }
 
     setModalContent(content);
     setIsModalOpen(true);
@@ -213,6 +403,13 @@ const OperationalExpensePage = () => {
     const expense = data.find(item => item.id === id);
     if (expense) {
       openModal('view', expense);
+    }
+  };
+
+  const handleEdit = (id: number) => {
+    const expense = data.find(item => item.id === id);
+    if (expense) {
+      openModal('edit', expense);
     }
   };
 
@@ -320,7 +517,7 @@ const OperationalExpensePage = () => {
     'Body Number': expense.body_number || '-',
     'Amount': formatMoney(expense.amount),
     'Reimbursable': expense.is_reimbursable ? 'Yes' : 'No',
-    'Status': expense.status,
+    'Status': expense.approval_status,
   }));
 
   return (
@@ -426,8 +623,8 @@ const OperationalExpensePage = () => {
                         </span>
                       </td>
                       <td>
-                        <span className={`chip ${expense.status?.toLowerCase()}`}>
-                          {expense.status}
+                        <span className={`chip ${expense.approval_status?.toLowerCase()}`}>
+                          {expense.approval_status}
                         </span>
                       </td>
                       <td className="actionButtons">
@@ -441,10 +638,21 @@ const OperationalExpensePage = () => {
                             <i className="ri-eye-line"></i>
                           </button>
 
+                          {/* Edit button - PENDING or APPROVED (Unpaid/Partial) */}
+                          {(expense.approval_status === 'PENDING' || (expense.approval_status === 'APPROVED' && ['PENDING', 'PARTIALLY_PAID'].includes(expense.payment_status))) && (
+                            <button
+                              className="editBtn"
+                              onClick={() => handleEdit(expense.id)}
+                              title="Edit Expense"
+                            >
+                              <i className="ri-pencil-line"></i>
+                            </button>
+                          )}
+
 
 
                           {/* Delete button - only for PENDING */}
-                          {expense.status === 'PENDING' && (
+                          {expense.approval_status === 'PENDING' && (
                             <button
                               className="deleteBtn"
                               onClick={() => handleDelete(expense.id)}

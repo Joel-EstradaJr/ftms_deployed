@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import "@/styles/components/forms.css";
+import Loading from "@/Components/loading";
 import { formatDate, formatMoney } from "@/utils/formatting";
 
 // ============================================================================
@@ -39,7 +40,7 @@ interface RevenueDetailResponse {
   code: string;
   assignment_id: string;
   bus_trip_id: string;
-  remittance_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
 
   bus_details: {
     date_assigned: string | null;
@@ -119,13 +120,13 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
 
         // Use the Next.js API proxy route
         const response = await fetch(`/api/admin/revenue/${revenueId}`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch revenue details: ${response.statusText}`);
         }
 
         const result = await response.json();
-        
+
         if (result.success && result.data) {
           setData(result.data);
         } else {
@@ -150,6 +151,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
       'PENDING': 'Pending',
       'PARTIALLY_PAID': 'Partially Paid',
       'PAID': 'Paid',
+      'COMPLETED': 'Completed',
       'OVERDUE': 'Overdue',
       'CANCELLED': 'Cancelled',
       'WRITTEN_OFF': 'Written Off',
@@ -161,11 +163,12 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   const getStatusChipClass = (status: string): string => {
     const classMap: Record<string, string> = {
       'PENDING': 'pending',
-      'PARTIALLY_PAID': 'receivable',
-      'PAID': 'completed',
+      'PARTIALLY_PAID': 'partial',
+      'PAID': 'paid',
+      'COMPLETED': 'completed',
       'OVERDUE': 'overdue',
-      'CANCELLED': 'rejected',
-      'WRITTEN_OFF': 'rejected',
+      'CANCELLED': 'cancelled',
+      'WRITTEN_OFF': 'written-off',
     };
     return classMap[status] || 'pending';
   };
@@ -174,7 +177,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   const formatInstallmentStatus = (status: string): string => {
     const statusMap: Record<string, string> = {
       'PENDING': 'Pending',
-      'PAID': 'Paid',
+      'COMPLETED': 'Paid',
       'PARTIALLY_PAID': 'Partial',
       'OVERDUE': 'Overdue',
     };
@@ -185,7 +188,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   const getInstallmentChipClass = (status: string): string => {
     const classMap: Record<string, string> = {
       'PENDING': 'pending',
-      'PAID': 'completed',
+      'COMPLETED': 'completed',
       'PARTIALLY_PAID': 'receivable',
       'OVERDUE': 'overdue',
     };
@@ -193,15 +196,15 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
   };
 
   // Format payment method for display
+  // Note: REIMBURSEMENT from external data is treated as CASH for revenue
   const formatPaymentMethod = (method: string | null): string => {
     if (!method) return 'N/A';
     const methodMap: Record<string, string> = {
       'CASH': 'Cash',
       'BANK_TRANSFER': 'Bank Transfer',
       'E_WALLET': 'E-Wallet',
-      'REIMBURSEMENT': 'Reimbursement',
     };
-    return methodMap[method] || method;
+    return methodMap[method] || 'Cash'; // Default to Cash for unknown methods
   };
 
   // Format assignment type for display
@@ -214,10 +217,9 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
     return typeMap[type] || type;
   };
 
-  // Check if shortage section should be shown
-  const showShortageSection = data?.remittance_status === 'PARTIALLY_PAID' || 
-                              data?.remittance_status === 'OVERDUE' ||
-                              (data?.shortage_details !== undefined);
+  const showShortageSection = data?.payment_status === 'PARTIALLY_PAID' ||
+    data?.payment_status === 'OVERDUE' ||
+    (data?.shortage_details !== undefined);
 
   // Check if conductor exists
   const hasConductor = data?.employees.conductor !== null;
@@ -232,9 +234,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             <i className="ri-close-line"></i>
           </button>
         </div>
-        <div className="modal-content view" style={{ textAlign: 'center', padding: '40px' }}>
-          <p>Loading revenue details...</p>
-        </div>
+        <Loading />
       </>
     );
   }
@@ -295,10 +295,13 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             {/* Status */}
             <div className="form-group">
               <label>Status</label>
-              <p className={`chip ${getStatusChipClass(data.remittance_status)}`}>
-                {formatStatus(data.remittance_status)}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className={`chip ${getStatusChipClass(data.payment_status)}`}>
+                  {formatStatus(data.payment_status)}
+                </span>
+              </div>
             </div>
+
           </div>
         </form>
       </div>
@@ -389,7 +392,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             <div className="form-group">
               <label>Driver</label>
               <p>
-                {data.employees.driver 
+                {data.employees.driver
                   ? `${data.employees.driver.name} (${data.employees.driver.employee_number})`
                   : 'N/A'
                 }
@@ -399,7 +402,7 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
             <div className="form-group">
               <label>Conductor</label>
               <p>
-                {data.employees.conductor 
+                {data.employees.conductor
                   ? `${data.employees.conductor.name} (${data.employees.conductor.employee_number})`
                   : 'N/A'
                 }
@@ -445,8 +448,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
 
             <div className="form-group">
               <label>Remittance Status</label>
-              <p className={`chip ${getStatusChipClass(data.remittance_status)}`}>
-                {formatStatus(data.remittance_status)}
+              <p className={`chip ${getStatusChipClass(data.payment_status)}`}>
+                {formatStatus(data.payment_status)}
               </p>
             </div>
           </div>
@@ -565,8 +568,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
                 <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
                   <span className="employee-name" style={{ fontWeight: '600' }}>{data.shortage_details.conductor_receivable.debtor_name}</span>
                   <span className="employee-share" style={{ fontWeight: '500', color: '#666' }}>
-                    Total: {formatMoney(data.shortage_details.conductor_receivable.total_amount)} | 
-                    Paid: {formatMoney(data.shortage_details.conductor_receivable.paid_amount)} | 
+                    Total: {formatMoney(data.shortage_details.conductor_receivable.total_amount)} |
+                    Paid: {formatMoney(data.shortage_details.conductor_receivable.paid_amount)} |
                     Balance: {formatMoney(data.shortage_details.conductor_receivable.balance)}
                   </span>
                 </div>
@@ -616,8 +619,8 @@ export default function ViewTripRevenueModal({ revenueId, onClose }: ViewTripRev
                 <div className="installment-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: '8px', marginBottom: '12px' }}>
                   <span className="employee-name" style={{ fontWeight: '600' }}>{data.shortage_details.driver_receivable.debtor_name}</span>
                   <span className="employee-share" style={{ fontWeight: '500', color: '#666' }}>
-                    Total: {formatMoney(data.shortage_details.driver_receivable.total_amount)} | 
-                    Paid: {formatMoney(data.shortage_details.driver_receivable.paid_amount)} | 
+                    Total: {formatMoney(data.shortage_details.driver_receivable.total_amount)} |
+                    Paid: {formatMoney(data.shortage_details.driver_receivable.paid_amount)} |
                     Balance: {formatMoney(data.shortage_details.driver_receivable.balance)}
                   </span>
                 </div>

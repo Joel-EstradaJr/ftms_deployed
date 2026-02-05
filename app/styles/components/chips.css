@@ -5,13 +5,19 @@
 
 /* ----- Base Chip Style ----- */
 .chip {
-    width: 130px;
+    width: auto;
+    min-width: 80px;
+    max-width: 150px;
     padding: 3px 10px !important;
     border-radius: 12px !important;
     font-size: 12px !important;
     display: inline-block !important;
     text-align: center !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
 
 /* ============================================================
    SUCCESS - Green (Approved, Completed, Paid, Active)
@@ -89,8 +95,15 @@
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 /* ============================================================
@@ -102,6 +115,26 @@
 .chip.partially-completed {
     background-color: var(--warning-chip-bg-color);
     color: var(--warning-chip-text-color);
+}
+
+/* Partially Paid - Orange/Amber (Money Still Owed) */
+.chip.partial,
+.chip.partially-paid {
+    background-color: #FFF3E0;
+    color: #E65100;
+    font-weight: 600;
+}
+
+/* Cancelled - Gray (No Longer Active) */
+.chip.cancelled {
+    background-color: #F5F5F5;
+    color: #616161;
+}
+
+/* Written Off - Dark Gray (Debt Written Off) */
+.chip.written-off {
+    background-color: #ECEFF1;
+    color: #455A64;
 }
 
 /* ============================================================

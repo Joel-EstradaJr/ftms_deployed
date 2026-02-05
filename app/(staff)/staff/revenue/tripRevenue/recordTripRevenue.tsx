@@ -31,7 +31,7 @@
  *   date_expected: string,            // Maps to revenue.date_expected
  *   duration_to_late: number,
  *   duration_to_receivable: number,
- *   remittance_status: string,
+ *   payment_status: string,
  *   status: 'remitted' | 'receivable',
  *   
  *   // Driver receivable - only when shouldCreateReceivable() returns true
@@ -77,6 +77,7 @@ import "@/styles/components/forms.css";
 
 import { formatDate, formatMoney } from "@/utils/formatting";
 import { showWarning, showError, showRemittanceConfirmation } from "@/utils/Alerts";
+import Loading from "@/Components/loading";
 import PaymentScheduleTable from "@/Components/PaymentScheduleTable";
 import { RevenueScheduleItem, RevenueScheduleFrequency, PaymentStatus } from "../../../../types/revenue";
 import { ConfigData } from "./configModal";
@@ -205,8 +206,8 @@ interface RecordTripRevenueModalProps {
     trip_revenue: number;
     assignment_type: string; // 'Percentage' or 'Boundary'
     assignment_value: number; // quota if Boundary, company share% if Percentage
-    payment_method?: string; // 'Company Cash' or 'Reimbursement'
-    
+    payment_method?: string; // External data may be 'Company Cash' or 'Reimbursement' - will be mapped to CASH for revenue
+
     // Employee details (from Human Resource table)
     employee_id: string;
     employee_firstName: string;
@@ -220,12 +221,12 @@ interface RecordTripRevenueModalProps {
     bus_plate_number: string;
     bus_type: string; // 'Airconditioned' or 'Ordinary'
     body_number: string;
-    
+
     // Status tracking (from Model Revenue table) - only for edit mode
     date_recorded?: string | null;
     date_expected?: string | null;
     amount?: number | null;
-    remittance_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
+    payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
     remarks?: string | null;
 
     // Shortage/Receivable details
@@ -274,7 +275,7 @@ interface FormData {
   receivableDueDate: string;
 
   // Installment schedule fields
-  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM';
+  frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY';
   numberOfPayments: number;
   startDate: string;
 
@@ -331,19 +332,19 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     const fetchEditData = async () => {
       // Use revenueId from props, or fallback to tripData.revenue_id if available
       const idToFetch = revenueId || (tripData as any).revenue_id;
-      
+
       if (mode === 'edit' && idToFetch) {
         setIsLoadingEditData(true);
         setEditDataError(null);
-        
+
         try {
           const response = await fetch(`/api/admin/revenue/${idToFetch}`);
           const result = await response.json();
-          
+
           if (!response.ok || !result.success) {
             throw new Error(result.message || 'Failed to fetch revenue details');
           }
-          
+
           setFetchedData(result.data);
         } catch (err) {
           console.error('[RecordTripRevenue] Error fetching edit data:', err);
@@ -353,7 +354,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
         }
       }
     };
-    
+
     fetchEditData();
   }, [mode, revenueId, tripData]);
 
@@ -374,7 +375,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
   // Helper function to generate installment schedule
   const generateInstallmentSchedule = (
     totalAmount: number,
-    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM',
+    frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY',
     numberOfPayments: number,
     startDate: string
   ): RevenueScheduleItem[] => {
@@ -394,15 +395,14 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
         case 'WEEKLY':
           dueDate.setDate(dueDate.getDate() + (i * 7));
           break;
+        case 'BIWEEKLY':
+          dueDate.setDate(dueDate.getDate() + (i * 14));
+          break;
         case 'MONTHLY':
           dueDate.setMonth(dueDate.getMonth() + i);
           break;
-        case 'ANNUAL':
+        case 'ANNUALLY':
           dueDate.setFullYear(dueDate.getFullYear() + i);
-          break;
-        case 'CUSTOM':
-          // For custom, default to monthly spacing
-          dueDate.setMonth(dueDate.getMonth() + i);
           break;
       }
 
@@ -484,7 +484,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
     // Installment schedule fields - use config defaults
     frequency: mode === 'edit' && tripData.frequency
-      ? tripData.frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM'
+      ? tripData.frequency as 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY'
       : (config?.default_frequency ?? 'WEEKLY'),
     numberOfPayments: mode === 'edit' && tripData.numberOfPayments
       ? tripData.numberOfPayments
@@ -508,11 +508,11 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
   useEffect(() => {
     if (mode === 'edit' && fetchedData) {
       const data = fetchedData;
-      
+
       // Map API installment data to RevenueScheduleItem format
       const mapInstallments = (installments: any[] | undefined): RevenueScheduleItem[] => {
         if (!installments || installments.length === 0) return [];
-        
+
         return installments.map((inst: any) => ({
           id: inst.id.toString(),
           installment_number: inst.installment_number,
@@ -520,58 +520,58 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
           amount_due: inst.amount_due,
           amount_paid: inst.amount_paid,
           balance: inst.amount_due - inst.amount_paid,
-          status: inst.status === 'PAID' ? PaymentStatus.PAID 
-            : inst.status === 'PARTIAL' ? PaymentStatus.PARTIAL 
-            : PaymentStatus.PENDING,
+          status: inst.status === 'COMPLETED' ? PaymentStatus.COMPLETED
+            : inst.status === 'PARTIALLY_PAID' ? PaymentStatus.PARTIALLY_PAID
+              : PaymentStatus.PENDING,
           isPastDue: new Date(inst.due_date) < new Date(),
-          isEditable: inst.status !== 'PAID'
+          isEditable: inst.status !== 'COMPLETED'
         }));
       };
-      
+
       // Get frequency from driver or conductor receivable
       const driverFrequency = data.shortage_details?.driver_receivable?.frequency;
       const conductorFrequency = data.shortage_details?.conductor_receivable?.frequency;
       const frequency = driverFrequency || conductorFrequency || config?.default_frequency || 'WEEKLY';
-      
+
       // Get number of payments from driver or conductor receivable
       const driverNumPayments = data.shortage_details?.driver_receivable?.number_of_payments;
       const conductorNumPayments = data.shortage_details?.conductor_receivable?.number_of_payments;
       const numberOfPayments = driverNumPayments || conductorNumPayments || config?.default_number_of_payments || 3;
-      
+
       // Get receivable due date
       const receivableDueDate = data.shortage_details?.receivable_due_date
         ? new Date(data.shortage_details.receivable_due_date).toISOString().split('T')[0]
         : data.shortage_details?.driver_receivable?.due_date
           ? new Date(data.shortage_details.driver_receivable.due_date).toISOString().split('T')[0]
           : '';
-      
+
       // Get start date from first installment if available
       const firstDriverInstallment = data.shortage_details?.driver_receivable?.installment_schedules?.[0];
       const startDate = firstDriverInstallment?.due_date
         ? new Date(firstDriverInstallment.due_date).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
-      
+
       setFormData(prev => ({
         ...prev,
-        dateRecorded: data.remittance.date_recorded 
-          ? new Date(data.remittance.date_recorded).toISOString().split('T')[0] 
+        dateRecorded: data.remittance.date_recorded
+          ? new Date(data.remittance.date_recorded).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
         amount: data.remittance.amount_remitted || 0,
         remarks: data.remittance.description || '',
-        remittanceDueDate: data.remittance.date_expected 
-          ? new Date(data.remittance.date_expected).toISOString().split('T')[0] 
+        remittanceDueDate: data.remittance.date_expected
+          ? new Date(data.remittance.date_expected).toISOString().split('T')[0]
           : '',
         receivableAmount: data.remittance.shortage || 0,
         driverShare: data.shortage_details?.driver_share || 0,
         conductorShare: data.shortage_details?.conductor_share || 0,
         receivableDueDate: receivableDueDate,
-        frequency: frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'CUSTOM',
+        frequency: frequency as 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ANNUALLY',
         numberOfPayments: numberOfPayments,
         startDate: startDate,
         driverInstallments: mapInstallments(data.shortage_details?.driver_receivable?.installment_schedules),
         conductorInstallments: mapInstallments(data.shortage_details?.conductor_receivable?.installment_schedules),
       }));
-      
+
       // Show receivable breakdown if there are receivables
       if (data.shortage_details && data.remittance.shortage > 0) {
         setShowReceivableBreakdown(true);
@@ -647,7 +647,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     if (fetchedData) {
       return Math.max(0, fetchedData.remittance.expected_remittance - remittedAmount);
     }
-    
+
     if (tripData.assignment_type === 'Boundary') {
       // Expected remittance = Boundary/Quota + Fuel
       const expectedRemittance = tripData.assignment_value + tripData.trip_fuel_expense;
@@ -684,6 +684,43 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
     // Otherwise it's on time or pending
     return 'PENDING';
+  };
+
+  // Get the display status - in edit mode, show actual backend status; in add mode, use computed status
+  const getDisplayStatus = (): string => {
+    // In edit mode with fetched data, show the actual backend status
+    if (mode === 'edit' && fetchedData?.remittance_status) {
+      // Format the backend status for display
+      const statusMap: Record<string, string> = {
+        'PENDING': 'PENDING',
+        'PARTIALLY_PAID': 'PARTIALLY PAID',
+        'PAID': 'PAID',
+        'OVERDUE': 'OVERDUE',
+        'CANCELLED': 'CANCELLED',
+        'WRITTEN_OFF': 'WRITTEN OFF',
+      };
+      return statusMap[fetchedData.remittance_status] || fetchedData.remittance_status;
+    }
+    // In add mode, use the computed status
+    return calculateRemittanceStatus();
+  };
+
+  // Get the CSS class for the status field
+  const getStatusFieldClass = (): string => {
+    if (mode === 'edit' && fetchedData?.remittance_status) {
+      const classMap: Record<string, string> = {
+        'PENDING': 'status-pending',
+        'PARTIALLY_PAID': 'status-partial',
+        'PAID': 'status-on-time',
+        'OVERDUE': 'status-converted-to-receivable',
+        'CANCELLED': 'status-pending',
+        'WRITTEN_OFF': 'status-pending',
+      };
+      return classMap[fetchedData.remittance_status] || 'status-pending';
+    }
+    const status = calculateRemittanceStatus();
+    return status === 'CONVERTED_TO_RECEIVABLE' ? 'status-converted-to-receivable' :
+      status === 'ON_TIME' ? 'status-on-time' : 'status-pending';
   };
 
   // Initialize remittance calculation
@@ -806,7 +843,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     if (fetchedData) {
       return fetchedData.remittance.expected_remittance;
     }
-    
+
     if (tripData.assignment_type === 'Boundary') {
       // Expected remittance = Boundary/Quota + Fuel
       return tripData.assignment_value + tripData.trip_fuel_expense;
@@ -821,10 +858,10 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
   const shouldCreateReceivable = (): boolean => {
     const status = calculateRemittanceStatus();
     const expectedRemittance = calculateExpectedRemittance();
-    
+
     // In edit mode: if original status was PARTIALLY_PAID but now status is PENDING (due date changed to future)
     // Don't show receivable section - it will be deleted on save
-    if (mode === 'edit' && tripData.remittance_status === 'PARTIALLY_PAID' && status === 'PENDING') {
+    if (mode === 'edit' && tripData.payment_status === 'PARTIALLY_PAID' && status === 'PENDING') {
       return false;
     }
 
@@ -1111,8 +1148,8 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
     const remittanceStatus = calculateRemittanceStatus();
 
-    // Determine the final remittance_status for backend
-    let finalRemittanceStatus: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' = 'PAID';
+    // Determine the final payment_status for backend
+    let finalRemittanceStatus: 'PENDING' | 'PARTIALLY_PAID' | 'COMPLETED' = 'COMPLETED';
     let shouldDeleteReceivables = false;
 
     if (isPending) {
@@ -1120,7 +1157,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     } else if (shouldCreateReceivable()) {
       // Converted to receivable (late remittance or shortage)
       finalRemittanceStatus = 'PARTIALLY_PAID';
-    } else if (mode === 'edit' && tripData.remittance_status === 'PARTIALLY_PAID') {
+    } else if (mode === 'edit' && tripData.payment_status === 'PARTIALLY_PAID') {
       // Was a receivable but now reverted to paid (due date changed to future)
       // Signal to backend to delete existing receivable records
       shouldDeleteReceivables = true;
@@ -1136,7 +1173,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
       date_expected: formData.remittanceDueDate,
       duration_to_late: formData.durationToLate,
       duration_to_receivable: formData.durationToReceivable,
-      remittance_status: finalRemittanceStatus,
+      payment_status: finalRemittanceStatus,
       delete_receivables: shouldDeleteReceivables,
     };
 
@@ -1199,12 +1236,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
 
   // Show loading state while fetching edit data
   if (isLoadingEditData) {
-    return (
-      <div className="modal-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading revenue details...</p>
-      </div>
-    );
+    return <Loading />;
   }
 
   // Show error state if fetch failed
@@ -1221,7 +1253,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
   }
 
   if (!remittanceCalc) {
-    return <div>Loading...</div>;
+    return <Loading />;
   }
 
   // Use fetched data for display if available
@@ -1250,8 +1282,8 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
     payment_method: tripData.payment_method,
     trip_revenue: tripData.trip_revenue,
     trip_fuel_expense: tripData.trip_fuel_expense,
-    company_share_amount: tripData.assignment_type === 'Boundary' 
-      ? tripData.assignment_value 
+    company_share_amount: tripData.assignment_type === 'Boundary'
+      ? tripData.assignment_value
       : tripData.trip_revenue * (tripData.assignment_value / 100),
     driverName: tripData.driverName || `${tripData.driverFirstName || ''} ${tripData.driverLastName || ''}`.trim() || 'N/A',
     conductorName: tripData.conductorName || `${tripData.conductorFirstName || ''} ${tripData.conductorLastName || ''}`.trim() || undefined,
@@ -1324,7 +1356,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
             <div className="form-group">
               <label>Company Share</label>
               <p>
-                {displayData.assignment_type === 'Boundary' 
+                {displayData.assignment_type === 'Boundary'
                   ? formatMoney(displayData.assignment_value)
                   : `${displayData.assignment_value}%`
                 }
@@ -1376,13 +1408,13 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
             <div className="form-group">
               <label>Driver Name</label>
               <p>
-                {displayData.driverName || (tripData.driverFirstName 
+                {displayData.driverName || (tripData.driverFirstName
                   ? formatEmployeeName(
-                      tripData.driverFirstName,
-                      tripData.driverMiddleName || '',
-                      tripData.driverLastName || '',
-                      tripData.driverSuffix || ''
-                    )
+                    tripData.driverFirstName,
+                    tripData.driverMiddleName || '',
+                    tripData.driverLastName || '',
+                    tripData.driverSuffix || ''
+                  )
                   : 'N/A')
                 }
               </p>
@@ -1392,13 +1424,13 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
             <div className="form-group">
               <label>Conductor Name</label>
               <p>
-                {displayData.conductorName || (tripData.conductorFirstName 
+                {displayData.conductorName || (tripData.conductorFirstName
                   ? formatEmployeeName(
-                      tripData.conductorFirstName,
-                      tripData.conductorMiddleName || '',
-                      tripData.conductorLastName || '',
-                      tripData.conductorSuffix || ''
-                    )
+                    tripData.conductorFirstName,
+                    tripData.conductorMiddleName || '',
+                    tripData.conductorLastName || '',
+                    tripData.conductorSuffix || ''
+                  )
                   : 'N/A')
                 }
               </p>
@@ -1522,13 +1554,11 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
               <label>Remittance Status</label>
               <input
                 type="text"
-                value={calculateRemittanceStatus()}
+                value={getDisplayStatus()}
                 disabled
-                className={`remittance-status-field ${calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' ? 'status-converted-to-receivable' :
-                    calculateRemittanceStatus() === 'ON_TIME' ? 'status-on-time' : 'status-pending'
-                  }`}
+                className={`remittance-status-field ${getStatusFieldClass()}`}
               />
-              {calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' && (
+              {mode === 'add' && calculateRemittanceStatus() === 'CONVERTED_TO_RECEIVABLE' && (
                 <small className="add-error-message">
                   ⚠️ Deadline exceeded. This will be converted to a receivable.
                 </small>
@@ -1708,8 +1738,9 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                   >
                     <option value="DAILY">Daily</option>
                     <option value="WEEKLY">Weekly</option>
+                    <option value="BIWEEKLY">Bi-Weekly</option>
                     <option value="MONTHLY">Monthly</option>
-                    <option value="ANNUAL">Annual</option>
+                    <option value="ANNUALLY">Annually</option>
                   </select>
                   <p className="add-error-message">{formErrors.frequency}</p>
                 </div>
@@ -1749,30 +1780,30 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                 </div>
               </div>
 
-                  {/* Employee Share Distribution */}
-                  {/* Only show conductor fields if there's a conductor */}
-                  {hasConductor() && (
-                    <div className="form-row">
-                        {/* Conductor Share */}
-                        <div className="form-group">
-                            <label>
-                                Conductor Name
-                            </label>
-                            <input
-                                type="text"
-                                value={displayData.conductorName || (tripData.conductorFirstName 
-                                  ? formatEmployeeName(
-                                      tripData.conductorFirstName,
-                                      tripData.conductorMiddleName || '',
-                                      tripData.conductorLastName || '',
-                                      tripData.conductorSuffix || ''
-                                    )
-                                  : 'N/A')
-                                }
-                                disabled
-                                className="disabled-field"
-                            />
-                        </div>
+              {/* Employee Share Distribution */}
+              {/* Only show conductor fields if there's a conductor */}
+              {hasConductor() && (
+                <div className="form-row">
+                  {/* Conductor Share */}
+                  <div className="form-group">
+                    <label>
+                      Conductor Name
+                    </label>
+                    <input
+                      type="text"
+                      value={displayData.conductorName || (tripData.conductorFirstName
+                        ? formatEmployeeName(
+                          tripData.conductorFirstName,
+                          tripData.conductorMiddleName || '',
+                          tripData.conductorLastName || '',
+                          tripData.conductorSuffix || ''
+                        )
+                        : 'N/A')
+                      }
+                      disabled
+                      className="disabled-field"
+                    />
+                  </div>
 
                   {/* Conductor Share Amount */}
                   <div className="form-group">
@@ -1795,27 +1826,27 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
                 </div>
               )}
 
-                  <div className="form-row">
-                      {/* Driver Name */}
-                      <div className="form-group">
-                          <label>
-                              Driver Name
-                          </label>
-                          <input
-                              type="text"
-                              value={displayData.driverName || (tripData.driverFirstName 
-                                ? formatEmployeeName(
-                                    tripData.driverFirstName,
-                                    tripData.driverMiddleName || '',
-                                    tripData.driverLastName || '',
-                                    tripData.driverSuffix || ''
-                                  )
-                                : 'N/A')
-                              }
-                              disabled
-                              className="disabled-field"
-                          />
-                      </div>
+              <div className="form-row">
+                {/* Driver Name */}
+                <div className="form-group">
+                  <label>
+                    Driver Name
+                  </label>
+                  <input
+                    type="text"
+                    value={displayData.driverName || (tripData.driverFirstName
+                      ? formatEmployeeName(
+                        tripData.driverFirstName,
+                        tripData.driverMiddleName || '',
+                        tripData.driverLastName || '',
+                        tripData.driverSuffix || ''
+                      )
+                      : 'N/A')
+                    }
+                    disabled
+                    className="disabled-field"
+                  />
+                </div>
 
                 {/* Driver Share Amount */}
                 <div className="form-group">
@@ -1893,15 +1924,7 @@ export default function RecordTripRevenueModal({ mode, revenueId, tripData, onSa
           Cancel
         </button>
 
-        <button
-          type="button"
-          className="save-pending-btn"
-          style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', backgroundColor: '#f3b414', color: 'white', border: 'none', fontWeight: '500', cursor: 'pointer', marginRight: '1rem' }}
-          disabled={!isFormValid}
-          onClick={(e) => handleSubmit(e, true)}
-        >
-          Save Details
-        </button>
+
 
         <button
           type="submit"

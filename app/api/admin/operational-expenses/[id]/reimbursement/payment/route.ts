@@ -1,12 +1,12 @@
 /**
- * Next.js API Route: /api/admin/other-expense/[id]/approve
- * Proxies POST to backend /api/v1/admin/other-expense/{id}/approve
+ * Next.js API Route: /api/admin/operational-expenses/[id]/reimbursement/payment
+ * Proxies requests for recording reimbursement payments
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
-const BACKEND_ENDPOINT = '/api/v1/admin/other-expense';
+const BACKEND_ENDPOINT = '/api/v1/admin/operational-expenses';
 
 export async function POST(
     request: NextRequest,
@@ -14,10 +14,10 @@ export async function POST(
 ) {
     try {
         const { id } = await params;
-        const body = await request.json().catch(() => ({}));
-        const url = `${BACKEND_URL}${BACKEND_ENDPOINT}/${id}/approve`;
+        const body = await request.json();
+        const url = `${BACKEND_URL}${BACKEND_ENDPOINT}/${id}/reimbursement/payment`;
 
-        console.log('[API Proxy] POST /api/admin/other-expense/:id/approve ->', url);
+        console.log('[API Proxy] POST /api/admin/operational-expenses/[id]/reimbursement/payment ->', url);
 
         const response = await fetch(url, {
             method: 'POST',
@@ -35,7 +35,7 @@ export async function POST(
     } catch (error) {
         console.error('[API Proxy] Error:', error);
         return NextResponse.json(
-            { success: false, error: 'Failed to approve expense' },
+            { success: false, error: 'Failed to record reimbursement payment' },
             { status: 500 }
         );
     }
