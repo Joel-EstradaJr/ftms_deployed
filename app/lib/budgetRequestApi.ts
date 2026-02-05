@@ -141,7 +141,7 @@ export interface BudgetRequestListResponse {
 }
 
 // Direct API client for Budget Request Microservice
-const BUDGET_API_BASE_URL = process.env.NEXT_PUBLIC_BUDGET_REQUEST_URL || 'http://localhost:5001';
+const BUDGET_API_BASE_URL = process.env.NEXT_PUBLIC_BUDGET_REQUEST_API_URL || 'http://localhost:5001';
 
 /**
  * Helper to fetch directly from Budget Microservice
