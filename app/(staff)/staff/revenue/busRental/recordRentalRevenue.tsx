@@ -59,6 +59,7 @@ export interface RentalRevenueForm {
     assignment_id: string; // rental_local.assignment_id (rental assignment reference)
     description: string; // revenue.description (notes/remarks)
     payment_method: PaymentMethodEnum; // revenue.payment_method enum
+    payment_reference?: string | null; // optional: for bank/e-wallet reference
 }
 
 interface FormError {

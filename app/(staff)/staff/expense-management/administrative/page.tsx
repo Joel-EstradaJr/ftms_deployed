@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import FilterDropdown, { FilterSection } from '../../../../Components/filter';
@@ -20,7 +20,7 @@ import { formatDate, formatMoney } from '../../../../utils/formatting';
 import Swal from 'sweetalert2';
 import { showSuccess, showError } from '@/app/utils/Alerts';
 
-import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseStatus } from '../../../../types/expenses';
+import { AdministrativeExpense, AdministrativeExpenseFilters, PaymentStatus, ExpenseScheduleItem, ExpenseStatus, ApprovalStatus, AccountingStatus } from '../../../../types/expenses';
 import { PaymentRecordData } from '@/app/types/payments';
 
 // Expense type interface from API
@@ -89,7 +89,7 @@ const AdministrativeExpensePage: React.FC = () => {
 
   const fetchExpenseTypes = async () => {
     try {
-      const response = await fetch('/api/admin/other-expense/expense-types');
+      const response = await fetch('/api/staff/other-expense/expense-types');
       const result = await response.json();
       if (result.success && result.data) {
         setExpenseTypes(result.data);
@@ -101,7 +101,7 @@ const AdministrativeExpensePage: React.FC = () => {
 
   const fetchPaymentMethods = async () => {
     try {
-      const response = await fetch('/api/admin/other-expense/payment-methods');
+      const response = await fetch('/api/staff/other-expense/payment-methods');
       const result = await response.json();
       if (result.success && result.data) {
         // Map API response {id, code, name} to expected {value, label} format
@@ -118,7 +118,7 @@ const AdministrativeExpensePage: React.FC = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await fetch('/api/admin/other-expense/vendors');
+      const response = await fetch('/api/staff/other-expense/vendors');
       const result = await response.json();
       if (result.success && result.data) {
         // Transform backend vendor format to frontend expected format
@@ -170,7 +170,7 @@ const AdministrativeExpensePage: React.FC = () => {
         params.set('amount_max', filters.amountRange.max);
       }
 
-      const response = await fetch(`/api/admin/other-expense?${params.toString()}`);
+      const response = await fetch(`/api/staff/other-expense?${params.toString()}`);
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -184,10 +184,13 @@ const AdministrativeExpensePage: React.FC = () => {
           description: exp.description,
           vendor: exp.vendor,
           invoice_number: exp.invoice_number,
-          status: exp.status as ExpenseStatus,
+          status: exp.approval_status as ExpenseStatus, // Map approval_status to deprecated status for backwards compat
+          approval_status: exp.approval_status as ApprovalStatus,
+          accounting_status: exp.accounting_status as AccountingStatus,
           payment_method: exp.payment_method,
           payable_id: exp.payable_id,
           paymentStatus: exp.paymentStatus as PaymentStatus,
+          payment_status: exp.payment_status as PaymentStatus,
           balance: exp.balance,
           scheduleItems: exp.scheduleItems || [],
           frequency: exp.frequency,
@@ -271,7 +274,7 @@ const AdministrativeExpensePage: React.FC = () => {
   const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
     try {
       // Call backend payment API
-      const response = await fetch('/api/admin/other-expense/payment', {
+      const response = await fetch('/api/staff/other-expense/payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -309,7 +312,7 @@ const AdministrativeExpensePage: React.FC = () => {
     let fullExpenseData = rowData;
     if ((mode === 'view' || mode === 'edit') && rowData?.id) {
       try {
-        const response = await fetch(`/api/admin/other-expense/${rowData.id}`);
+        const response = await fetch(`/api/staff/other-expense/${rowData.id}`);
         const result = await response.json();
         if (result.success && result.data) {
           // Extract vendor info from object if needed
@@ -404,7 +407,7 @@ const AdministrativeExpensePage: React.FC = () => {
           schedule_start_date: formData.scheduleItems?.[0]?.due_date,
         };
 
-        const response = await fetch('/api/admin/other-expense', {
+        const response = await fetch('/api/staff/other-expense', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -436,7 +439,7 @@ const AdministrativeExpensePage: React.FC = () => {
           schedule_start_date: formData.scheduleItems?.[0]?.due_date,
         };
 
-        const response = await fetch(`/api/admin/other-expense/${formData.id}`, {
+        const response = await fetch(`/api/staff/other-expense/${formData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -502,7 +505,77 @@ const AdministrativeExpensePage: React.FC = () => {
     }
   };
 
+  const handleApprove = async (expense: AdministrativeExpense) => {
+    const result = await Swal.fire({
+      title: 'Approve Expense?',
+      text: `Are you sure you want to approve ${expense.code}? This will generate a journal entry.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, approve it!',
+      cancelButtonText: 'Cancel'
+    });
 
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`/api/staff/other-expense/${expense.id}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ remarks: 'Approved via UI' }),
+        });
+
+        const apiResult = await response.json();
+
+        if (apiResult.success) {
+          showSuccess('Success', 'Expense approved and journal entry created');
+          await fetchData();
+        } else {
+          showError('Error', apiResult.message || 'Failed to approve expense');
+        }
+      } catch (error) {
+        console.error('Error approving expense:', error);
+        showError('Error', 'Failed to approve expense. Please try again.');
+      }
+    }
+  };
+
+  const handleReject = async (expense: AdministrativeExpense) => {
+    const { value: reason } = await Swal.fire({
+      title: 'Reject Expense',
+      input: 'textarea',
+      inputLabel: 'Reason for rejection',
+      inputPlaceholder: 'Enter reason for rejection...',
+      showCancelButton: true,
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Please provide a reason for rejection';
+        }
+      }
+    });
+
+    if (reason) {
+      try {
+        const response = await fetch(`/api/staff/other-expense/${expense.id}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
+        });
+
+        const apiResult = await response.json();
+
+        if (apiResult.success) {
+          showSuccess('Success', 'Expense rejected');
+          await fetchData();
+        } else {
+          showError('Error', apiResult.message || 'Failed to reject expense');
+        }
+      } catch (error) {
+        console.error('Error rejecting expense:', error);
+        showError('Error', 'Failed to reject expense. Please try again.');
+      }
+    }
+  };
 
   const handleDelete = async (expense: AdministrativeExpense) => {
     if (expense.status !== ExpenseStatus.PENDING) {
@@ -523,7 +596,7 @@ const AdministrativeExpensePage: React.FC = () => {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`/api/admin/other-expense/${expense.id}/soft-delete`, {
+        const response = await fetch(`/api/staff/other-expense/${expense.id}/soft-delete`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason: 'Deleted via UI' }),
@@ -716,7 +789,27 @@ const AdministrativeExpensePage: React.FC = () => {
                               >
                                 <i className="ri-pencil-line"></i>
                               </button>
-
+                              {/* <button
+                                className="submitBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApprove(expense);
+                                }}
+                                title="Approve"
+                              >
+                                <i className="ri-check-line"></i>
+                              </button>
+                              <button
+                                className="rejectBtn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReject(expense);
+                                }}
+                                title="Reject"
+                                style={{ backgroundColor: '#dc3545' }}
+                              >
+                                <i className="ri-close-line"></i>
+                              </button> */}
                               <button
                                 className="deleteBtn"
                                 onClick={(e) => {
@@ -760,3 +853,4 @@ const AdministrativeExpensePage: React.FC = () => {
 };
 
 export default AdministrativeExpensePage;
+

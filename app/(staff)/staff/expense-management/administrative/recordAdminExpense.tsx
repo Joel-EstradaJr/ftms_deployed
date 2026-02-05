@@ -343,7 +343,7 @@ export default function RecordAdminExpenseModal({
               <label>Vendor <span className="requiredTags">*</span></label>
               <select
                 name="vendor_id"
-                value={formData.vendor_id || ''}
+                value={formData.vendor_id?.toString() || ''}
                 onChange={(e) => {
                   const vendorId = e.target.value ? parseInt(e.target.value) : null;
                   const selectedVendor = vendors.find(v => v.id === vendorId);

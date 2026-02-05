@@ -87,7 +87,7 @@ export interface OperationalExpenseData {
   date_assigned?: string;
 
   // View-only fields
-  status?: string;
+  approval_status?: string;
   created_by: string;
   approved_by?: string;
   created_at?: string;
@@ -188,7 +188,7 @@ export default function RecordOperationalExpenseModal({
     bus_type: existingData?.bus_type || '',
     date_assigned: existingData?.date_assigned || '',
 
-    // Crew fields
+    // Crew details for fallback display
     driver_id: existingData?.driver_id || '',
     driver_name: existingData?.driver_name || '',
     conductor_id: existingData?.conductor_id || '',
@@ -200,17 +200,17 @@ export default function RecordOperationalExpenseModal({
     numberOfPayments: existingData?.numberOfPayments || 2,
     scheduleItems: existingData?.scheduleItems || [],
 
-    // Installment data
+    // Driver and Conductor installment details (for edit mode with reimbursement split)
     driverInstallments: existingData?.driverInstallments,
     conductorInstallments: existingData?.conductorInstallments,
   });
 
-  // Debug logging for edit mode data
+  // Debug: Log existingData when modal opens in edit mode
   useEffect(() => {
     if (mode === 'edit' && existingData) {
-      console.log('Staff RecordOperationalExpenseModal - existingData received:', existingData);
-      console.log('Staff RecordOperationalExpenseModal - driverInstallments:', existingData.driverInstallments);
-      console.log('Staff RecordOperationalExpenseModal - conductorInstallments:', existingData.conductorInstallments);
+      console.log('RecordOperationalExpenseModal - existingData received:', existingData);
+      console.log('RecordOperationalExpenseModal - driverInstallments:', existingData.driverInstallments);
+      console.log('RecordOperationalExpenseModal - conductorInstallments:', existingData.conductorInstallments);
     }
   }, [mode, existingData]);
 
@@ -584,34 +584,6 @@ export default function RecordOperationalExpenseModal({
               <h3 className="section-title">II. Trip Assignment Details</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="bus_trip_assignment_id">Trip Assignment <span className="requiredTags"> *</span></label>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <input
-                      type="text"
-                      id="bus_trip_assignment_id"
-                      value={getTripDisplayText()}
-                      placeholder="No trip selected"
-                      disabled
-                      className="input-disabled"
-                      style={{ flex: 1 }}
-                    />
-                    {mode === 'add' && (
-                      <button
-                        type="button"
-                        onClick={() => setIsTripSelectorOpen(true)}
-                        className="submit-btn"
-                        style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}
-                      >
-                        <i className="ri-search-line"></i> Select Trip
-                      </button>
-                    )}
-                  </div>
-                  <small className="field-note">Trip Selector returns: Date Assigned, Body Number, Type, Route</small>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
                   <label htmlFor="plate_number">Plate Number</label>
                   <input
                     type="text"
@@ -663,16 +635,6 @@ export default function RecordOperationalExpenseModal({
               </div>
             </div>
           </div>
-
-          {/* Section III: Accounting Details - REMOVED as per request */}
-          {/* 
-          <div className="modal-content">
-            <div className="form-section">
-              <h3 className="section-title">III. Accounting Details</h3>
-               ... 
-            </div>
-          </div>
-          */}
 
           <div className="modal-content">
             <div className="form-section">
@@ -859,7 +821,7 @@ export default function RecordOperationalExpenseModal({
                               scheduleFrequency: e.target.value as ScheduleFrequency
                             }));
                           }}
-                          disabled={mode === 'edit' && existingData?.status !== 'PENDING'}
+                          disabled={mode === 'edit' && existingData?.approval_status !== 'PENDING'}
                         >
                           <option value="">Select Frequency</option>
                           <option value={ScheduleFrequency.DAILY}>Daily</option>
@@ -872,7 +834,7 @@ export default function RecordOperationalExpenseModal({
                           {formData.scheduleFrequency === ScheduleFrequency.WEEKLY && 'Same day each week'}
                           {formData.scheduleFrequency === ScheduleFrequency.BIWEEKLY && 'Same day every two weeks'}
                           {formData.scheduleFrequency === ScheduleFrequency.MONTHLY && 'Same date each month'}
-                          {mode === 'edit' && existingData?.status !== 'PENDING' && ' (Not editable - record is not PENDING)'}
+                          {mode === 'edit' && existingData?.approval_status !== 'PENDING' && ' (Not editable - record is not PENDING)'}
                         </small>
                       </div>
 
@@ -890,8 +852,8 @@ export default function RecordOperationalExpenseModal({
                             }));
                           }}
                           min={new Date().toISOString().split('T')[0]}
-                          disabled={mode === 'edit' && existingData?.status !== 'PENDING'}
-                          className={mode === 'edit' && existingData?.status !== 'PENDING' ? 'disabled-field' : ''}
+                          disabled={mode === 'edit' && existingData?.approval_status !== 'PENDING'}
+                          className={mode === 'edit' && existingData?.approval_status !== 'PENDING' ? 'disabled-field' : ''}
                         />
                         {formData.scheduleStartDate && (
                           <small className="hint-message">
@@ -922,11 +884,11 @@ export default function RecordOperationalExpenseModal({
                             }}
                             min="2"
                             max="100"
-                            disabled={mode === 'edit' && existingData?.status !== 'PENDING'}
-                            className={mode === 'edit' && existingData?.status !== 'PENDING' ? 'disabled-field' : ''}
+                            disabled={mode === 'edit' && existingData?.approval_status !== 'PENDING'}
+                            className={mode === 'edit' && existingData?.approval_status !== 'PENDING' ? 'disabled-field' : ''}
                           />
                           <small className="hint-message">
-                            {mode === 'edit' && existingData?.status !== 'PENDING'
+                            {mode === 'edit' && existingData?.approval_status !== 'PENDING'
                               ? 'Not editable - record is not PENDING'
                               : 'Total installments: minimum 2, maximum 100'}
                           </small>
@@ -1018,7 +980,8 @@ export default function RecordOperationalExpenseModal({
                       </>
                     )}
                   </>
-                ))}
+                  )
+                )}
               </div>
             </div>
           )}

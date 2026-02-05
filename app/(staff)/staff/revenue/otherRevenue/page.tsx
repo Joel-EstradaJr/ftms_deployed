@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Admin Other Revenue Page - Backend Integrated
  *
  * Displays miscellaneous revenue records (excluding bus trips and rentals):
- * - Fetches data from /api/admin/revenue (excluding main categories)
+ * - Fetches data from /api/staff/other-revenue (excluding main categories)
  * - Server-side pagination, search, and sorting
  * - Analytics: Revenue breakdown by source type
  * - Database-optimized queries with indexes
@@ -629,7 +629,7 @@ const MOCK_DEPARTMENTS = [
   { id: 6, name: 'Others' },
 ];
 
-const AdminOtherRevenuePage = () => {
+const StaffOtherRevenuePage = () => {
   // State for data and UI
   const [data, setData] = useState<OtherRevenueRecord[]>([]);
   const [analytics, setAnalytics] = useState<RevenueAnalytics>({
@@ -688,7 +688,7 @@ const AdminOtherRevenuePage = () => {
   const fetchFilterOptions = async () => {
     try {
       // Fetch revenue types from backend
-      const typesResponse = await fetch('/api/admin/other-revenue/types');
+      const typesResponse = await fetch('/api/staff/other-revenue/types');
       if (typesResponse.ok) {
         const typesResult = await typesResponse.json();
         const types = typesResult.data || [];
@@ -706,7 +706,7 @@ const AdminOtherRevenuePage = () => {
 
     // Fetch departments from backend
     try {
-      const deptResponse = await fetch('/api/admin/other-revenue/departments');
+      const deptResponse = await fetch('/api/staff/other-revenue/departments');
       if (deptResponse.ok) {
         const deptResult = await deptResponse.json();
         setDepartments(deptResult.data || []);
@@ -717,7 +717,7 @@ const AdminOtherRevenuePage = () => {
 
     // Fetch schedule frequencies from backend
     try {
-      const freqResponse = await fetch('/api/admin/other-revenue/schedule-frequencies');
+      const freqResponse = await fetch('/api/staff/other-revenue/schedule-frequencies');
       if (freqResponse.ok) {
         const freqResult = await freqResponse.json();
         setScheduleFrequencies(freqResult.data || []);
@@ -889,7 +889,7 @@ const AdminOtherRevenuePage = () => {
   const handlePaymentRecorded = async (paymentData: PaymentRecordData) => {
     try {
       // POST to backend API to record the payment
-      const response = await fetch('/api/admin/other-revenue/payment', {
+      const response = await fetch('/api/staff/other-revenue/payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -954,7 +954,7 @@ const AdminOtherRevenuePage = () => {
           created_by: formData.createdBy || 'admin'
         };
 
-        const response = await fetch('/api/admin/other-revenue', {
+        const response = await fetch('/api/staff/other-revenue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -1015,7 +1015,7 @@ const AdminOtherRevenuePage = () => {
 
         console.log('[DEBUG] Final payload:', JSON.stringify(payload, null, 2));
 
-        const response = await fetch(`/api/admin/other-revenue/${revenueId}`, {
+        const response = await fetch(`/api/staff/other-revenue/${revenueId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -1100,7 +1100,7 @@ const AdminOtherRevenuePage = () => {
       }
 
       // Call actual API endpoint
-      const response = await fetch(`/api/admin/other-revenue?${params.toString()}`);
+      const response = await fetch(`/api/staff/other-revenue?${params.toString()}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -1290,7 +1290,7 @@ const AdminOtherRevenuePage = () => {
   // Get sort indicator for column
   const getSortIndicator = (field: string) => {
     if (sortBy !== field) return null;
-    return sortOrder === "asc" ? " ↑" : " ↓";
+    return sortOrder === "asc" ? " â†‘" : " â†“";
   };
 
   // Handle filter apply
@@ -1351,20 +1351,23 @@ const AdminOtherRevenuePage = () => {
     if (result.isConfirmed) {
       try {
         // Call API to soft delete the record
-        const response = await fetch(`/api/admin/other-revenue/${id}`, {
+        const response = await fetch(`/api/staff/other-revenue/${id}`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deleted_by: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to delete revenue record');
+          throw new Error(responseData.message || 'Failed to delete revenue record');
         }
 
         showSuccess('Revenue record deleted successfully', 'Deleted');
         fetchData(); // Refresh the data
       } catch (err) {
         console.error('Error deleting revenue:', err);
+        showError(err instanceof Error ? err.message : 'Failed to delete revenue record', 'Delete Failed');
       }
     }
   };
@@ -1372,6 +1375,12 @@ const AdminOtherRevenuePage = () => {
   const handleApprove = async (id: number) => {
     const record = data.find(item => item.id === id);
     if (!record) return;
+
+    // Check if already approved
+    if (record.approval_status !== 'PENDING') {
+      showError(`Record is already ${record.approval_status}`, 'Cannot Approve');
+      return;
+    }
 
     const result = await Swal.fire({
       title: 'Approve Revenue?',
@@ -1386,19 +1395,20 @@ const AdminOtherRevenuePage = () => {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`/api/admin/other-revenue/${id}/approve`, {
+        const response = await fetch(`/api/staff/other-revenue/${id}/approve`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to approve revenue');
+          throw new Error(responseData.message || 'Failed to approve revenue');
         }
 
         showSuccess('Revenue record approved successfully', 'Approved');
-        fetchData();
+        await fetchData(); // Await to ensure data refreshes before user can click again
       } catch (err) {
         console.error('Error approving revenue:', err);
         showError(err instanceof Error ? err.message : 'Failed to approve revenue', 'Error');
@@ -1409,6 +1419,12 @@ const AdminOtherRevenuePage = () => {
   const handleReject = async (id: number) => {
     const record = data.find(item => item.id === id);
     if (!record) return;
+
+    // Check if already rejected or approved
+    if (record.approval_status !== 'PENDING') {
+      showError(`Record is already ${record.approval_status}`, 'Cannot Reject');
+      return;
+    }
 
     const result = await Swal.fire({
       title: 'Reject Revenue?',
@@ -1423,19 +1439,20 @@ const AdminOtherRevenuePage = () => {
 
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`/api/admin/other-revenue/${id}/reject`, {
+        const response = await fetch(`/api/staff/other-revenue/${id}/reject`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: 'admin' })
         });
 
+        const responseData = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to reject revenue');
+          throw new Error(responseData.message || 'Failed to reject revenue');
         }
 
         showSuccess('Revenue record rejected', 'Rejected');
-        fetchData();
+        await fetchData(); // Await to ensure data refreshes before user can click again
       } catch (err) {
         console.error('Error rejecting revenue:', err);
         showError(err instanceof Error ? err.message : 'Failed to reject revenue', 'Error');
@@ -1715,7 +1732,7 @@ const AdminOtherRevenuePage = () => {
                               {formatMoney(row.receivable)}
                             </span>
                           ) : (
-                            '—'
+                            'â€”'
                           )}
                         </td>
                         {/* Approval Status Column */}
@@ -1736,7 +1753,7 @@ const AdminOtherRevenuePage = () => {
                               {row.paymentStatus.replace('_', ' ')}
                             </span>
                           ) : (
-                            '—'
+                            'â€”'
                           )}
                         </td>
 
@@ -1751,9 +1768,6 @@ const AdminOtherRevenuePage = () => {
                             >
                               <i className="ri-eye-line"></i>
                             </button>
-
-
-
                             {/* Edit button - ONLY visible for PENDING status and JE in DRAFT status */}
                             {/* Journal Entry status is the single source of truth for edit restrictions */}
                             {/* Edit button */}
@@ -1877,4 +1891,4 @@ const AdminOtherRevenuePage = () => {
   );
 };
 
-export default AdminOtherRevenuePage;
+export default StaffOtherRevenuePage;

@@ -19,8 +19,8 @@
  * - Default receivable distribution
  * 
  * BACKEND ENDPOINT:
- * - GET /api/admin/revenue/config (to load current configuration)
- * - POST /api/admin/revenue/config (to save configuration)
+ * - GET /api/staff/revenue/config (to load current configuration)
+ * - POST /api/staff/revenue/config (to save configuration)
  * 
  * VALIDATION RULES:
  * - Minimum wage must be > 0
@@ -315,7 +315,7 @@ export default function ConfigModal({ onClose, onSave, currentConfig }: ConfigMo
 
     try {
       // Call API to save configuration
-      const response = await fetch('/api/admin/revenue/config', {
+      const response = await fetch('/api/staff/revenue/config', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

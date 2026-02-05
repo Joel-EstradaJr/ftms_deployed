@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import '../../../../styles/expense-management/operational.css';
@@ -12,18 +12,21 @@ import ExportButton from '../../../../Components/ExportButton';
 import ModalManager from '../../../../Components/modalManager';
 import ViewOperationalExpenseModal from './viewOperationalExpense';
 import RecordOperationalExpenseModal, { OperationalExpenseData } from './recordOperationalExpense';
+import RecordReimbursementPaymentModal from '../../../../Components/RecordReimbursementPaymentModal';
+// import { useAuth } from '../../../../hooks/use-auth';
 import { OperationalExpenseFilters } from '../../../../types/expenses';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
 import Swal from 'sweetalert2';
 
-// Import API service
+// Import API service - STAFF VERSION
 import {
   fetchExpenses,
   fetchExpenseById,
   fetchReimbursementDetails,
   softDeleteExpense,
-
+  approveExpense,
+  rejectExpense,
   ExpenseListItem,
   ExpenseSummary,
   updateExpense,
@@ -32,7 +35,7 @@ import {
   fetchOperationalTrips,
   fetchRentalTrips,
   transformFormToDTO,
-} from '../../../../services/operationalExpenseService';
+} from '../../../../services/staffOperationalExpenseService';
 
 // Transform API expense to form data format for viewing
 interface OperationalExpenseViewData {
@@ -49,7 +52,7 @@ interface OperationalExpenseViewData {
   payment_method: string;
   is_reimbursable: boolean;
   description?: string;
-  status?: string;
+  approval_status?: string;
   created_by: string;
   approved_by?: string;
   created_at?: string;
@@ -91,7 +94,7 @@ const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
     payment_method: expense.payment_method || '',
     is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
     description: expense.description || '',
-    status: expense.approval_status,
+    approval_status: expense.approval_status,
     created_by: expense.created_by || '',
     approved_by: expense.approved_by,
     created_at: expense.created_at,
@@ -152,7 +155,7 @@ const OperationalExpensePage = () => {
   const [coaRef, setCoaRef] = useState<any[]>([]);
   const [tripsRef, setTripsRef] = useState<any[]>([]);
   const [refDataLoaded, setRefDataLoaded] = useState(false);
-  const [currentUser] = useState('Staff'); // Placeholder
+  const [currentUser] = useState('Admin'); // Placeholder until Auth context is fixed
 
   const loadReferenceData = async () => {
     if (refDataLoaded) return;
@@ -288,7 +291,6 @@ const OperationalExpensePage = () => {
         />
       );
     } else {
-      // Transform for Edit
       // Transform for Edit
       // Cast to any because backend returns flat structure but interface defines nested
       const flatDetails = fullDetails as any;
@@ -446,7 +448,70 @@ const OperationalExpensePage = () => {
     }
   };
 
+  const handleApprove = async (id: number) => {
+    try {
+      const { value: remarks } = await Swal.fire({
+        title: 'Approve Expense',
+        input: 'textarea',
+        inputLabel: 'Approval remarks (optional)',
+        inputPlaceholder: 'Enter any remarks for this approval...',
+        inputAttributes: {
+          'aria-label': 'Approval remarks'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Approve',
+        confirmButtonColor: '#28a745',
+        html: `
+          <p style="color: #666; font-size: 0.9em; margin-bottom: 1rem;">
+            Approving this expense will automatically generate a journal entry with:
+            <br>â€¢ Debit: Fuel Expense (4000)
+            <br>â€¢ Credit: Cash on Hand (1010)
+          </p>
+        `,
+      });
 
+      if (remarks !== undefined) {
+        await approveExpense(id, remarks || '');
+        await showSuccess('Approved!', 'Expense approved and journal entry created successfully.');
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error approving operational expense:', error);
+      await showError('Error', 'Failed to approve operational expense. Please try again.');
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    try {
+      const { value: reason } = await Swal.fire({
+        title: 'Reject Expense',
+        input: 'textarea',
+        inputLabel: 'Reason for rejection',
+        inputPlaceholder: 'Enter the reason for rejecting this expense...',
+        inputAttributes: {
+          'aria-label': 'Reason for rejection'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Reject',
+        confirmButtonColor: '#d33',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'Please provide a reason for rejection';
+          }
+          return null;
+        }
+      });
+
+      if (reason) {
+        await rejectExpense(id, reason);
+        await showSuccess('Rejected!', 'Operational expense has been rejected.');
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error rejecting operational expense:', error);
+      await showError('Error', 'Failed to reject operational expense. Please try again.');
+    }
+  };
 
   // Filter sections for FilterDropdown - only Status (matches table columns)
   const filterSections: FilterSection[] = [
@@ -510,13 +575,65 @@ const OperationalExpensePage = () => {
     );
   }
 
+  // Payment status display mapping
+  const getPaymentStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'PENDING': 'Pending',
+      'PENDING_REIMBURSEMENT': 'Pending Reimbursement',
+      'PARTIALLY_PAID': 'Partially Paid',
+      'PARTIALLY_REIMBURSED': 'Partially Reimbursed',
+      'COMPLETED': 'Completed',
+      'OVERDUE': 'Overdue',
+      'CANCELLED': 'Cancelled',
+      'WRITTEN_OFF': 'Written Off',
+    };
+    return labels[status] || status.replace(/_/g, ' ');
+  };
+
+  // Check if expense can have reimbursement recorded
+  const canRecordReimbursement = (expense: ExpenseListItem) => {
+    return expense.approval_status === 'APPROVED' &&
+      expense.is_reimbursable === true &&
+      (expense.payment_status === 'PENDING' ||
+        expense.payment_status === 'PENDING_REIMBURSEMENT' ||
+        expense.payment_status === 'PARTIALLY_REIMBURSED' ||
+        expense.payment_status === 'PARTIALLY_PAID');
+  };
+
+  // Handle record reimbursement click
+  const handleRecordReimbursement = (expenseId: number) => {
+    // Payment methods for the modal
+    const paymentMethods = [
+      { id: 1, methodName: 'Cash', methodCode: 'CASH' },
+      { id: 2, methodName: 'Bank Transfer', methodCode: 'BANK_TRANSFER' },
+      { id: 3, methodName: 'E-Wallet', methodCode: 'E_WALLET' },
+    ];
+
+    const content = (
+      <RecordReimbursementPaymentModal
+        expenseId={expenseId}
+        paymentMethods={paymentMethods}
+        currentUser="Admin"
+        onPaymentRecorded={async () => {
+          await showSuccess('Payment recorded successfully!', 'Success');
+          fetchData(); // Refresh the list
+        }}
+        onClose={closeModal}
+      />
+    );
+
+    setModalContent(content);
+    setIsModalOpen(true);
+    setActiveRow(expenseId);
+  };
+
   // Prepare export data - matches visible table columns exactly
   const exportData = data.map(expense => ({
     'Date Recorded': formatDate(expense.date_recorded),
     'Expense Code': expense.code,
     'Body Number': expense.body_number || '-',
     'Amount': formatMoney(expense.amount),
-    'Reimbursable': expense.is_reimbursable ? 'Yes' : 'No',
+    'Payment Status': getPaymentStatusLabel(expense.payment_status),
     'Status': expense.approval_status,
   }));
 
@@ -592,7 +709,7 @@ const OperationalExpensePage = () => {
                   <th>Expense Code</th>
                   <th>Body Number</th>
                   <th>Amount</th>
-                  <th>Reimbursable</th>
+                  <th>Payment Status</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -618,8 +735,8 @@ const OperationalExpensePage = () => {
                       <td>{expense.body_number || '-'}</td>
                       <td className="expense-amount">{formatMoney(expense.amount)}</td>
                       <td>
-                        <span className={`chip ${expense.is_reimbursable ? 'reimbursable' : 'not-reimbursable'}`}>
-                          {expense.is_reimbursable ? 'Yes' : 'No'}
+                        <span className={`chip ${expense.payment_status?.toLowerCase().replace('_', '-')}`}>
+                          {getPaymentStatusLabel(expense.payment_status)}
                         </span>
                       </td>
                       <td>
@@ -638,6 +755,28 @@ const OperationalExpensePage = () => {
                             <i className="ri-eye-line"></i>
                           </button>
 
+                          {/* Approve button - only for PENDING */}
+                          {expense.approval_status === 'PENDING' && (
+                            <button
+                              className="approveBtn"
+                              onClick={() => handleApprove(expense.id)}
+                              title="Approve Expense"
+                            >
+                              <i className="ri-check-line"></i>
+                            </button>
+                          )}
+
+                          {/* Reject button - only for PENDING */}
+                          {expense.approval_status === 'PENDING' && (
+                            <button
+                              className="rejectBtn"
+                              onClick={() => handleReject(expense.id)}
+                              title="Reject Expense"
+                            >
+                              <i className="ri-close-line"></i>
+                            </button>
+                          )}
+
                           {/* Edit button - PENDING or APPROVED (Unpaid/Partial) */}
                           {(expense.approval_status === 'PENDING' || (expense.approval_status === 'APPROVED' && ['PENDING', 'PARTIALLY_PAID'].includes(expense.payment_status))) && (
                             <button
@@ -649,7 +788,16 @@ const OperationalExpensePage = () => {
                             </button>
                           )}
 
-
+                          {/* Record Reimbursement button - for approved reimbursable expenses */}
+                          {canRecordReimbursement(expense) && (
+                            <button
+                              className="editBtn"
+                              onClick={() => handleRecordReimbursement(expense.id)}
+                              title="Record Reimbursement"
+                            >
+                              <i className="ri-hand-coin-line"></i>
+                            </button>
+                          )}
 
                           {/* Delete button - only for PENDING */}
                           {expense.approval_status === 'PENDING' && (
@@ -687,3 +835,4 @@ const OperationalExpensePage = () => {
 };
 
 export default OperationalExpensePage;
+

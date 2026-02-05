@@ -28,26 +28,55 @@ interface ViewOperationalExpenseModalProps {
   onClose: () => void;
 }
 
-const STATUS_MAP: { [key: string]: string } = {
+const APPROVAL_STATUS_MAP: { [key: string]: string } = {
   'PENDING': 'Pending',
   'APPROVED': 'Approved',
   'REJECTED': 'Rejected',
+};
+
+const PAYMENT_STATUS_MAP: { [key: string]: string } = {
+  'PENDING': 'Pending',
+  'PARTIALLY_PAID': 'Partially Paid',
   'COMPLETED': 'Completed',
+  'OVERDUE': 'Overdue',
+  'CANCELLED': 'Cancelled',
+  'WRITTEN_OFF': 'Written Off',
 };
 
 export default function ViewOperationalExpenseModal({ expenseData, onClose }: ViewOperationalExpenseModalProps) {
 
-  // Get status badge
-  const getStatusBadge = () => {
-    const status = expenseData.status || 'PENDING';
-    const statusText = STATUS_MAP[status] || status;
+  // Get approval status badge
+  const getApprovalStatusBadge = () => {
+    const status = expenseData.approval_status || 'PENDING';
+    const statusText = APPROVAL_STATUS_MAP[status] || status;
 
     const statusClass = {
       'APPROVED': 'completed',
-      'COMPLETED': 'completed',
       'PENDING': 'pending',
       'REJECTED': 'cancelled'
     }[status] || 'pending';
+
+    return <span className={`chip ${statusClass}`}>{statusText}</span>;
+  };
+
+  // Calculate payment status based on business rules
+  const getPaymentStatus = () => {
+    if (expenseData.approval_status === 'REJECTED') {
+      return 'CANCELLED';
+    } else if (expenseData.payment_method === 'REIMBURSEMENT') {
+      return 'PARTIALLY_PAID';
+    } else if (expenseData.approval_status === 'APPROVED') {
+      return 'COMPLETED';
+    }
+    return 'PENDING';
+  };
+
+  // Get payment status badge
+  const getPaymentStatusBadge = () => {
+    const status = getPaymentStatus();
+    const statusText = PAYMENT_STATUS_MAP[status] || status;
+
+    const statusClass = status.toLowerCase().replace('_', '-');
 
     return <span className={`chip ${statusClass}`}>{statusText}</span>;
   };
@@ -79,8 +108,8 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
               <p>{formatDate(expenseData.date_recorded)}</p>
             </div>
             <div className="form-group">
-              <label>Status</label>
-              <span>{getStatusBadge()}</span>
+              <label>Approval Status</label>
+              <span>{getApprovalStatusBadge()}</span>
             </div>
           </div>
         </form>
@@ -156,13 +185,9 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
               </div>
             )}
             <div className="form-group">
-              <label>Reimbursable Expense</label>
+              <label>Payment Status</label>
               <p className="chip-container">
-                {expenseData.is_reimbursable ? (
-                  <span className="chip reimbursable">Yes</span>
-                ) : (
-                  <span className="chip not-reimbursable">No</span>
-                )}
+                {getPaymentStatusBadge()}
               </p>
             </div>
             {expenseData.journal_entry_code && (
