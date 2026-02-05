@@ -10,7 +10,7 @@ import Loading from '../../../Components/loading';
 import { ModernLineChart, ModernDoughnutChart } from "../../../Components/ModernCharts";
 import EmotionSettingsModal from "../../../Components/dashboardEmotion";
 import PredictiveAnalyticsCard, { PredictiveDataType } from "../../../Components/PredictiveAnalyticsCard";
-import { useDashboardData } from "../../../hooks/useDashboardData";
+import { useStaffDashboardData } from "../../../hooks/useStaffDashboardData";
 import { addPDFHeader } from "../../../utils/PDFHeader";
 
 interface DashboardData {
@@ -124,8 +124,8 @@ const DashboardPage = () => {
   const [predictiveDataType, setPredictiveDataType] = useState<PredictiveDataType>('both');
   const [usingMockData, setUsingMockData] = useState(false);
 
-  // Try to use API data with React Query (with auto-refetch every 30s)
-  const { data: apiData, isLoading: apiLoading, isError: apiError } = useDashboardData(
+  // Try to use Staff API data with React Query (with auto-refetch every 30s)
+  const { data: apiData, isLoading: apiLoading, isError: apiError } = useStaffDashboardData(
     dateFilter,
     dateFrom,
     dateTo
@@ -648,6 +648,7 @@ const DashboardPage = () => {
             </div>
 
             <div className="graphSection">
+
               {/* Financial Breakdown */}
               <div className="graphContainer">
                 <div className="title">

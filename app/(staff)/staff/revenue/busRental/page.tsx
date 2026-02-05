@@ -414,123 +414,102 @@ const AdminBusRentalPage = () => {
     // Set activeRow FIRST - before creating modal content
     setActiveRow(rowData || null);
 
-    // Create bound handlers that capture rowData directly (not relying on activeRow state)
-    const boundSaveEdit = async (formData: any) => {
-      if (!rowData?.id) {
-        showError('No record selected to update', 'Error');
-        return;
-      }
-      try {
-        const response = await fetch(`/api/admin/rental-revenue/${rowData.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            description: formData.description,
-            payment_method: formData.payment_method,
-          }),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to update rental record');
-        }
-        closeModal();
-        await showSuccess('Rental record updated successfully', 'Updated');
-        fetchData();
-      } catch (err) {
-        console.error('Error updating rental:', err);
-        showError('Failed to update rental record', 'Error');
-      }
-    };
-
-    const boundPayBalance = async (formData: any) => {
-      if (!rowData?.id) {
-        showError('No record selected to pay balance', 'Error');
-        return;
-      }
-      try {
-        const response = await fetch(`/api/admin/rental-revenue/${rowData.id}/pay-balance`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            payment_method: formData.payment_method || 'CASH',
-            payment_reference: formData.payment_reference,
-          }),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Failed to pay balance');
-        }
-        closeModal();
-        await showSuccess('Balance paid successfully. Rental is now complete.', 'Completed');
-        fetchData();
-        fetchAnalytics();
-      } catch (err) {
-        console.error('Error paying balance:', err);
-        showError('Failed to pay balance', 'Error');
-      }
-    };
 
     let content;
 
     switch (mode) {
-      case "view-rental":
-        const status = rowData ? getRentalStatus(rowData) : null;
-        content = (
-          <ViewRentalDetailsModal
-            record={rowData!}
-            onClose={closeModal}
-            status={status || { label: 'N/A', className: '', icon: '' }}
-          />
-        );
-        break;
       case "edit-rental":
         content = (
           <RecordRentalRevenueModal
-            phase="record"
-            isEditMode={true}
-            initialData={{
-              code: rowData?.code || "",
-              revenue_type_id: rowData?.revenue_type_id || 1,
-              total_rental_amount: rowData?.total_rental_amount || 0,
-              down_payment_amount: rowData?.down_payment_amount || 0,
-              balance_amount: rowData?.balance_amount || 0,
-              down_payment_date: rowData?.down_payment_date || "",
-              full_payment_date: rowData?.full_payment_date || "",
-              rental_status: rowData?.rental_status || null,
-              cancelled_at: rowData?.cancelled_at || "",
-              date_recorded: rowData?.date_recorded || "",
-              assignment_id: rowData?.assignment_id || "",
-              description: rowData?.description || "",
-              payment_method: rowData?.payment_method || 'CASH',
-            }}
-            onSave={boundSaveEdit}
             onClose={closeModal}
+            onSave={async () => {
+              await fetchData();
+              closeModal();
+            }}
+            initialData={rowData ? {
+              code: rowData.code,
+              revenue_type_id: rowData.revenue_type_id,
+              total_rental_amount: rowData.total_rental_amount,
+              down_payment_amount: rowData.down_payment_amount,
+              balance_amount: rowData.balance_amount,
+              down_payment_date: rowData.down_payment_date || "",
+              full_payment_date: rowData.full_payment_date || "",
+              rental_status: rowData.rental_status || null,
+              cancelled_at: rowData.cancelled_at || "",
+              date_recorded: rowData.date_recorded,
+              assignment_id: rowData.assignment_id,
+              description: rowData.description || "",
+              payment_method: rowData.payment_method || 'CASH',
+            } : undefined}
+            isEditMode={true}
+            phase="record"
           />
         );
         break;
       case "pay-balance":
         content = (
           <RecordRentalRevenueModal
-            phase="balance"
-            initialData={{
-              code: rowData?.code || "",
-              revenue_type_id: rowData?.revenue_type_id || 1,
-              total_rental_amount: rowData?.total_rental_amount || 0,
-              down_payment_amount: rowData?.down_payment_amount || 0,
-              balance_amount: rowData?.balance_amount || 0,
-              down_payment_date: rowData?.down_payment_date || "",
-              full_payment_date: rowData?.full_payment_date || "",
-              rental_status: rowData?.rental_status || null,
-              cancelled_at: rowData?.cancelled_at || "",
-              date_recorded: rowData?.date_recorded || "",
-              assignment_id: rowData?.assignment_id || "",
-              description: rowData?.description || "",
-              payment_method: rowData?.payment_method || 'CASH',
-            }}
-            onSave={boundPayBalance}
             onClose={closeModal}
+            onSave={async (formData) => {
+              // Submit balance payment
+              if (!rowData?.id) return;
+              try {
+                const response = await fetch(`/api/staff/rental-revenue/${rowData.id}/pay-balance`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    payment_method: formData.payment_method || 'CASH',
+                    payment_reference: formData.payment_reference,
+                  }),
+                });
+                const result = await response.json();
+                if (!response.ok || result.error) {
+                  throw new Error(result.error || 'Failed to pay balance');
+                }
+                await fetchData();
+                closeModal();
+              } catch (err) {
+                // Optionally show error
+                console.error('Error paying balance:', err);
+              }
+            }}
+            initialData={rowData ? {
+              code: rowData.code,
+              revenue_type_id: rowData.revenue_type_id,
+              total_rental_amount: rowData.total_rental_amount,
+              down_payment_amount: rowData.down_payment_amount,
+              balance_amount: rowData.balance_amount,
+              down_payment_date: rowData.down_payment_date || "",
+              full_payment_date: rowData.full_payment_date || "",
+              rental_status: rowData.rental_status || null,
+              cancelled_at: rowData.cancelled_at || "",
+              date_recorded: rowData.date_recorded,
+              assignment_id: rowData.assignment_id,
+              description: rowData.description || "",
+              payment_method: rowData.payment_method || 'CASH',
+            } : undefined}
+            isEditMode={true}
+            phase="balance"
           />
         );
+        break;
+      case "view-rental":
+        if (rowData && typeof rowData.id !== 'undefined' && typeof rowData.assignment_id !== 'undefined') {
+          content = (
+            <ViewRentalDetailsModal
+              record={rowData}
+              onClose={closeModal}
+              status={getRentalStatus(rowData) || { label: 'N/A', className: '', icon: '' }}
+            />
+          );
+        } else {
+          content = (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+              <h2>Error: Rental record not found.</h2>
+              <button onClick={closeModal} style={{ marginTop: '1rem' }}>Close</button>
+            </div>
+          );
+        }
         break;
       default:
         content = null;
@@ -818,7 +797,6 @@ const AdminBusRentalPage = () => {
                   >
                     Date Recorded{getSortIndicator("date_recorded")}
                   </th>
-                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -854,11 +832,6 @@ const AdminBusRentalPage = () => {
                           <td>{formatMoney(item.total_rental_amount)}</td>
                           <td>{formatMoney(item.balance_amount)}</td>
                           <td>{item.date_recorded ? formatDate(item.date_recorded) : '—'}</td>
-                          <td style={{ maxWidth: 10 }}>
-                            <span className={`chip ${statusInfo.className}`}>
-                              {statusInfo.label}
-                            </span>
-                          </td>
                           <td className="actionButtons">
                             <div className="actionButtonsContainer">
                               <button
@@ -900,7 +873,7 @@ const AdminBusRentalPage = () => {
                             </button> */}
 
                               {/* Show Cancel button if not cancelled, has downpayment, and has balance */}
-                              <button
+                              {/* <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleCancelRental(item.id);
@@ -910,7 +883,7 @@ const AdminBusRentalPage = () => {
                                 disabled={item.rental_status === 'cancelled' || (item.balance_amount === 0 && item.down_payment_amount > 0)}
                               >
                                 <i className="ri-close-circle-line"></i>
-                              </button>
+                              </button> */}
                             </div>
                           </td>
                         </tr>
