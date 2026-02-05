@@ -140,12 +140,53 @@ export interface BudgetRequestListResponse {
     limit?: number;
 }
 
+// Direct API client for Budget Request Microservice
+const BUDGET_API_BASE_URL = process.env.NEXT_PUBLIC_BUDGET_REQUEST_URL || 'http://localhost:5001';
+
+/**
+ * Helper to fetch directly from Budget Microservice
+ */
+async function fetchFromBudgetService<T>(endpoint: string, params?: Record<string, any>, options?: RequestInit): Promise<T> {
+    const url = new URL(`${BUDGET_API_BASE_URL}${endpoint}`);
+
+    // Add query parameters
+    if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                url.searchParams.append(key, String(value));
+            }
+        });
+    }
+
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        // Add any required microservice headers here
+        // If the microservice requires specific auth headers, add them here
+    };
+
+    const response = await fetch(url.toString(), {
+        ...options,
+        headers: {
+            ...headers,
+            ...options?.headers,
+        },
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(error.message || `Request failed with status ${response.status}`);
+    }
+
+    return response.json();
+}
+
 /**
  * Fetch all budget requests with optional filters
  */
 export async function fetchBudgetRequests(filters?: BudgetRequestFilters): Promise<BudgetRequest[]> {
     const apiFilters = { ...filters };
 
+    // Standardize filters for backend
     if (apiFilters.status) {
         const upper = apiFilters.status.toUpperCase();
         apiFilters.status = upper === 'COMPLETED' ? 'CLOSED' : upper;
@@ -155,7 +196,9 @@ export async function fetchBudgetRequests(filters?: BudgetRequestFilters): Promi
         apiFilters.request_type = apiFilters.request_type.toUpperCase();
     }
 
-    const response = await api.get<BudgetRequestListResponse>('/finance/budget-requests', apiFilters);
+    // Direct call to microservice
+    // Using Finance Admin route as this is the Admin Dashboard
+    const response = await fetchFromBudgetService<BudgetRequestListResponse>('/api/finance/admin/budget-requests', apiFilters);
 
     if (!response.success || !response.data) {
         throw new Error('Failed to fetch budget requests');
@@ -163,6 +206,8 @@ export async function fetchBudgetRequests(filters?: BudgetRequestFilters): Promi
 
     return response.data.map(transformBudgetRequest);
 }
+
+
 
 /**
  * Fetch a single budget request by ID
@@ -180,13 +225,15 @@ export async function fetchBudgetRequestById(id: string): Promise<BudgetRequest>
 /**
  * Approve a budget request
  */
+
 export async function approveBudgetRequest(
     id: string | number,
     data: { approved_amount?: number; remarks?: string }
 ): Promise<BudgetRequest> {
-    const response = await api.post<ApiResponse<MicroserviceBudgetRequest>>(
-        `/finance/budget-requests/${id}/approve`,
-        data
+    const response = await fetchFromBudgetService<ApiResponse<MicroserviceBudgetRequest>>(
+        `/api/finance/admin/approvals/${id}/approve`,
+        data,
+        { method: 'POST' }
     );
 
     if (!response.success || !response.data) {
@@ -203,9 +250,10 @@ export async function rejectBudgetRequest(
     id: string | number,
     data: { rejection_reason: string }
 ): Promise<BudgetRequest> {
-    const response = await api.post<ApiResponse<MicroserviceBudgetRequest>>(
-        `/finance/budget-requests/${id}/reject`,
-        data
+    const response = await fetchFromBudgetService<ApiResponse<MicroserviceBudgetRequest>>(
+        `/api/finance/admin/approvals/${id}/reject`,
+        data,
+        { method: 'POST' }
     );
 
     if (!response.success || !response.data) {
