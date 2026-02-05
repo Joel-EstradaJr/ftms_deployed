@@ -1018,7 +1018,7 @@ export default function RecordOperationalExpenseModal({
                       </>
                     )}
                   </>
-                )}
+                ))}
               </div>
             </div>
           )}
