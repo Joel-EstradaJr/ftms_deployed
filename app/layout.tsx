@@ -5,6 +5,7 @@ import "./globals.css";
 import './styles/general/index.css';
 import { usePathname } from 'next/navigation';
 import { QueryProvider } from './lib/queryClient';
+import { AuthProvider } from './hooks/useAuth';
 
 
 // Root Layout Component
@@ -33,17 +34,19 @@ export default function RootLayout({ children, }: Readonly<{ children: React.Rea
 
       <body>
         <QueryProvider>
-          {isRoleSelectionPage ? (
-            // Role selection page without sidebar/topbar
-            <div className="role-selection-wrapper">
-              {children}
-            </div>
-          ) : (
-            // Regular app pages with layout - this will be overridden by route group layouts
-            <div>
-              {children}
-            </div>
-          )}
+          <AuthProvider>
+            {isRoleSelectionPage ? (
+              // Role selection page without sidebar/topbar
+              <div className="role-selection-wrapper">
+                {children}
+              </div>
+            ) : (
+              // Regular app pages with layout - this will be overridden by route group layouts
+              <div>
+                {children}
+              </div>
+            )}
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

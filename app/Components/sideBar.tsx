@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useNavigationUrl } from '../hooks/useRouteContext';
+import { useAuth } from '../hooks/useAuth';
 // @ts-ignore
 import "../styles/components/sidebar.css";
 
@@ -13,6 +14,7 @@ const Sidebar: React.FC = () => {
   const [activeItem, setActiveItem] = useState<string | null>(null);
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
   const { getUrl } = useNavigationUrl();
+  const { logout, user } = useAuth();
 
   // External microservice URLs from environment variables
   const budgetRequestUrl = process.env.NEXT_PUBLIC_BUDGET_REQUEST_URL || 'https://budget-request-micro-frontend.vercel.app';
@@ -21,8 +23,8 @@ const Sidebar: React.FC = () => {
   const auditActiveKey = 'audit';
   const auditIconClass = 'ri-booklet-line';
 
-  // Detect user role from pathname
-  const userRole = pathname.startsWith('/admin') ? 'admin' : 'staff';
+  // Detect user role from auth user or pathname fallback
+  const userRole = user?.isAdmin ? 'admin' : (pathname.startsWith('/admin') ? 'admin' : 'staff');
 
   const staticRoutes: { [key: string]: string } = {
     "/dashboard": "dashboard",
@@ -349,7 +351,13 @@ const Sidebar: React.FC = () => {
         </div>
 
         <div className="logout">
-          <a href="#">
+          <a 
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              logout();
+            }}
+          >
             <i className="ri-logout-box-r-line" />
             <span>Logout</span>
           </a>
