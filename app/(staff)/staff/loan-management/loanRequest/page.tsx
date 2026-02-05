@@ -14,11 +14,11 @@ import ViewLoanRequestModal from "../../../../../app/(admin)/admin/loan-manageme
 
 // Import styles
 //@ts-ignore
-import "../../../../../styles/loan-management/loanRequest.css";
+import "../../../../styles/loan-management/loanRequest.css";
 //@ts-ignore
-import "../../../../../styles/components/table.css";
+import "../../../../styles/components/table.css";
 //@ts-ignore
-import "../../../../../styles/components/chips.css";
+import "../../../../styles/components/chips.css";
 
 // Loan Request Interfaces
 enum LoanStatus {

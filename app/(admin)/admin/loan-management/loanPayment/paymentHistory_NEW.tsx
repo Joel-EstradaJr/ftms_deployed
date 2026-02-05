@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import '../../../styles/components/modal.css';
-import '../../../styles/components/table.css';
-import '../../../styles/loan-management/paymentHistory.css';
+import '../../../../styles/components/modal.css';
+import '../../../../styles/components/table.css';
+import '../../../../styles/loan-management/paymentHistory.css';
 import {
   showConfirmation
 } from '@/app/utils/Alerts';

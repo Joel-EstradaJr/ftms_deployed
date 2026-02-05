@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import '../../../../styles/components/table.css';
-import "../../../../styles/reimbursement/reimbursement.css";
+import '@/app/styles/components/table.css';
+import "@/app/styles/reimbursement/reimbursement.css";
 import PaginationComponent from "../../../Components/pagination";
 import Loading from '../../../Components/loading';
 import ErrorDisplay from '../../../Components/errordisplay';

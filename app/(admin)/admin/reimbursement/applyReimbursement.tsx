@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { showSuccess, showError } from '../../../utils/Alerts';
-import "../../styles/reimbursement/applyReimbursement.css";
+import "../../../styles/reimbursement/applyReimbursement.css";
 import EmployeeSelectorModal, { Employee } from "../../../Components/employeeSelector";
 import ModalHeader from '@/app/Components/ModalHeader';
 
