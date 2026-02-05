@@ -64,7 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (authUser && storedToken) {
       setUser(authUser);
       setTokenState(storedToken);
-      
+
       // Handle position-based routing
       if (pathname === '/') {
         const redirectPath = getPositionBasedRedirectPath(authUser.positionName);
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = useCallback((newToken: string) => {
     setToken(newToken);
     setTokenState(newToken);
-    
+
     const authUser = getCurrentUser();
     if (authUser) {
       setUser(authUser);
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     removeToken();
     setUser(null);
     setTokenState(null);
-    
+
     if (ENABLE_AUTH) {
       // Redirect to external auth URL
       window.location.href = AUTH_URL;
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
  */
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-  
+
   if (!context) {
     // Return a default context for when auth is disabled
     if (process.env.NEXT_PUBLIC_ENABLE_AUTH !== 'true') {
@@ -147,14 +147,14 @@ export function useAuth(): AuthContextType {
         token: null,
         isLoading: false,
         isAuthenticated: false,
-        login: () => {},
-        logout: () => {},
-        refreshUser: () => {},
+        login: () => { },
+        logout: () => { },
+        refreshUser: () => { },
       };
     }
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
+
   return context;
 }
 
@@ -186,6 +186,22 @@ export function useRequireAdmin() {
   useEffect(() => {
     if (!auth.isLoading && auth.user && !auth.user.isAdmin) {
       router.push('/staff/dashboard');
+    }
+  }, [auth.isLoading, auth.user, router]);
+
+  return auth;
+}
+
+/**
+ * Hook to require staff role (non-admin) - redirects admins to admin dashboard
+ */
+export function useRequireStaff() {
+  const auth = useRequireAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!auth.isLoading && auth.user && auth.user.isAdmin) {
+      router.push('/admin/dashboard');
     }
   }, [auth.isLoading, auth.user, router]);
 

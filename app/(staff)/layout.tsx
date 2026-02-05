@@ -4,7 +4,7 @@ import "../globals.css";
 import '../styles/general/index.css';
 import SideBar from "../Components/sideBar";
 import TopBar from '../Components/topBar';
-import { useRequireAuth } from '../hooks/useAuth';
+import { useRequireStaff } from '../hooks/useAuth';
 
 const ENABLE_AUTH = process.env.NEXT_PUBLIC_ENABLE_AUTH === 'true';
 
@@ -13,15 +13,15 @@ export default function StaffLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const auth = useRequireAuth();
+  const auth = useRequireStaff();
 
   // Show loading while checking auth (only when auth is enabled)
   if (ENABLE_AUTH && auth.isLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         background: '#f5f5f5'
       }}>
@@ -36,7 +36,7 @@ export default function StaffLayout({
       <SideBar />
 
       <div className="layout-right">
-        <TopBar /> 
+        <TopBar />
 
         <div className="content">
           {children}
