@@ -9,7 +9,7 @@ import {
   getToken,
   setToken,
   removeToken,
-  getRoleBasedRedirectPath,
+  getPositionBasedRedirectPath,
   redirectToAuth,
 } from '../lib/auth';
 
@@ -65,9 +65,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(authUser);
       setTokenState(storedToken);
       
-      // Handle role-based routing
+      // Handle position-based routing
       if (pathname === '/') {
-        const redirectPath = getRoleBasedRedirectPath(authUser.role);
+        const redirectPath = getPositionBasedRedirectPath(authUser.positionName);
         router.push(`${redirectPath}/dashboard`);
       } else {
         // Validate current route matches user role
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const authUser = getCurrentUser();
     if (authUser) {
       setUser(authUser);
-      const redirectPath = getRoleBasedRedirectPath(authUser.role);
+      const redirectPath = getPositionBasedRedirectPath(authUser.positionName);
       router.push(`${redirectPath}/dashboard`);
     }
   }, [router]);

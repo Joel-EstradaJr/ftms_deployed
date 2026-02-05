@@ -21,6 +21,10 @@ export interface JwtPayload {
   exp?: number;
 }
 
+// Position names that grant admin access (Finance Manager)
+// All other positions are treated as staff
+const ADMIN_POSITIONS = ['Finance Manager'];
+
 export interface AuthUser {
   id: string;
   employeeId?: string;
@@ -29,7 +33,7 @@ export interface AuthUser {
   departmentName?: string[];
   departmentIds?: string[];
   positionName?: string[];
-  isAdmin: boolean;
+  isAdmin: boolean; // true if positionName includes Finance Manager
 }
 
 /**
@@ -126,6 +130,11 @@ export function getCurrentUser(): AuthUser | null {
     return null;
   }
   
+  // Check if user has admin position (Finance Manager)
+  const hasAdminPosition = payload.positionName?.some(
+    (pos) => ADMIN_POSITIONS.includes(pos)
+  ) ?? false;
+
   return {
     id: payload.sub,
     employeeId: payload.employeeId,
@@ -134,7 +143,7 @@ export function getCurrentUser(): AuthUser | null {
     departmentName: payload.departmentName,
     departmentIds: payload.departmentIds,
     positionName: payload.positionName,
-    isAdmin: payload.role === 'ADMIN',
+    isAdmin: hasAdminPosition,
   };
 }
 
@@ -150,6 +159,29 @@ export function isAuthenticated(): boolean {
 }
 
 /**
+ * Check if any position in the array grants admin access
+ */
+export function hasAdminPosition(positionName?: string[]): boolean {
+  if (!positionName || positionName.length === 0) {
+    return false;
+  }
+  return positionName.some((pos) => ADMIN_POSITIONS.includes(pos));
+}
+
+/**
+ * Get the appropriate redirect path based on position name
+ * Finance Manager -> /admin
+ * Finance Assistant or others -> /staff
+ */
+export function getPositionBasedRedirectPath(positionName?: string[]): string {
+  if (hasAdminPosition(positionName)) {
+    return '/admin';
+  }
+  return '/staff';
+}
+
+/**
+ * @deprecated Use getPositionBasedRedirectPath instead
  * Get the appropriate redirect path based on user role
  */
 export function getRoleBasedRedirectPath(role: string): string {

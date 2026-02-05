@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './hooks/useAuth';
-import { getRoleBasedRedirectPath, redirectToAuth } from './lib/auth';
+import { getPositionBasedRedirectPath, redirectToAuth } from './lib/auth';
 
 const ENABLE_AUTH = process.env.NEXT_PUBLIC_ENABLE_AUTH === 'true';
 
@@ -23,8 +23,8 @@ export default function Home() {
     if (isLoading) return;
 
     if (isAuthenticated && user) {
-      // Redirect based on role
-      const redirectPath = getRoleBasedRedirectPath(user.role);
+      // Redirect based on position (Finance Manager = admin, Finance Assistant = staff)
+      const redirectPath = getPositionBasedRedirectPath(user.positionName);
       router.push(`${redirectPath}/dashboard`);
     } else {
       // No valid token - redirect to auth
