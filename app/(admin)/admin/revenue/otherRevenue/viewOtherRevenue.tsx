@@ -53,13 +53,13 @@ export default function ViewOtherRevenueModal({ revenueData, onClose, onRecordPa
 
     const stats = {
       total: items.length,
-      paid: items.filter((i: RevenueScheduleItem) => i.status === PaymentStatus.PAID).length,
+      paid: items.filter((i: RevenueScheduleItem) => i.status === PaymentStatus.COMPLETED).length,
       pending: items.filter((i: RevenueScheduleItem) => i.status === PaymentStatus.PENDING).length,
       overdue: items.filter((i: RevenueScheduleItem) => i.status === PaymentStatus.OVERDUE).length,
       totalPaid: items.reduce((sum: number, i: RevenueScheduleItem) => sum + (i.amount_paid || 0), 0),
       totalAmount: items.reduce((sum: number, i: RevenueScheduleItem) => sum + (i.amount_due || 0), 0),
       nextPayment: items
-        .filter((i: RevenueScheduleItem) => i.status !== PaymentStatus.PAID && i.status !== PaymentStatus.CANCELLED)
+        .filter((i: RevenueScheduleItem) => i.status !== PaymentStatus.COMPLETED && i.status !== PaymentStatus.CANCELLED)
         .sort((a: RevenueScheduleItem, b: RevenueScheduleItem) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0] || null
     };
 
