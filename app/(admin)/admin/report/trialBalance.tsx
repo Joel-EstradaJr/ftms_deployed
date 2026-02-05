@@ -7,7 +7,8 @@ import PaginationComponent from "../../../Components/pagination";
 export type FinancialPositionLine = {
   accountName: string;
   amount: number;
-  isAccumulatedDepreciation?: boolean;
+  // DEFERRED: Accumulated depreciation logic - commented out per configuration alignment
+  // isAccumulatedDepreciation?: boolean;
 };
 
 export type FinancialPositionSection = {
@@ -28,74 +29,58 @@ export type FinancialPositionData = {
   currentLiabilities: FinancialPositionSection;
   longTermLiabilities: FinancialPositionSection;
   totalLiabilities: number;
-  // Equity
-  equity: FinancialPositionSection;
-  totalLiabilitiesAndEquity: number;
+  // REMOVED: Equity module - no equity logic in frontend per requirements
+  // equity: FinancialPositionSection;
+  // totalLiabilitiesAndEquity: number;
 };
 
-// Mock data for demonstration
+// Mock data for demonstration - aligned with seed_core_data.ts COA
 export const mockFinancialPositionData: FinancialPositionData = {
-  companyName: "Hilltop Tours Inc.",
+  companyName: "Company Name", // TODO: Fetch from system_configuration.company_name
   reportTitle: "Statement of Financial Position",
   asOfDate: "As of December 31, 20xx",
   currentAssets: {
     title: "Current Assets",
     items: [
-      { accountName: "Cash on Hand and In Bank", amount: 100.00 },
-      { accountName: "Spareparts Inventory", amount: 100.00 },
-      { accountName: "Diesel Inventory", amount: 100.00 },
-      { accountName: "Tires, Batteries & Lubricants Inventory", amount: 100.00 },
-      { accountName: "Prepaid Expenses", amount: 100.00 },
-      { accountName: "Supplies on Hand", amount: 100.00 },
+      { accountName: "Cash on Hand", amount: 100.00 },
+      { accountName: "Bank Account", amount: 100.00 },
+      { accountName: "E-Wallet", amount: 100.00 },
+      { accountName: "AR - Bus Trip Boundary", amount: 100.00 },
+      { accountName: "AR - Rental Revenue", amount: 100.00 },
     ],
-    subtotal: 600.00,
+    subtotal: 500.00,
   },
   nonCurrentAssets: {
     title: "Non-Current Assets",
     items: [
-      { accountName: "Franchise", amount: 100.00 },
-      { accountName: "Land", amount: 100.00 },
-      { accountName: "Transportation Equipment", amount: 100.00 },
-      { accountName: "Accumulated Depreciation - TE", amount: -50.00, isAccumulatedDepreciation: true },
-      { accountName: "Building / PUB Garage", amount: 100.00 },
-      { accountName: "Accumulated Depreciation - Building", amount: -50.00, isAccumulatedDepreciation: true },
-      { accountName: "Overhead Tank & Diesel Pump", amount: 100.00 },
-      { accountName: "Accumulated Depreciation - Tank & Diesel Pump", amount: -50.00, isAccumulatedDepreciation: true },
-      { accountName: "Miscellaneous Assets", amount: 100.00 },
+      // DEFERRED: Fixed Assets appreciation/depreciation - commented out per configuration
+      // Fixed asset accounts would go here when implemented
+      // { accountName: "Transportation Equipment", amount: 100.00 },
+      // { accountName: "Accumulated Depreciation - TE", amount: -50.00, isAccumulatedDepreciation: true },
     ],
-    subtotal: 450.00,
+    subtotal: 0.00,
   },
-  totalAssets: 1050.00,
+  totalAssets: 500.00,
   currentLiabilities: {
     title: "Current Liabilities",
     items: [
-      { accountName: "Accounts Payable - Trade", amount: 10.00 },
-      { accountName: "SSS & Philhealth Payable", amount: 10.00 },
-      { accountName: "Income Tax Payable", amount: 10.00 },
-      { accountName: "Accrued Interest Payable", amount: 10.00 },
-      { accountName: "Accrued Expenses Payable", amount: 10.00 },
+      { accountName: "Accounts Payable - General", amount: 50.00 },
+      { accountName: "AP - Operational Expenses", amount: 50.00 },
+      { accountName: "AP - Personnel/Salaries", amount: 50.00 },
     ],
-    subtotal: 50.00,
+    subtotal: 150.00,
   },
   longTermLiabilities: {
     title: "Long-term Liabilities",
     items: [
-      { accountName: "Notes Payable - Officers", amount: 150.00 },
-      { accountName: "Advances from Officers", amount: 50.00 },
+      // Long-term liability accounts when applicable
     ],
-    subtotal: 200.00,
+    subtotal: 0.00,
   },
-  totalLiabilities: 250.00,
-  equity: {
-    title: "Equity",
-    items: [
-      { accountName: "Paid Up Capital", amount: 500.00 },
-      { accountName: "Deposit for Capital Stock Subscription", amount: 200.00 },
-      { accountName: "Retained Earnings", amount: 100.00 },
-    ],
-    subtotal: 800.00,
-  },
-  totalLiabilitiesAndEquity: 1050.00,
+  totalLiabilities: 150.00,
+  // REMOVED: Equity section - no equity logic in frontend per requirements
+  // equity: { ... },
+  // totalLiabilitiesAndEquity: 1050.00,
 };
 
 type FinancialPositionReportProps = {
@@ -157,7 +142,8 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
       nonCurrentAssets: { ...data.nonCurrentAssets, items: sortedItems.filter(i => i.section === 'nonCurrentAssets') },
       currentLiabilities: { ...data.currentLiabilities, items: sortedItems.filter(i => i.section === 'currentLiabilities') },
       longTermLiabilities: { ...data.longTermLiabilities, items: sortedItems.filter(i => i.section === 'longTermLiabilities') },
-      equity: { ...data.equity, items: sortedItems.filter(i => i.section === 'equity') }
+      // REMOVED: Equity section - no equity logic in frontend per requirements
+      // equity: { ...data.equity, items: sortedItems.filter(i => i.section === 'equity') }
     };
 
     return reconstructed;
@@ -181,9 +167,12 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
         <td></td>
       </tr>
       {section.items.map((item, index) => (
-        <tr key={`${section.title}-${index}`} className={`line-item ${item.isAccumulatedDepreciation ? 'contra-account' : ''}`}>
+        // DEFERRED: Accumulated depreciation styling - commented out per configuration
+        // Original: className={`line-item ${item.isAccumulatedDepreciation ? 'contra-account' : ''}`}
+        <tr key={`${section.title}-${index}`} className="line-item">
           <td className="account-name indent-1">{item.accountName}</td>
-          <td className={`amount-col ${item.isAccumulatedDepreciation ? 'negative' : ''}`}>
+          {/* DEFERRED: Accumulated depreciation negative styling */}
+          <td className="amount-col">
             {formatCurrency(item.amount)}
           </td>
           <td></td>
@@ -256,9 +245,9 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
               <tr className="section-separator"><td colSpan={3}></td></tr>
               <tr className="empty-row"><td colSpan={3}></td></tr>
 
-              {/* LIABILITIES AND EQUITY Section */}
+              {/* LIABILITIES Section - EQUITY REMOVED per requirements */}
               <tr className="major-section-header">
-                <td className="major-section-title" colSpan={3}>LIABILITIES AND EQUITY</td>
+                <td className="major-section-title" colSpan={3}>LIABILITIES</td>
               </tr>
 
               {/* Empty Row */}
@@ -276,32 +265,27 @@ const FinancialPositionReport: React.FC<FinancialPositionReportProps> = ({
               {/* Empty Row */}
               <tr className="empty-row"><td colSpan={3}></td></tr>
 
-              {/* Equity */}
-              {renderSection(sortedData.equity)}
+              {/* REMOVED: Equity Section - no equity logic in frontend per requirements */}
+              {/* {renderSection(sortedData.equity)} */}
 
-              {/* Empty Row */}
-              <tr className="empty-row"><td colSpan={3}></td></tr>
-
-              {/* Total Liabilities and Equity */}
+              {/* Total Liabilities - EQUITY REMOVED */}
               <tr className="total-row">
-                <td className="total-label">TOTAL LIABILITIES AND EQUITY</td>
+                <td className="total-label">TOTAL LIABILITIES</td>
                 <td></td>
-                <td className="total-amount">{formatCurrency(data.totalLiabilitiesAndEquity)}</td>
+                <td className="total-amount">{formatCurrency(data.totalLiabilities)}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Balance Check */}
+      {/* Balance Check - EQUITY REMOVED, now compares Assets vs Liabilities only */}
       <div className="balance-check">
-        {data.totalAssets === data.totalLiabilitiesAndEquity ? (
-          <span className="balanced">✓ Balanced (Assets = Liabilities + Equity)</span>
-        ) : (
-          <span className="unbalanced">
-            ⚠ Unbalanced: Difference of ₱{formatCurrency(Math.abs(data.totalAssets - data.totalLiabilitiesAndEquity))}
-          </span>
-        )}
+        <span className="balanced">
+          ✓ Total Assets: ₱{formatCurrency(data.totalAssets)} | Total Liabilities: ₱{formatCurrency(data.totalLiabilities)}
+        </span>
+        {/* REMOVED: Equity balance check - no equity logic in frontend per requirements */}
+        {/* Original balance check compared totalAssets === totalLiabilitiesAndEquity */}
       </div>
 
       {/* Pagination - Above Visual Data Analysis */}

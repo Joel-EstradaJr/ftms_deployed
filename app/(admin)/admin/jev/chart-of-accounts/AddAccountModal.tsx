@@ -19,7 +19,7 @@ interface AccountFormData {
   account_name: string;
   normal_balance: 'DEBIT' | 'CREDIT';
   description?: string;
-  custom_suffix?: number;
+  custom_suffix?: string;
 }
 
 interface AddAccountModalProps {
@@ -104,14 +104,17 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({ onClose, onSubmit }) 
         [name]: parseInt(value, 10)
       }));
     } else if (name === 'custom_suffix') {
-      // Real-time validation: only accept 0-999
+      // Real-time validation: only accept 0-999, preserve leading zeros
       if (value === '') {
         setFormData(prev => ({ ...prev, [name]: undefined }));
         setErrors(prev => ({ ...prev, [name]: '' }));
       } else {
+        // Only allow numeric characters, max 3 digits
+        const isValidFormat = /^\d{1,3}$/.test(value);
         const numValue = parseInt(value, 10);
-        if (!isNaN(numValue) && numValue >= 0 && numValue <= 999) {
-          setFormData(prev => ({ ...prev, [name]: numValue }));
+        if (isValidFormat && !isNaN(numValue) && numValue >= 0 && numValue <= 999) {
+          // Store as string to preserve leading zeros (e.g., "035")
+          setFormData(prev => ({ ...prev, [name]: value }));
           setErrors(prev => ({ ...prev, [name]: '' }));
         } else {
           // Show error immediately for invalid input
@@ -156,7 +159,8 @@ const AddAccountModal: React.FC<AddAccountModalProps> = ({ onClose, onSubmit }) 
       }
 
       if (formData.custom_suffix !== undefined) {
-        if (formData.custom_suffix < 0 || formData.custom_suffix > 999) {
+        const suffixNum = parseInt(formData.custom_suffix, 10);
+        if (isNaN(suffixNum) || suffixNum < 0 || suffixNum > 999) {
           newErrors.custom_suffix = 'Suffix must be between 0 and 999';
         }
       }

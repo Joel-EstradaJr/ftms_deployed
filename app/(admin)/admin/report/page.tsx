@@ -1,15 +1,23 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import "../../../styles/report/report.css";
 import "../../../styles/report/financial-reports.css";
 import "../../../styles/components/table.css";
-import JournalEntryReport, { mockJournalTransactions, JournalTransaction } from './journalEntry';
-import IncomeStatementReport, { mockIncomeStatementData, IncomeStatementData } from './incomeStatement';
-import FinancialPositionReport, { mockFinancialPositionData, FinancialPositionData } from './trialBalance';
+import JournalEntryReport from './journalEntry';
+import IncomeStatementReport from './incomeStatement';
+import FinancialPositionReport from './trialBalance';
 import ErrorDisplay from '../../../Components/errordisplay';
 import Loading from '../../../Components/loading';
 import FilterDropdown, { FilterSection } from '../../../Components/filter';
 import ExportButton from '../../../Components/ExportButton';
+import { 
+  reportService, 
+  JournalTransaction, 
+  IncomeStatementData, 
+  FinancialPositionData,
+  defaultIncomeStatementData,
+  defaultFinancialPositionData,
+} from '../../../services/reportService';
 
 const ReportPage = () => {
   const [activeTab, setActiveTab] = useState<'journal' | 'income' | 'position'>('journal');
@@ -18,9 +26,14 @@ const ReportPage = () => {
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
 
   // Data states for each report
-  const [journalData] = useState<JournalTransaction[]>(mockJournalTransactions);
-  const [incomeStatementData] = useState<IncomeStatementData>(mockIncomeStatementData);
-  const [financialPositionData] = useState<FinancialPositionData>(mockFinancialPositionData);
+  const [journalData, setJournalData] = useState<JournalTransaction[]>([]);
+  const [journalTotal, setJournalTotal] = useState(0);
+  const [journalSummary, setJournalSummary] = useState({ totalDebit: 0, totalCredit: 0, transactionCount: 0 });
+  const [incomeStatementData, setIncomeStatementData] = useState<IncomeStatementData>(defaultIncomeStatementData);
+  const [financialPositionData, setFinancialPositionData] = useState<FinancialPositionData>(defaultFinancialPositionData);
+
+  // Scenario options from backend
+  const [scenarioOptions, setScenarioOptions] = useState<string[]>([]);
 
   // Filter state
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
@@ -37,7 +50,121 @@ const ReportPage = () => {
   const [positionCurrentPage, setPositionCurrentPage] = useState(1);
   const [positionPageSize, setPositionPageSize] = useState(10);
 
-  // Filter sections configuration
+  // Fetch scenario options on mount
+  useEffect(() => {
+    const fetchScenarios = async () => {
+      try {
+        const response = await reportService.getScenarioOptions();
+        if (response.success && response.data) {
+          setScenarioOptions(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch scenario options:', err);
+      }
+    };
+    fetchScenarios();
+  }, []);
+
+  // Fetch Journal Entry data
+  const fetchJournalData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const filters: any = {
+        page: currentPage,
+        limit: pageSize,
+      };
+
+      if (activeFilters.dateRange?.from) {
+        filters.dateFrom = activeFilters.dateRange.from;
+      }
+      if (activeFilters.dateRange?.to) {
+        filters.dateTo = activeFilters.dateRange.to;
+      }
+      if (activeFilters.scenario?.length > 0) {
+        filters.scenario = activeFilters.scenario;
+      }
+      if (activeFilters.accountType?.length > 0) {
+        filters.accountType = activeFilters.accountType;
+      }
+      if (activeFilters.amountRange?.min) {
+        filters.amountMin = parseFloat(activeFilters.amountRange.min);
+      }
+      if (activeFilters.amountRange?.max) {
+        filters.amountMax = parseFloat(activeFilters.amountRange.max);
+      }
+
+      const response = await reportService.getJournalEntryReport(filters);
+      
+      if (response.success && response.data) {
+        setJournalData(response.data.transactions);
+        setJournalTotal(response.data.pagination.total);
+        setJournalSummary(response.data.summary);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch journal data:', err);
+      setError(err.message || 'Failed to fetch journal entries');
+      setErrorCode(500);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, activeFilters]);
+
+  // Fetch Income Statement data
+  const fetchIncomeData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const dateFrom = activeFilters.dateRange?.from;
+      const dateTo = activeFilters.dateRange?.to;
+
+      const response = await reportService.getIncomeStatementReport(dateFrom, dateTo);
+      
+      if (response.success && response.data) {
+        setIncomeStatementData(response.data);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch income statement:', err);
+      setError(err.message || 'Failed to fetch income statement');
+      setErrorCode(500);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeFilters]);
+
+  // Fetch Financial Position data
+  const fetchPositionData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const asOfDate = activeFilters.dateRange?.to;
+
+      const response = await reportService.getFinancialPositionReport(asOfDate);
+      
+      if (response.success && response.data) {
+        setFinancialPositionData(response.data);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch financial position:', err);
+      setError(err.message || 'Failed to fetch financial position');
+      setErrorCode(500);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeFilters]);
+
+  // Fetch data based on active tab
+  useEffect(() => {
+    if (activeTab === 'journal') {
+      fetchJournalData();
+    } else if (activeTab === 'income') {
+      fetchIncomeData();
+    } else if (activeTab === 'position') {
+      fetchPositionData();
+    }
+  }, [activeTab, fetchJournalData, fetchIncomeData, fetchPositionData]);
+
+  // Filter sections configuration - use dynamic scenarios from backend
   const filterSections: FilterSection[] = useMemo(() => [
     {
       id: 'dateRange',
@@ -48,20 +175,18 @@ const ReportPage = () => {
       id: 'scenario',
       title: 'Scenario',
       type: 'checkbox',
-      options: [
-        { id: 'boundary-normal', label: 'Boundary Trip - Normal' },
-        { id: 'boundary-under', label: 'Boundary Trip - Underperformance' },
-        { id: 'convert-deficit', label: 'Convert deficit to loans' }
-      ]
+      options: scenarioOptions.map(s => ({ id: s, label: s }))
     },
     {
       id: 'accountType',
       title: 'Account Type',
       type: 'checkbox',
       options: [
-        { id: 'cash', label: 'Cash Accounts' },
-        { id: 'expense', label: 'Expenses' },
+        { id: 'asset', label: 'Assets' },
+        { id: 'liability', label: 'Liabilities' },
         { id: 'revenue', label: 'Revenue' },
+        { id: 'expense', label: 'Expenses' },
+        { id: 'cash', label: 'Cash Accounts' },
         { id: 'receivable', label: 'Receivables' }
       ]
     },
@@ -70,74 +195,10 @@ const ReportPage = () => {
       title: 'Amount Range (₱)',
       type: 'numberRange'
     }
-  ], []);
+  ], [scenarioOptions]);
 
-  // Apply filters to journal data
-  const filteredJournalData = useMemo(() => {
-    let filtered = [...journalData];
-
-    // Filter by date range
-    if (activeFilters.dateRange?.from || activeFilters.dateRange?.to) {
-      filtered = filtered.filter(txn => {
-        const txnDate = txn.lines[0]?.date;
-        if (!txnDate) return true;
-        // Simple date comparison (would need proper date parsing in production)
-        return true; // Placeholder - dates in mock data are like "Jan 15"
-      });
-    }
-
-    // Filter by scenario
-    if (activeFilters.scenario?.length > 0) {
-      filtered = filtered.filter(txn => {
-        const scenario = txn.lines[0]?.scenario?.toLowerCase() || '';
-        return activeFilters.scenario.some((s: string) => {
-          if (s === 'boundary-normal') return scenario.includes('normal');
-          if (s === 'boundary-under') return scenario.includes('underperformance');
-          if (s === 'convert-deficit') return scenario.includes('convert') || scenario.includes('deficit');
-          return false;
-        });
-      });
-    }
-
-    // Filter by account type
-    if (activeFilters.accountType?.length > 0) {
-      filtered = filtered.filter(txn => {
-        return txn.lines.some(line => {
-          const accountName = line.accountName.toLowerCase();
-          const accountCode = line.accountCode;
-          return activeFilters.accountType.some((type: string) => {
-            if (type === 'cash') return accountName.includes('cash') || accountCode.startsWith('10');
-            if (type === 'expense') return accountName.includes('expense') || accountCode.startsWith('50');
-            if (type === 'revenue') return accountName.includes('revenue') || accountCode.startsWith('40');
-            if (type === 'receivable') return accountName.includes('receivable') || accountCode.startsWith('11');
-            return false;
-          });
-        });
-      });
-    }
-
-    // Filter by amount range
-    if (activeFilters.amountRange?.min || activeFilters.amountRange?.max) {
-      const min = parseFloat(activeFilters.amountRange.min) || 0;
-      const max = parseFloat(activeFilters.amountRange.max) || Infinity;
-      filtered = filtered.filter(txn => {
-        return txn.lines.some(line => {
-          const amount = line.debit || line.credit || 0;
-          return amount >= min && amount <= max;
-        });
-      });
-    }
-
-    return filtered;
-  }, [journalData, activeFilters]);
-
-  // Paginated data
-  const paginatedJournalData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredJournalData.slice(startIndex, startIndex + pageSize);
-  }, [filteredJournalData, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredJournalData.length / pageSize);
+  // Calculate total pages for Journal (now using API pagination)
+  const totalPages = Math.ceil(journalTotal / pageSize);
 
   // Flatten Income Statement data for pagination
   const flattenedIncomeData = useMemo(() => {
@@ -173,7 +234,7 @@ const ReportPage = () => {
 
   const incomeTotalPages = Math.ceil(flattenedIncomeData.length / incomePageSize);
 
-  // Flatten Financial Position data for pagination
+  // Flatten Financial Position data for pagination - EQUITY REMOVED per requirements
   const flattenedPositionData = useMemo(() => {
     const items: any[] = [];
     
@@ -197,10 +258,10 @@ const ReportPage = () => {
       items.push({ ...item, section: 'longTermLiabilities' });
     });
     
-    // Equity
-    financialPositionData.equity.items.forEach(item => {
-      items.push({ ...item, section: 'equity' });
-    });
+    // REMOVED: Equity section - no equity logic in frontend per requirements
+    // financialPositionData.equity.items.forEach(item => {
+    //   items.push({ ...item, section: 'equity' });
+    // });
     
     return items;
   }, [financialPositionData]);
@@ -215,7 +276,9 @@ const ReportPage = () => {
   // Handle filter changes
   const handleFilterApply = (filters: Record<string, any>) => {
     setActiveFilters(filters);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
+    setIncomeCurrentPage(1);
+    setPositionCurrentPage(1);
   };
 
   // Handle page change
@@ -233,10 +296,10 @@ const ReportPage = () => {
   const getExportData = () => {
     if (activeTab === 'journal') {
       const flatData: any[] = [];
-      filteredJournalData.forEach((txn, index) => {
+      journalData.forEach((txn, index) => {
         txn.lines.forEach(line => {
           flatData.push({
-            transaction: `TXN-${index + 1}`,
+            transaction: txn.id,
             date: line.date || '',
             scenario: line.scenario || '',
             accountCode: line.accountCode,
@@ -321,6 +384,30 @@ const ReportPage = () => {
 
       flatData.push({ category: 'Assets', account: 'Total Assets', amount: '', total: data.totalAssets });
 
+      // Current Liabilities
+      data.currentLiabilities.items.forEach(item => {
+        flatData.push({
+          category: 'Current Liabilities',
+          account: item.accountName,
+          amount: item.amount,
+          total: ''
+        });
+      });
+      flatData.push({ category: 'Current Liabilities', account: 'Total Current Liabilities', amount: '', total: data.currentLiabilities.subtotal });
+
+      // Long-term Liabilities
+      data.longTermLiabilities.items.forEach(item => {
+        flatData.push({
+          category: 'Long-term Liabilities',
+          account: item.accountName,
+          amount: item.amount,
+          total: ''
+        });
+      });
+      flatData.push({ category: 'Long-term Liabilities', account: 'Total Long-term Liabilities', amount: '', total: data.longTermLiabilities.subtotal });
+
+      flatData.push({ category: 'Liabilities', account: 'Total Liabilities', amount: '', total: data.totalLiabilities });
+
       return flatData;
     }
 
@@ -390,6 +477,9 @@ const ReportPage = () => {
           onRetry={async () => {
             setError(null);
             setErrorCode(null);
+            if (activeTab === 'journal') fetchJournalData();
+            else if (activeTab === 'income') fetchIncomeData();
+            else if (activeTab === 'position') fetchPositionData();
           }}
         />
       </div>
@@ -453,7 +543,7 @@ const ReportPage = () => {
             <div className="reportTabContent">
               <div className="report-info-bar">
                 <span className="transaction-count">
-                  Showing {paginatedJournalData.length} of {filteredJournalData.length} transactions
+                  Showing {journalData.length} of {journalTotal} transactions
                   {Object.values(activeFilters).some(v =>
                     (Array.isArray(v) && v.length > 0) ||
                     (typeof v === 'object' && v !== null && (v.from || v.to || v.min || v.max)) ||
@@ -474,8 +564,8 @@ const ReportPage = () => {
               </div>
 
               <JournalEntryReport
-                transactions={paginatedJournalData}
-                allTransactions={filteredJournalData}
+                transactions={journalData}
+                allTransactions={journalData}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 pageSize={pageSize}

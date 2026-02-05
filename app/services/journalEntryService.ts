@@ -48,55 +48,65 @@ interface JournalEntryDetailBackendResponse {
  * Transform backend journal entry data to frontend format
  */
 function transformJournalEntry(backendData: any): JournalEntry {
+  // Backend returns 'id' as integer, frontend uses 'journal_entry_id' as string
+  const entryId = String(backendData.id || backendData.journal_entry_id || '');
+
+  // Backend returns 'lines', frontend uses 'journal_lines'
+  const lines = backendData.lines || backendData.journal_lines || [];
+
   return {
-    journal_entry_id: backendData.journal_entry_id,
+    journal_entry_id: entryId,
     code: backendData.code,
     journal_number: backendData.code, // Legacy field
     date: backendData.date,
     transaction_date: backendData.date, // Legacy field
-    posting_date: backendData.posting_date,
+    posting_date: backendData.approved_at || backendData.posting_date,
     reference: backendData.reference,
     reference_number: backendData.reference, // Legacy field
     description: backendData.description,
     entry_type: backendData.entry_type as EntryType,
     status: backendData.status as JournalStatus,
-    total_debit: backendData.total_debit,
-    total_credit: backendData.total_credit,
-    is_balanced: backendData.is_balanced ?? Math.abs(backendData.total_debit - backendData.total_credit) < 0.01,
+    total_debit: typeof backendData.total_debit === 'number' ? backendData.total_debit : parseFloat(backendData.total_debit || '0'),
+    total_credit: typeof backendData.total_credit === 'number' ? backendData.total_credit : parseFloat(backendData.total_credit || '0'),
+    is_balanced: backendData.is_balanced ?? Math.abs((backendData.total_debit || 0) - (backendData.total_credit || 0)) < 0.01,
     source_module: backendData.source_module,
     source_id: backendData.source_id,
     reversed_by_id: backendData.reversed_by_id,
     created_at: backendData.created_at,
     created_by: backendData.created_by,
-    posted_at: backendData.posted_at,
-    posted_by: backendData.posted_by,
+    posted_at: backendData.approved_at || backendData.posted_at,
+    posted_by: backendData.approved_by || backendData.posted_by,
     updated_at: backendData.updated_at,
     updated_by: backendData.updated_by,
     attachments: backendData.attachments || [],
-    journal_lines: (backendData.journal_lines || []).map((line: any): JournalEntryLine => ({
-      line_id: line.line_id,
-      journal_entry_id: line.journal_entry_id,
-      account_id: line.account_id,
-      account_code: line.account_code || line.account?.account_code,
-      account_name: line.account_name || line.account?.account_name,
-      account: line.account ? {
-        account_id: line.account.account_id,
-        account_code: line.account.account_code,
-        account_name: line.account.account_name,
-        account_type: line.account.account_type,
-        normal_balance: line.account.normal_balance,
-        is_active: line.account.is_active,
-        is_system_account: false,
-      } : undefined,
-      line_number: line.line_number,
-      description: line.description || line.line_description,
-      debit: line.debit ?? line.debit_amount ?? 0,
-      credit: line.credit ?? line.credit_amount ?? 0,
-      debit_amount: line.debit_amount ?? line.debit ?? 0,
-      credit_amount: line.credit_amount ?? line.credit ?? 0,
-    })),
+    journal_lines: lines.map((line: any, index: number): JournalEntryLine => {
+      const lineId = String(line.id || line.line_id || `line-${index}`);
+      return {
+        line_id: lineId,
+        journal_entry_id: entryId,
+        account_id: String(line.account_id || ''),
+        account_code: line.account_code || line.account?.account_code,
+        account_name: line.account_name || line.account?.account_name,
+        account: line.account ? {
+          account_id: String(line.account.id || line.account.account_id || ''),
+          account_code: line.account.account_code,
+          account_name: line.account.account_name,
+          account_type: line.account.account_type,
+          normal_balance: line.account.normal_balance,
+          is_active: line.account.is_active ?? true,
+          is_system_account: false,
+        } : undefined,
+        line_number: line.line_number ?? (index + 1),
+        description: line.description || line.line_description || '',
+        debit: line.debit ?? line.debit_amount ?? 0,
+        credit: line.credit ?? line.credit_amount ?? 0,
+        debit_amount: line.debit ?? line.debit_amount ?? 0,
+        credit_amount: line.credit ?? line.credit_amount ?? 0,
+      };
+    }),
   };
 }
+
 
 /**
  * Fetch all journal entries with filtering and pagination
@@ -121,7 +131,7 @@ export async function fetchJournalEntries(
     if (params.includeArchived) queryParams.includeArchived = params.includeArchived;
 
     const response = await api.get<JournalEntriesBackendResponse>(
-      '/api/v1/admin/journal-entries',
+      '/api/v1/admin/journal-entry',
       queryParams
     );
 
@@ -148,7 +158,7 @@ export async function fetchJournalEntries(
 export async function fetchJournalEntryById(id: string | number): Promise<JournalEntry> {
   try {
     const response = await api.get<JournalEntryDetailBackendResponse>(
-      `/api/v1/admin/journal-entries/${id}`
+      `/api/v1/admin/journal-entry/${id}`
     );
 
     if (!response.success || !response.data) {
@@ -169,7 +179,7 @@ export async function fetchJournalEntryById(id: string | number): Promise<Journa
 export async function createJournalEntry(data: any): Promise<JournalEntry> {
   try {
     const response = await api.post<JournalEntryDetailBackendResponse>(
-      '/api/v1/admin/journal-entries',
+      '/api/v1/admin/journal-entry',
       data
     );
 
@@ -189,8 +199,8 @@ export async function createJournalEntry(data: any): Promise<JournalEntry> {
  */
 export async function updateJournalEntry(id: string | number, data: any): Promise<JournalEntry> {
   try {
-    const response = await api.put<JournalEntryDetailBackendResponse>(
-      `/api/v1/admin/journal-entries/${id}`,
+    const response = await api.patch<JournalEntryDetailBackendResponse>(
+      `/api/v1/admin/journal-entry/${id}`,
       data
     );
 
@@ -211,7 +221,7 @@ export async function updateJournalEntry(id: string | number, data: any): Promis
 export async function deleteJournalEntry(id: string | number, reason: string): Promise<void> {
   try {
     const response = await api.delete<ApiResponse<void>>(
-      `/api/v1/admin/journal-entries/${id}`,
+      `/api/v1/admin/journal-entry/${id}`,
       { reason }
     );
 
@@ -222,4 +232,120 @@ export async function deleteJournalEntry(id: string | number, reason: string): P
     console.error('Error deleting journal entry:', error);
     throw new Error(error.message || 'Failed to delete journal entry');
   }
+}
+
+/**
+ * Post a draft journal entry (change status to POSTED)
+ */
+export async function postJournalEntry(id: string | number): Promise<JournalEntry> {
+  try {
+    const response = await api.post<JournalEntryDetailBackendResponse>(
+      `/api/v1/admin/journal-entry/${id}/post`
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error('Failed to post journal entry');
+    }
+
+    return transformJournalEntry(response.data);
+  } catch (error: any) {
+    console.error('Error posting journal entry:', error);
+    throw new Error(error.message || 'Failed to post journal entry');
+  }
+}
+
+/**
+ * Create an auto-generated journal entry (used for manual entries too)
+ * Routes manual entries through the /auto endpoint with module: "MANUAL"
+ */
+export async function createAutoJournalEntry(data: {
+  module: string;
+  reference_id: string;
+  description: string;
+  date: string;
+  entries: Array<{
+    account_code: string;
+    debit: number;
+    credit: number;
+    description?: string;
+  }>;
+}): Promise<JournalEntry> {
+  try {
+    const response = await api.post<JournalEntryDetailBackendResponse>(
+      '/api/v1/admin/journal-entry/auto',
+      data
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error('Failed to create journal entry');
+    }
+
+    return transformJournalEntry(response.data);
+  } catch (error: any) {
+    console.error('Error creating journal entry:', error);
+    throw new Error(error.message || 'Failed to create journal entry');
+  }
+}
+
+/**
+ * Create a reversal journal entry
+ */
+export async function createReversalEntry(
+  reversalOfId: string | number,
+  reason: string,
+  date?: string
+): Promise<JournalEntry> {
+  try {
+    const response = await api.post<JournalEntryDetailBackendResponse>(
+      '/api/v1/admin/journal-entry/reversal',
+      {
+        reversal_of_id: typeof reversalOfId === 'string' ? parseInt(reversalOfId) : reversalOfId,
+        reason,
+        date: date || new Date().toISOString().split('T')[0],
+      }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error('Failed to create reversal entry');
+    }
+
+    return transformJournalEntry(response.data);
+  } catch (error: any) {
+    console.error('Error creating reversal entry:', error);
+    throw new Error(error.message || 'Failed to create reversal entry');
+  }
+}
+
+/**
+ * Transform frontend form data to backend API payload format
+ * Used by EditJournalEntryModal to properly format update requests
+ */
+export function transformUpdatePayload(
+  formData: any,
+  accounts: Array<{ account_id: string; account_code: string }>
+): {
+  description?: string;
+  date?: string;
+  entries?: Array<{
+    account_code: string;
+    debit: number;
+    credit: number;
+    description?: string;
+  }>;
+} {
+  const getAccountCode = (accountId: string): string => {
+    const account = accounts.find(a => a.account_id === accountId);
+    return account?.account_code || accountId;
+  };
+
+  return {
+    description: formData.description,
+    date: formData.transaction_date || formData.date,
+    entries: formData.journal_lines?.map((line: any) => ({
+      account_code: getAccountCode(line.account_id),
+      debit: line.debit_amount ?? line.debit ?? 0,
+      credit: line.credit_amount ?? line.credit ?? 0,
+      description: line.description,
+    })),
+  };
 }

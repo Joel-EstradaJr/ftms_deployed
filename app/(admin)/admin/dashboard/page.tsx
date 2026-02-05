@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import PieChart from "../../../Components/pieChart";
 import ExportConfirmationModal from "../../../Components/ExportConfirmationModal";
 import ErrorDisplay from '../../../Components/errordisplay';
@@ -7,6 +9,9 @@ import "../../../styles/dashboard/dashboard.css";
 import Loading from '../../../Components/loading';
 import { ModernLineChart, ModernDoughnutChart } from "../../../Components/ModernCharts";
 import EmotionSettingsModal from "../../../Components/dashboardEmotion";
+import PredictiveAnalyticsCard, { PredictiveDataType } from "../../../Components/PredictiveAnalyticsCard";
+import { useDashboardData } from "../../../hooks/useDashboardData";
+import { addPDFHeader } from "../../../utils/PDFHeader";
 
 interface DashboardData {
   revenue: {
@@ -27,7 +32,7 @@ interface EmotionSettings {
   excellent: number;
 }
 
-// Mock data stored in memory - modify these values to test different scenarios
+// Mock data stored in memory - used as fallback when backend is unavailable
 const MOCK_REVENUE_CATEGORIES = [
   { id: "1", name: "Sales", baseAmount: 75000 },
   { id: "2", name: "Services", baseAmount: 45000 },
@@ -64,13 +69,13 @@ const getDateMultiplier = (dateFilter: string, dateFrom: string, dateTo: string)
   }
 };
 
-// Generate dashboard data based on filters
+// Generate dashboard data based on filters (MOCK FALLBACK)
 const generateDashboardData = (dateFilter: string, dateFrom: string, dateTo: string): DashboardData => {
   const multiplier = getDateMultiplier(dateFilter, dateFrom, dateTo);
-  
+
   // Add slight random variation to make it more realistic
   const randomFactor = () => 0.9 + Math.random() * 0.2; // 90% to 110%
-  
+
   const revenueByCategory: Record<string, { name: string; amount: number }> = {};
   MOCK_REVENUE_CATEGORIES.forEach((cat) => {
     revenueByCategory[cat.name] = {
@@ -100,8 +105,6 @@ const generateDashboardData = (dateFilter: string, dateFrom: string, dateTo: str
 
 const DashboardPage = () => {
   const today = new Date().toISOString().split('T')[0];
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -118,6 +121,39 @@ const DashboardPage = () => {
     good: 50000,
     excellent: 100000
   });
+  const [predictiveDataType, setPredictiveDataType] = useState<PredictiveDataType>('both');
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  // Try to use API data with React Query (with auto-refetch every 30s)
+  const { data: apiData, isLoading: apiLoading, isError: apiError } = useDashboardData(
+    dateFilter,
+    dateFrom,
+    dateTo
+  );
+
+  // Update dashboard data from API or fallback to mock
+  useEffect(() => {
+    if (apiData && !apiError) {
+      // Use API data
+      setDashboardData({
+        revenue: {
+          total: apiData.revenue.total,
+          byCategory: apiData.revenue.byCategory
+        },
+        expense: {
+          total: apiData.expense.total,
+          byCategory: apiData.expense.byCategory
+        },
+        profit: apiData.profit
+      });
+      setUsingMockData(false);
+    } else if (apiError || (!apiLoading && !apiData)) {
+      // Fallback to mock data
+      const mockData = generateDashboardData(dateFilter, dateFrom, dateTo);
+      setDashboardData(mockData);
+      setUsingMockData(true);
+    }
+  }, [apiData, apiError, apiLoading, dateFilter, dateFrom, dateTo]);
 
   const getProfitEmoji = (profit: number) => {
     if (profit < emotionSettings.veryPoor) return "/cry.webp";
@@ -154,120 +190,208 @@ const DashboardPage = () => {
     }
   }, []);
 
-  // Load dashboard data (pure frontend - no API calls)
-  const loadDashboardData = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Simulate slight delay for realistic UX
-      setTimeout(() => {
-        const data = generateDashboardData(dateFilter, dateFrom, dateTo);
-        setDashboardData(data);
-        setLoading(false);
-      }, 300);
-    } catch (err) {
-      console.error("Error generating dashboard data:", err);
-      setError("Failed to load dashboard data");
-      setLoading(false);
-    }
-  }, [dateFilter, dateFrom, dateTo]);
-
-  // Initial load
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
-
-  // Optional: Auto-refresh every 30 seconds (useful for demo)
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      loadDashboardData();
-    }, 30000);
-    
-    return () => clearInterval(intervalId);
-  }, [loadDashboardData]);
-
   const generateFileName = () => {
     const now = new Date();
     const timeStamp = now.toISOString().replace(/[:.]/g, '-').split('T')[1].slice(0, 8);
     const dateStamp = now.toISOString().split('T')[0];
-    
+
     let fileName = 'dashboard_report';
-    
+
     if (dateFilter) {
       fileName += `_${dateFilter.toLowerCase()}`;
     }
-    
+
     if (dateFilter === 'Custom' && dateFrom && dateTo) {
       fileName += `_${dateFrom}_to_${dateTo}`;
     }
-    
+
     fileName += `_${dateStamp}_${timeStamp}`;
-    
-    return `${fileName}.csv`;
+
+    return `${fileName}.pdf`;
   };
 
-  // Frontend-only CSV export
-  const handleExport = () => {
+  // Frontend-only PDF export
+  const handleExport = async () => {
     try {
       const fileName = generateFileName();
-      
-      // Build CSV content
-      let csv = "Financial Dashboard Report\n";
-      csv += `Generated: ${new Date().toLocaleString()}\n`;
-      csv += `Filter: ${dateFilter || 'All Time'}\n`;
-      
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+
+      // Helper to format currency (use PHP instead of ₱ for Helvetica compatibility)
+      const formatCurrency = (amount: number) => `PHP ${amount.toLocaleString()}`;
+
+      // Add company header
+      let yPos = await addPDFHeader(doc);
+
+      // Generated date (small, italic)
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 120);
+      const dateStr = new Date().toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(`Generated: ${dateStr}`, margin, yPos);
+      yPos += 4;
+
+      // Filter info
+      let filterText = `Filter: ${dateFilter || 'All Time'}`;
       if (dateFilter === 'Custom' && dateFrom && dateTo) {
-        csv += `Date Range: ${dateFrom} to ${dateTo}\n`;
+        filterText += ` (${dateFrom} to ${dateTo})`;
       }
-      
-      csv += "\n";
-      
-      // Revenue section
-      csv += "REVENUE BREAKDOWN\n";
-      csv += "Category,Amount\n";
-      Object.values(dashboardData.revenue.byCategory).forEach((cat) => {
-        csv += `"${cat.name}","₱${cat.amount.toLocaleString()}"\n`;
+      doc.text(filterText, margin, yPos);
+      yPos += 10;
+
+      // Report title
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(31, 41, 55);
+      doc.text('Financial Dashboard Report', margin, yPos);
+      yPos += 10;
+
+      // Financial Summary Section
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('Financial Summary', margin, yPos);
+      yPos += 4;
+
+      const profitMargin = dashboardData.revenue.total > 0
+        ? ((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(2)
+        : '0.00';
+
+      const summaryData = [
+        ['Total Revenue', formatCurrency(dashboardData.revenue.total)],
+        ['Total Expenses', formatCurrency(dashboardData.expense.total)],
+        ['Net Profit', formatCurrency(dashboardData.profit)],
+        ['Profit Margin', `${profitMargin}%`],
+      ];
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        styles: {
+          fontSize: 10,
+          font: 'helvetica',
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [17, 24, 39],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold' },
+          1: { halign: 'right' },
+        },
+        margin: { left: margin, right: margin },
       });
-      csv += `"Total Revenue","₱${dashboardData.revenue.total.toLocaleString()}"\n`;
-      csv += "\n";
-      
-      // Expense section
-      csv += "EXPENSE BREAKDOWN\n";
-      csv += "Category,Amount\n";
-      Object.values(dashboardData.expense.byCategory).forEach((cat) => {
-        csv += `"${cat.name}","₱${cat.amount.toLocaleString()}"\n`;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+
+      // Revenue Breakdown Section
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Revenue Breakdown', margin, yPos);
+      yPos += 4;
+
+      const revenueData = Object.values(dashboardData.revenue.byCategory).map((cat) => [
+        cat.name,
+        formatCurrency(cat.amount)
+      ]);
+      revenueData.push(['Total', formatCurrency(dashboardData.revenue.total)]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Category', 'Amount']],
+        body: revenueData,
+        styles: {
+          fontSize: 10,
+          font: 'helvetica',
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [34, 197, 94],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        columnStyles: {
+          1: { halign: 'right' },
+        },
+        margin: { left: margin, right: margin },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.row.index === revenueData.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [240, 253, 244];
+          }
+        },
       });
-      csv += `"Total Expenses","₱${dashboardData.expense.total.toLocaleString()}"\n`;
-      csv += "\n";
-      
-      // Summary
-      csv += "FINANCIAL SUMMARY\n";
-      csv += "Metric,Value\n";
-      csv += `"Total Revenue","₱${dashboardData.revenue.total.toLocaleString()}"\n`;
-      csv += `"Total Expenses","₱${dashboardData.expense.total.toLocaleString()}"\n`;
-      csv += `"Net Profit","₱${dashboardData.profit.toLocaleString()}"\n`;
-      csv += `"Profit Margin","${((dashboardData.profit / dashboardData.revenue.total) * 100).toFixed(2)}%"\n`;
-      
-      // Create and trigger download
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 100);
-      
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+
+      // Expense Breakdown Section
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Expense Breakdown', margin, yPos);
+      yPos += 4;
+
+      const expenseData = Object.values(dashboardData.expense.byCategory).map((cat) => [
+        cat.name,
+        formatCurrency(cat.amount)
+      ]);
+      expenseData.push(['Total', formatCurrency(dashboardData.expense.total)]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Category', 'Amount']],
+        body: expenseData,
+        styles: {
+          fontSize: 10,
+          font: 'helvetica',
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [239, 68, 68],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        columnStyles: {
+          1: { halign: 'right' },
+        },
+        margin: { left: margin, right: margin },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.row.index === expenseData.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [254, 242, 242];
+          }
+        },
+      });
+
+      // Footer
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.setFillColor(249, 250, 251);
+      doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(156, 163, 175);
+      doc.text('Generated by FTMS Dashboard Module', margin, pageHeight - 7);
+
+      // Save the PDF
+      doc.save(fileName);
+
       setIsExportModalOpen(false);
-      
+
       console.log('✅ Dashboard exported successfully:', fileName);
     } catch (err) {
       console.error('❌ Export failed:', err);
@@ -275,22 +399,25 @@ const DashboardPage = () => {
     }
   };
 
-  if (error) {
+
+
+  if (apiError && !dashboardData.profit) {
     return (
       <div className="card">
         <h1 className="title">Dashboard</h1>
         <ErrorDisplay
           errorCode={503}
           onRetry={() => {
-            setError(null);
-            loadDashboardData();
+            // React Query will auto-retry, but we show mock data as fallback
+            const mockData = generateDashboardData(dateFilter, dateFrom, dateTo);
+            setDashboardData(mockData);
           }}
         />
       </div>
     );
   }
 
-  if (loading) {
+  if (apiLoading && !dashboardData.profit) {
     return (
       <div className="card">
         <h1 className="title">Dashboard</h1>
@@ -298,7 +425,7 @@ const DashboardPage = () => {
       </div>
     );
   }
-  
+
   return (
     <>
       <div className="dashboardPage">
@@ -353,12 +480,39 @@ const DashboardPage = () => {
                 </div>
               )}
             </div>
+            {/* Predictive Analytics Toggle */}
+            <div className="predictive_toggle">
+              <label>Forecast:</label>
+              <div className="toggle_buttons">
+                <button
+                  className={predictiveDataType === 'revenue' ? 'active revenue' : ''}
+                  onClick={() => setPredictiveDataType('revenue')}
+                >
+                  Revenue
+                </button>
+                <button
+                  className={predictiveDataType === 'expense' ? 'active expense' : ''}
+                  onClick={() => setPredictiveDataType('expense')}
+                >
+                  Expenses
+                </button>
+                <button
+                  className={predictiveDataType === 'both' ? 'active both' : ''}
+                  onClick={() => setPredictiveDataType('both')}
+                >
+                  Both
+                </button>
+              </div>
+            </div>
             <div className="dashboard_exportButton">
               <button onClick={() => setIsExportModalOpen(true)}>
                 <i className="ri-download-line" /> Export Report
               </button>
             </div>
           </div>
+
+          {/* Predictive Analytics Section */}
+          <PredictiveAnalyticsCard dataType={predictiveDataType} />
 
           {/* Main Data Container */}
           <div className="dataContainer">
@@ -469,7 +623,7 @@ const DashboardPage = () => {
                         <h3>Performance Status</h3>
                       </div>
                     </div>
-                    <button 
+                    <button
                       className="three-dots-btn"
                       onClick={() => setIsEmotionModalOpen(true)}
                       aria-label="Configure thresholds"
@@ -494,15 +648,6 @@ const DashboardPage = () => {
             </div>
 
             <div className="graphSection">
-              {/* Revenue Trend Chart */}
-              <div className="graphContainer">
-                <div className="title">
-                  <h2>Revenue Trend</h2>
-                </div>
-                <div className="chartWrapper">
-                  <ModernLineChart />
-                </div>
-              </div>
 
               {/* Financial Breakdown */}
               <div className="graphContainer">
@@ -510,7 +655,7 @@ const DashboardPage = () => {
                   <h2>Financial Breakdown</h2>
                 </div>
                 <div className="pieChartContainer">
-                  <ModernDoughnutChart 
+                  <ModernDoughnutChart
                     revenueData={Object.fromEntries(
                       Object.entries(dashboardData.revenue.byCategory).map(([key, value]) => [key, value.amount])
                     )}
@@ -522,16 +667,18 @@ const DashboardPage = () => {
               </div>
             </div>
           </div>
+
+
         </div>
       </div>
-      
+
       <EmotionSettingsModal
         isOpen={isEmotionModalOpen}
         onClose={() => setIsEmotionModalOpen(false)}
         onSave={handleEmotionSave}
         currentSettings={emotionSettings}
       />
-      
+
       <ExportConfirmationModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}

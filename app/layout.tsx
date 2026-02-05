@@ -4,10 +4,12 @@ import "./globals.css";
 //@ts-ignore
 import './styles/general/index.css';
 import { usePathname } from 'next/navigation';
+import { QueryProvider } from './lib/queryClient';
+import { AuthProvider } from './hooks/useAuth';
 
 
 // Root Layout Component
-export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
+export default function RootLayout({ children, }: Readonly<{ children: React.ReactNode; }>) {
   const pathname = usePathname();
   const isRoleSelectionPage = pathname === '/';
 
@@ -18,10 +20,10 @@ export default function RootLayout({children,}: Readonly<{children: React.ReactN
         <link rel="icon" href="/agilaLogo.png" />
 
         {/* Include required CSS */}
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.css"/>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"/>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.min.css"/>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.1/dist/bootstrap-table.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-resizable-columns@0.2.3/dist/jquery.resizableColumns.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.24.1/dist/bootstrap-table.min.css" />
 
         {/* Include required JS */}
         <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
@@ -31,17 +33,21 @@ export default function RootLayout({children,}: Readonly<{children: React.ReactN
       </head>
 
       <body>
-        {isRoleSelectionPage ? (
-          // Role selection page without sidebar/topbar
-          <div className="role-selection-wrapper">
-            {children}
-          </div>
-        ) : (
-          // Regular app pages with layout - this will be overridden by route group layouts
-          <div>
-            {children}
-          </div>
-        )}
+        <QueryProvider>
+          <AuthProvider>
+            {isRoleSelectionPage ? (
+              // Role selection page without sidebar/topbar
+              <div className="role-selection-wrapper">
+                {children}
+              </div>
+            ) : (
+              // Regular app pages with layout - this will be overridden by route group layouts
+              <div>
+                {children}
+              </div>
+            )}
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

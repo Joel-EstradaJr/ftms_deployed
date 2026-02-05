@@ -17,6 +17,7 @@ export interface BudgetItem {
 }
 
 export interface BudgetRequest {
+  id?: number;
   request_id: string;
   title: string;
   description: string;
@@ -63,12 +64,12 @@ interface ViewBudgetRequestProps {
   showActions?: boolean;
 }
 
-const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({ 
-  request, 
-  onClose, 
-  onEdit, 
+const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
+  request,
+  onClose,
+  onEdit,
   onExport,
-  showActions = true 
+  showActions = true
 }) => {
   // Helper to convert BudgetItem[] to ItemField[]
   const mapItemsToTableFormat = (items?: BudgetItem[]): ItemField[] => {
@@ -82,7 +83,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
       subtotal: item.subtotal
     }));
   };
-  
+
   // Status badge component (reuse from your main page)
   const StatusBadge = ({ status }: { status: string }) => {
     const getStatusClass = (status: string) => {
@@ -177,27 +178,27 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
             </div>
 
             <div className="header-right">
-                <button type="button" className="closeButton" onClick={onClose}>
-                    <i className="ri-close-line"></i>
-                </button>
+              <button type="button" className="closeButton" onClick={onClose}>
+                <i className="ri-close-line"></i>
+              </button>
             </div>
           </div>
-          
-          
+
+
         </div>
 
         <div className="modalContent">
           <div className="displayInputs">
-            
+
             {/* Request Information Section */}
             <div className="sectionHeader">Request Information</div>
-            
+
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
                 <label>Request Code</label>
                 <div className="displayValue highlightValue">{request.request_code || request.request_id}</div>
               </div>
-              
+
               <div className="displayField displayFieldHalf">
                 <label>Date of Request</label>
                 <div className="displayValue">{formatDate(request.request_date)}</div>
@@ -209,7 +210,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                 <label>Department</label>
                 <div className="displayValue">{request.department_name || request.department_id || request.department || 'Operations'}</div>
               </div>
-              
+
               <div className="displayField displayFieldHalf">
                 <label>Requested For</label>
                 <div className="displayValue">{request.requested_for || request.requested_by}</div>
@@ -221,7 +222,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                 <label>Request Type</label>
                 <div className="displayValue">{request.request_type || request.requested_type || request.category}</div>
               </div>
-              
+
               <div className="displayField displayFieldHalf">
                 <label>PR Reference Code</label>
                 <div className="displayValue">{request.pr_reference_code || <span className="displayValueEmpty">Not linked to PR</span>}</div>
@@ -230,19 +231,19 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
 
             {/* Budget Details Section */}
             <div className="sectionHeader">Budget Details</div>
-            
+
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
                 <label>Budget Period</label>
                 <div className="displayValue">{request.budget_period || 'One Time Use'}</div>
               </div>
-              
+
               <div className="displayField displayFieldHalf">
                 <label>Total Amount</label>
                 <div className="displayValue highlightValue">
-                  ₱{(request.total_amount || request.requested_amount).toLocaleString(undefined, { 
-                    minimumFractionDigits: 2, 
-                    maximumFractionDigits: 2 
+                  ₱{(request.total_amount || request.requested_amount).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
                   })}
                 </div>
               </div>
@@ -269,16 +270,16 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
               <div className="displayField displayFieldHalf">
                 <label>Start Date</label>
                 <div className="displayValue">
-                  {request.start_date ? formatDate(request.start_date) : 
-                   <span className="displayValueEmpty">Not specified</span>}
+                  {request.start_date ? formatDate(request.start_date) :
+                    <span className="displayValueEmpty">Not specified</span>}
                 </div>
               </div>
-              
+
               <div className="displayField displayFieldHalf">
                 <label>End Date</label>
                 <div className="displayValue">
-                  {request.end_date ? formatDate(request.end_date) : 
-                   <span className="displayValueEmpty">Not specified</span>}
+                  {request.end_date ? formatDate(request.end_date) :
+                    <span className="displayValueEmpty">Not specified</span>}
                 </div>
               </div>
             </div>
@@ -289,7 +290,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                 <div className="sectionHeader">Budget Items ({request.items.length})</div>
                 <ItemTableModal
                   isOpen={true}
-                  onClose={() => {}}
+                  onClose={() => { }}
                   mode="view"
                   title="Budget Items"
                   items={mapItemsToTableFormat(request.items)}
@@ -301,7 +302,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
 
             {/* Supporting Documents Section */}
             <div className="sectionHeader">Supporting Documents</div>
-            
+
             <div className="fileDisplaySection">
               {request.supporting_documents && request.supporting_documents.length > 0 ? (
                 <div className="fileDisplayList">
@@ -344,12 +345,12 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                     <label>{request.status === 'Approved' ? 'Approved By' : 'Rejected By'}</label>
                     <div className="displayValue">{request.approved_by || 'Not specified'}</div>
                   </div>
-                  
+
                   <div className="displayField displayFieldHalf">
                     <label>{request.status === 'Approved' ? 'Approval Date' : 'Rejection Date'}</label>
                     <div className="displayValue">
-                      {request.approval_date ? formatDate(request.approval_date) : 
-                       <span className="displayValueEmpty">Not specified</span>}
+                      {request.approval_date ? formatDate(request.approval_date) :
+                        <span className="displayValueEmpty">Not specified</span>}
                     </div>
                   </div>
                 </div>

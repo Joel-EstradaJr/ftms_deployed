@@ -2,9 +2,19 @@
 
 import { 
   PaymentStatus as BasePaymentStatus,
+  ApprovalStatus as BaseApprovalStatus,
+  AccountingStatus as BaseAccountingStatus,
   ScheduleFrequency as BaseScheduleFrequency,
   ScheduleItem as BaseScheduleItem
 } from './schedule';
+
+// Re-export approval status from schedule.ts
+export const ApprovalStatus = BaseApprovalStatus;
+export type ApprovalStatus = BaseApprovalStatus;
+
+// Re-export accounting status from schedule.ts  
+export const AccountingStatus = BaseAccountingStatus;
+export type AccountingStatus = BaseAccountingStatus;
 
 export interface Revenue {
   id: number;
@@ -16,6 +26,10 @@ export interface Revenue {
   transactionDate: Date;
   paymentMethodId: number;
   paymentMethod: PaymentMethod;
+  
+  // Status fields (aligned with schema changes)
+  approval_status?: ApprovalStatus;   // revenue.approval_status enum (PENDING, APPROVED, REJECTED)
+  accounting_status?: AccountingStatus; // revenue.accounting_status enum (DRAFT, POSTED, ADJUSTED, REVERSED)
   
   // Bus Trip Integration
   busTripCacheId: number | null;

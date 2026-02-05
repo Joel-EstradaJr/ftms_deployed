@@ -7,42 +7,76 @@ import { OperationalExpenseData } from "./recordOperationalExpense";
 
 interface ViewOperationalExpenseModalProps {
   expenseData: OperationalExpenseData & {
-    paymentMethodName?: string;
-    accountCode?: string;
-    accountName?: string;
-    bodyNumber?: string;
-    busType?: string;
-    dateAssigned?: string;
-    reimbursementEmployeeName?: string;
-    reimbursementEmployeeNumber?: string;
+    payment_method_name?: string;
+    account_code?: string;
+    account_name?: string;
+    body_number?: string;
+    bus_type?: string;
+    date_assigned?: string;
+    creditor_name?: string;
+    employee_reference?: string;
+    journal_entry_id?: number;
+    journal_entry_code?: string;
+    // Rejection/Approval audit
+    rejected_by?: string;
+    rejected_at?: string;
+    // Remarks
+    approval_remarks?: string;
+    rejection_remarks?: string;
+    deletion_remarks?: string;
   };
   onClose: () => void;
 }
 
-
-
-const STATUS_MAP: { [key: string]: string } = {
+const APPROVAL_STATUS_MAP: { [key: string]: string } = {
   'PENDING': 'Pending',
   'APPROVED': 'Approved',
   'REJECTED': 'Rejected',
-  'POSTED': 'Posted',
+};
+
+const PAYMENT_STATUS_MAP: { [key: string]: string } = {
+  'PENDING': 'Pending',
+  'PARTIALLY_PAID': 'Partially Paid',
+  'COMPLETED': 'Completed',
+  'OVERDUE': 'Overdue',
+  'CANCELLED': 'Cancelled',
+  'WRITTEN_OFF': 'Written Off',
 };
 
 export default function ViewOperationalExpenseModal({ expenseData, onClose }: ViewOperationalExpenseModalProps) {
-  
 
+  // Get approval status badge
+  const getApprovalStatusBadge = () => {
+    const status = expenseData.approval_status || 'PENDING';
+    const statusText = APPROVAL_STATUS_MAP[status] || status;
 
-  // Get status badge
-  const getStatusBadge = () => {
-    const status = expenseData.status || 'PENDING';
-    const statusText = STATUS_MAP[status] || status;
-    
     const statusClass = {
       'APPROVED': 'completed',
-      'POSTED': 'completed',
       'PENDING': 'pending',
       'REJECTED': 'cancelled'
     }[status] || 'pending';
+
+    return <span className={`chip ${statusClass}`}>{statusText}</span>;
+  };
+
+  // Calculate payment status based on business rules
+  const getPaymentStatus = () => {
+    if (expenseData.approval_status === 'REJECTED') {
+      return 'CANCELLED';
+    } else if (expenseData.payment_method === 'REIMBURSEMENT') {
+      return 'PARTIALLY_PAID';
+    } else if (expenseData.approval_status === 'APPROVED') {
+      return 'COMPLETED';
+    }
+    return 'PENDING';
+  };
+
+  // Get payment status badge
+  const getPaymentStatusBadge = () => {
+    const status = getPaymentStatus();
+    const statusText = PAYMENT_STATUS_MAP[status] || status;
+
+    const statusClass = status.toLowerCase().replace('_', '-');
 
     return <span className={`chip ${statusClass}`}>{statusText}</span>;
   };
@@ -61,25 +95,21 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
         </button>
       </div>
 
+      {/* Header Section with Code and Status */}
       <div className="modal-content view">
         <form className="view-form">
           <div className="form-row">
-            {/* Expense Code */}
             <div className="form-group">
               <label>Expense Code</label>
-              <p>{expenseData.expenseCode}</p>
+              <p><strong>{expenseData.code}</strong></p>
             </div>
-
-            {/* Date Recorded */}
             <div className="form-group">
               <label>Date Recorded</label>
-              <p>{formatDate(expenseData.dateRecorded)}</p>
+              <p>{formatDate(expenseData.date_recorded)}</p>
             </div>
-
-            {/* Status */}
             <div className="form-group">
-              <label>Status</label>
-              <span>{getStatusBadge()}</span>
+              <label>Approval Status</label>
+              <span>{getApprovalStatusBadge()}</span>
             </div>
           </div>
         </form>
@@ -87,272 +117,191 @@ export default function ViewOperationalExpenseModal({ expenseData, onClose }: Vi
 
       {/* I. Basic Expense Information */}
       <div className="modal-content view">
-        <p className="details-title">I. Basic Expense Information</p>
+        <p className="details-title">I. Expense Information</p>
         <form className="view-form">
           <div className="form-row">
-            {/* Expense Name (raw value, not mapped) */}
             <div className="form-group">
               <label>Expense Name</label>
-              <p>{expenseData.expenseCategory || 'N/A'}</p>
+              <p>{expenseData.expense_type_name || 'N/A'}</p>
             </div>
-            {/* Amount */}
             <div className="form-group">
               <label>Amount</label>
               <p className="amount-field">{formatMoney(expenseData.amount)}</p>
             </div>
-            {/* Payment Method */}
             <div className="form-group">
               <label>Payment Method</label>
-              <p>{expenseData.paymentMethodName || 'N/A'}</p>
+              <p>{expenseData.payment_method_name || expenseData.payment_method || 'N/A'}</p>
             </div>
           </div>
         </form>
       </div>
 
-      {/* Trip Assignment Details (grouped) */}
-      {(expenseData.dateAssigned || expenseData.bodyNumber || expenseData.busType || expenseData.route) && (
+      {/* II. Trip Assignment Details */}
+      {(expenseData.date_assigned || expenseData.body_number || expenseData.bus_type || expenseData.bus_route || expenseData.plate_number) && (
         <div className="modal-content view">
           <p className="details-title">II. Trip Assignment Details</p>
           <form className="view-form">
             <div className="form-row">
-              <div className="form-group full-width">
-                <label>Trip Assignment</label>
-                <p>
-                  {expenseData.dateAssigned && (<><b>Date Assigned:</b> {formatDate(expenseData.dateAssigned)}<br /></>)}
-                  {expenseData.bodyNumber && (<><b>Body Number:</b> {expenseData.bodyNumber}<br /></>)}
-                  {expenseData.busType && (<><b>Type:</b> {expenseData.busType}<br /></>)}
-                  {expenseData.route && (<><b>Route:</b> {expenseData.route}</>)}
-                </p>
+              <div className="form-group">
+                <label>Date Assigned</label>
+                <p>{expenseData.date_assigned ? formatDate(expenseData.date_assigned) : 'N/A'}</p>
+              </div>
+              <div className="form-group">
+                <label>Body Number</label>
+                <p>{expenseData.body_number || 'N/A'}</p>
+              </div>
+              <div className="form-group">
+                <label>Bus Type</label>
+                <p>{expenseData.bus_type || 'N/A'}</p>
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Plate Number</label>
-                <p>{expenseData.busPlateNumber || 'N/A'}</p>
-              </div>
-              <div className="form-group">
-                <label>Body Number</label>
-                <p>{expenseData.bodyNumber || 'N/A'}</p>
-              </div>
-              <div className="form-group">
                 <label>Route</label>
-                <p>{expenseData.route || 'N/A'}</p>
+                <p>{expenseData.bus_route || 'N/A'}</p>
+              </div>
+              <div className="form-group">
+                <label>Plate Number</label>
+                <p>{expenseData.plate_number || 'N/A'}</p>
               </div>
             </div>
           </form>
         </div>
-      )}
-
-      {/* II. Trip Assignment Details (if applicable) */}
-      {(expenseData.cachedTripId || expenseData.busPlateNumber || expenseData.route || expenseData.department) && (
-        <>
-          <div className="modal-content view">
-            <p className="details-title">II. Trip Assignment Details</p>
-            <form className="view-form">
-              <div className="form-row">
-                {/* Plate Number */}
-                <div className="form-group">
-                  <label>Plate Number</label>
-                  <p>{expenseData.busPlateNumber || 'N/A'}</p>
-                </div>
-
-                {/* Body Number */}
-                <div className="form-group">
-                  <label>Body Number</label>
-                  <p>{expenseData.bodyNumber || 'N/A'}</p>
-                </div>
-
-                {/* Route */}
-                <div className="form-group">
-                  <label>Route</label>
-                  <p>{expenseData.route || 'N/A'}</p>
-                </div>
-              </div>
-
-              <div className="form-row">
-                {/* Type */}
-                <div className="form-group">
-                  <label>Type</label>
-                  <p>{expenseData.busType || 'N/A'}</p>
-                </div>
-
-                {/* Date Assigned */}
-                <div className="form-group">
-                  <label>Date Assigned</label>
-                  <p>{expenseData.dateAssigned ? formatDate(expenseData.dateAssigned) : 'N/A'}</p>
-                </div>
-              </div>
-            </form>
-          </div>
-        </>
       )}
 
       {/* III. Accounting Details */}
       <div className="modal-content view">
         <p className="details-title">
-          {(expenseData.cachedTripId || expenseData.busPlateNumber) ? 'III' : 'II'}. Accounting Details
+          {(expenseData.date_assigned || expenseData.body_number) ? 'III' : 'II'}. Accounting Details
         </p>
         <form className="view-form">
           <div className="form-row">
-            {/* Accounting Code */}
-            {expenseData.accountCodeId && (
+            {(expenseData.account_code || expenseData.account_name) && (
               <div className="form-group">
                 <label>Accounting Code</label>
-                <p>{expenseData.accountCode && expenseData.accountName ? `${expenseData.accountCode} - ${expenseData.accountName}` : 'N/A'}</p>
+                <p>{expenseData.account_code && expenseData.account_name
+                  ? `${expenseData.account_code} - ${expenseData.account_name}`
+                  : 'N/A'}</p>
               </div>
             )}
-
-            {/* Reimbursable Status */}
             <div className="form-group">
-              <label>Reimbursable Expense</label>
+              <label>Payment Status</label>
               <p className="chip-container">
-                {expenseData.isReimbursable ? (
-                  <span className="chip reimbursable">Yes</span>
-                ) : (
-                  <span className="chip not-reimbursable">No</span>
-                )}
+                {getPaymentStatusBadge()}
               </p>
             </div>
-              {/* Employee to Reimburse (employee_number & employee_name) */}
-              {(expenseData.reimbursementEmployeeNumber || expenseData.reimbursementEmployeeName) && (
-                <div className="form-group">
-                  <label>Employee to Reimburse</label>
-                  <p>{
-                    (expenseData.reimbursementEmployeeNumber ? expenseData.reimbursementEmployeeNumber + ' - ' : '') +
-                    (expenseData.reimbursementEmployeeName || '')
-                  }</p>
-                </div>
-              )}
+            {expenseData.journal_entry_code && (
+              <div className="form-group">
+                <label>Journal Entry</label>
+                <p><strong>{expenseData.journal_entry_code}</strong></p>
+              </div>
+            )}
           </div>
         </form>
       </div>
 
       {/* Reimbursable Details (if applicable) */}
+      {expenseData.is_reimbursable && (expenseData.employee_reference || expenseData.creditor_name) && (
         <div className="modal-content view">
-          <p className="details-title">Reimbursable Details</p>
+          <p className="details-title">Reimbursement Details</p>
           <form className="view-form">
             <div className="form-row">
-              {/* Employee to Reimburse: employee_number & employee_name */}
               <div className="form-group">
                 <label>Employee to Reimburse</label>
-                <p>{
-                  (expenseData.reimbursementEmployeeNumber ? expenseData.reimbursementEmployeeNumber + ' - ' : '') +
-                  (expenseData.reimbursementEmployeeName || 'N/A')
-                }</p>
+                <p>
+                  {expenseData.employee_reference && (
+                    <span style={{ fontWeight: 600 }}>{expenseData.employee_reference}</span>
+                  )}
+                  {expenseData.employee_reference && expenseData.creditor_name && ' - '}
+                  {expenseData.creditor_name || 'N/A'}
+                </p>
               </div>
-              {/* Reimbursement Purpose */}
-              {expenseData.reimbursementPurpose && (
+              {expenseData.payable_description && (
                 <div className="form-group">
                   <label>Purpose</label>
-                  <p>{expenseData.reimbursementPurpose}</p>
+                  <p>{expenseData.payable_description}</p>
                 </div>
               )}
             </div>
           </form>
         </div>
-
-      {/* Supporting Documents */}
-      {expenseData.receiptUrl && (
-        <>
-          <div className="modal-content view">
-            <p className="details-title">
-              {(() => {
-                let section = 2;
-                if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
-                section++; // Accounting Details
-                if (expenseData.isReimbursable && expenseData.reimbursementEmployeeId) section++;
-                return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][section]}`;
-              })()}. Supporting Documents
-            </p>
-            <form className="view-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Receipt Document</label>
-                  <a href={expenseData.receiptUrl} target="_blank" rel="noopener noreferrer" className="document-link">
-                    <i className="ri-file-line" /> View Receipt
-                  </a>
-                </div>
-              </div>
-            </form>
-          </div>
-        </>
       )}
 
-      {/* Audit Details */}
+      {/* Description/Remarks */}
+      {expenseData.description && (
+        <div className="modal-content view">
+          <p className="details-title">Additional Information</p>
+          <form className="view-form">
+            <div className="form-row">
+              <div className="form-group full-width">
+                <label>Description / Remarks</label>
+                <p style={{ whiteSpace: 'pre-wrap' }}>{expenseData.description}</p>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Audit Trail */}
       <div className="modal-content view">
-        <p className="details-title">
-          {(() => {
-            let section = 2;
-            if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
-            section++; // Accounting Details
-            if (expenseData.isReimbursable && expenseData.reimbursementEmployeeId) section++;
-            if (expenseData.receiptUrl) section++;
-            return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][section]}`;
-          })()}. Audit
-        </p>
+        <p className="details-title">Audit Trail</p>
         <form className="view-form">
           <div className="form-row">
-            {/* Requested By */}
             <div className="form-group">
-              <label>Requested by</label>
-              <p>{expenseData.createdBy}</p>
+              <label>Requested By</label>
+              <p>{expenseData.created_by || 'N/A'}</p>
             </div>
-
-            {/* Requested On */}
-            {expenseData.createdAt && (
+            {expenseData.created_at && (
               <div className="form-group">
-                <label>Requested on</label>
-                <p>{formatDate(expenseData.createdAt)}</p>
+                <label>Requested On</label>
+                <p>{formatDate(expenseData.created_at)}</p>
               </div>
             )}
           </div>
 
-          {expenseData.approvedBy && (
+          {expenseData.approved_by && (
             <div className="form-row">
-              {/* Approved By */}
               <div className="form-group">
-                <label>Approved by</label>
-                <p>{expenseData.approvedBy}</p>
+                <label>Approved By</label>
+                <p>{expenseData.approved_by}</p>
               </div>
-
-              {/* Approved On */}
-              {expenseData.approvedAt && (
+              {expenseData.approved_at && (
                 <div className="form-group">
-                  <label>Approved on</label>
-                  <p>{formatDate(expenseData.approvedAt)}</p>
+                  <label>Approved On</label>
+                  <p>{formatDate(expenseData.approved_at)}</p>
+                </div>
+              )}
+              {expenseData.approval_remarks && (
+                <div className="form-group">
+                  <label>Approval Remarks</label>
+                  <p>{expenseData.approval_remarks}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {expenseData.rejected_by && (
+            <div className="form-row">
+              <div className="form-group">
+                <label>Rejected By</label>
+                <p>{expenseData.rejected_by}</p>
+              </div>
+              {expenseData.rejected_at && (
+                <div className="form-group">
+                  <label>Rejected On</label>
+                  <p>{formatDate(expenseData.rejected_at)}</p>
+                </div>
+              )}
+              {expenseData.rejection_remarks && (
+                <div className="form-group">
+                  <label>Rejection Reason</label>
+                  <p>{expenseData.rejection_remarks}</p>
                 </div>
               )}
             </div>
           )}
         </form>
       </div>
-
-      {/* Additional Information */}
-      {expenseData.remarks && (
-        <>
-          <div className="modal-content view">
-            <p className="details-title">
-              {(() => {
-                let section = 2;
-                if (expenseData.cachedTripId || expenseData.busPlateNumber) section++;
-                section++; // Accounting Details
-                if (expenseData.isReimbursable && expenseData.reimbursementEmployeeId) section++;
-                if (expenseData.receiptUrl) section++;
-                section++; // Audit
-                return `${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][section]}`;
-              })()}. Additional Information
-            </p>
-            <form className="view-form">
-              <div className="form-row">
-                <div className="form-group full-width">
-                  <label>Description</label>
-                  <p>{expenseData.remarks}</p>
-                </div>
-              </div>
-            </form>
-          </div>
-        </>
-      )}
 
       <div className="modal-actions">
         <button className="cancel-btn" onClick={onClose}>

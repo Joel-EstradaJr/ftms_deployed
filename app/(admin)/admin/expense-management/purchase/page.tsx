@@ -223,7 +223,7 @@ const PurchaseExpensePage: React.FC = () => {
       
       // Mock payment status data for demonstration
       const mockPaymentStatuses: Record<string, PaymentStatus> = {
-        'PUR-001': PaymentStatus.PAID,
+        'PUR-001': PaymentStatus.COMPLETED,
         'PUR-002': PaymentStatus.PARTIALLY_PAID,
         'PUR-003': PaymentStatus.PENDING,
       };
@@ -274,14 +274,12 @@ const PurchaseExpensePage: React.FC = () => {
     // For purchase expenses, create a single installment for the full amount
     const singleInstallment: ExpenseScheduleItem = {
       id: `${expense.id}-SINGLE`,
-      installmentNumber: 1,
-      originalDueDate: expense.date,
-      currentDueDate: expense.date,
-      originalDueAmount: expense.amount,
-      currentDueAmount: expense.amount,
-      paidAmount: 0,
-      carriedOverAmount: 0,
-      paymentStatus: PaymentStatus.PENDING,
+      installment_number: 1,
+      due_date: expense.date,
+      amount_due: expense.amount,
+      amount_paid: 0,
+      balance: expense.amount,
+      status: PaymentStatus.PENDING,
       isPastDue: false,
       isEditable: false
     };
@@ -314,11 +312,11 @@ const PurchaseExpensePage: React.FC = () => {
       if (!expense) return prev;
       
       const recordIdStr = String(recordId);
-      const currentPaid = expense.amount - (prev[recordIdStr] === PaymentStatus.PAID ? 0 : 
+      const currentPaid = expense.amount - (prev[recordIdStr] === PaymentStatus.COMPLETED ? 0 : 
                                             prev[recordIdStr] === PaymentStatus.PARTIALLY_PAID ? expense.amount * 0.5 : 
                                             expense.amount);
       const newTotalPaid = currentPaid + amountToPay;
-      const newStatus = newTotalPaid >= expense.amount ? PaymentStatus.PAID : 
+      const newStatus = newTotalPaid >= expense.amount ? PaymentStatus.COMPLETED : 
                        newTotalPaid > 0 ? PaymentStatus.PARTIALLY_PAID : 
                        PaymentStatus.PENDING;
       

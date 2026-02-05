@@ -13,67 +13,74 @@
 
 "use client";
 
-import React, { useState, useMemo } from "react";
-import RecordPaymentModal, { SimpleScheduleItem } from "@/Components/RecordPaymentModal";
+import React, { useState, useMemo, useEffect } from "react";
+import RecordPaymentModal from "@/Components/RecordPaymentModal";
 import { processCascadePayment } from "../../../../utils/revenueScheduleCalculations";
 import { formatMoney, formatDate } from "@/utils/formatting";
 import { PaymentRecordData } from "@/app/types/payments";
 import { RevenueScheduleItem } from "../../../../types/revenue";
+import { ScheduleItem, PaymentStatus } from "@/app/types/schedule";
 import "@/styles/components/forms.css";
 import "@/styles/components/modal2.css";
 import "@/styles/components/chips.css";
 
+// Use ScheduleItem directly instead of SimpleScheduleItem for type compatibility
+type SimpleScheduleItem = ScheduleItem;
+
+// Internal enriched trip data interface (populated from API)
+interface EnrichedTripData {
+  assignment_id: string;
+  body_number: string;
+  bus_route: string;
+  date_assigned: string;
+  payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
+
+  // Driver details
+  driverId?: string;
+  driverEmployeeNumber?: string;
+  driverName?: string;
+
+  // Conductor details
+  conductorId?: string;
+  conductorEmployeeNumber?: string;
+  conductorName?: string;
+
+  // Receivable details
+  receivableDetails?: {
+    totalAmount: number;
+    dueDate: string;
+    createdDate: string;
+    driverShare: number;
+    conductorShare?: number;
+    overallStatus: 'Pending' | 'Partial' | 'Paid' | 'Overdue' | 'Closed';
+  };
+
+  // Installment schedules (RevenueScheduleItem format)
+  driverInstallments?: RevenueScheduleItem[];
+  conductorInstallments?: RevenueScheduleItem[];
+}
+
 interface TripReceivablePaymentModalProps {
+  revenueId: number; // Revenue ID to fetch detail data
   tripData: {
     assignment_id: string;
     body_number: string;
     bus_route: string;
     date_assigned: string;
-    status?: string;
-    
-    // Driver details
-    driverId?: string;
-    driverEmployeeNumber?: string; // employee_number from operations payload
-    driverFirstName?: string;
-    driverMiddleName?: string;
-    driverLastName?: string;
-    driverSuffix?: string;
-    driverName?: string;
-    
-    // Conductor details
-    conductorId?: string;
-    conductorEmployeeNumber?: string; // employee_number from operations payload
-    conductorFirstName?: string;
-    conductorMiddleName?: string;
-    conductorLastName?: string;
-    conductorSuffix?: string;
-    conductorName?: string;
-    
-    // Receivable details
-    receivableDetails?: {
-      totalAmount: number;
-      dueDate: string;
-      createdDate: string;
-      driverShare: number;
-      conductorShare?: number;
-      overallStatus: 'Pending' | 'Partial' | 'Paid' | 'Overdue' | 'Closed';
-    };
-    
-    // Installment schedules (RevenueScheduleItem format)
-    driverInstallments?: RevenueScheduleItem[];
-    conductorInstallments?: RevenueScheduleItem[];
+    payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF';
   };
   paymentMethods: Array<{ id: number; methodName: string; methodCode: string }>;
   currentUser: string;
   onPaymentRecorded: (paymentData: PaymentRecordData & { employeeType: 'driver' | 'conductor'; employeeId: string; employeeNumber?: string }) => Promise<void>;
-  onCloseReceivable?: (assignmentId: string) => Promise<void>;
+  onCloseReceivable?: (revenueId: number) => Promise<void>;
   onClose: () => void;
 }
 
 type EmployeeTab = 'driver' | 'conductor';
 
 export default function TripReceivablePaymentModal({
-  tripData,
+  revenueId,
+  tripData: initialTripData,
   paymentMethods,
   currentUser,
   onPaymentRecorded,
@@ -82,53 +89,148 @@ export default function TripReceivablePaymentModal({
 }: TripReceivablePaymentModalProps) {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeTab>('driver');
   const [selectedInstallment, setSelectedInstallment] = useState<SimpleScheduleItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Used to trigger data refresh after payment
+
+  // Enriched trip data from API
+  const [tripData, setTripData] = useState<EnrichedTripData>({
+    assignment_id: initialTripData.assignment_id,
+    body_number: initialTripData.body_number,
+    bus_route: initialTripData.bus_route,
+    date_assigned: initialTripData.date_assigned,
+    payment_status: initialTripData.payment_status,
+  });
+
+  // Fetch detail data from API
+  useEffect(() => {
+    const fetchDetailData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/admin/revenue/${revenueId}`);
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || 'Failed to fetch revenue details');
+        }
+
+        const data = result.data;
+
+        // Map API response to enriched trip data
+        const enrichedData: EnrichedTripData = {
+          assignment_id: data.assignment_id || initialTripData.assignment_id,
+          body_number: data.bus_details?.body_number || initialTripData.body_number,
+          bus_route: data.bus_details?.route || initialTripData.bus_route || 'N/A',
+          date_assigned: data.bus_details?.date_assigned || initialTripData.date_assigned,
+          payment_status: data.payment_status || initialTripData.payment_status,
+
+          // Driver details
+          driverId: data.employees?.driver?.employee_number || undefined,
+          driverEmployeeNumber: data.employees?.driver?.employee_number || undefined,
+          driverName: data.employees?.driver?.name || 'N/A',
+
+          // Conductor details
+          conductorId: data.employees?.conductor?.employee_number || undefined,
+          conductorEmployeeNumber: data.employees?.conductor?.employee_number || undefined,
+          conductorName: data.employees?.conductor?.name || undefined,
+        };
+
+        // Map shortage details if present
+        if (data.shortage_details) {
+          const driverReceivable = data.shortage_details.driver_receivable;
+          const conductorReceivable = data.shortage_details.conductor_receivable;
+
+          enrichedData.receivableDetails = {
+            totalAmount: data.remittance?.shortage || 0,
+            dueDate: data.shortage_details.receivable_due_date || '',
+            createdDate: data.remittance?.date_recorded || '',
+            driverShare: data.shortage_details.driver_share || 0,
+            conductorShare: data.shortage_details.conductor_share || undefined,
+            overallStatus: mapReceivableStatus(driverReceivable?.status, conductorReceivable?.status),
+          };
+
+          // Map driver installments
+          if (driverReceivable?.installment_schedules) {
+            enrichedData.driverInstallments = driverReceivable.installment_schedules.map((inst: any) => ({
+              id: `driver-inst-${inst.id}`, // Maintain unique ID for React keys
+              // Map to ScheduleItem properties
+              installment_number: inst.installment_number,
+              due_date: inst.due_date,
+              amount_due: inst.amount_due,
+              amount_paid: inst.amount_paid || 0,
+              balance: inst.balance || ((inst.amount_due || 0) - (inst.amount_paid || 0)),
+              status: inst.status || 'PENDING',
+
+              // UI computed properties
+              isPastDue: new Date(inst.due_date) < new Date() && (inst.balance > 0 || ((inst.amount_due || 0) - (inst.amount_paid || 0)) > 0),
+              isEditable: inst.status !== 'COMPLETED',
+            }));
+          }
+
+          // Map conductor installments
+          if (conductorReceivable?.installment_schedules) {
+            enrichedData.conductorInstallments = conductorReceivable.installment_schedules.map((inst: any) => ({
+              id: `conductor-inst-${inst.id}`,
+              // Map to ScheduleItem properties
+              installment_number: inst.installment_number,
+              due_date: inst.due_date,
+              amount_due: inst.amount_due,
+              amount_paid: inst.amount_paid || 0,
+              balance: inst.balance || ((inst.amount_due || 0) - (inst.amount_paid || 0)),
+              status: inst.status || 'PENDING',
+
+              // UI computed properties
+              isPastDue: new Date(inst.due_date) < new Date() && (inst.balance > 0 || ((inst.amount_due || 0) - (inst.amount_paid || 0)) > 0),
+              isEditable: inst.status !== 'COMPLETED',
+            }));
+          }
+        }
+
+        setTripData(enrichedData);
+      } catch (err) {
+        console.error('Error fetching revenue details:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load revenue details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (revenueId) {
+      fetchDetailData();
+    }
+  }, [revenueId, initialTripData, refreshKey]); // refreshKey triggers re-fetch after payment
+
+  // Helper to map receivable status
+  const mapReceivableStatus = (driverStatus?: string, conductorStatus?: string): 'Pending' | 'Partial' | 'Paid' | 'Overdue' | 'Closed' => {
+    if (driverStatus === 'COMPLETED' && (!conductorStatus || conductorStatus === 'COMPLETED')) return 'Paid';
+    if (driverStatus === 'PARTIALLY_PAID' || conductorStatus === 'PARTIALLY_PAID') return 'Partial';
+    if (driverStatus === 'OVERDUE' || conductorStatus === 'OVERDUE') return 'Overdue';
+    return 'Pending';
+  };
 
   // Check if conductor exists
   const hasConductor = (): boolean => {
     return !!(tripData.conductorId && tripData.conductorName && tripData.conductorName !== 'N/A');
   };
 
-  // Format employee name
-  const formatEmployeeName = (firstName?: string, middleName?: string, lastName?: string, suffix?: string): string => {
-    if (!firstName) return 'N/A';
-    const name = `${firstName} ${middleName || ''} ${lastName || ''}`.trim();
-    return suffix ? `${name}, ${suffix}` : name;
-  };
+  // Get driver name directly from enriched data
+  const driverName = tripData.driverName || 'N/A';
 
-  // Get driver name
-  const driverName = tripData.driverName || formatEmployeeName(
-    tripData.driverFirstName,
-    tripData.driverMiddleName,
-    tripData.driverLastName,
-    tripData.driverSuffix
-  );
-
-  // Get conductor name
-  const conductorName = tripData.conductorName || formatEmployeeName(
-    tripData.conductorFirstName,
-    tripData.conductorMiddleName,
-    tripData.conductorLastName,
-    tripData.conductorSuffix
-  );
+  // Get conductor name directly from enriched data
+  const conductorName = tripData.conductorName || 'N/A';
 
   // Get schedule items for selected employee
   const getScheduleItems = (): SimpleScheduleItem[] => {
-    const items = selectedEmployee === 'driver' 
-      ? tripData.driverInstallments 
+    const items = selectedEmployee === 'driver'
+      ? tripData.driverInstallments
       : tripData.conductorInstallments;
-    
+
     if (!items || items.length === 0) return [];
-    
-    // Convert RevenueScheduleItem to SimpleScheduleItem
-    return items.map(item => ({
-      id: item.id,
-      installmentNumber: item.installmentNumber,
-      currentDueDate: item.currentDueDate,
-      currentDueAmount: item.currentDueAmount,
-      paidAmount: item.paidAmount,
-      carriedOverAmount: item.carriedOverAmount,
-      paymentStatus: item.paymentStatus
-    }));
+
+    // Return items directly as they already have snake_case properties from the API mapping
+    return items;
   };
 
   const scheduleItems = getScheduleItems();
@@ -143,8 +245,8 @@ export default function TripReceivablePaymentModal({
     if (items.length === 0) {
       return { totalDue: driverShare, totalPaid: 0, balance: driverShare };
     }
-    const totalDue = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
-    const totalPaid = items.reduce((sum, item) => sum + item.paidAmount, 0);
+    const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
+    const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
     return { totalDue, totalPaid, balance: totalDue - totalPaid };
   }, [tripData.driverInstallments, driverShare]);
 
@@ -153,8 +255,8 @@ export default function TripReceivablePaymentModal({
     if (items.length === 0) {
       return { totalDue: conductorShare, totalPaid: 0, balance: conductorShare };
     }
-    const totalDue = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
-    const totalPaid = items.reduce((sum, item) => sum + item.paidAmount, 0);
+    const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
+    const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
     return { totalDue, totalPaid, balance: totalDue - totalPaid };
   }, [tripData.conductorInstallments, conductorShare]);
 
@@ -163,10 +265,10 @@ export default function TripReceivablePaymentModal({
     // Only fully paid if there are installments and all are paid
     const driverItems = tripData.driverInstallments || [];
     const conductorItems = tripData.conductorInstallments || [];
-    
+
     if (driverItems.length === 0 && driverShare > 0) return false;
     if (hasConductor() && conductorItems.length === 0 && conductorShare > 0) return false;
-    
+
     const driverPaid = driverTotal.balance <= 0;
     const conductorPaid = !hasConductor() || conductorTotal.balance <= 0;
     return driverPaid && conductorPaid;
@@ -177,10 +279,10 @@ export default function TripReceivablePaymentModal({
     if (!items || items.length === 0) {
       return share > 0 ? 'PENDING' : 'N/A';
     }
-    const totalDue = items.reduce((sum, item) => sum + item.currentDueAmount, 0);
-    const totalPaid = items.reduce((sum, item) => sum + item.paidAmount, 0);
-    
-    if (totalDue > 0 && totalPaid >= totalDue) return 'PAID';
+    const totalDue = items.reduce((sum, item) => sum + item.amount_due, 0);
+    const totalPaid = items.reduce((sum, item) => sum + item.amount_paid, 0);
+
+    if (totalDue > 0 && totalPaid >= totalDue) return 'COMPLETED';
     if (totalPaid > 0) return 'PARTIAL';
     return 'PENDING';
   };
@@ -188,7 +290,7 @@ export default function TripReceivablePaymentModal({
   // Get status chip class
   const getStatusClass = (status: string): string => {
     switch (status) {
-      case 'PAID': return 'paid';
+      case 'COMPLETED': return 'paid';
       case 'PARTIAL': return 'partially-paid';
       case 'OVERDUE': return 'overdue';
       default: return 'pending';
@@ -197,14 +299,14 @@ export default function TripReceivablePaymentModal({
 
   // Handle payment recorded - wrap with employee info
   const handlePaymentRecorded = async (paymentData: PaymentRecordData): Promise<void> => {
-    const employeeId = selectedEmployee === 'driver' 
-      ? tripData.driverId || '' 
+    const employeeId = selectedEmployee === 'driver'
+      ? tripData.driverId || ''
       : tripData.conductorId || '';
-    
+
     const employeeNumber = selectedEmployee === 'driver'
       ? tripData.driverEmployeeNumber
       : tripData.conductorEmployeeNumber;
-    
+
     await onPaymentRecorded({
       ...paymentData,
       employeeType: selectedEmployee,
@@ -212,31 +314,41 @@ export default function TripReceivablePaymentModal({
       employeeNumber
     });
 
-    // Reset selected installment after payment
+    // Refresh data to show updated balances
+    setRefreshKey(prev => prev + 1);
+
+    // Reset selected installment after payment (returns to installment list view)
     setSelectedInstallment(null);
   };
 
   // Handle close receivable
   const handleCloseReceivable = async () => {
     if (onCloseReceivable && isFullyPaid) {
-      await onCloseReceivable(tripData.assignment_id);
+      await onCloseReceivable(revenueId);
       onClose();
     }
   };
 
   // Get first unpaid installment for the selected employee
   const getFirstUnpaidInstallment = (): SimpleScheduleItem | null => {
-    const unpaid = scheduleItems.find(item => 
-      item.paymentStatus !== 'PAID' && 
-      item.paymentStatus !== 'CANCELLED' && 
-      item.paymentStatus !== 'WRITTEN_OFF'
-    );
+    const unpaid = scheduleItems.find(item => {
+      // Calculate balance if not provided
+      const balance = item.balance ?? (item.amount_due - (item.amount_paid || 0));
+      // Must have positive balance AND not be in a terminal status
+      return balance > 0 &&
+        item.status !== 'COMPLETED' &&
+        item.status !== 'CANCELLED' &&
+        item.status !== 'WRITTEN_OFF';
+    });
     return unpaid || null;
   };
 
   // If an installment is selected, show RecordPaymentModal
   if (selectedInstallment) {
     const employeeName = selectedEmployee === 'driver' ? driverName : conductorName;
+    const employeeNumber = selectedEmployee === 'driver'
+      ? tripData.driverEmployeeNumber
+      : tripData.conductorEmployeeNumber;
     const recordRef = `${tripData.body_number} - ${selectedEmployee === 'driver' ? 'Driver' : 'Conductor'}: ${employeeName}`;
 
     return (
@@ -251,7 +363,43 @@ export default function TripReceivablePaymentModal({
         onPaymentRecorded={handlePaymentRecorded}
         onClose={() => setSelectedInstallment(null)}
         processCascadePayment={processCascadePayment}
+        employeeNumber={employeeNumber}
+        employeeName={employeeName}
       />
+    );
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <>
+        <div className="modal-heading">
+          <h1 className="modal-title">Record Receivable Payment</h1>
+          <button className="close-modal-btn" onClick={onClose}>
+            <i className="ri-close-line"></i>
+          </button>
+        </div>
+        <div className="modal-content view" style={{ textAlign: 'center', padding: '40px' }}>
+          <p>Loading receivable details...</p>
+        </div>
+      </>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <>
+        <div className="modal-heading">
+          <h1 className="modal-title">Record Receivable Payment</h1>
+          <button className="close-modal-btn" onClick={onClose}>
+            <i className="ri-close-line"></i>
+          </button>
+        </div>
+        <div className="modal-content view" style={{ textAlign: 'center', padding: '40px', color: '#dc3545' }}>
+          <p>{error}</p>
+        </div>
+      </>
     );
   }
 
@@ -396,7 +544,7 @@ export default function TripReceivablePaymentModal({
         <button type="button" className="cancel-btn" onClick={onClose}>
           Close
         </button>
-        
+
         {isFullyPaid && onCloseReceivable && (
           <button
             type="button"
@@ -408,18 +556,44 @@ export default function TripReceivablePaymentModal({
             Close Receivable
           </button>
         )}
-        
-        {!isFullyPaid && scheduleItems.length > 0 && (
+
+        {!isFullyPaid && (
           <button
             type="button"
             className="submit-btn"
             onClick={() => {
-              const firstUnpaid = getFirstUnpaidInstallment();
-              if (firstUnpaid) setSelectedInstallment(firstUnpaid);
+              // If there are schedule items, select the first unpaid one
+              if (scheduleItems.length > 0) {
+                const firstUnpaid = getFirstUnpaidInstallment();
+                if (firstUnpaid) setSelectedInstallment(firstUnpaid);
+              } else {
+                // No installments yet - create a synthetic schedule item for the share amount
+                const currentBalance = selectedEmployee === 'driver'
+                  ? driverTotal.balance
+                  : conductorTotal.balance;
+
+                if (currentBalance > 0) {
+                  // Create a synthetic installment for direct payment
+                  const syntheticInstallment: SimpleScheduleItem = {
+                    id: `synthetic-${tripData.assignment_id}-${selectedEmployee}`,
+                    installment_number: 1,
+                    due_date: tripData.receivableDetails?.dueDate || new Date().toISOString(),
+                    amount_due: currentBalance,
+                    amount_paid: 0,
+                    balance: currentBalance,
+                    status: PaymentStatus.PENDING
+                  };
+                  setSelectedInstallment(syntheticInstallment);
+                }
+              }
             }}
+            disabled={
+              (selectedEmployee === 'driver' && driverTotal.balance <= 0) ||
+              (selectedEmployee === 'conductor' && conductorTotal.balance <= 0)
+            }
           >
             <i className="ri-money-dollar-circle-line" style={{ marginRight: '8px' }}></i>
-            Pay {selectedEmployee === 'driver' ? 'Driver' : 'Conductor'}
+            Add Payment
           </button>
         )}
       </div>

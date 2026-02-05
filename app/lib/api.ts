@@ -3,7 +3,30 @@
  * Handles all HTTP requests to the backend API
  */
 
+import { getToken, removeToken, redirectToAuth } from './auth';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const ENABLE_AUTH = process.env.NEXT_PUBLIC_ENABLE_AUTH === 'true';
+
+/**
+ * Get authorization headers based on ENABLE_AUTH environment variable
+ * When ENABLE_AUTH is false, no Authorization header is sent
+ */
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  // Only add Authorization header when auth is enabled
+  if (ENABLE_AUTH && typeof window !== 'undefined') {
+    const token = getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  
+  return headers;
+}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -30,6 +53,27 @@ export class ApiError extends Error {
 }
 
 /**
+ * Handle API response errors, including 401 unauthorized
+ */
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    // Token expired or invalid - clear and redirect to auth
+    if (ENABLE_AUTH && typeof window !== 'undefined') {
+      removeToken();
+      redirectToAuth();
+    }
+    throw new ApiError(401, 'Unauthorized - Please log in again');
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Request failed' }));
+    throw new ApiError(response.status, error.message || 'Request failed', error);
+  }
+
+  return response.json();
+}
+
+/**
  * Main API client with methods for HTTP requests
  */
 export const api = {
@@ -47,90 +91,55 @@ export const api = {
 
     const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new ApiError(response.status, error.message || 'Request failed', error);
-    }
-
-    return response.json();
+    return handleResponse<T>(response);
   },
 
   post: async <T>(endpoint: string, data?: any): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new ApiError(response.status, error.message || 'Request failed', error);
-    }
-
-    return response.json();
+    return handleResponse<T>(response);
   },
 
   put: async <T>(endpoint: string, data?: any): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new ApiError(response.status, error.message || 'Request failed', error);
-    }
-
-    return response.json();
+    return handleResponse<T>(response);
   },
 
   patch: async <T>(endpoint: string, data?: any): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new ApiError(response.status, error.message || 'Request failed', error);
-    }
-
-    return response.json();
+    return handleResponse<T>(response);
   },
 
   delete: async <T>(endpoint: string, data?: any): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: data ? JSON.stringify(data) : undefined,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new ApiError(response.status, error.message || 'Request failed', error);
-    }
-
-    return response.json();
+    return handleResponse<T>(response);
   },
 };
 

@@ -21,21 +21,21 @@ const ViewJournalEntryModal: React.FC<ViewJournalEntryModalProps> = ({
     line_id: line.line_id,
     account_id: line.account_id,
     line_description: line.description || '',
-    debit_amount: line.debit_amount || 0,
-    credit_amount: line.credit_amount || 0,
+    debit_amount: line.debit_amount || line.debit || 0,
+    credit_amount: line.credit_amount || line.credit || 0,
   }));
 
-  // Extract chart of accounts from journal lines
+  // Extract chart of accounts from journal lines - use line.account_id as key for lookup
   const accounts = entry.journal_lines
-    .map((line) => line.account)
-    .filter((acc) => acc !== undefined && acc !== null)
-    .map((acc) => ({
-      account_id: acc!.account_id,
-      account_code: acc!.account_code,
-      account_name: acc!.account_name,
-      account_type: acc!.account_type as 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE',
-      normal_balance: (acc!.normal_balance || 'DEBIT') as 'DEBIT' | 'CREDIT',
-      is_active: acc!.is_active ?? true,
+    .filter((line) => line.account_id) // Only include lines with account_id
+    .map((line) => ({
+      // Use line.account_id as the key (matches JournalLinesTable lookup)
+      account_id: line.account_id,
+      account_code: line.account_code || line.account?.account_code || '',
+      account_name: line.account_name || line.account?.account_name || '',
+      account_type: (line.account?.account_type || 'ASSET') as 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE',
+      normal_balance: (line.account?.normal_balance || 'DEBIT') as 'DEBIT' | 'CREDIT',
+      is_active: line.account?.is_active ?? true,
     }));
 
   const getEntryTypeLabel = (type: EntryType): string => {
@@ -98,15 +98,6 @@ const ViewJournalEntryModal: React.FC<ViewJournalEntryModalProps> = ({
             </div>
 
             <div className="detailRow">
-              <span className="label">Entry Type:</span>
-              <span className="value">
-                <span className={`chip ${getEntryTypeClass(entry.entry_type)}`}>
-                  {getEntryTypeLabel(entry.entry_type)}
-                </span>
-              </span>
-            </div>
-
-            <div className="detailRow">
               <span className="label">Transaction Date:</span>
               <span className="value">{formatDate(entry.transaction_date)}</span>
             </div>
@@ -154,10 +145,10 @@ const ViewJournalEntryModal: React.FC<ViewJournalEntryModalProps> = ({
           <JournalLinesTable
             lines={journalLines}
             accounts={accounts}
-            onChange={() => {}}
-            onBlur={() => {}}
-            onAddLine={() => {}}
-            onRemoveLine={() => {}}
+            onChange={() => { }}
+            onBlur={() => { }}
+            onAddLine={() => { }}
+            onRemoveLine={() => { }}
             errors={{}}
             readonly={true}
           />

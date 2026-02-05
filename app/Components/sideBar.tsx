@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useNavigationUrl } from '../hooks/useRouteContext';
+import { useAuth } from '../hooks/useAuth';
 // @ts-ignore
 import "../styles/components/sidebar.css";
 
@@ -13,15 +14,17 @@ const Sidebar: React.FC = () => {
   const [activeItem, setActiveItem] = useState<string | null>(null);
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
   const { getUrl } = useNavigationUrl();
+  const { logout, user } = useAuth();
 
   // External microservice URLs from environment variables
   const budgetRequestUrl = process.env.NEXT_PUBLIC_BUDGET_REQUEST_URL || 'https://budget-request-micro-frontend.vercel.app';
-  
+  const auditLogsUrl = process.env.NEXT_PUBLIC_AUDIT_LOGS_URL || 'https://agila-audit-frontend.vercel.app';
+
   const auditActiveKey = 'audit';
   const auditIconClass = 'ri-booklet-line';
 
-  // Detect user role from pathname
-  const userRole = pathname.startsWith('/admin') ? 'admin' : 'staff';
+  // Detect user role from auth user or pathname fallback
+  const userRole = user?.isAdmin ? 'admin' : (pathname.startsWith('/admin') ? 'admin' : 'staff');
 
   const staticRoutes: { [key: string]: string } = {
     "/dashboard": "dashboard",
@@ -38,7 +41,6 @@ const Sidebar: React.FC = () => {
     "/loan-management/loanRequest": "loan-request",
     "/loan-management/loanPayment": "loan-payment",
     "/report": "report",
-    "/audit": "audit",
     "/budget-management/budgetAllocation": "budgetAllocation",
     "/budget-management/approval": "approval",
     "/budget-management/budgetRequest": "budget-request",
@@ -58,11 +60,11 @@ const Sidebar: React.FC = () => {
 
   useEffect(() => {
     const normalizedPath = getNormalizedPath(pathname);
-    
-      const staticMatch = staticRoutes[normalizedPath];
+
+    const staticMatch = staticRoutes[normalizedPath];
     if (staticMatch) {
       setActiveItem(staticMatch);
-      
+
       if (["expense", "reimbursement", "operational-expense", "administrative-expense", "purchase-expense"].includes(staticMatch)) {
         setOpenSubMenu("expense-management");
       } else if (["budget-request", "budgetAllocation", "approval"].includes(staticMatch)) {
@@ -120,17 +122,15 @@ const Sidebar: React.FC = () => {
 
           {/* Revenue Management Submenu - Both roles */}
           <div
-            className={`nav-item module ${
-              ["tripRevenue", "busRental", "otherRevenue"].includes(activeItem!) ? "active" : ""
-            }`}
+            className={`nav-item module ${["tripRevenue", "busRental", "otherRevenue"].includes(activeItem!) ? "active" : ""
+              }`}
             onClick={() => toggleSubMenu("revenue-management")}
           >
             <i className="ri-money-dollar-circle-line" />
             <span>Revenue Management</span>
             <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "revenue-management" ? "rotate" : ""
-              }`}
+              className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "revenue-management" ? "rotate" : ""
+                }`}
             />
           </div>
 
@@ -162,133 +162,128 @@ const Sidebar: React.FC = () => {
 
           {/* Expense Management Submenu - Both roles */}
           <div
-            className={`nav-item module ${
-              ["operational-expense", "administrative-expense", "purchase-expense"].includes(activeItem!) ? "active" : ""
-            }`}
+            className={`nav-item module ${["operational-expense", "administrative-expense", "purchase-expense"].includes(activeItem!) ? "active" : ""
+              }`}
             onClick={() => toggleSubMenu("expense-management")}
           >
-            <i className="ri-money-dollar-circle-line"></i>
+            <i className="ri-bank-card-line" />
             <span>Expense Management</span>
             <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "expense-management" ? "rotate" : ""
-              }`}
+              className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "expense-management" ? "rotate" : ""
+                }`}
             />
           </div>
 
           {openSubMenu === "expense-management" && (
             <div className="sub-menu active">
-              <Link
+              {<Link
                 href={getUrl("/expense-management/operational")}
                 className={`sub-item ${activeItem === "operational-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("operational-expense")}
               >
                 Operational Expenses
-              </Link>
-              <Link
+              </Link>}
+              {/* <Link
                 href={getUrl("/expense-management/purchase")}
                 className={`sub-item ${activeItem === "purchase-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("purchase-expense")}
               >
                 Purchase Expenses
-              </Link>
+              </Link> */}
               <Link
                 href={getUrl("/expense-management/administrative")}
                 className={`sub-item ${activeItem === "administrative-expense" ? "active" : ""}`}
                 onClick={() => setActiveItem("administrative-expense")}
               >
-                Administrative Expenses
+                Other Expenses
               </Link>
             </div>
           )}
 
           {/* Payroll - Both roles */}
-          <Link
-            href={getUrl("/financial-management/payroll")}
-            className={`nav-item ${activeItem === "payroll" ? "active" : ""}`}
-            onClick={() => setActiveItem("payroll")}
-          >
-            <i className="ri-group-line" />
-            <span>Payroll</span>
-          </Link>
-
-          {/* Budget Management Submenu 
-          <div
-            className={`nav-item module ${
-              ["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
-            }`}
-            onClick={() => toggleSubMenu("budget-management")}
-          >
-            <i className="ri-wallet-3-line"></i>
-            <span>Budget Management</span>
-            <i
-              className={`dropdown-arrow ri-arrow-down-s-line ${
-                openSubMenu === "budget-management" ? "rotate" : ""
-              }`}
-            />
-          </div>*/}
-
-            {/* {openSubMenu === "budget-management" && (
-              <div className="sub-menu active">
-                {/* Budget Request - Both roles - External microservice *\/}
-                <a
-                  href={budgetRequestUrl}
-                  className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveItem("budget-request");
-                    window.location.href = budgetRequestUrl;
-                  }}
-                >
-                  Budget Request
-                </a>
-                
-                {/* Budget Allocation - Admin only *\/}
-                {userRole === 'admin' && (
-                  <Link
-                    href={getUrl("/budget-management/budgetAllocation")}
-                    className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
-                    onClick={() => setActiveItem("budgetAllocation")}
-                  >
-                    Budget Allocation
-                  </Link>
-                )}
-                
-                {/* Approvals - Admin only *\/}
-                {userRole === 'admin' && (
-                  <Link
-                    href={getUrl("/budget-management/approval")}
-                    className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
-                    onClick={() => setActiveItem("approval")}
-                  >
-                    Approvals
-                  </Link>
-                )}
-              </div>
-            )} */}
-
-          {/* Approvals - Admin only */}
+          {/* Payroll - Admin only */}
           {userRole === 'admin' && (
             <Link
-              href={getUrl("/budget-management/approval")}
-              className={`nav-item ${activeItem === "approval" ? "active" : ""}`}
-              onClick={() => setActiveItem("approval")}
+              href={getUrl("/financial-management/payroll")}
+              className={`nav-item ${activeItem === "payroll" ? "active" : ""}`}
+              onClick={() => setActiveItem("payroll")}
             >
-              <i className="ri-checkbox-circle-line" />
-              <span>Approvals</span>
+              <i className="ri-group-line" />
+              <span>Payroll</span>
             </Link>
           )}
 
-          
+          {/* Budget Management Submenu */}
+          {/* Budget Management Submenu - Admin only */}
+          {userRole === 'admin' && (
+            <>
+              <div
+                className={`nav-item module ${["budget-request", "budgetAllocation", "approval"].includes(activeItem!) ? "active" : ""
+                  }`}
+                onClick={() => toggleSubMenu("budget-management")}
+              >
+                <i className="ri-wallet-3-line"></i>
+                <span>Budget Management</span>
+                <i
+                  className={`dropdown-arrow ri-arrow-down-s-line ${openSubMenu === "budget-management" ? "rotate" : ""
+                    }`}
+                />
+              </div>
+
+              {openSubMenu === "budget-management" && (
+                <div className="sub-menu active">
+                  {/* Budget Request - Both roles - External microservice */}
+                  <a
+                    href={budgetRequestUrl}
+                    className={`sub-item ${activeItem === "budget-request" ? "active" : ""}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setActiveItem("budget-request");
+                      window.location.href = budgetRequestUrl;
+                    }}
+                  >
+                    Budget Request
+                  </a>
+
+                  {/* Budget Allocation - Admin only */}
+                  {userRole === 'admin' && (
+                    <Link
+                      href={getUrl("/budget-management/budgetAllocation")}
+                      className={`sub-item ${activeItem === "budgetAllocation" ? "active" : ""}`}
+                      onClick={() => setActiveItem("budgetAllocation")}
+                    >
+                      Budget Allocation
+                    </Link>
+                  )}
+
+                  {/* Approvals - Admin only */}
+                  {userRole === 'admin' && (
+                    <Link
+                      href={getUrl("/budget-management/approval")}
+                      className={`sub-item ${activeItem === "approval" ? "active" : ""}`}
+                      onClick={() => setActiveItem("approval")}
+                    >
+                      Approvals
+                    </Link>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+
           {/* Financial Reports - Both roles */}
-          <Link
-            href={getUrl("/report")}
-            className={`nav-item ${activeItem === "report" ? "active" : ""}`}
-            onClick={() => setActiveItem("report")}
-          >
-            <i className="ri-file-chart-line" />
-            <span>Financial Reports</span>
-          </Link>
+          {/* Financial Reports - Admin only */}
+          {userRole === 'admin' && (
+            <Link
+              href={getUrl("/report")}
+              className={`nav-item ${activeItem === "report" ? "active" : ""}`}
+              onClick={() => setActiveItem("report")}
+            >
+              <i className="ri-file-chart-line" />
+              <span>Financial Reports</span>
+            </Link>
+          )}
 
           {/* Chart of Accounts - Admin only */}
           {userRole === 'admin' && (
@@ -315,7 +310,7 @@ const Sidebar: React.FC = () => {
           )}
 
           {/* Asset Management - Admin only */}
-          {userRole === 'admin' && (
+          {/*userRole === 'admin' && (
             <Link
               href={getUrl("/asset-management")}
               className={`nav-item ${activeItem === "asset-management" ? "active" : ""}`}
@@ -324,10 +319,10 @@ const Sidebar: React.FC = () => {
               <i className="ri-archive-line" />
               <span>Asset Management</span>
             </Link>
-          )}
+          )*/}
 
           {/* Disposal Approval - Admin only */}
-          {userRole === 'admin' && (
+          {/*userRole === 'admin' && (
             <Link
               href={getUrl("/disposal-approval")}
               className={`nav-item ${activeItem === "disposal-approval" ? "active" : ""}`}
@@ -336,23 +331,33 @@ const Sidebar: React.FC = () => {
               <i className="ri-delete-bin-line" />
               <span>Disposal Approval</span>
             </Link>
-          )}
+          )*/}
 
-          {/* Audit Logs - Admin only */}
+          {/* Audit Logs - Admin only - External microservice */}
           {userRole === 'admin' && (
-            <Link
-              href={getUrl("/audit")}
+            <a
+              href={auditLogsUrl}
               className={`nav-item ${activeItem === auditActiveKey ? "active" : ""}`}
-              onClick={() => setActiveItem(auditActiveKey)}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveItem(auditActiveKey);
+                window.location.href = auditLogsUrl;
+              }}
             >
               <i className={auditIconClass} />
               <span>Audit Logs</span>
-            </Link>
+            </a>
           )}
         </div>
 
         <div className="logout">
-          <a href="#">
+          <a 
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              logout();
+            }}
+          >
             <i className="ri-logout-box-r-line" />
             <span>Logout</span>
           </a>

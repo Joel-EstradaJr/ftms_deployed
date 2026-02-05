@@ -72,7 +72,7 @@ export const mockJournalTransactions: JournalTransaction[] = [
       { date: "", scenario: "", accountCode: "5045", accountName: "Driver - Conductor Boundary Share Expense", debit: 3000.00, credit: null },
       { date: "", scenario: "", accountCode: "4010", accountName: "Trip Revenue - Boundary", debit: null, credit: 12000.00 },
     ],
-    remarks: `Mock transaction ${i + 4} for pagination testing.`
+    remarks: ""
   })),
 ];
 

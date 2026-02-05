@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { RevenueScheduleItem, RevenueScheduleFrequency, PaymentStatus } from '../types/revenue';
+import { ScheduleFrequency } from '../types/schedule';
 import { formatMoney, formatDate } from '../utils/formatting';
 import { distributeAmount, smartDistributeAmount, validateDateRange } from '../utils/revenueScheduleCalculations';
 import '../styles/components/table.css';
@@ -14,7 +15,7 @@ interface PaymentScheduleTableProps {
   onItemChange?: (items: RevenueScheduleItem[]) => void;
   totalAmount: number;
   isUnearnedRevenue: boolean;
-  frequency?: RevenueScheduleFrequency;
+  frequency?: RevenueScheduleFrequency | ScheduleFrequency;
   onRecordPayment?: (item: RevenueScheduleItem) => void;
 }
 
@@ -42,8 +43,8 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   const handleDateChange = (index: number, newDate: string) => {
     if (!onItemChange) return;
 
-    const prevDate = index > 0 ? scheduleItems[index - 1].currentDueDate : undefined;
-    const nextDate = index < scheduleItems.length - 1 ? scheduleItems[index + 1].currentDueDate : undefined;
+    const prevDate = index > 0 ? scheduleItems[index - 1].due_date : undefined;
+    const nextDate = index < scheduleItems.length - 1 ? scheduleItems[index + 1].due_date : undefined;
 
     const validation = validateDateRange(newDate, prevDate, nextDate);
 
@@ -54,7 +55,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
     setDateError('');
     const updatedItems = [...scheduleItems];
-    updatedItems[index].currentDueDate = newDate;
+    updatedItems[index].due_date = newDate;
     onItemChange(updatedItems);
   };
 
@@ -66,26 +67,24 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   };
 
   const handleAddDate = () => {
-    if (!onItemChange || frequency !== RevenueScheduleFrequency.CUSTOM) return;
+    if (!onItemChange) return;
 
     const today = new Date();
     const lastItem = scheduleItems[scheduleItems.length - 1];
-    const lastDate = lastItem ? new Date(lastItem.currentDueDate + 'T00:00:00') : today;
-    
+    const lastDate = lastItem ? new Date(lastItem.due_date + 'T00:00:00') : today;
+
     // Default to 1 day after last item or today
     const newDate = new Date(lastDate);
     newDate.setDate(newDate.getDate() + 1);
-    
+
     const newItem: RevenueScheduleItem = {
       id: `temp-${Date.now()}`,
-      installmentNumber: scheduleItems.length + 1,
-      originalDueDate: formatDateInput(newDate),
-      currentDueDate: formatDateInput(newDate),
-      originalDueAmount: 0,
-      currentDueAmount: 0,
-      paidAmount: 0,
-      carriedOverAmount: 0,
-      paymentStatus: PaymentStatus.PENDING,
+      installment_number: scheduleItems.length + 1,
+      due_date: formatDateInput(newDate),
+      amount_due: 0,
+      amount_paid: 0,
+      balance: 0,
+      status: PaymentStatus.PENDING,
       isPastDue: false,
       isEditable: true
     };
@@ -96,17 +95,17 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   };
 
   const handleRemoveDate = (index: number) => {
-    if (!onItemChange || frequency !== RevenueScheduleFrequency.CUSTOM) return;
+    if (!onItemChange) return;
 
     // Can only remove if it's the last item and not paid
-    if (index !== scheduleItems.length - 1 || !scheduleItems[index].isEditable) {
+    if (index !== scheduleItems.length - 1 || scheduleItems[index].status !== PaymentStatus.PENDING) {
       return;
     }
 
     const updatedItems = scheduleItems.filter((_, i) => i !== index);
     // Renumber installments
     updatedItems.forEach((item, i) => {
-      item.installmentNumber = i + 1;
+      item.installment_number = i + 1;
     });
     const redistributed = distributeAmount(totalAmount, updatedItems);
     onItemChange(redistributed);
@@ -114,7 +113,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
   const getStatusChipClass = (status: PaymentStatus): string => {
     switch (status) {
-      case PaymentStatus.PAID:
+      case PaymentStatus.COMPLETED:
         return 'paid';
       case PaymentStatus.PARTIALLY_PAID:
         return 'partially-paid';
@@ -132,14 +131,13 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
   };
 
   const formatStatusLabel = (status: PaymentStatus): string => {
-    return status.replace('_', ' ');
+    return (status || 'PENDING').replace('_', ' ');
   };
 
-  // Calculate totals
-  const totalDue = scheduleItems.reduce((sum, item) => sum + item.currentDueAmount, 0);
-  const totalPaid = scheduleItems.reduce((sum, item) => sum + item.paidAmount, 0);
+  // Calculate totals using schema-aligned field names
+  const totalDue = scheduleItems.reduce((sum, item) => sum + (item.amount_due || 0), 0);
+  const totalPaid = scheduleItems.reduce((sum, item) => sum + (item.amount_paid || 0), 0);
   const totalBalance = totalDue - totalPaid;
-  const totalCarriedOver = scheduleItems.reduce((sum, item) => sum + item.carriedOverAmount, 0);
 
   const isEditable = mode === 'add' || mode === 'edit';
   const showPaidColumn = mode === 'edit' || mode === 'view';
@@ -158,20 +156,16 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
           }
         }
       `}</style>
-      
+
       <div className="payment-table-wrapper">
         <table className="tableContainer">
           <thead className="data-table">
             <tr>
               <th style={{ width: '140px' }}>Due Date</th>
-              {totalCarriedOver > 0 && <th style={{ width: '120px' }}>Carried Over</th>}
               <th style={{ width: '120px' }}>Amount Due</th>
               {showPaidColumn && <th style={{ width: '120px' }}>Paid Amount</th>}
               <th style={{ width: '120px' }}>Balance</th>
               <th style={{ width: '110px' }}>Status</th>
-              {isEditable && frequency === RevenueScheduleFrequency.CUSTOM && (
-                <th style={{ width: '80px' }}>Actions</th>
-              )}
               {onRecordPayment && (
                 <th style={{ width: '80px' }}>Action</th>
               )}
@@ -179,11 +173,10 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
           </thead>
           <tbody>
             {scheduleItems.map((item, index) => {
-              const balance = item.currentDueAmount - item.paidAmount;
-              const isDateEditable = isEditable && item.isEditable && item.paymentStatus === PaymentStatus.PENDING;
-              const isAmountEditable = isEditable && item.isEditable;
-              const hasCarryOver = item.carriedOverAmount > 0;
-              const amountChanged = item.currentDueAmount !== item.originalDueAmount;
+              const balance = (item.amount_due || 0) - (item.amount_paid || 0);
+              const isDateEditable = isEditable && item.status === PaymentStatus.PENDING;
+              const isAmountEditable = isEditable && item.status === PaymentStatus.PENDING;
+              const itemStatus = item.status || PaymentStatus.PENDING;
 
               return (
                 <tr key={item.id || index}>
@@ -193,7 +186,7 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                       <div>
                         <input
                           type="date"
-                          value={item.currentDueDate}
+                          value={item.due_date}
                           onChange={(e) => handleDateChange(index, e.target.value)}
                           onBlur={() => setEditingDateIndex(null)}
                           min={new Date().toISOString().split('T')[0]}
@@ -205,30 +198,23 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                     ) : (
                       <span
                         onClick={() => isDateEditable && setEditingDateIndex(index)}
-                        style={{ 
+                        style={{
                           cursor: isDateEditable ? 'pointer' : 'default',
                           textDecoration: isDateEditable ? 'underline' : 'none'
                         }}
                       >
-                        {formatDate(item.currentDueDate)}
-                        {!item.isEditable && <i className="ri-lock-line"></i>}
+                        {formatDate(item.due_date)}
+                        {itemStatus !== PaymentStatus.PENDING && <i className="ri-lock-line"></i>}
                       </span>
                     )}
                   </td>
-
-                  {/* Carried Over Amount */}
-                  {totalCarriedOver > 0 && (
-                    <td style={{ color: hasCarryOver ? '#FF8C00' : 'inherit', fontWeight: hasCarryOver ? '600' : 'normal' }}>
-                      {hasCarryOver ? `+${formatMoney(item.carriedOverAmount)}` : '-'}
-                    </td>
-                  )}
 
                   {/* Amount Due */}
                   <td>
                     {isAmountEditable && editingAmountIndex === index ? (
                       <input
                         type="number"
-                        value={item.currentDueAmount}
+                        value={item.amount_due}
                         onChange={(e) => handleAmountChange(index, parseFloat(e.target.value) || 0)}
                         onBlur={() => setEditingAmountIndex(null)}
                         min="0.01"
@@ -239,28 +225,21 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
                       <div>
                         <span
                           onClick={() => isAmountEditable && setEditingAmountIndex(index)}
-                          style={{ 
+                          style={{
                             cursor: isAmountEditable ? 'pointer' : 'default',
-                            textDecoration: isAmountEditable ? 'underline' : 'none',
-                            color: amountChanged ? '#007BFF' : 'inherit',
-                            fontWeight: amountChanged ? '600' : 'normal'
+                            textDecoration: isAmountEditable ? 'underline' : 'none'
                           }}
                         >
-                          {formatMoney(item.currentDueAmount)}
+                          {formatMoney(item.amount_due || 0)}
                         </span>
-                        {amountChanged && (
-                          <div style={{ fontSize: '11px', color: '#999', textDecoration: 'line-through' }}>
-                            {formatMoney(item.originalDueAmount)}
-                          </div>
-                        )}
                       </div>
                     )}
                   </td>
 
                   {/* Paid Amount (edit/view mode) */}
                   {showPaidColumn && (
-                    <td style={{ backgroundColor: item.paidAmount > 0 ? '#E8F5E9' : 'transparent' }}>
-                      {formatMoney(item.paidAmount)}
+                    <td style={{ backgroundColor: (item.amount_paid || 0) > 0 ? '#E8F5E9' : 'transparent' }}>
+                      {formatMoney(item.amount_paid || 0)}
                     </td>
                   )}
 
@@ -271,42 +250,25 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
 
                   {/* Status */}
                   <td style={{ textAlign: 'center' }}>
-                    <span className={`chip ${getStatusChipClass(item.paymentStatus)}`}>
-                      {formatStatusLabel(item.paymentStatus)}
+                    <span className={`chip ${getStatusChipClass(itemStatus)}`}>
+                      {formatStatusLabel(itemStatus)}
                     </span>
                   </td>
 
-                  {/* Actions (Custom frequency only) */}
-                  {isEditable && frequency === RevenueScheduleFrequency.CUSTOM && (
-                    <td style={{ textAlign: 'center' }}>
-                      {index === scheduleItems.length - 1 && item.isEditable && (
-                        <div className='actionButtonsContainer'>
-                            <button
-                                onClick={() => handleRemoveDate(index)}
-                                className="deleteBtn"
-                                title="Remove"
-                                >
-                                <i className="ri-delete-bin-line"></i>
-                            </button>
-                        </div>
-                        
-                      )}
-                    </td>
-                  )}
                   {onRecordPayment && (
                     <td style={{ textAlign: 'center' }}>
-                      {item.paymentStatus !== PaymentStatus.PAID &&
-                       item.paymentStatus !== PaymentStatus.CANCELLED &&
-                       item.paymentStatus !== PaymentStatus.WRITTEN_OFF && (
-                        <button
-                          onClick={() => onRecordPayment(item)}
-                          className="recordBtn"
-                          title="Record Payment"
-                          style={{ width: '34px', height: '34px' }}
-                        >
-                          <i className="ri-money-dollar-circle-line"></i>
-                        </button>
-                      )}
+                      {itemStatus !== PaymentStatus.COMPLETED &&
+                        itemStatus !== PaymentStatus.CANCELLED &&
+                        itemStatus !== PaymentStatus.WRITTEN_OFF && (
+                          <button
+                            onClick={() => onRecordPayment(item)}
+                            className="recordBtn"
+                            title="Record Payment"
+                            style={{ width: '34px', height: '34px' }}
+                          >
+                            <i className="ri-money-dollar-circle-line"></i>
+                          </button>
+                        )}
                     </td>
                   )}
                 </tr>
@@ -318,34 +280,19 @@ const PaymentScheduleTable: React.FC<PaymentScheduleTableProps> = ({
               <td>
                 TOTAL:
               </td>
-              {totalCarriedOver > 0 && <td>{formatMoney(totalCarriedOver)}</td>}
               <td>{formatMoney(totalDue)}</td>
               {showPaidColumn && <td>{formatMoney(totalPaid)}</td>}
               <td style={{ color: totalBalance > 0 ? '#FF4949' : '#4CAF50' }}>{formatMoney(totalBalance)}</td>
-              <td colSpan={frequency === RevenueScheduleFrequency.CUSTOM && isEditable ? 2 : 1}></td>
+              <td colSpan={onRecordPayment ? 2 : 1}></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Add Date Button for Custom Frequency */}
-      {isEditable && frequency === RevenueScheduleFrequency.CUSTOM && (
-        <div>
-          <button
-            type="button"
-            onClick={handleAddDate}
-            className="modal-table-add-btn"
-          >
-            <i className="ri-add-line"></i>
-            Add  Date
-          </button>
-        </div>
-      )}
-
       {/* Warning if total mismatch */}
       {Math.abs(totalDue - totalAmount) > 0.01 && (
         <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#FFF3CD', borderRadius: '4px', border: '1px solid #FFE69C' }}>
-          <i className="ri-alert-line" style={{ color: '#856404'}}></i>
+          <i className="ri-alert-line" style={{ color: '#856404' }}></i>
           <span style={{ color: '#856404', fontSize: '14px' }}>
             Warning: Total due ({formatMoney(totalDue)}) does not match total amount ({formatMoney(totalAmount)})
           </span>

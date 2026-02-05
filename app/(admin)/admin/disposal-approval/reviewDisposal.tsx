@@ -74,9 +74,6 @@ interface DisposalRecord {
     manufacturer?: {
       manufacturer_name: string;
     };
-    body_builder?: {
-      body_builder_name: string;
-    };
     chassis_number: string;
     engine_number: string;
     seat_capacity: number;
@@ -170,7 +167,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
 
               <div className="form-group">
                 <label>Status</label>
-                <p>
+                <p className='chip-container'>
                   <span className={getStatusClass(disposal.status)}>
                     {disposal.status}
                   </span>
@@ -181,7 +178,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
             <div className="form-row">
               <div className="form-group">
                 <label>Disposal Method</label>
-                <p>
+                <p className='chip-container'>
                   <span className="chip normal">
                     {disposal.disposal_method}
                   </span>
@@ -246,7 +243,7 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
 
                 <div className="form-group">
                   <label>Stock Status</label>
-                  <p>
+                  <p className='chip-container'>
                     <span className={`chip ${disposal.stock.status?.toLowerCase()}`}>
                       {disposal.stock.status}
                     </span>
@@ -416,7 +413,6 @@ const ReviewDisposal: React.FC<ReviewDisposalProps> = ({ disposal, action, onSub
               <div className="form-row">
                 <div className="form-group">
                   <label>Body Builder</label>
-                  <p>{disposal.bus.body_builder?.body_builder_name}</p>
                 </div>
 
                 <div className="form-group">

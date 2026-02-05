@@ -7,11 +7,15 @@ import { formatDateTime } from '../utils/formatting';
 import ModalHeader from './ModalHeader';
 
 type Trip = {
-  id: number;
-  busPlateNumber: string;
+  id?: number;
+  assignment_id?: string;
+  bus_trip_id?: string;
+  busPlateNumber?: string;
+  plate_number?: string;
   body_number: string;
   bus_type: string;
-  route: string;
+  route?: string;
+  bus_route?: string;
   date_assigned: string;
   departmentId: number;
   departmentName: string;
@@ -46,8 +50,8 @@ const TripSelectorModal: React.FC<TripSelectorModalProps> = ({
     if (search.trim()) {
       filtered = filtered.filter(t =>
         t.body_number?.toLowerCase().includes(search.toLowerCase()) ||
-        t.route.toLowerCase().includes(search.toLowerCase()) ||
-        t.busPlateNumber?.toLowerCase().includes(search.toLowerCase())
+        (t.route || t.bus_route || '').toLowerCase().includes(search.toLowerCase()) ||
+        (t.busPlateNumber || t.plate_number || '').toLowerCase().includes(search.toLowerCase())
       );
     }
     
@@ -91,13 +95,13 @@ const TripSelectorModal: React.FC<TripSelectorModalProps> = ({
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px', fontSize: '14px' }}>
                   <div style={{ fontWeight: '600', color: '#555' }}>Trip ID:</div>
-                  <div>{viewingTrip.id}</div>
+                  <div>{viewingTrip.id || viewingTrip.assignment_id}</div>
                   
                   <div style={{ fontWeight: '600', color: '#555' }}>Date Assigned:</div>
                   <div>{viewingTrip.date_assigned ? formatDateTime(viewingTrip.date_assigned) : 'N/A'}</div>
                   
                   <div style={{ fontWeight: '600', color: '#555' }}>Plate Number:</div>
-                  <div>{viewingTrip.busPlateNumber || 'N/A'}</div>
+                  <div>{viewingTrip.busPlateNumber || viewingTrip.plate_number || 'N/A'}</div>
                   
                   <div style={{ fontWeight: '600', color: '#555' }}>Body Number:</div>
                   <div>{viewingTrip.body_number || 'N/A'}</div>
@@ -106,7 +110,7 @@ const TripSelectorModal: React.FC<TripSelectorModalProps> = ({
                   <div>{formatBusType(viewingTrip.bus_type)}</div>
                   
                   <div style={{ fontWeight: '600', color: '#555' }}>Route:</div>
-                  <div>{viewingTrip.route}</div>
+                  <div>{viewingTrip.route || viewingTrip.bus_route}</div>
                   
                   <div style={{ fontWeight: '600', color: '#555' }}>Department:</div>
                   <div>{viewingTrip.departmentName}</div>
@@ -177,7 +181,7 @@ const TripSelectorModal: React.FC<TripSelectorModalProps> = ({
                   ) : (
                     paginatedTrips.map((trip) => {
                       return (
-                        <tr key={trip.id}>
+                        <tr key={trip.id || trip.assignment_id}>
                           <td>
                             {trip.date_assigned ? 
                               formatDateTime(trip.date_assigned)
@@ -194,7 +198,7 @@ const TripSelectorModal: React.FC<TripSelectorModalProps> = ({
                           </td>
                           <td>{trip.body_number || 'N/A'}</td>
                           <td>{formatBusType(trip.bus_type)}</td>
-                          <td>{trip.route}</td>
+                          <td>{trip.route || trip.bus_route}</td>
                           <td className="actionButtons">
                             <div className="actionButtonsContainer">
                               <button

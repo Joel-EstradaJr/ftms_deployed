@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import "../../../styles/components/table.css";
-import "../../../styles/components/modal2.css";
-import "../../../styles/components/chips.css";
+import "@/styles/components/table.css";
+import "@/styles/components/modal2.css";
+import "@/styles/components/chips.css";
 import "@/styles/components/forms.css"
 
 
@@ -17,7 +17,7 @@ import FilterDropdown, { FilterSection } from "../../../Components/filter";
 import PaginationComponent from "../../../Components/pagination";
 import Loading from "../../../Components/loading";
 import ErrorDisplay from "../../../Components/errordisplay";
-import { showSuccess, showError } from "@/app/utils/Alerts";
+import { showSuccess, showError, showTypeToConfirm } from "@/app/utils/Alerts";
 import type { Asset } from "../../../types/asset";
 
 export default function AssetManagementPage() {
@@ -214,7 +214,6 @@ export default function AssetManagementPage() {
         model: 'Yutong ZK6127H',
         year_model: '2020',
         warranty_expiration_date: '2025-12-31',
-        body_builder: 'Yutong',
         manufacturer: 'Yutong Bus Co.',
         dealer_name: 'ABC Motors',
         dealer_contact: '+63 912 345 6789',
@@ -398,7 +397,17 @@ export default function AssetManagementPage() {
                           </button>
                           <button
                             className="deleteBtn"
-                            onClick={() => { /* TODO: Handle dispose */ }}
+                            onClick={async () => {
+                              const confirmed = await showTypeToConfirm(
+                                "DISPOSE",
+                                "Dispose Asset",
+                                "This action will permanently dispose the asset. This cannot be undone."
+                              );
+                              if (confirmed) {
+                                // Proceed with disposal logic here (e.g., update status, remove asset, call API)
+                                showSuccess("Asset disposed successfully.", "Disposed");
+                              }
+                            }}
                             title="Dispose Asset"
                           >
                             <i className="ri-delete-bin-line" />

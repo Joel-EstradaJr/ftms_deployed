@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../../../../styles/expense-management/operational.css';
 import '../../../../styles/components/table.css';
 import '../../../../styles/components/chips.css';
@@ -10,510 +10,126 @@ import ErrorDisplay from '../../../../Components/errordisplay';
 import FilterDropdown, { FilterSection } from '../../../../Components/filter';
 import ExportButton from '../../../../Components/ExportButton';
 import ModalManager from '../../../../Components/modalManager';
-import RecordOperationalExpenseModal, { OperationalExpenseData } from './recordOperationalExpense';
 import ViewOperationalExpenseModal from './viewOperationalExpense';
-import { 
-  OperationalExpense, 
-  OperationalExpenseFilters, 
-  OperationalExpenseType,
-  ExpenseStatus 
-} from '../../../../types/expenses';
+import RecordOperationalExpenseModal, { OperationalExpenseData } from './recordOperationalExpense';
+import RecordReimbursementPaymentModal from '../../../../Components/RecordReimbursementPaymentModal';
+// import { useAuth } from '../../../../hooks/use-auth';
+import { OperationalExpenseFilters } from '../../../../types/expenses';
 import { formatDate, formatMoney } from '../../../../utils/formatting';
 import { showSuccess, showError, showConfirmation } from '../../../../utils/Alerts';
 import Swal from 'sweetalert2';
 
-// Mock Data - Departments
-const MOCK_DEPARTMENTS = [
-  { id: 1, name: 'Operations' },
-  { id: 2, name: 'Finance' },
-  { id: 3, name: 'Human Resources' },
-  { id: 4, name: 'Marketing' },
-  { id: 5, name: 'Maintenance' },
-  { id: 6, name: 'Administration' }
-];
+// Import API service
+import {
+  fetchExpenses,
+  fetchExpenseById,
+  fetchReimbursementDetails,
+  softDeleteExpense,
+  approveExpense,
+  rejectExpense,
+  ExpenseListItem,
+  ExpenseSummary,
+  updateExpense,
+  fetchChartOfAccounts,
+  fetchEmployees,
+  fetchOperationalTrips,
+  fetchRentalTrips,
+  transformFormToDTO,
+} from '../../../../services/operationalExpenseService';
 
-// Mock Data - Payment Methods
-const MOCK_PAYMENT_METHODS = [
-  { id: 1, methodName: 'Cash', methodCode: 'CASH' },
-  { id: 2, methodName: 'Bank Transfer', methodCode: 'BANK' },
-  { id: 3, methodName: 'Credit Card', methodCode: 'CC' },
-  { id: 4, methodName: 'Debit Card', methodCode: 'DC' },
-  { id: 5, methodName: 'Check', methodCode: 'CHECK' },
-  { id: 6, methodName: 'Company Account', methodCode: 'COMP' }
-];
+// Transform API expense to form data format for viewing
+interface OperationalExpenseViewData {
+  id?: number;
+  code: string;
+  date_recorded: string;
+  expense_type_name: string;
+  amount: number;
+  bus_trip_assignment_id?: string;
+  bus_trip_id?: string;
+  plate_number?: string;
+  bus_route?: string;
+  account_id?: number;
+  payment_method: string;
+  is_reimbursable: boolean;
+  description?: string;
+  approval_status?: string;
+  created_by: string;
+  approved_by?: string;
+  created_at?: string;
+  approved_at?: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  // View-only fields
+  body_number?: string;
+  bus_type?: string;
+  date_assigned?: string;
+  employee_reference?: string;
+  creditor_name?: string;
+  payable_description?: string;
+  payment_method_name?: string;
+  account_code?: string;
+  account_name?: string;
+  journal_entry_id?: number;
+  journal_entry_code?: string;
+  // Remarks fields
+  approval_remarks?: string;
+  rejection_remarks?: string;
+  deletion_remarks?: string;
+}
 
-// Mock Data - Cached Trips
-const MOCK_CACHED_TRIPS = [
-  { id: 1, busPlateNumber: 'ABC-123', body_number: 'BN-001', bus_type: 'Ordinary', route: 'Manila - Baguio', date_assigned: '2026-01-06', departmentId: 1, departmentName: 'Operations' },
-  { id: 2, busPlateNumber: 'DEF-456', body_number: 'BN-002', bus_type: 'Air-Con', route: 'Manila - Batangas', date_assigned: '2026-01-06', departmentId: 1, departmentName: 'Operations' },
-  { id: 3, busPlateNumber: 'GHI-789', body_number: 'BN-003', bus_type: 'Deluxe', route: 'Manila - Bicol', date_assigned: '2026-01-05', departmentId: 1, departmentName: 'Operations' },
-  { id: 4, busPlateNumber: 'JKL-012', body_number: 'BN-004', bus_type: 'Ordinary', route: 'Manila - Tuguegarao', date_assigned: '2026-01-05', departmentId: 1, departmentName: 'Operations' },
-  { id: 5, busPlateNumber: 'MNO-345', body_number: 'BN-005', bus_type: 'Air-Con', route: 'Manila - Pangasinan', date_assigned: '2026-01-04', departmentId: 1, departmentName: 'Operations' },
-  { id: 6, busPlateNumber: 'PQR-678', body_number: 'BN-006', bus_type: 'Deluxe', route: 'Manila - Ilocos', date_assigned: '2026-01-04', departmentId: 1, departmentName: 'Operations' },
-  { id: 7, busPlateNumber: 'STU-901', body_number: 'BN-007', bus_type: 'Ordinary', route: 'Manila - Camarines Sur', date_assigned: '2026-01-03', departmentId: 1, departmentName: 'Operations' },
-  { id: 8, busPlateNumber: 'VWX-234', body_number: 'BN-008', bus_type: 'Air-Con', route: 'Manila - Nueva Ecija', date_assigned: '2026-01-03', departmentId: 1, departmentName: 'Operations' },
-];
-
-// Mock Data - Chart of Accounts (Expense accounts only)
-const MOCK_CHART_OF_ACCOUNTS = [
-  { id: 1, accountCode: '5001', accountName: 'Fuel Expense' },
-  { id: 2, accountCode: '5002', accountName: 'Toll Fees' },
-  { id: 3, accountCode: '5003', accountName: 'Parking Fees' },
-  { id: 4, accountCode: '5004', accountName: 'Driver Allowances' },
-  { id: 5, accountCode: '5005', accountName: 'Petty Cash Expense' },
-  { id: 6, accountCode: '5006', accountName: 'Violation Penalties' },
-  { id: 7, accountCode: '5007', accountName: 'Terminal Fees' },
-  { id: 8, accountCode: '5010', accountName: 'Operational Supplies' },
-  { id: 9, accountCode: '5011', accountName: 'Vehicle Maintenance' },
-  { id: 10, accountCode: '5012', accountName: 'Miscellaneous Expense' }
-];
-
-// Mock Data - Employees
-const MOCK_EMPLOYEES = [
-  { employee_id: '1', name: 'Juan Dela Cruz', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0001' },
-  { employee_id: '2', name: 'Maria Santos', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0002' },
-  { employee_id: '3', name: 'Pedro Reyes', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0003' },
-  { employee_id: '4', name: 'Rosa Garcia', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0004' },
-  { employee_id: '5', name: 'Antonio Lopez', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0005' },
-  { employee_id: '6', name: 'Linda Cruz', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0006' },
-  { employee_id: '7', name: 'Carlos Mendoza', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0007' },
-  { employee_id: '8', name: 'Miguel Torres', job_title: 'Driver', department: 'Operations', employee_number: 'EMP-0008' },
-  { employee_id: '9', name: 'Ana Villanueva', job_title: 'Conductor', department: 'Operations', employee_number: 'EMP-0009' },
-  { employee_id: '10', name: 'Roberto Cruz', job_title: 'Mechanic', department: 'Maintenance', employee_number: 'EMP-0010' },
-  { employee_id: '11', name: 'Elena Martinez', job_title: 'Accountant', department: 'Finance', employee_number: 'EMP-0011' },
-  { employee_id: '12', name: 'Jose Fernandez', job_title: 'HR Officer', department: 'Human Resources', employee_number: 'EMP-0012' }
-];
-
-// Transform backend record to form data
-const transformRecordToFormData = (record: OperationalExpense): OperationalExpenseData => {
+// Transform API expense to form data format for viewing
+// Backend returns flat structure directly, not nested
+const transformApiToFormData = (expense: any): OperationalExpenseViewData => {
   return {
-    id: Number(record.id),
-    expenseCode: record.receipt_number || '',
-    dateRecorded: record.date_assigned,
-    expenseCategory: record.expense_type,
-    expenseSubcategory: record.category || '',
-    amount: record.amount,
-    cachedTripId: record.bus_id ? Number(record.bus_id) : undefined,
-    busPlateNumber: record.body_number || '',
-    route: '', // Not in current structure
-    department: '', // Not in current structure
-    receiptFile: null,
-    receiptUrl: '', // Not in current structure
-    accountCodeId: undefined,
-    paymentMethodId: 1, // Default to Cash
-    isReimbursable: record.payable_id !== null && record.payable_id !== undefined,
-    remarks: record.description || '',
-    status: record.status,
-    createdBy: record.created_by,
-    approvedBy: record.approved_by,
-    createdAt: record.created_at,
-    approvedAt: record.approved_at,
+    id: expense.id,
+    code: expense.code || '',
+    date_recorded: expense.date_recorded || '',
+    expense_type_name: expense.expense_type_name || '',
+    amount: expense.amount || 0,
+    bus_trip_assignment_id: expense.bus_trip_assignment_id,
+    bus_trip_id: expense.bus_trip_id,
+    plate_number: expense.plate_number || '',
+    bus_route: expense.bus_route || '',
+    account_id: expense.account_id,
+    payment_method: expense.payment_method || '',
+    is_reimbursable: expense.is_reimbursable || expense.payment_method === 'REIMBURSEMENT',
+    description: expense.description || '',
+    approval_status: expense.approval_status,
+    created_by: expense.created_by || '',
+    approved_by: expense.approved_by,
+    created_at: expense.created_at,
+    approved_at: expense.approved_at,
+    rejected_by: expense.rejected_by,
+    rejected_at: expense.rejected_at,
+    // Additional view fields - directly from flat response
+    body_number: expense.body_number,
+    bus_type: expense.bus_type,
+    date_assigned: expense.date_assigned,
+    employee_reference: expense.employee_reference,
+    creditor_name: expense.creditor_name,
+    payable_description: expense.payable_description,
+    payment_method_name: expense.payment_method,
+    account_code: expense.account_code,
+    account_name: expense.account_name,
+    journal_entry_id: expense.journal_entry_id,
+    journal_entry_code: expense.journal_entry_code,
+    // Remarks fields
+    approval_remarks: expense.approval_remarks,
+    rejection_remarks: expense.rejection_remarks,
+    deletion_remarks: expense.deletion_remarks,
   };
 };
 
-// Sample data for demonstration (20 comprehensive records)
-const sampleOperationalExpenses: OperationalExpense[] = [
-  {
-    id: '1',
-    expense_type: OperationalExpenseType.FUEL,
-    date_assigned: '2025-11-14',
-    amount: 5000,
-    description: 'Diesel fuel for Bus ABC-123',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '1',
-    body_number: 'ABC-123',
-    employee_id: '1',
-    employee_name: 'Juan Dela Cruz',
-    receipt_number: 'EXP-OP-001',
-    payable_id: null,
-    created_by: 'driver_001',
-    approved_by: 'admin',
-    created_at: '2025-11-14T08:00:00Z',
-    approved_at: '2025-11-14T09:00:00Z',
-    updated_at: '2025-11-14T09:00:00Z'
-  },
-  {
-    id: '2',
-    expense_type: OperationalExpenseType.TOLL,
-    date_assigned: '2025-11-13',
-    amount: 350,
-    description: 'Skyway toll fee - Manila to Batangas',
-    category: 'Transportation',
-    status: ExpenseStatus.PENDING,
-    bus_id: '2',
-    body_number: 'DEF-456',
-    employee_id: '2',
-    employee_name: 'Maria Santos',
-    receipt_number: 'EXP-OP-002',
-    payable_id: null,
-    created_by: 'driver_002',
-    created_at: '2025-11-13T14:30:00Z',
-    updated_at: '2025-11-13T14:30:00Z'
-  },
-  {
-    id: '3',
-    expense_type: OperationalExpenseType.PARKING,
-    date_assigned: '2025-11-13',
-    amount: 150,
-    description: 'Terminal parking fee',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '3',
-    body_number: 'GHI-789',
-    employee_id: '3',
-    employee_name: 'Pedro Reyes',
-    receipt_number: 'EXP-OP-003',
-    payable_id: null,
-    created_by: 'driver_003',
-    approved_by: 'supervisor_01',
-    created_at: '2025-11-13T10:15:00Z',
-    approved_at: '2025-11-13T11:00:00Z',
-    updated_at: '2025-11-13T11:00:00Z'
-  },
-  {
-    id: '4',
-    expense_type: OperationalExpenseType.ALLOWANCES,
-    date_assigned: '2025-11-12',
-    amount: 800,
-    description: 'Driver meal allowance - long trip',
-    category: 'Allowances',
-    status: ExpenseStatus.POSTED,
-    bus_id: '4',
-    body_number: 'JKL-012',
-    employee_id: '4',
-    employee_name: 'Rosa Garcia',
-    receipt_number: 'EXP-OP-004',
-    payable_id: 1,
-    created_by: 'driver_004',
-    approved_by: 'admin',
-    created_at: '2025-11-12T18:00:00Z',
-    approved_at: '2025-11-12T18:30:00Z',
-    updated_at: '2025-11-12T19:00:00Z'
-  },
-  {
-    id: '5',
-    expense_type: OperationalExpenseType.FUEL,
-    date_assigned: '2025-11-12',
-    amount: 4500,
-    description: 'Premium diesel for express service',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '5',
-    body_number: 'MNO-345',
-    employee_id: '5',
-    employee_name: 'Antonio Lopez',
-    receipt_number: 'EXP-OP-005',
-    payable_id: null,
-    created_by: 'driver_005',
-    approved_by: 'supervisor_01',
-    created_at: '2025-11-12T07:30:00Z',
-    approved_at: '2025-11-12T08:00:00Z',
-    updated_at: '2025-11-12T08:00:00Z'
-  },
-  {
-    id: '6',
-    expense_type: OperationalExpenseType.PETTY_CASH,
-    date_assigned: '2025-11-11',
-    amount: 500,
-    description: 'Emergency repair supplies',
-    category: 'Maintenance',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '6',
-    body_number: 'PQR-678',
-    employee_id: '6',
-    employee_name: 'Linda Cruz',
-    receipt_number: 'EXP-OP-006',
-    payable_id: null,
-    created_by: 'driver_006',
-    approved_by: 'admin',
-    created_at: '2025-11-11T13:45:00Z',
-    approved_at: '2025-11-11T14:00:00Z',
-    updated_at: '2025-11-11T14:00:00Z'
-  },
-  {
-    id: '7',
-    expense_type: OperationalExpenseType.TERMINAL_FEES,
-    date_assigned: '2025-11-11',
-    amount: 200,
-    description: 'Provincial terminal entrance fee',
-    category: 'Transportation',
-    status: ExpenseStatus.PENDING,
-    bus_id: '7',
-    body_number: 'STU-901',
-    employee_id: '7',
-    employee_name: 'Carlos Mendoza',
-    receipt_number: 'EXP-OP-007',
-    payable_id: null,
-    created_by: 'driver_007',
-    created_at: '2025-11-11T16:20:00Z',
-    updated_at: '2025-11-11T16:20:00Z'
-  },
-  {
-    id: '8',
-    expense_type: OperationalExpenseType.VIOLATIONS,
-    date_assigned: '2025-11-10',
-    amount: 1000,
-    description: 'Traffic violation penalty',
-    category: 'Penalties',
-    status: ExpenseStatus.REJECTED,
-    bus_id: '8',
-    body_number: 'VWX-234',
-    employee_id: '8',
-    employee_name: 'Miguel Torres',
-    receipt_number: 'EXP-OP-008',
-    payable_id: null,
-    created_by: 'driver_008',
-    created_at: '2025-11-10T11:00:00Z',
-    updated_at: '2025-11-10T12:00:00Z'
-  },
-  {
-    id: '9',
-    expense_type: OperationalExpenseType.FUEL,
-    date_assigned: '2025-11-10',
-    amount: 5200,
-    description: 'Diesel refuel at Petron station',
-    category: 'Transportation',
-    status: ExpenseStatus.POSTED,
-    bus_id: '1',
-    body_number: 'ABC-123',
-    employee_id: '1',
-    employee_name: 'Juan Dela Cruz',
-    receipt_number: 'EXP-OP-009',
-    payable_id: null,
-    created_by: 'driver_001',
-    approved_by: 'admin',
-    created_at: '2025-11-10T06:00:00Z',
-    approved_at: '2025-11-10T07:00:00Z',
-    updated_at: '2025-11-10T08:00:00Z'
-  },
-  {
-    id: '10',
-    expense_type: OperationalExpenseType.TOLL,
-    date_assigned: '2025-11-09',
-    amount: 280,
-    description: 'NLEX toll fee',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '2',
-    body_number: 'DEF-456',
-    employee_id: '2',
-    employee_name: 'Maria Santos',
-    receipt_number: 'EXP-OP-010',
-    payable_id: null,
-    created_by: 'driver_002',
-    approved_by: 'supervisor_01',
-    created_at: '2025-11-09T15:00:00Z',
-    approved_at: '2025-11-09T15:30:00Z',
-    updated_at: '2025-11-09T15:30:00Z'
-  },
-  {
-    id: '11',
-    expense_type: OperationalExpenseType.ALLOWANCES,
-    date_assigned: '2025-11-09',
-    amount: 600,
-    description: 'Conductor daily allowance',
-    category: 'Allowances',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '3',
-    body_number: 'GHI-789',
-    employee_id: '9',
-    employee_name: 'Ana Villanueva',
-    receipt_number: 'EXP-OP-011',
-    payable_id: 2,
-    created_by: 'conductor_001',
-    approved_by: 'admin',
-    created_at: '2025-11-09T17:00:00Z',
-    approved_at: '2025-11-09T17:30:00Z',
-    updated_at: '2025-11-09T17:30:00Z'
-  },
-  {
-    id: '12',
-    expense_type: OperationalExpenseType.PARKING,
-    date_assigned: '2025-11-08',
-    amount: 100,
-    description: 'Bus depot overnight parking',
-    category: 'Transportation',
-    status: ExpenseStatus.POSTED,
-    bus_id: '4',
-    body_number: 'JKL-012',
-    employee_id: '4',
-    employee_name: 'Rosa Garcia',
-    receipt_number: 'EXP-OP-012',
-    payable_id: null,
-    created_by: 'driver_004',
-    approved_by: 'admin',
-    created_at: '2025-11-08T20:00:00Z',
-    approved_at: '2025-11-08T20:15:00Z',
-    updated_at: '2025-11-08T21:00:00Z'
-  },
-  {
-    id: '13',
-    expense_type: OperationalExpenseType.FUEL,
-    date_assigned: '2025-11-08',
-    amount: 4800,
-    description: 'Gasoline for route operations',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '5',
-    body_number: 'MNO-345',
-    employee_id: '5',
-    employee_name: 'Antonio Lopez',
-    receipt_number: 'EXP-OP-013',
-    payable_id: null,
-    created_by: 'driver_005',
-    approved_by: 'supervisor_01',
-    created_at: '2025-11-08T09:00:00Z',
-    approved_at: '2025-11-08T09:30:00Z',
-    updated_at: '2025-11-08T09:30:00Z'
-  },
-  {
-    id: '14',
-    expense_type: OperationalExpenseType.PETTY_CASH,
-    date_assigned: '2025-11-07',
-    amount: 300,
-    description: 'Cleaning supplies for bus',
-    category: 'Maintenance',
-    status: ExpenseStatus.PENDING,
-    bus_id: '6',
-    body_number: 'PQR-678',
-    employee_id: '6',
-    employee_name: 'Linda Cruz',
-    receipt_number: 'EXP-OP-014',
-    payable_id: null,
-    created_by: 'driver_006',
-    created_at: '2025-11-07T12:00:00Z',
-    updated_at: '2025-11-07T12:00:00Z'
-  },
-  {
-    id: '15',
-    expense_type: OperationalExpenseType.TERMINAL_FEES,
-    date_assigned: '2025-11-07',
-    amount: 250,
-    description: 'Terminal usage fee - Cubao',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '7',
-    body_number: 'STU-901',
-    employee_id: '7',
-    employee_name: 'Carlos Mendoza',
-    receipt_number: 'EXP-OP-015',
-    payable_id: null,
-    created_by: 'driver_007',
-    approved_by: 'admin',
-    created_at: '2025-11-07T08:30:00Z',
-    approved_at: '2025-11-07T09:00:00Z',
-    updated_at: '2025-11-07T09:00:00Z'
-  },
-  {
-    id: '16',
-    expense_type: OperationalExpenseType.TOLL,
-    date_assigned: '2025-11-06',
-    amount: 420,
-    description: 'SCTEX toll charges',
-    category: 'Transportation',
-    status: ExpenseStatus.POSTED,
-    bus_id: '8',
-    body_number: 'VWX-234',
-    employee_id: '8',
-    employee_name: 'Miguel Torres',
-    receipt_number: 'EXP-OP-016',
-    payable_id: null,
-    created_by: 'driver_008',
-    approved_by: 'supervisor_01',
-    created_at: '2025-11-06T14:00:00Z',
-    approved_at: '2025-11-06T14:30:00Z',
-    updated_at: '2025-11-06T15:00:00Z'
-  },
-  {
-    id: '17',
-    expense_type: OperationalExpenseType.ALLOWANCES,
-    date_assigned: '2025-11-06',
-    amount: 700,
-    description: 'Emergency overnight allowance',
-    category: 'Allowances',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '1',
-    body_number: 'ABC-123',
-    employee_id: '1',
-    employee_name: 'Juan Dela Cruz',
-    receipt_number: 'EXP-OP-017',
-    payable_id: 3,
-    created_by: 'driver_001',
-    approved_by: 'admin',
-    created_at: '2025-11-06T22:00:00Z',
-    approved_at: '2025-11-06T22:30:00Z',
-    updated_at: '2025-11-06T22:30:00Z'
-  },
-  {
-    id: '18',
-    expense_type: OperationalExpenseType.FUEL,
-    date_assigned: '2025-11-05',
-    amount: 5500,
-    description: 'Shell diesel premium',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '2',
-    body_number: 'DEF-456',
-    employee_id: '2',
-    employee_name: 'Maria Santos',
-    receipt_number: 'EXP-OP-018',
-    payable_id: null,
-    created_by: 'driver_002',
-    approved_by: 'supervisor_01',
-    created_at: '2025-11-05T07:00:00Z',
-    approved_at: '2025-11-05T07:30:00Z',
-    updated_at: '2025-11-05T07:30:00Z'
-  },
-  {
-    id: '19',
-    expense_type: OperationalExpenseType.PETTY_CASH,
-    date_assigned: '2025-11-05',
-    amount: 450,
-    description: 'First aid supplies',
-    category: 'Safety',
-    status: ExpenseStatus.PENDING,
-    bus_id: '3',
-    body_number: 'GHI-789',
-    employee_id: '3',
-    employee_name: 'Pedro Reyes',
-    receipt_number: 'EXP-OP-019',
-    payable_id: null,
-    created_by: 'driver_003',
-    created_at: '2025-11-05T11:30:00Z',
-    updated_at: '2025-11-05T11:30:00Z'
-  },
-  {
-    id: '20',
-    expense_type: OperationalExpenseType.PARKING,
-    date_assigned: '2025-11-04',
-    amount: 180,
-    description: 'Mall parking during layover',
-    category: 'Transportation',
-    status: ExpenseStatus.APPROVED,
-    bus_id: '4',
-    body_number: 'JKL-012',
-    employee_id: '4',
-    employee_name: 'Rosa Garcia',
-    receipt_number: 'EXP-OP-020',
-    payable_id: null,
-    created_by: 'driver_004',
-    approved_by: 'admin',
-    created_at: '2025-11-04T16:00:00Z',
-    approved_at: '2025-11-04T16:30:00Z',
-    updated_at: '2025-11-04T16:30:00Z'
-  }
-];
-
 const OperationalExpensePage = () => {
   // State management
-  const [data, setData] = useState<OperationalExpense[]>([]);
+  const [data, setData] = useState<ExpenseListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [filters, setFilters] = useState<OperationalExpenseFilters>({});
 
   // Pagination states
@@ -522,341 +138,122 @@ const OperationalExpensePage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  // Summary state
+  const [summary, setSummary] = useState<ExpenseSummary>({
+    pending_count: 0,
+    approved_count: 0,
+    total_approved_amount: 0,
+  });
+
   // ModalManager states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
   const [activeRow, setActiveRow] = useState<number | null>(null);
 
-  // Current user
-  const currentUser = 'admin_user'; // TODO: Get from auth context
+  // Reference tables for Edit Modal
+  const [employeesRef, setEmployeesRef] = useState<any[]>([]);
+  const [coaRef, setCoaRef] = useState<any[]>([]);
+  const [tripsRef, setTripsRef] = useState<any[]>([]);
+  const [refDataLoaded, setRefDataLoaded] = useState(false);
+  const [currentUser] = useState('Admin'); // Placeholder until Auth context is fixed
 
-  // Modal management functions
-  const openModal = (mode: 'add' | 'edit' | 'view' | 'approve', rowData?: OperationalExpense) => {
-    let content: React.ReactNode = null;
-
-    if (mode === 'view' && rowData) {
-      // Find payment method name
-      const paymentMethodName = MOCK_PAYMENT_METHODS.find(pm => pm.id === 1)?.methodName || 'Cash';
-      
-      // Find account details if exists
-      const accountDetails = MOCK_CHART_OF_ACCOUNTS.find(acc => acc.id === 1);
-
-      const expenseData: OperationalExpenseData & { 
-        paymentMethodName?: string; 
-        accountCode?: string;
-        accountName?: string;
-      } = {
-        ...transformRecordToFormData(rowData),
-        paymentMethodName: paymentMethodName,
-        accountCode: accountDetails?.accountCode,
-        accountName: accountDetails?.accountName,
-      };
-
-      content = (
-        <ViewOperationalExpenseModal
-          expenseData={expenseData}
-          onClose={closeModal}
-        />
-      );
-    } else if (mode === 'add' || mode === 'edit' || mode === 'approve') {
-      const formData = rowData ? transformRecordToFormData(rowData) : null;
-
-      content = (
-        <RecordOperationalExpenseModal
-          mode={mode}
-          existingData={formData}
-          onSave={handleSaveOperationalExpense}
-          onClose={closeModal}
-          paymentMethods={MOCK_PAYMENT_METHODS}
-          departments={MOCK_DEPARTMENTS}
-          cachedTrips={MOCK_CACHED_TRIPS}
-          chartOfAccounts={MOCK_CHART_OF_ACCOUNTS}
-          employees={MOCK_EMPLOYEES}
-          currentUser={currentUser}
-        />
-      );
-    }
-
-    setModalContent(content);
-    setIsModalOpen(true);
-    setActiveRow(rowData ? Number(rowData.id) : null);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setModalContent(null);
-    setActiveRow(null);
-  };
-
-  // Handle save operational expense (add or edit)
-  const handleSaveOperationalExpense = async (formData: OperationalExpenseData, mode: 'add' | 'edit' | 'approve') => {
+  const loadReferenceData = async () => {
+    if (refDataLoaded) return;
     try {
-      console.log(`${mode === 'add' ? 'Adding' : 'Updating'} operational expense:`, formData);
+      const [empData, coaData, opTrips, rentalTrips] = await Promise.all([
+        fetchEmployees(),
+        fetchChartOfAccounts(),
+        fetchOperationalTrips(),
+        fetchRentalTrips(),
+      ]);
 
-      // TODO: Replace with actual API call
-      // const endpoint = mode === 'add' 
-      //   ? 'http://localhost:4000/api/admin/expenses/operational'
-      //   : `http://localhost:4000/api/admin/expenses/operational/${formData.id}`;
-      
-      // const method = mode === 'add' ? 'POST' : 'PUT';
-      
-      // const response = await fetch(endpoint, {
-      //   method: method,
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
+      // Transform Employees
+      const formattedEmps = empData.map(e => ({
+        employee_id: e.employeeNumber,
+        name: `${e.firstName} ${e.lastName}`,
+        job_title: e.position || '',
+        department: e.department || '',
+        employee_number: e.employeeNumber
+      }));
+      setEmployeesRef(formattedEmps);
+      setCoaRef(coaData);
 
-      // if (!response.ok) throw new Error('Failed to save operational expense');
+      // Transform Trips
+      const mappedTrips = [
+        ...opTrips.map(t => ({
+          assignment_id: t.assignment_id,
+          bus_trip_id: t.bus_trip_id,
+          plate_number: t.bus_plate_number || '',
+          body_number: t.body_number || '',
+          bus_type: t.bus_type || '',
+          bus_route: t.bus_route || '',
+          date_assigned: t.date_assigned || '',
+          departmentId: 0,
+          departmentName: 'Operations'
+        })),
+        ...rentalTrips.map(t => ({
+          assignment_id: t.assignment_id,
+          bus_trip_id: 'RENTAL',
+          plate_number: t.bus_plate_number || '',
+          body_number: t.body_number || '',
+          bus_type: t.bus_type || '',
+          bus_route: t.rental_destination || '',
+          date_assigned: t.rental_start_date || '',
+          departmentId: 0,
+          departmentName: 'Rental'
+        }))
+      ];
+      setTripsRef(mappedTrips);
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      await showSuccess(
-        `${mode === 'add' ? 'Recorded' : mode === 'approve' ? 'Approved' : 'Updated'}!`,
-        `Operational expense has been ${mode === 'add' ? 'recorded' : mode === 'approve' ? 'approved and recorded' : 'updated'} successfully.`
-      );
-
-      closeModal();
-      fetchData(); // Refresh the data
-    } catch (error) {
-      console.error('Error saving operational expense:', error);
-      await showError(
-        'Error',
-        `Failed to ${mode === 'add' ? 'record' : 'update'} operational expense. Please try again.`
-      );
+      setRefDataLoaded(true);
+    } catch (err) {
+      console.error("Failed to load reference data", err);
+      showError("Error", "Failed to load form data.");
     }
   };
 
-  // Action handlers
-  const handleAdd = () => {
-    openModal('add');
-  };
-
-  const handleView = (id: string) => {
-    const expense = data.find(item => item.id === id);
-    if (expense) {
-      openModal('view', expense);
-    }
-  };
-
-  const handleEdit = (id: string) => {
-    const expense = data.find(item => item.id === id);
-    if (expense) {
-      openModal('edit', expense);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleSaveExpense = async (formData: OperationalExpenseData, mode: "add" | "edit" | "approve") => {
     try {
-      const result = await Swal.fire({
-        title: 'Delete Operational Expense',
-        text: 'Are you sure you want to delete this operational expense? This action cannot be undone.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'Cancel'
-      });
-
-      if (result.isConfirmed) {
-        console.log('Deleting operational expense:', id);
-
-        // TODO: Replace with actual API call
-        // const response = await fetch(`http://localhost:4000/api/admin/expenses/operational/${id}`, {
-        //   method: 'DELETE'
-        // });
-
-        // if (!response.ok) throw new Error('Failed to delete operational expense');
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        await showSuccess(
-          'Deleted!',
-          'Operational expense has been deleted successfully.'
-        );
-
-        fetchData(); // Refresh the data
+      if (mode === 'edit' && formData.id) {
+        const dto = transformFormToDTO(formData, formData.is_reimbursable);
+        await updateExpense(formData.id, dto);
+        await showSuccess("Success", "Expense updated successfully.");
+        setIsModalOpen(false);
+        fetchData(); // Refresh list
       }
-    } catch (error) {
-      console.error('Error deleting operational expense:', error);
-      await showError(
-        'Error',
-        'Failed to delete operational expense. Please try again.'
-      );
+    } catch (err) {
+      console.error("Error updating expense", err);
+      await showError("Error", "Failed to update expense.");
     }
   };
 
-  const handleApprove = async (id: string) => {
-    const expense = data.find(item => item.id === id);
-    if (expense) {
-      openModal('approve', expense);
-    }
-  };
+  // Debounce search term to prevent excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms debounce
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const handleRollback = async (id: string) => {
-    try {
-      const result = await showConfirmation(
-        '<p>Are you sure you want to <b>rollback</b> this expense to <b>PENDING</b> status?</p><p>This will allow modifications to be made.</p>',
-        'Rollback to Pending'
-      );
-
-      if (result.isConfirmed) {
-        console.log('Rolling back operational expense:', id);
-
-        // TODO: Replace with actual API call
-        // const response = await fetch(`http://localhost:4000/api/admin/expenses/operational/${id}/rollback`, {
-        //   method: 'PUT',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ status: ExpenseStatus.PENDING })
-        // });
-
-        // if (!response.ok) throw new Error('Failed to rollback operational expense');
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        await showSuccess(
-          'Rolled Back!',
-          'Operational expense has been rolled back to PENDING status.'
-        );
-
-        fetchData(); // Refresh the data
-      }
-    } catch (error) {
-      console.error('Error rolling back operational expense:', error);
-      await showError(
-        'Error',
-        'Failed to rollback operational expense. Please try again.'
-      );
-    }
-  };
-
-  const handlePost = async (id: string) => {
-    try {
-      const expense = data.find(item => item.id === id);
-      if (!expense) return;
-
-      const result = await showConfirmation(
-        `<p>Are you sure you want to <b>POST</b> this expense?</p><p><b>Amount:</b> ${formatMoney(expense.amount)}</p><p><b>Description:</b> ${expense.description}</p><p>This will create a Journal Entry Voucher (JEV) and the expense cannot be modified afterward.</p>`,
-        'Post Expense to JEV'
-      );
-
-      if (result.isConfirmed) {
-        console.log('Posting operational expense:', id);
-
-        // TODO: Replace with actual API call
-        // const response = await fetch(`http://localhost:4000/api/admin/expenses/operational/${id}/post`, {
-        //   method: 'PUT',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ status: ExpenseStatus.POSTED })
-        // });
-
-        // if (!response.ok) throw new Error('Failed to post operational expense');
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        await showSuccess(
-          'Posted!',
-          'Operational expense has been posted to JEV successfully.'
-        );
-
-        fetchData(); // Refresh the data
-      }
-    } catch (error) {
-      console.error('Error posting operational expense:', error);
-      await showError(
-        'Error',
-        'Failed to post operational expense. Please try again.'
-      );
-    }
-  };
-
-  // Filter sections for FilterDropdown
-  const filterSections: FilterSection[] = [
-    {
-      id: 'dateRange',
-      title: 'Date Range',
-      type: 'dateRange',
-      defaultValue: { from: '', to: '' }
-    },
-    {
-      id: 'expense_type',
-      title: 'Expense Type',
-      type: 'radio',
-      options: [
-        { id: '', label: 'All Types' },
-        { id: OperationalExpenseType.FUEL, label: 'Fuel' },
-        { id: OperationalExpenseType.TOLL, label: 'Toll' },
-        { id: OperationalExpenseType.PARKING, label: 'Parking' },
-        { id: OperationalExpenseType.ALLOWANCES, label: 'Allowances' },
-        { id: OperationalExpenseType.PETTY_CASH, label: 'Petty Cash' },
-        { id: OperationalExpenseType.VIOLATIONS, label: 'Violations' },
-        { id: OperationalExpenseType.TERMINAL_FEES, label: 'Terminal Fees' }
-      ],
-      defaultValue: ''
-    },
-    {
-      id: 'status',
-      title: 'Status',
-      type: 'radio',
-      options: [
-        { id: '', label: 'All Status' },
-        { id: ExpenseStatus.PENDING, label: 'Pending' },
-        { id: ExpenseStatus.APPROVED, label: 'Approved' },
-        { id: ExpenseStatus.REJECTED, label: 'Rejected' },
-        { id: ExpenseStatus.POSTED, label: 'Posted' }
-      ],
-      defaultValue: ''
-    }
-  ];
-
-  // Fetch data (using sample data for now)
-  const fetchData = async () => {
+  // Fetch expenses data
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // TODO: Replace with ftms_backend API call - http://localhost:4000/api/admin/expenses/operational
-      // const response = await fetch('/api/admin/expenses/operational?' + queryParams);
-      // const result = await response.json();
-      console.warn('API integration pending - using mock operational expense data');
+      const result = await fetchExpenses({
+        page: currentPage,
+        limit: pageSize,
+        search: debouncedSearchTerm || undefined,
+        date_from: filters.dateRange?.from || undefined,
+        date_to: filters.dateRange?.to || undefined,
+        status: filters.status ? [filters.status] : undefined,
+      });
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      let filteredData = [...sampleOperationalExpenses];
-
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        filteredData = filteredData.filter(expense =>
-          expense.description.toLowerCase().includes(searchLower) ||
-          expense.body_number?.toLowerCase().includes(searchLower) ||
-          expense.employee_name?.toLowerCase().includes(searchLower) ||
-          expense.receipt_number?.toLowerCase().includes(searchLower)
-        );
-      }
-
-      if (filters.expense_type) {
-        filteredData = filteredData.filter(expense => expense.expense_type === filters.expense_type);
-      }
-
-      if (filters.status) {
-        filteredData = filteredData.filter(expense => expense.status === filters.status);
-      }
-
-      if (filters.dateRange?.from) {
-        filteredData = filteredData.filter(expense => expense.date_assigned >= filters.dateRange!.from!);
-      }
-
-      if (filters.dateRange?.to) {
-        filteredData = filteredData.filter(expense => expense.date_assigned <= filters.dateRange!.to!);
-      }
-
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedData = filteredData.slice(startIndex, endIndex);
-
-      setData(paginatedData);
-      setTotalCount(filteredData.length);
-      setTotalPages(Math.ceil(filteredData.length / pageSize));
+      setData(result.expenses);
+      setTotalCount(result.pagination.total);
+      setTotalPages(result.pagination.total_pages);
+      setSummary(result.summary);
 
     } catch (err) {
       console.error('Error fetching operational expense data:', err);
@@ -865,12 +262,283 @@ const OperationalExpensePage = () => {
     } finally {
       setLoading(false);
     }
+  }, [currentPage, pageSize, filters, debouncedSearchTerm]);
+
+
+  // Modal management functions
+  const openModal = async (mode: 'view' | 'edit', rowData: ExpenseListItem) => {
+    let content: React.ReactNode = null;
+
+    if (mode === 'edit') {
+      await loadReferenceData();
+    }
+
+    // Fetch full details
+    const fullDetails = await fetchExpenseById(rowData.id);
+    if (!fullDetails) {
+      await showError('Error', 'Failed to load expense details');
+      return;
+    }
+    
+    console.log('Backend returned full details:', fullDetails);
+
+    if (mode === 'view') {
+      const expenseData = transformApiToFormData(fullDetails);
+      content = (
+        <ViewOperationalExpenseModal
+          expenseData={expenseData}
+          onClose={closeModal}
+        />
+      );
+    } else {
+      // Transform for Edit
+      // Cast to any because backend returns flat structure but interface defines nested
+      const flatDetails = fullDetails as any;
+      const editData: OperationalExpenseData = {
+        id: flatDetails.id,
+        code: flatDetails.code,
+        date_recorded: (flatDetails.date_recorded || '').split('T')[0],
+        expense_type_name: flatDetails.expense_type_name || flatDetails.expense_name,
+        amount: flatDetails.amount,
+        payment_method: flatDetails.payment_method || '',
+        bus_trip_assignment_id: rowData.operational_trip?.assignment_id || rowData.rental_trip?.assignment_id || flatDetails.bus_trip_assignment_id || undefined,
+        bus_trip_id: rowData.operational_trip?.bus_trip_id || flatDetails.bus_trip_id || undefined,
+        department: 'Operations',
+        account_id: flatDetails.account_id || undefined,
+        is_reimbursable: flatDetails.is_reimbursable,
+        description: flatDetails.description || '',
+        employee_reference: flatDetails.payable?.employee_reference || flatDetails.employee_reference || '',
+        creditor_name: flatDetails.payable?.creditor_name || flatDetails.creditor_name || '',
+        payable_description: flatDetails.payable?.description || flatDetails.payable_description || '',
+        created_by: flatDetails.created_by,
+        plate_number: rowData.operational_trip?.bus_plate_number || rowData.rental_trip?.bus_plate_number || flatDetails.plate_number || '',
+        bus_route: rowData.operational_trip?.bus_route || rowData.rental_trip?.rental_destination || flatDetails.bus_route || '',
+        body_number: flatDetails.body_number || '',
+        bus_type: flatDetails.bus_type || '',
+        date_assigned: flatDetails.date_assigned || '',
+        driver_id: flatDetails.driver_id || null,
+        driver_name: flatDetails.driver_name || null,
+        conductor_id: flatDetails.conductor_id || null,
+        conductor_name: flatDetails.conductor_name || null,
+      };
+
+      // Fetch reimbursement details with driver/conductor split if expense is reimbursable
+      if (flatDetails.is_reimbursable) {
+        const reimbursementDetails = await fetchReimbursementDetails(flatDetails.id);
+        if (reimbursementDetails) {
+          // Store driver installments
+          if (reimbursementDetails.driver) {
+            editData.driverInstallments = {
+              employee_name: reimbursementDetails.driver.employee_name,
+              employee_number: reimbursementDetails.driver.employee_number,
+              total_share: reimbursementDetails.driver.share_amount,
+              paid_amount: reimbursementDetails.driver.paid_amount,
+              balance: reimbursementDetails.driver.balance,
+              status: reimbursementDetails.driver.status,
+              installments: reimbursementDetails.driver.installments.map((inst: any) => ({
+                id: inst.id,
+                installment_number: inst.installment_number,
+                due_date: inst.due_date.split('T')[0],
+                amount_due: inst.amount_due,
+                status: inst.status.toUpperCase() as any,
+                payment_date: inst.payment_date ? inst.payment_date.split('T')[0] : undefined,
+                amount_paid: inst.amount_paid,
+                balance: inst.balance,
+              }))
+            };
+          }
+          
+          // Store conductor installments
+          if (reimbursementDetails.conductor) {
+            editData.conductorInstallments = {
+              employee_name: reimbursementDetails.conductor.employee_name,
+              employee_number: reimbursementDetails.conductor.employee_number,
+              total_share: reimbursementDetails.conductor.share_amount,
+              paid_amount: reimbursementDetails.conductor.paid_amount,
+              balance: reimbursementDetails.conductor.balance,
+              status: reimbursementDetails.conductor.status,
+              installments: reimbursementDetails.conductor.installments.map((inst: any) => ({
+                id: inst.id,
+                installment_number: inst.installment_number,
+                due_date: inst.due_date.split('T')[0],
+                amount_due: inst.amount_due,
+                status: inst.status.toUpperCase() as any,
+                payment_date: inst.payment_date ? inst.payment_date.split('T')[0] : undefined,
+                amount_paid: inst.amount_paid,
+                balance: inst.balance,
+              }))
+            };
+          }
+        }
+      }
+      
+      console.log('Edit Data being sent to modal:', editData);
+
+      content = (
+        <RecordOperationalExpenseModal
+          mode="edit"
+          existingData={editData}
+          onSave={handleSaveExpense}
+          onClose={closeModal}
+          departments={[{ id: 1, name: "Operations" }]}
+          cachedTrips={tripsRef}
+          chartOfAccounts={coaRef}
+          employees={employeesRef}
+          currentUser={currentUser}
+        />
+      );
+    }
+
+    setModalContent(content);
+    setIsModalOpen(true);
+    setActiveRow(Number(rowData.id));
   };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalContent(null);
+    setActiveRow(null);
+  };
+
+  // Action handlers
+  const handleView = (id: number) => {
+    const expense = data.find(item => item.id === id);
+    if (expense) {
+      openModal('view', expense);
+    }
+  };
+
+  const handleEdit = (id: number) => {
+    const expense = data.find(item => item.id === id);
+    if (expense) {
+      openModal('edit', expense);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'Delete Operational Expense',
+        input: 'textarea',
+        inputLabel: 'Reason for deletion',
+        inputPlaceholder: 'Enter the reason for deleting this expense...',
+        text: 'This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'Please provide a reason for deletion';
+          }
+          return null;
+        }
+      });
+
+      if (isConfirmed && reason) {
+        await softDeleteExpense(id, reason);
+        await showSuccess('Deleted!', 'Operational expense has been deleted successfully.');
+        fetchData(); // Refresh the data
+      }
+    } catch (error) {
+      console.error('Error deleting operational expense:', error);
+      await showError('Error', 'Failed to delete operational expense. Please try again.');
+    }
+  };
+
+  const handleApprove = async (id: number) => {
+    try {
+      const { value: remarks } = await Swal.fire({
+        title: 'Approve Expense',
+        input: 'textarea',
+        inputLabel: 'Approval remarks (optional)',
+        inputPlaceholder: 'Enter any remarks for this approval...',
+        inputAttributes: {
+          'aria-label': 'Approval remarks'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Approve',
+        confirmButtonColor: '#28a745',
+        html: `
+          <p style="color: #666; font-size: 0.9em; margin-bottom: 1rem;">
+            Approving this expense will automatically generate a journal entry with:
+            <br>• Debit: Fuel Expense (4000)
+            <br>• Credit: Cash on Hand (1010)
+          </p>
+        `,
+      });
+
+      if (remarks !== undefined) {
+        await approveExpense(id, remarks || '');
+        await showSuccess('Approved!', 'Expense approved and journal entry created successfully.');
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error approving operational expense:', error);
+      await showError('Error', 'Failed to approve operational expense. Please try again.');
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    try {
+      const { value: reason } = await Swal.fire({
+        title: 'Reject Expense',
+        input: 'textarea',
+        inputLabel: 'Reason for rejection',
+        inputPlaceholder: 'Enter the reason for rejecting this expense...',
+        inputAttributes: {
+          'aria-label': 'Reason for rejection'
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Reject',
+        confirmButtonColor: '#d33',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'Please provide a reason for rejection';
+          }
+          return null;
+        }
+      });
+
+      if (reason) {
+        await rejectExpense(id, reason);
+        await showSuccess('Rejected!', 'Operational expense has been rejected.');
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error rejecting operational expense:', error);
+      await showError('Error', 'Failed to reject operational expense. Please try again.');
+    }
+  };
+
+  // Filter sections for FilterDropdown - only Status (matches table columns)
+  const filterSections: FilterSection[] = [
+    {
+      id: 'dateRange',
+      title: 'Date Range',
+      type: 'dateRange',
+      defaultValue: { from: '', to: '' }
+    },
+    {
+      id: 'status',
+      title: 'Status',
+      type: 'radio',
+      options: [
+        { id: '', label: 'All Status' },
+        { id: 'PENDING', label: 'Pending' },
+        { id: 'APPROVED', label: 'Approved' },
+        { id: 'REJECTED', label: 'Rejected' },
+        { id: 'COMPLETED', label: 'Completed' }
+      ],
+      defaultValue: ''
+    }
+  ];
 
   const handleFilterApply = (appliedFilters: any) => {
     const converted: OperationalExpenseFilters = {
       dateRange: appliedFilters.dateRange,
-      expense_type: appliedFilters.expense_type,
       status: appliedFilters.status,
     };
     setFilters(converted);
@@ -879,7 +547,7 @@ const OperationalExpensePage = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, pageSize, filters, searchTerm]);
+  }, [fetchData]);
 
   if (loading && data.length === 0) {
     return (
@@ -907,198 +575,263 @@ const OperationalExpensePage = () => {
     );
   }
 
-  // Prepare export data
+  // Payment status display mapping
+  const getPaymentStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'PENDING': 'Pending',
+      'PENDING_REIMBURSEMENT': 'Pending Reimbursement',
+      'PARTIALLY_PAID': 'Partially Paid',
+      'PARTIALLY_REIMBURSED': 'Partially Reimbursed',
+      'COMPLETED': 'Completed',
+      'OVERDUE': 'Overdue',
+      'CANCELLED': 'Cancelled',
+      'WRITTEN_OFF': 'Written Off',
+    };
+    return labels[status] || status.replace(/_/g, ' ');
+  };
+
+  // Check if expense can have reimbursement recorded
+  const canRecordReimbursement = (expense: ExpenseListItem) => {
+    return expense.approval_status === 'APPROVED' &&
+      expense.is_reimbursable === true &&
+      (expense.payment_status === 'PENDING' ||
+        expense.payment_status === 'PENDING_REIMBURSEMENT' ||
+        expense.payment_status === 'PARTIALLY_REIMBURSED' ||
+        expense.payment_status === 'PARTIALLY_PAID');
+  };
+
+  // Handle record reimbursement click
+  const handleRecordReimbursement = (expenseId: number) => {
+    // Payment methods for the modal
+    const paymentMethods = [
+      { id: 1, methodName: 'Cash', methodCode: 'CASH' },
+      { id: 2, methodName: 'Bank Transfer', methodCode: 'BANK_TRANSFER' },
+      { id: 3, methodName: 'E-Wallet', methodCode: 'E_WALLET' },
+    ];
+
+    const content = (
+      <RecordReimbursementPaymentModal
+        expenseId={expenseId}
+        paymentMethods={paymentMethods}
+        currentUser="Admin"
+        onPaymentRecorded={async () => {
+          await showSuccess('Payment recorded successfully!', 'Success');
+          fetchData(); // Refresh the list
+        }}
+        onClose={closeModal}
+      />
+    );
+
+    setModalContent(content);
+    setIsModalOpen(true);
+    setActiveRow(expenseId);
+  };
+
+  // Prepare export data - matches visible table columns exactly
   const exportData = data.map(expense => ({
-    'Date': formatDate(expense.date_assigned),
-    'Expense Type': expense.expense_type.replace(/_/g, ' '),
+    'Date Recorded': formatDate(expense.date_recorded),
+    'Expense Code': expense.code,
     'Body Number': expense.body_number || '-',
-    'Employee': expense.employee_name || '-',
-    'Description': expense.description,
     'Amount': formatMoney(expense.amount),
-    'Reimbursable': expense.payable_id ? 'Yes' : 'No',
-    'Status': expense.status,
-    'Receipt': expense.receipt_number || '-'
+    'Payment Status': getPaymentStatusLabel(expense.payment_status),
+    'Status': expense.approval_status,
   }));
 
   return (
     <div className="card">
-        <div className="elements">
-          <div className="title">
-            <h1>Operational Expenses</h1>
-          </div>
-
-          <div className="settings">
-            
-            {/* Search bar with Filter button inline */}
-            <div className="search-filter-container">
-              <div className="searchBar">
-                <i className="ri-search-line" />
-                <input
-                  className="searchInput"
-                  type="text"
-                  placeholder="Search description, bus, employee, receipt..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              {/* Filter button right next to search bar */}
-              <FilterDropdown
-                sections={filterSections}
-                onApply={(filterValues) => {
-                  const dateRange = filterValues.dateRange as { from: string; to: string } || { from: '', to: '' };
-                  handleFilterApply({
-                    dateRange,
-                    expense_type: (filterValues.expense_type as string) || '',
-                    status: (filterValues.status as string) || ''
-                  });
-                }}
-                initialValues={{
-                  dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
-                  expense_type: filters.expense_type || '',
-                  status: filters.status || ''
-                }}
-              />
-            </div>
-
-            <div className="filters">
-              <ExportButton
-                data={exportData}
-                filename="operational-expenses"
-                title="Operational Expenses Report"
-              />
-              {/* Add New Button */}
-              <button className="addButton" onClick={handleAdd}>
-                <i className="ri-add-line"/> Record Expense
-              </button>
-
-            </div>
-          </div>
-
-          <div className="table-wrapper">
-            <div className="tableContainer">
-              <table className="data-table operational-expense-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Expense</th>
-                    <th>Body Number</th>
-                    <th>Amount</th>
-                    <th>Reimbursable</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={7} className="loading-cell">Loading...</td>
-                    </tr>
-                  ) : data.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="empty-cell">No operational expenses found.</td>
-                    </tr>
-                  ) : (
-                    data.map((expense) => (
-                      <tr key={expense.id} className={activeRow === Number(expense.id) ? 'active-row' : ''}>
-                        <td>{formatDate(expense.date_assigned)}</td>
-                        <td>
-                          <span className={`chip ${expense.expense_type.toLowerCase()}`}>
-                            {expense.expense_type.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td>{expense.body_number || '-'}</td>
-                        <td className="expense-amount">{formatMoney(expense.amount)}</td>
-                        <td>
-                          {expense.payable_id ? (
-                            <span className="chip reimbursable">Yes</span>
-                          ) : (
-                            <span className="chip not-reimbursable">No</span>
-                          )}
-                        </td>
-                        <td>
-                          <span className={`chip ${expense.status.toLowerCase()}`}>
-                            {expense.status}
-                          </span>
-                        </td>
-                        <td className="actionButtons">
-                          <div className="actionButtonsContainer">
-                            {/* View button - always visible */}
-                            <button
-                              className="viewBtn"
-                              onClick={() => handleView(expense.id)}
-                              title="View Details"
-                            >
-                              <i className="ri-eye-line"></i>
-                            </button>
-
-                            {/* Status-based action buttons */}
-                              <>
-                                <button
-                                  className="approveBtn"
-                                  onClick={() => handleApprove(expense.id)}
-                                  title="Approve Expense"
-                                  disabled= {expense.status !== ExpenseStatus.PENDING}
-                                >
-                                  <i className="ri-check-line"></i>
-                                </button>
-                              </>
-
-                              <>
-                                <button
-                                  className="editBtn"
-                                  onClick={() => handleEdit(expense.id)}
-                                  title="Edit Expense"
-                                  disabled={expense.status !== ExpenseStatus.REJECTED}
-                                >
-                                  <i className="ri-edit-line"></i>
-                                </button>
-                              </>
-
-                              <>
-                                <button
-                                  className="rejectBtn"
-                                  onClick={() => handleRollback(expense.id)}
-                                  title="Rollback to Pending"
-                                  disabled={expense.status !== ExpenseStatus.APPROVED}
-                                >
-                                  <i className="ri-arrow-go-back-line"></i>
-                                </button>
-
-                                <button
-                                  className="submitBtn"
-                                  onClick={() => handlePost(expense.id)}
-                                  title="Post to JEV"
-                                  disabled={expense.status !== ExpenseStatus.APPROVED}
-                                >
-                                  <i className="ri-send-plane-line"></i>
-                                </button>
-                              </>
-
-                            {/* POSTED status - only view button visible (already rendered above) */}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <PaginationComponent
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
+      <div className="elements">
+        <div className="title">
+          <h1>Operational Expenses</h1>
         </div>
 
-        {/* ModalManager for centralized modal handling */}
-        <ModalManager isOpen={isModalOpen} onClose={closeModal} modalContent={modalContent} />
+        {/* Summary Cards */}
+        <div className="summary-cards" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="summary-card" style={{ padding: '1rem', backgroundColor: '#fff3cd', borderRadius: '8px', flex: 1 }}>
+            <span style={{ fontSize: '0.875rem', color: '#856404' }}>Pending</span>
+            <h3 style={{ margin: '0.5rem 0', fontSize: '1.5rem' }}>{summary.pending_count}</h3>
+          </div>
+          <div className="summary-card" style={{ padding: '1rem', backgroundColor: '#d4edda', borderRadius: '8px', flex: 1 }}>
+            <span style={{ fontSize: '0.875rem', color: '#155724' }}>Approved</span>
+            <h3 style={{ margin: '0.5rem 0', fontSize: '1.5rem' }}>{summary.approved_count}</h3>
+          </div>
+          <div className="summary-card" style={{ padding: '1rem', backgroundColor: '#cce5ff', borderRadius: '8px', flex: 1 }}>
+            <span style={{ fontSize: '0.875rem', color: '#004085' }}>Total Approved Amount</span>
+            <h3 style={{ margin: '0.5rem 0', fontSize: '1.5rem' }}>{formatMoney(summary.total_approved_amount)}</h3>
+          </div>
+        </div>
+
+        <div className="settings">
+          {/* Search bar with Filter button inline */}
+          <div className="search-filter-container">
+            <div className="searchBar">
+              <i className="ri-search-line" />
+              <input
+                className="searchInput"
+                type="text"
+                placeholder="Search by expense code, body number, amount, status..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Filter button right next to search bar */}
+            <FilterDropdown
+              sections={filterSections}
+              onApply={(filterValues) => {
+                const dateRange = filterValues.dateRange as { from: string; to: string } || { from: '', to: '' };
+                handleFilterApply({
+                  dateRange,
+                  status: (filterValues.status as string) || ''
+                });
+              }}
+              initialValues={{
+                dateRange: filters.dateRange ? { from: filters.dateRange.from || '', to: filters.dateRange.to || '' } : { from: '', to: '' },
+                status: filters.status || ''
+              }}
+            />
+          </div>
+
+          <div className="filters">
+            <ExportButton
+              data={exportData}
+              filename="operational-expenses"
+              title="Operational Expenses Report"
+            />
+          </div>
+        </div>
+
+        <div className="table-wrapper">
+          <div className="tableContainer">
+            <table className="data-table operational-expense-table">
+              <thead>
+                <tr>
+                  <th>Date Recorded</th>
+                  <th>Expense Code</th>
+                  <th>Body Number</th>
+                  <th>Amount</th>
+                  <th>Payment Status</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="loading-cell">Loading...</td>
+                  </tr>
+                ) : data.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="empty-cell">No operational expenses found.</td>
+                  </tr>
+                ) : (
+                  data.map((expense) => (
+                    <tr key={expense.id} className={activeRow === Number(expense.id) ? 'active-row' : ''}>
+                      <td>{formatDate(expense.date_recorded)}</td>
+                      <td>
+                        <span className="chip expense-code">
+                          {expense.code || '-'}
+                        </span>
+                      </td>
+                      <td>{expense.body_number || '-'}</td>
+                      <td className="expense-amount">{formatMoney(expense.amount)}</td>
+                      <td>
+                        <span className={`chip ${expense.payment_status?.toLowerCase().replace('_', '-')}`}>
+                          {getPaymentStatusLabel(expense.payment_status)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`chip ${expense.approval_status?.toLowerCase()}`}>
+                          {expense.approval_status}
+                        </span>
+                      </td>
+                      <td className="actionButtons">
+                        <div className="actionButtonsContainer">
+                          {/* View button - always visible */}
+                          <button
+                            className="viewBtn"
+                            onClick={() => handleView(expense.id)}
+                            title="View Details"
+                          >
+                            <i className="ri-eye-line"></i>
+                          </button>
+
+                          {/* Approve button - only for PENDING */}
+                          {expense.approval_status === 'PENDING' && (
+                            <button
+                              className="approveBtn"
+                              onClick={() => handleApprove(expense.id)}
+                              title="Approve Expense"
+                            >
+                              <i className="ri-check-line"></i>
+                            </button>
+                          )}
+
+                          {/* Reject button - only for PENDING */}
+                          {expense.approval_status === 'PENDING' && (
+                            <button
+                              className="rejectBtn"
+                              onClick={() => handleReject(expense.id)}
+                              title="Reject Expense"
+                            >
+                              <i className="ri-close-line"></i>
+                            </button>
+                          )}
+
+                          {/* Edit button - PENDING or APPROVED (Unpaid/Partial) */}
+                          {(expense.approval_status === 'PENDING' || (expense.approval_status === 'APPROVED' && ['PENDING', 'PARTIALLY_PAID'].includes(expense.payment_status))) && (
+                            <button
+                              className="editBtn"
+                              onClick={() => handleEdit(expense.id)}
+                              title="Edit Expense"
+                            >
+                              <i className="ri-pencil-line"></i>
+                            </button>
+                          )}
+
+                          {/* Record Reimbursement button - for approved reimbursable expenses */}
+                          {canRecordReimbursement(expense) && (
+                            <button
+                              className="editBtn"
+                              onClick={() => handleRecordReimbursement(expense.id)}
+                              title="Record Reimbursement"
+                            >
+                              <i className="ri-hand-coin-line"></i>
+                            </button>
+                          )}
+
+                          {/* Delete button - only for PENDING */}
+                          {expense.approval_status === 'PENDING' && (
+                            <button
+                              className="deleteBtn"
+                              onClick={() => handleDelete(expense.id)}
+                              title="Delete Expense"
+                            >
+                              <i className="ri-delete-bin-line"></i>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <PaginationComponent
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
-    );
+
+      {/* ModalManager for centralized modal handling */}
+      <ModalManager isOpen={isModalOpen} onClose={closeModal} modalContent={modalContent} />
+    </div>
+  );
 };
 
 export default OperationalExpensePage;

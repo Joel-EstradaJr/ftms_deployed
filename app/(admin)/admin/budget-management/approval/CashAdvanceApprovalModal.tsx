@@ -311,6 +311,7 @@ export default function CashAdvanceApprovalModal({
                         onChange={(e) => setApprovedAmount(parseFloat(e.target.value) || 0)}
                         min="0"
                         step="0.01"
+                        max="999999.99"
                         placeholder="Enter approved amount"
                       />
                       {showAmountWarning && (

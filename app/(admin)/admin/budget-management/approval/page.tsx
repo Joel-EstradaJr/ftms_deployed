@@ -30,7 +30,7 @@ import CashAdvanceApprovalTab from "./CashAdvanceApprovalTab";
 
 export default function ApprovalsPage() {
   // const [activeTab, setActiveTab] = useState<'budget' | 'purchase' | 'cash-advance'>('budget');
-  const [activeTab, setActiveTab] = useState<'purchase' | 'cash-advance'>('purchase');
+  const [activeTab, setActiveTab] = useState<'budget' | 'purchase' | 'cash-advance'>('budget');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sharedFilters, setSharedFilters] = useState<SharedApprovalFilters>({});
@@ -39,12 +39,12 @@ export default function ApprovalsPage() {
 
   // Tab configuration
   const tabs: ApprovalTab[] = [
-    // {
-    //   id: 'budget',
-    //   title: 'Budget Approvals',
-    //   icon: 'ri-money-dollar-circle-line',
-    //   count: 0 // Will be populated from data
-    // },
+    {
+      id: 'budget',
+      title: 'Budget Approvals',
+      icon: 'ri-money-dollar-circle-line',
+      count: 0 // Will be populated from data
+    },
     {
       id: 'purchase',
       title: 'Purchase Request Approvals',
@@ -122,7 +122,7 @@ export default function ApprovalsPage() {
 
   // Handle tab switching
   // const handleTabChange = (tabId: 'budget' | 'purchase' | 'cash-advance') => {
-  const handleTabChange = (tabId:'purchase' | 'cash-advance') => {
+  const handleTabChange = (tabId: 'budget' | 'purchase' | 'cash-advance') => {
     setActiveTab(tabId);
     // Reset tab-specific state when switching
     setSharedFilters({});
@@ -203,7 +203,7 @@ export default function ApprovalsPage() {
                 className="searchInput"
                 type="text"
                 // placeholder={`Search ${activeTab === 'budget' ? 'budget requests' : activeTab === 'purchase' ? 'purchase requests' : 'cash advance requests'}...`}
-                placeholder={`Search ${activeTab === 'purchase' ? 'purchase requests' : 'cash advance requests'}...`}
+                placeholder={`Search ${activeTab === 'budget' ? 'budget requests' : activeTab === 'purchase' ? 'purchase requests' : 'cash advance requests'}...`}
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
@@ -227,8 +227,8 @@ export default function ApprovalsPage() {
               filename={`${activeTab}_approvals`}
               // columns={activeTab === 'budget' ? budgetExportColumns : activeTab === 'purchase' ? purchaseExportColumns : cashAdvanceExportColumns}
               // title={`${activeTab === 'budget' ? 'Budget' : activeTab === 'purchase' ? 'Purchase Request' : 'Cash Advance'} Approvals Report`}
-              columns={activeTab === 'purchase' ? purchaseExportColumns : cashAdvanceExportColumns}
-              title={`${activeTab === 'purchase' ? 'Purchase Request' : 'Cash Advance'} Approvals Report`}
+              columns={activeTab === 'budget' ? budgetExportColumns : activeTab === 'purchase' ? purchaseExportColumns : cashAdvanceExportColumns}
+              title={`${activeTab === 'budget' ? 'Budget' : activeTab === 'purchase' ? 'Purchase Request' : 'Cash Advance'} Approvals Report`}
               logo="/agilaLogo.png"
             />
           </div>
@@ -237,42 +237,49 @@ export default function ApprovalsPage() {
         {/* Tab Content */}
         <div className="tab-content">
           {/* Budget Approval Tab */}
-          {/* <div className={`tab-panel ${activeTab === 'budget' ? 'active' : ''}`}>
-            <BudgetApprovalTab
-              filters={sharedFilters}
-              searchTerm={searchTerm}
-              loading={loading}
-              onLoadingChange={setLoading}
-              onError={setError}
-              onExport={handleExport}
-              onDataUpdate={handleExportDataUpdate}
-            />
-          </div> */}
+          <div className={`tab-panel ${activeTab === 'budget' ? 'active' : ''}`}>
+            {activeTab === 'budget' && (
+              <BudgetApprovalTab
+                filters={sharedFilters}
+                searchTerm={searchTerm}
+                loading={loading}
+                onLoadingChange={setLoading}
+                onError={setError}
+                onExport={handleExport}
+                onDataUpdate={handleExportDataUpdate}
+              />
+            )}
+          </div>
 
           {/* Purchase Approval Tab */}
           <div className={`tab-panel ${activeTab === 'purchase' ? 'active' : ''}`}>
-            <PurchaseApprovalTab
-              filters={sharedFilters}
-              searchTerm={searchTerm}
-              loading={loading}
-              onLoadingChange={setLoading}
-              onError={setError}
-              onExport={handleExport}
-              onDataUpdate={handleExportDataUpdate}
-            />
+            {activeTab === 'purchase' && (
+              <PurchaseApprovalTab
+                filters={sharedFilters}
+                searchTerm={searchTerm}
+                loading={loading}
+                onLoadingChange={setLoading}
+                onError={setError}
+                onExport={handleExport}
+                onDataUpdate={handleExportDataUpdate}
+              />
+            )}
           </div>
+
 
           {/* Cash Advance Approval Tab */}
           <div className={`tab-panel ${activeTab === 'cash-advance' ? 'active' : ''}`}>
-            <CashAdvanceApprovalTab
-              filters={sharedFilters}
-              searchTerm={searchTerm}
-              loading={loading}
-              onLoadingChange={setLoading}
-              onError={setError}
-              onExport={handleExport}
-              onDataUpdate={handleExportDataUpdate}
-            />
+            {activeTab === 'cash-advance' && (
+              <CashAdvanceApprovalTab
+                filters={sharedFilters}
+                searchTerm={searchTerm}
+                loading={loading}
+                onLoadingChange={setLoading}
+                onError={setError}
+                onExport={handleExport}
+                onDataUpdate={handleExportDataUpdate}
+              />
+            )}
           </div>
         </div>
 

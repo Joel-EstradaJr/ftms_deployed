@@ -25,13 +25,7 @@ export interface BusInventoryItem {
   year_model: string;
   acquisition_date: string;
   warranty_expiration_date: string;
-  
-  body_builder: {
-    body_builder_id: string;
-    body_builder_code: string;
-    body_builder_name: string;
-  };
-  
+   
   manufacturer: {
     manufacturer_id: string;
     manufacturer_code: string;
@@ -109,11 +103,6 @@ const BusInventorySelector: React.FC<BusInventorySelectorProps> = ({
           year_model: "2020",
           acquisition_date: "2020-01-15",
           warranty_expiration_date: "2025-12-31",
-          body_builder: {
-            body_builder_id: "bb-001",
-            body_builder_code: "BB-001",
-            body_builder_name: "Yutong"
-          },
           manufacturer: {
             manufacturer_id: "mf-001",
             manufacturer_code: "MF-001",
@@ -151,11 +140,6 @@ const BusInventorySelector: React.FC<BusInventorySelectorProps> = ({
           year_model: "2018",
           acquisition_date: "2019-06-10",
           warranty_expiration_date: "2024-06-10",
-          body_builder: {
-            body_builder_id: "bb-002",
-            body_builder_code: "BB-002",
-            body_builder_name: "King Long"
-          },
           manufacturer: {
             manufacturer_id: "mf-002",
             manufacturer_code: "MF-002",

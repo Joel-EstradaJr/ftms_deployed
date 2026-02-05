@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import "@/styles/components/table.css";
 import "@/styles/components/chips.css";
 import "@/styles/components/config.css";
- 
+
 import Loading from '@/Components/loading';
 import ErrorDisplay from '@/Components/errordisplay';
 import ModalManager from "@/Components/modalManager";
@@ -24,6 +24,9 @@ import { formatDate, formatMoney } from '@/utils/formatting';
 
 // TypeScript interfaces
 interface BusTripRecord {
+  // Revenue ID from backend (used for API calls)
+  revenue_id: number;
+
   // Primary fields from Operations table
   assignment_id: string;
   bus_trip_id: string;
@@ -33,9 +36,8 @@ interface BusTripRecord {
   trip_revenue: number;
   assignment_type: string; // 'Percentage' or 'Boundary'
   assignment_value: number; // quota if Boundary, company share% if Percentage
-  payment_method: string; // 'Company Cash'
   date_expected: string | null;
-  
+
   // Employee details (from Human Resource table)
   employee_id: string;
   employee_firstName: string;
@@ -44,22 +46,21 @@ interface BusTripRecord {
   employee_suffix: string;
   position_id: string;
   position_name: string;
-  
+
   // Bus details
   bus_plate_number: string;
   bus_type: string; // 'Airconditioned' or 'Ordinary'
   body_number: string;
   bus_brand: string; // 'Hilltop', 'Agila', 'DARJ'
-  body_builder: string; // Same as bus_brand (for modal compatibility)
-  
+
   // Status tracking (from Model Revenue table)
   date_recorded: string | null; // Maps to revenue.date_recorded
   amount: number | null; // Maps to revenue.amount
   total_amount: number | null; // Maps to receivable.total_amount
-  status: string; // 'remitted', 'pending', or 'receivable' - Maps to revenue.status
+  payment_status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED' | 'WRITTEN_OFF'; // Backend source of truth
   remarks: string | null; // Maps to revenue.description
   due_date: string | null; // Maps to receivable.due_date
-  
+
   // receivable payment details (for receivable status)
   receivableDetails?: {
     totalAmount: number;
@@ -87,24 +88,24 @@ interface BusTripRecord {
     }>;
     overallStatus: 'Pending' | 'Partial' | 'Paid' | 'Overdue' | 'Closed';
   };
-  
+
   // Computed/display fields
   driverName?: string; // Computed from employee fields
   conductorName?: string; // Computed from employee fields
-  
+
   // Conductor and Driver details
   conductorId?: string;
   conductorFirstName?: string;
   conductorMiddleName?: string;
   conductorLastName?: string;
   conductorSuffix?: string;
-  
+
   driverId?: string;
   driverFirstName?: string;
   driverMiddleName?: string;
   driverLastName?: string;
   driverSuffix?: string;
-  
+
   // Installment schedules (for receivable payments)
   driverInstallments?: RevenueScheduleItem[];
   conductorInstallments?: RevenueScheduleItem[];
@@ -145,10 +146,10 @@ const generateInstallmentSchedule = (
   const installments: RevenueScheduleItem[] = [];
   const amountPerInstallment = totalAmount / numberOfPayments;
   let remainingPaid = paidAmount;
-  
+
   for (let i = 0; i < numberOfPayments; i++) {
     const dueDate = new Date(startDate);
-    
+
     switch (frequency) {
       case 'DAILY':
         dueDate.setDate(dueDate.getDate() + i);
@@ -160,18 +161,18 @@ const generateInstallmentSchedule = (
         dueDate.setMonth(dueDate.getMonth() + i);
         break;
     }
-    
+
     const dueDateStr = dueDate.toISOString().split('T')[0];
-    
+
     // Calculate how much of this installment is paid
     const installmentPaid = Math.min(remainingPaid, amountPerInstallment);
     remainingPaid -= installmentPaid;
-    
+
     const balance = amountPerInstallment - installmentPaid;
     let status: PaymentStatus;
-    
+
     if (balance <= 0.01) {
-      status = PaymentStatus.PAID;
+      status = PaymentStatus.COMPLETED;
     } else if (installmentPaid > 0) {
       status = PaymentStatus.PARTIALLY_PAID;
     } else if (new Date(dueDateStr) < new Date()) {
@@ -179,504 +180,30 @@ const generateInstallmentSchedule = (
     } else {
       status = PaymentStatus.PENDING;
     }
-    
+
     installments.push({
       id: `inst-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-      installmentNumber: i + 1,
-      originalDueDate: dueDateStr,
-      currentDueDate: dueDateStr,
-      originalDueAmount: amountPerInstallment,
-      currentDueAmount: amountPerInstallment,
-      paidAmount: installmentPaid,
-      carriedOverAmount: 0,
-      paymentStatus: status,
+      installment_number: i + 1,
+      due_date: dueDateStr,
+      amount_due: amountPerInstallment,
+      amount_paid: installmentPaid,
+      balance: balance,
+      status: status,
       isPastDue: new Date(dueDateStr) < new Date() && balance > 0,
-      isEditable: status !== PaymentStatus.PAID
+      isEditable: status !== PaymentStatus.COMPLETED
     });
   }
-  
+
   return installments;
 };
 
-// MOCK DATA FOR TESTING
-const MOCK_BUS_TRIP_DATA: BusTripRecord[] = [
-  {
-    assignment_id: "ASSIGN-001",
-    bus_trip_id: "TRIP-001",
-    bus_route: "S. Palay to Sta. Cruz, S. Palay to PITX",
-    date_assigned: "2026-1-11",
-    trip_fuel_expense: 2500.00,
-    trip_revenue: 15000.00,
-    assignment_type: "Boundary",
-    assignment_value: 8000.00,
-    payment_method: "Company Cash",
-    employee_id: "EMP-001",
-    employee_firstName: "Juan",
-    employee_middleName: "Santos",
-    employee_lastName: "Dela Cruz",
-    employee_suffix: "",
-    position_id: "POS-001",
-    position_name: "Driver",
-    bus_plate_number: "ABC 1234",
-    bus_type: "Airconditioned",
-    body_number: "001",
-    bus_brand: "Hilltop",
-    body_builder: "Hilltop",
-    date_recorded: "2026-1-11",
-    date_expected: "2026-1-14",
-    amount: 15000.00,
-    total_amount: null,
-    due_date: null,
-    status: "pending",
-    remarks: "",
-    driverName: "Juan Santos Dela Cruz",
-    conductorName: "Pedro Reyes Santos",
-    // Driver details
-    driverId: "EMP-001",
-    driverFirstName: "Juan",
-    driverMiddleName: "Santos",
-    driverLastName: "Dela Cruz",
-    driverSuffix: "",
-    // Conductor details
-    conductorId: "EMP-002",
-    conductorFirstName: "Pedro",
-    conductorMiddleName: "Reyes",
-    conductorLastName: "Santos",
-    conductorSuffix: "",
-  },
-  {
-    assignment_id: "ASSIGN-002",
-    bus_trip_id: "TRIP-002",
-    bus_route: "S. Palay to Sta. Cruz",
-    date_assigned: "2025-12-04",
-    trip_fuel_expense: 2200.00,
-    trip_revenue: 12500.00,
-    assignment_type: "Percentage",
-    assignment_value: 70,
-    payment_method: "Company Cash",
-    employee_id: "EMP-002",
-    employee_firstName: "Maria",
-    employee_middleName: "Lopez",
-    employee_lastName: "Garcia",
-    employee_suffix: "Jr.",
-    position_id: "POS-002",
-    position_name: "Conductor",
-    bus_plate_number: "XYZ 5678",
-    bus_type: "Ordinary",
-    body_number: "002",
-    bus_brand: "Agila",
-    body_builder: "Agila",
-    date_recorded: null,
-    date_expected: null,
-    amount: null,
-    total_amount: null,
-    due_date: null,
-    status: "pending",
-    remarks: null,
-    driverName: "Carlos Mendoza Cruz",
-    conductorName: "Maria Lopez Garcia, Jr.",
-    // Driver details
-    driverId: "EMP-003",
-    driverFirstName: "Carlos",
-    driverMiddleName: "Mendoza",
-    driverLastName: "Cruz",
-    driverSuffix: "",
-    // Conductor details
-    conductorId: "EMP-002",
-    conductorFirstName: "Maria",
-    conductorMiddleName: "Lopez",
-    conductorLastName: "Garcia",
-    conductorSuffix: "Jr.",
-  },
-  {
-    assignment_id: "ASSIGN-003",
-    bus_trip_id: "TRIP-003",
-    bus_route: "S. Palay to PITX",
-    date_assigned: "2025-11-09",
-    trip_fuel_expense: 3000.00,
-    trip_revenue: 18000.00,
-    assignment_type: "Boundary",
-    assignment_value: 10000.00,
-    payment_method: "Company Cash",
-    employee_id: "EMP-003",
-    employee_firstName: "Pedro",
-    employee_middleName: "Ramos",
-    employee_lastName: "Reyes",
-    employee_suffix: "Sr.",
-    position_id: "POS-001",
-    position_name: "Driver",
-    bus_plate_number: "DEF 9012",
-    bus_type: "Airconditioned",
-    body_number: "003",
-    bus_brand: "DARJ",
-    body_builder: "DARJ",
-    date_recorded: "2025-11-10",
-    date_expected: "2025-11-13",
-    amount: 18000.00,
-    total_amount: null,
-    due_date: null,
-    status: "remitted",
-    remarks: "Complete remittance with fuel receipts",
-    driverName: "Pedro Ramos Reyes, Sr.",
-    conductorName: "Elena Bautista Torres",
-    // Driver details
-    driverId: "EMP-003",
-    driverFirstName: "Pedro",
-    driverMiddleName: "Ramos",
-    driverLastName: "Reyes",
-    driverSuffix: "Sr.",
-    // Conductor details
-    conductorId: "EMP-004",
-    conductorFirstName: "Elena",
-    conductorMiddleName: "Bautista",
-    conductorLastName: "Torres",
-    conductorSuffix: "",
-  },
-  {
-    assignment_id: "ASSIGN-004",
-    bus_trip_id: "TRIP-004",
-    bus_route: "Sta. Cruz to S. Palay",
-    date_assigned: "2025-11-02",
-    trip_fuel_expense: 1800.00,
-    trip_revenue: 10000.00,
-    amount: 0,
-    assignment_type: "Percentage",
-    assignment_value: 65,
-    payment_method: "Company Cash",
-    employee_id: "EMP-004",
-    employee_firstName: "Ana",
-    employee_middleName: "Torres",
-    employee_lastName: "Santos",
-    employee_suffix: "",
-    position_id: "POS-002",
-    position_name: "Conductor",
-    bus_plate_number: "GHI 3456",
-    bus_type: "Ordinary",
-    body_number: "004",
-    bus_brand: "Hilltop",
-    body_builder: "Hilltop",
-    date_recorded: "2025-11-05",
-    date_expected: "2025-11-05",
-    total_amount: 8300.00,
-    due_date: "2025-12-05",
-    status: "receivable",
-    remarks: "Automatically converted to receivable - Deadline exceeded with no remittance.",
-    driverName: "Miguel Garcia Fernandez",
-    conductorName: "Ana Torres Santos",
-    // Driver details
-    driverId: "EMP-005",
-    driverFirstName: "Miguel",
-    driverMiddleName: "Garcia",
-    driverLastName: "Fernandez",
-    driverSuffix: "",
-    // Conductor details
-    conductorId: "EMP-004",
-    conductorFirstName: "Ana",
-    conductorMiddleName: "Torres",
-    conductorLastName: "Santos",
-    conductorSuffix: "",
-    // Receivable details with installments - UNPAID
-    receivableDetails: {
-      totalAmount: 8300.00,
-      dueDate: "2025-12-05",
-      createdDate: "2025-11-05",
-      driverShare: 4150.00,
-      driverPaid: 0,
-      driverStatus: 'Pending',
-      driverPayments: [],
-      conductorShare: 4150.00,
-      conductorPaid: 0,
-      conductorStatus: 'Pending',
-      conductorPayments: [],
-      overallStatus: 'Pending'
-    },
-    driverInstallments: generateInstallmentSchedule(4150.00, "2025-12-05", 3, 'WEEKLY', 0),
-    conductorInstallments: generateInstallmentSchedule(4150.00, "2025-12-05", 3, 'WEEKLY', 0),
-  },
-
-  {
-    assignment_id: "ASSIGN-005",
-    bus_trip_id: "TRIP-005",
-    bus_route: "S. Palay to Sta. Cruz, S. Palay to PITX",
-    date_assigned: "2025-11-27",
-    trip_fuel_expense: 2800.00,
-    trip_revenue: 16500.00,
-    amount: 0,
-    assignment_type: "Boundary",
-    assignment_value: 9000.00,
-    payment_method: "Company Cash",
-    employee_id: "EMP-005",
-    employee_firstName: "Carlos",
-    employee_middleName: "Mendoza",
-    employee_lastName: "Villanueva",
-    employee_suffix: "III",
-    position_id: "POS-001",
-    position_name: "Driver",
-    bus_plate_number: "JKL 7890",
-    bus_type: "Airconditioned",
-    body_number: "005",
-    bus_brand: "Agila",
-    body_builder: "Agila",
-    date_recorded: "",
-    date_expected: "",
-    status: "pending",
-    total_amount: null,
-    due_date: null,
-    remarks: "Remitted with complete documentation",
-    driverName: "Carlos Mendoza Villanueva, III",
-    conductorName: "Rosa Santos Martinez",
-    // Driver details
-    driverId: "EMP-005",
-    driverFirstName: "Carlos",
-    driverMiddleName: "Mendoza",
-    driverLastName: "Villanueva",
-    driverSuffix: "III",
-    // Conductor details
-    conductorId: "EMP-006",
-    conductorFirstName: "Rosa",
-    conductorMiddleName: "Santos",
-    conductorLastName: "Martinez",
-    conductorSuffix: "",
-  },
-  {
-    assignment_id: "ASSIGN-006",
-    bus_trip_id: "TRIP-006",
-    bus_route: "PITX to S. Palay",
-    date_assigned: "2025-11-03",
-    date_expected: "2025-11-07",
-    trip_fuel_expense: 2100.00,
-    trip_revenue: 11000.00,
-    amount: 0,
-    assignment_type: "Percentage",
-    assignment_value: 45,
-    payment_method: "Company Cash",
-    employee_id: "EMP-006",
-    employee_firstName: "Elena",
-    employee_middleName: "Cruz",
-    employee_lastName: "Bautista",
-    employee_suffix: "",
-    position_id: "POS-002",
-    position_name: "Conductor",
-    bus_plate_number: "MNO 2345",
-    bus_type: "Ordinary",
-    body_number: "006",
-    bus_brand: "DARJ",
-    body_builder: "DARJ",
-    date_recorded: "2025-11-03",
-    total_amount: 7050.00,
-    due_date: "2025-12-03",
-    status: "receivable",
-    remarks: "Automatically converted to receivable - Deadline exceeded.",
-    driverName: "Jose Alvarez Reyes",
-    conductorName: "Elena Cruz Bautista",
-    // Driver details
-    driverId: "EMP-007",
-    driverFirstName: "Jose",
-    driverMiddleName: "Alvarez",
-    driverLastName: "Reyes",
-    driverSuffix: "",
-    // Conductor details
-    conductorId: "EMP-006",
-    conductorFirstName: "Elena",
-    conductorMiddleName: "Cruz",
-    conductorLastName: "Bautista",
-    conductorSuffix: "",
-    // Receivable details - PARTIALLY PAID (Driver has 1 payment)
-    receivableDetails: {
-      totalAmount: 7050.00,
-      dueDate: "2025-12-03",
-      createdDate: "2025-11-03",
-      driverShare: 3525.00,
-      driverPaid: 1175.00,
-      driverStatus: 'Pending',
-      driverPayments: [
-        { date: "2025-11-10", time: "10:30 AM", amount: 1175.00, method: "Cash", recordedBy: "Admin" }
-      ],
-      conductorShare: 3525.00,
-      conductorPaid: 0,
-      conductorStatus: 'Pending',
-      conductorPayments: [],
-      overallStatus: 'Partial'
-    },
-    driverInstallments: generateInstallmentSchedule(3525.00, "2025-12-03", 3, 'WEEKLY', 1175.00),
-    conductorInstallments: generateInstallmentSchedule(3525.00, "2025-12-03", 3, 'WEEKLY', 0),
-  },
-  
-  {
-    assignment_id: "ASSIGN-007",
-    bus_trip_id: "TRIP-007",
-    bus_route: "S. Palay to Sta. Cruz",
-    date_assigned: "2025-11-10",
-    trip_fuel_expense: 2000.00,
-    trip_revenue: 10000.00,
-    assignment_type: "Boundary",
-    assignment_value: 7000.00,
-    payment_method: "Company Cash",
-    employee_id: "EMP-007",
-    employee_firstName: "Ricardo",
-    employee_middleName: "Alvarez",
-    employee_lastName: "Fernandez",
-    employee_suffix: "",
-    position_id: "POS-001",
-    position_name: "Driver",
-    bus_plate_number: "PQR 6789",
-    bus_type: "Airconditioned",
-    body_number: "007",
-    bus_brand: "Hilltop",
-    body_builder: "Hilltop",
-    date_recorded: "2025-11-11",
-    date_expected: "2025-11-14",
-    amount: 5000.00,
-    total_amount: 4000.00,
-    due_date: "2025-12-11",
-    status: "receivable",
-    remarks: "Partial remittance - shortfall converted to receivable.",
-    driverName: "Ricardo Alvarez Fernandez",
-    conductorName: "Maria Santos Lopez",
-    // Driver details
-    driverId: "EMP-007",
-    driverFirstName: "Ricardo",
-    driverMiddleName: "Alvarez",
-    driverLastName: "Fernandez",
-    driverSuffix: "",
-    // Conductor details
-    conductorId: "EMP-008",
-    conductorFirstName: "Maria",
-    conductorMiddleName: "Santos",
-    conductorLastName: "Lopez",
-    conductorSuffix: "",
-    // Receivable details for shortfall (9000 expected - 5000 paid = 4000 shortfall)
-    receivableDetails: {
-      totalAmount: 4000.00,
-      dueDate: "2025-12-11",
-      createdDate: "2025-11-11",
-      driverShare: 2000.00,
-      driverPaid: 0,
-      driverStatus: 'Pending',
-      driverPayments: [],
-      conductorShare: 2000.00,
-      conductorPaid: 0,
-      conductorStatus: 'Pending',
-      conductorPayments: [],
-      overallStatus: 'Pending'
-    },
-    driverInstallments: generateInstallmentSchedule(2000.00, "2025-12-11", 2, 'WEEKLY', 0),
-    conductorInstallments: generateInstallmentSchedule(2000.00, "2025-12-11", 2, 'WEEKLY', 0),
-  },
-  
-  // Test case: Driver only (no conductor)
-  {
-    assignment_id: "ASSIGN-008",
-    bus_trip_id: "TRIP-008",
-    bus_route: "S. Palay to Sta. Cruz",
-    date_assigned: "2025-11-10",
-    trip_fuel_expense: 1500.00,
-    trip_revenue: 8000.00,
-    assignment_type: "Boundary",
-    assignment_value: 5000.00,
-    payment_method: "Company Cash",
-    employee_id: "EMP-009",
-    employee_firstName: "Luis",
-    employee_middleName: "Cruz",
-    employee_lastName: "Santos",
-    employee_suffix: "",
-    position_id: "POS-001",
-    position_name: "Driver",
-    bus_plate_number: "STU 1111",
-    bus_type: "Ordinary",
-    body_number: "008",
-    bus_brand: "Hilltop",
-    body_builder: "Hilltop",
-    date_recorded: null,
-    date_expected: null,
-    amount: null,
-    total_amount: null,
-    due_date: null,
-    status: "pending",
-    remarks: null,
-    driverName: "Luis Cruz Santos",
-    conductorName: undefined,
-    // Driver details
-    driverId: "EMP-009",
-    driverFirstName: "Luis",
-    driverMiddleName: "Cruz",
-    driverLastName: "Santos",
-    driverSuffix: "",
-    // NO CONDUCTOR - leave fields undefined to test driver-only scenario
-  },
-  // RECEIVABLE - Driver only, with installments (partially paid)
-  {
-    assignment_id: "ASSIGN-009",
-    bus_trip_id: "TRIP-009",
-    bus_route: "PITX Express",
-    date_assigned: "2025-11-05",
-    trip_fuel_expense: 1800.00,
-    trip_revenue: 9500.00,
-    assignment_type: "Boundary",
-    assignment_value: 6000.00,
-    payment_method: "Company Cash",
-    employee_id: "EMP-010",
-    employee_firstName: "Roberto",
-    employee_middleName: "Santos",
-    employee_lastName: "Cruz",
-    employee_suffix: "",
-    position_id: "POS-001",
-    position_name: "Driver",
-    bus_plate_number: "VWX 2222",
-    bus_type: "Airconditioned",
-    body_number: "009",
-    bus_brand: "Agila",
-    body_builder: "Agila",
-    date_recorded: "2025-11-08",
-    date_expected: "2025-11-08",
-    amount: 0,
-    total_amount: 7800.00,
-    due_date: "2025-12-08",
-    status: "receivable",
-    remarks: "Driver-only trip - converted to receivable.",
-    driverName: "Roberto Santos Cruz",
-    conductorName: undefined,
-    // Driver details only
-    driverId: "EMP-010",
-    driverFirstName: "Roberto",
-    driverMiddleName: "Santos",
-    driverLastName: "Cruz",
-    driverSuffix: "",
-    // NO CONDUCTOR
-    // Receivable details - Driver only (partially paid)
-    receivableDetails: {
-      totalAmount: 7800.00,
-      dueDate: "2025-12-08",
-      createdDate: "2025-11-08",
-      driverShare: 7800.00,
-      driverPaid: 2600.00,
-      driverStatus: 'Pending',
-      driverPayments: [
-        { date: "2025-11-15", time: "2:00 PM", amount: 2600.00, method: "Cash", recordedBy: "Admin" }
-      ],
-      overallStatus: 'Partial'
-    },
-    driverInstallments: generateInstallmentSchedule(7800.00, "2025-12-08", 3, 'WEEKLY', 2600.00),
-    // No conductor installments
-  },
-];
-
-const MOCK_REVENUE_SOURCES: RevenueSource[] = [
-  { id: 1, name: "Trip Revenue", sourceCode: "TRIP_REV" },
-  { id: 2, name: "Charter Service", sourceCode: "CHARTER" },
-  { id: 3, name: "Advertising", sourceCode: "ADVERT" },
-];
-
-const MOCK_PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 1, methodName: "Company Cash", methodCode: "CASH" },
-  { id: 2, methodName: "Reimbursement", methodCode: "REIMBURSE" },
-];
 
 const AdminTripRevenuePage = () => {
   // State for data and UI
   const [data, setData] = useState<BusTripRecord[]>([]);
-  const [fullDataset, setFullDataset] = useState<BusTripRecord[]>(MOCK_BUS_TRIP_DATA); // Persistent mock data
+  const [fullDataset, setFullDataset] = useState<BusTripRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false); // Separate state for search to prevent blink
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<number | string | null>(null);
 
@@ -713,7 +240,7 @@ const AdminTripRevenuePage = () => {
   });
 
   // Sort states
-  const [sortBy, setSortBy] = useState<"body_number" | "date_assigned" | "trip_revenue" | "bus_route" | "assignment_type" | "assignment_value" | "date_expected">("date_assigned");
+  const [sortBy, setSortBy] = useState<"body_number" | "date_assigned" | "trip_revenue" | "bus_route" | "assignment_type" | "assignment_value" | "date_expected" | "updated_at">("updated_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Pagination states
@@ -734,20 +261,23 @@ const AdminTripRevenuePage = () => {
     switch (mode) {
       case "view":
         content = <ViewTripRevenueModal
-          tripData={rowData!}
+          revenueId={rowData!.revenue_id}
           onClose={closeModal}
         />;
         break;
       case "add":
       case "edit":
-        // Check if editing a remitted record (but allow receivable status to be edited)
-        if (mode === "edit" && rowData && rowData.status && rowData.status.toLowerCase() === "remitted") {
-          showError(`This trip revenue cannot be edited because it has already been marked as "${rowData.status.toUpperCase()}".`, 'Cannot Edit');          
+        // Edit is allowed for PENDING (to record remittance) and PARTIALLY_PAID (to manage receivables)
+        if (mode === "edit" && rowData &&
+          rowData.payment_status !== 'PARTIALLY_PAID' &&
+          rowData.payment_status !== 'PENDING') {
+          showError(`This record cannot be edited because its status is "${rowData.payment_status}". Only PENDING or PARTIALLY_PAID records can be edited.`, 'Cannot Edit');
           return;
         }
-        
+
         content = <RecordTripRevenueModal
           mode={mode}
+          revenueId={mode === "edit" ? rowData!.revenue_id : undefined}
           tripData={rowData!}
           config={config}
           onSave={handleSaveTripRevenue}
@@ -756,7 +286,14 @@ const AdminTripRevenuePage = () => {
         break;
       case "payReceivable":
         content = <TripReceivablePaymentModal
-          tripData={rowData!}
+          revenueId={rowData!.revenue_id}
+          tripData={{
+            assignment_id: rowData!.assignment_id,
+            body_number: rowData!.body_number,
+            bus_route: rowData!.bus_route,
+            date_assigned: rowData!.date_assigned,
+            payment_status: rowData!.payment_status,
+          }}
           paymentMethods={paymentMethods}
           currentUser="Admin User" // TODO: Get from auth context
           onPaymentRecorded={handleReceivablePayment}
@@ -792,463 +329,334 @@ const AdminTripRevenuePage = () => {
 
     setConfig(configData);
     console.log('Page: Config state updated to:', configData);
-    
+
     // Show success message
     showSuccess('Configuration saved successfully', 'Success');
   };
 
-  // Handle receivable payment - updated for new format with installments
-  const handleReceivablePayment = async (paymentData: PaymentRecordData & { employeeType: 'driver' | 'conductor'; employeeId: string }) => {
+  // Handle receivable payment - calls backend API and updates local state
+  const handleReceivablePayment = async (paymentData: PaymentRecordData & { employeeType: 'driver' | 'conductor'; employeeId: string; employeeNumber?: string }) => {
     console.log('Recording receivable payment:', paymentData);
-    
-    // Update persistent mock data - update the installment schedule
-    setFullDataset(prevData => prevData.map(item => {
-      if (item.assignment_id === paymentData.recordId) {
-        const installmentKey = paymentData.employeeType === 'driver' ? 'driverInstallments' : 'conductorInstallments';
-        const installments = item[installmentKey] || [];
-        
-        // Get cascade breakdown or create single payment
-        const cascadeBreakdown = paymentData.cascadeBreakdown || [{
-          installmentNumber: paymentData.installmentNumber,
-          scheduleItemId: paymentData.scheduleItemId,
-          amountApplied: paymentData.amountToPay
-        }];
-        
-        // Update the affected installments
-        const updatedInstallments = installments.map(installment => {
-          const affectedInstallment = cascadeBreakdown.find(
-            (ai: { installmentNumber: number; scheduleItemId: string; amountApplied: number }) => 
-              ai.scheduleItemId === installment.id
-          );
-          if (affectedInstallment) {
-            const newPaidAmount = installment.paidAmount + affectedInstallment.amountApplied;
-            const balance = installment.currentDueAmount - newPaidAmount;
-            const newStatus: PaymentStatus = 
-              balance <= 0 ? PaymentStatus.PAID : newPaidAmount > 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PENDING;
-            return {
-              ...installment,
-              paidAmount: newPaidAmount,
-              paymentStatus: newStatus
-            };
-          }
-          return installment;
-        });
 
-        // Calculate new totals for receivableDetails
-        const receivableDetails = item.receivableDetails;
-        if (receivableDetails) {
-          const totalPaid = updatedInstallments.reduce((sum, inst) => sum + inst.paidAmount, 0);
-          const totalDue = updatedInstallments.reduce((sum, inst) => sum + inst.currentDueAmount, 0);
-          const isPaid = Math.abs(totalPaid - totalDue) < 0.01;
+    // Extract the numeric installment ID from scheduleItemId (format: "driver-inst-123" or "conductor-inst-123")
+    const extractInstallmentId = (scheduleItemId: string): number | null => {
+      const match = scheduleItemId.match(/(?:driver|conductor)-inst-(\d+)/);
+      return match ? parseInt(match[1], 10) : null;
+    };
 
-          const hasConductor = item.conductorId && item.conductorName && item.conductorName !== 'N/A';
-          
-          if (paymentData.employeeType === 'driver') {
-            const newDriverStatus: 'Pending' | 'Paid' | 'Overdue' = isPaid ? 'Paid' : 'Pending';
-            let newOverallStatus = receivableDetails.overallStatus;
-            
-            if (hasConductor) {
-              if (newDriverStatus === 'Paid' && receivableDetails.conductorStatus === 'Paid') {
-                newOverallStatus = 'Paid';
-              } else if (newDriverStatus === 'Paid' || receivableDetails.conductorStatus === 'Paid' || totalPaid > 0) {
-                newOverallStatus = 'Partial';
-              }
-            } else {
-              newOverallStatus = newDriverStatus === 'Paid' ? 'Paid' : totalPaid > 0 ? 'Partial' : 'Pending';
-            }
+    const installmentId = extractInstallmentId(paymentData.scheduleItemId);
+    if (!installmentId) {
+      showError('Invalid installment ID format', 'Payment Error');
+      throw new Error('Invalid installment ID format');
+    }
 
-            return {
-              ...item,
-              driverInstallments: updatedInstallments,
-              receivableDetails: {
-                ...receivableDetails,
-                driverPaid: totalPaid,
-                driverStatus: newDriverStatus,
-                overallStatus: newOverallStatus
-              }
-            };
-          } else {
-            const newConductorStatus: 'Pending' | 'Paid' | 'Overdue' = isPaid ? 'Paid' : 'Pending';
-            let newOverallStatus = receivableDetails.overallStatus;
-            
-            if (receivableDetails.driverStatus === 'Paid' && newConductorStatus === 'Paid') {
-              newOverallStatus = 'Paid';
-            } else if (receivableDetails.driverStatus === 'Paid' || newConductorStatus === 'Paid' || totalPaid > 0) {
-              newOverallStatus = 'Partial';
-            }
+    // Prepare API payload
+    const apiPayload = {
+      installment_id: installmentId,
+      amount_paid: paymentData.amountToPay,
+      payment_method: paymentData.paymentMethodCode || 'CASH',
+      payment_date: paymentData.paymentDate,
+      payment_reference: paymentData.referenceNumber || null,
+    };
 
-            return {
-              ...item,
-              conductorInstallments: updatedInstallments,
-              receivableDetails: {
-                ...receivableDetails,
-                conductorPaid: totalPaid,
-                conductorStatus: newConductorStatus,
-                overallStatus: newOverallStatus
-              }
-            };
-          }
-        }
-        
-        return { ...item, [installmentKey]: updatedInstallments };
-      }
-      return item;
-    }));
-    
-    // Show success message
-    showSuccess(`Payment of ${formatMoney(paymentData.amountToPay)} recorded successfully`, 'Payment Recorded');
-    
-    // Refresh displayed data
-    fetchData();
+    console.log('[Payment] API Payload:', apiPayload);
+
+    // Call the backend API
+    const response = await fetch('/api/admin/revenue/receivable-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(apiPayload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      console.error('[Payment] API Error:', result);
+      showError(result.message || result.error || 'Failed to record payment', 'Payment Error');
+      throw new Error(result.message || result.error || 'Failed to record payment');
+    }
+
+    console.log('[Payment] API Success:', result);
+
+    // Refresh data from server to get updated state
+    await fetchData();
   };
 
-  // Handle close receivable
-  const handleCloseReceivable = async (assignmentId: string) => {
-    console.log('Closing receivable:', assignmentId);
-    
-    setFullDataset(prevData => prevData.map(item => {
-      if (item.assignment_id === assignmentId) {
-        return {
-          ...item,
-          receivableDetails: item.receivableDetails ? {
-            ...item.receivableDetails,
-            overallStatus: 'Closed' as const
-          } : item.receivableDetails
-        };
+  // Handle close receivable - updates payment_status to COMPLETED via backend API
+  const handleCloseReceivable = async (revenueId: number) => {
+    console.log('Closing receivable for revenue ID:', revenueId);
+
+    try {
+      // Call the PATCH API to update payment_status to COMPLETED
+      const response = await fetch(`/api/admin/revenue/${revenueId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payment_status: 'COMPLETED',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('[CloseReceivable] API Error:', result);
+        showError(result.message || result.error || 'Failed to close receivable', 'Error');
+        throw new Error(result.message || result.error || 'Failed to close receivable');
       }
-      return item;
-    }));
-    
-    showSuccess('Receivable closed successfully', 'Closed');
-    fetchData();
+
+      console.log('[CloseReceivable] API Success:', result);
+      showSuccess('Receivable closed successfully', 'Closed');
+
+      // Refresh data from server to get updated state
+      await fetchData();
+    } catch (error) {
+      console.error('[CloseReceivable] Error:', error);
+      throw error;
+    }
   };
 
   // Handle save trip revenue (both add and edit)
   const handleSaveTripRevenue = async (formData: any, mode: "add" | "edit") => {
     console.log(`${mode === 'add' ? 'Recording' : 'Updating'} trip revenue:`, formData);
-    
-    // TODO: Replace with actual API call
-    // Simulate success for now
-    showSuccess(`Trip revenue ${mode === 'add' ? 'recorded' : 'updated'} successfully (MOCK)`, 'Success');
-    
-    // Update persistent mock data
-    setFullDataset(prevData => prevData.map(item => {
-      if (item.assignment_id !== formData.assignment_id) {
-        return item;
-      }
-      
-      // Base update for all cases
-      const updatedItem: BusTripRecord = {
-        ...item,
-        date_recorded: formData.date_recorded,
-        amount: formData.amount,
-        status: formData.status || 'remitted',
-        remarks: formData.description
-      };
-      
-      // Handle receivable case with separate driver and conductor receivables
-      if (formData.status === 'receivable') {
-        const hasConductor = !!formData.conductorReceivable;
-        const driverReceivable = formData.driverReceivable;
-        const conductorReceivable = formData.conductorReceivable;
-        
-        // Calculate total amount from both receivables
-        const totalAmount = (driverReceivable?.total_amount || 0) + (conductorReceivable?.total_amount || 0);
-        
-        updatedItem.total_amount = totalAmount;
-        updatedItem.due_date = driverReceivable?.due_date || null;
-        updatedItem.receivableDetails = {
-          totalAmount,
-          dueDate: driverReceivable?.due_date || '',
-          createdDate: formData.date_recorded,
-          driverShare: driverReceivable?.total_amount || 0,
-          driverPaid: 0,
-          driverStatus: 'Pending',
-          driverPayments: [],
-          ...(hasConductor && {
-            conductorShare: conductorReceivable?.total_amount || 0,
-            conductorPaid: 0,
-            conductorStatus: 'Pending',
-            conductorPayments: []
-          }),
-          overallStatus: 'Pending'
-        };
-        
-        // Convert installments from API format to internal format
-        if (driverReceivable?.installments) {
-          updatedItem.driverInstallments = driverReceivable.installments.map((inst: any, index: number) => ({
-            id: `driver-inst-${Date.now()}-${index}`,
-            installmentNumber: inst.installment_number,
-            originalDueDate: inst.due_date,
-            currentDueDate: inst.due_date,
-            originalDueAmount: inst.amount_due,
-            currentDueAmount: inst.amount_due,
-            paidAmount: inst.amount_paid || 0,
-            carriedOverAmount: 0,
-            paymentStatus: inst.status || PaymentStatus.PENDING,
-            isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
-            isEditable: inst.status !== PaymentStatus.PAID
-          }));
+
+    try {
+      let response: Response;
+      let url: string;
+      let method: string;
+
+      if (mode === 'add') {
+        // POST for new records
+        url = '/api/admin/revenue';
+        method = 'POST';
+      } else {
+        // PATCH for updates - use revenue_id from formData (set by modal) or fallback to activeRow
+        const revenueId = formData.revenue_id || activeRow?.revenue_id;
+        if (!revenueId) {
+          showError('Cannot update: missing revenue ID', 'Error');
+          return;
         }
-        
-        if (hasConductor && conductorReceivable?.installments) {
-          updatedItem.conductorInstallments = conductorReceivable.installments.map((inst: any, index: number) => ({
-            id: `conductor-inst-${Date.now()}-${index}`,
-            installmentNumber: inst.installment_number,
-            originalDueDate: inst.due_date,
-            currentDueDate: inst.due_date,
-            originalDueAmount: inst.amount_due,
-            currentDueAmount: inst.amount_due,
-            paidAmount: inst.amount_paid || 0,
-            carriedOverAmount: 0,
-            paymentStatus: inst.status || PaymentStatus.PENDING,
-            isPastDue: new Date(inst.due_date) < new Date() && (inst.amount_due - (inst.amount_paid || 0)) > 0,
-            isEditable: inst.status !== PaymentStatus.PAID
-          }));
-        }
+        url = `/api/admin/revenue/${revenueId}`;
+        method = 'PATCH';
       }
-      
-      return updatedItem;
-    }));
-    
-    // Refresh displayed data
-    fetchData();
-    
-    closeModal();
-  };
 
-  // Fetch filter options (revenue sources and payment methods)
-  const fetchFilterOptions = async () => {  
-    console.log('Loading mock filter options...');
-    // Simulate API delay
-    setTimeout(() => {
-      setRevenueSources(MOCK_REVENUE_SOURCES);
-      setPaymentMethods(MOCK_PAYMENT_METHODS);
-    }, 300);
-  };
+      console.log(`[handleSaveTripRevenue] ${method} ${url}`);
+      console.log('[handleSaveTripRevenue] Payload:', JSON.stringify(formData, null, 2));
 
-  // Check and update status based on time duration
-  const checkAndUpdateStatus = (record: BusTripRecord): BusTripRecord => {
-    if (record.status === 'remitted' || record.status === 'receivable') {
-      console.log(`[${record.body_number}] Already finalized: ${record.status}`);
-      return record; // Don't change already finalized records
-    }
+      response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-    const now = new Date();
-    const assignedDate = new Date(record.date_assigned);
-    const hoursDiff = (now.getTime() - assignedDate.getTime()) / (1000 * 60 * 60);
+      const result = await response.json();
 
-    console.log(`[${record.body_number}] Checking status:`, {
-      date_assigned: record.date_assigned,
-      assignedDate: assignedDate.toISOString(),
-      now: now.toISOString(),
-      hoursDiff: hoursDiff.toFixed(2),
-      duration_to_late: config.duration_to_late,
-      shouldConvert: hoursDiff > config.duration_to_late,
-      currentStatus: record.status
-    });
+      console.log(`[handleSaveTripRevenue] Response status: ${response.status}`);
+      console.log('[handleSaveTripRevenue] Response:', JSON.stringify(result, null, 2));
 
-    // Check if deadline exceeded (converted to receivable)
-    if (hoursDiff > config.duration_to_late) {
-      const dateRecorded = now.toISOString().split('T')[0];
-      const dueDate = new Date(now);
-      dueDate.setDate(dueDate.getDate() + config.receivable_due_date);
-      const dueDateStr = dueDate.toISOString().split('T')[0];
-      
-      // Calculate receivable amount using shortage logic (not full trip_revenue)
-      const hasConductor = record.conductorId && record.conductorName && record.conductorName !== 'N/A';
-      const totalAmount = calculateShortageAmount(record);
-      
-      let driverShare = totalAmount;
-      let conductorShare: number | undefined = undefined;
-      
-      if (hasConductor) {
-        // Split based on configured shares
-        driverShare = totalAmount * (config.driver_share / 100);
-        conductorShare = totalAmount * (config.conductor_share / 100);
+      if (!response.ok || !result.success) {
+        showError(result.message || result.error || `Failed to ${mode} revenue`, 'Error');
+        return;
       }
-      
-      // Determine if already overdue
-      const isOverdue = now > dueDate;
-      
-      // Generate installment schedules using config defaults
-      const driverInstallments = generateInstallmentSchedule(
-        driverShare,
-        dueDateStr,
-        config.default_number_of_payments,
-        config.default_frequency,
-        0 // No payments yet
-      );
-      
-      const conductorInstallments = hasConductor && conductorShare
-        ? generateInstallmentSchedule(
-            conductorShare,
-            dueDateStr,
-            config.default_number_of_payments,
-            config.default_frequency,
-            0 // No payments yet
-          )
-        : undefined;
-      
-      console.log(`[${record.body_number}] ✓ Converting to receivable - totalAmount=${totalAmount}, driverShare=${driverShare}, conductorShare=${conductorShare}, installments=${config.default_number_of_payments}x${config.default_frequency}`);
-      return {
-        ...record,
-        status: 'receivable', // Deadline exceeded, converted to receivable
-        date_recorded: dateRecorded, // Set current date as date_recorded
-        amount: 0, // No payment made, amount is 0
-        total_amount: totalAmount, // Total receivable amount
-        due_date: dueDateStr, // Calculate due date based on config
-        remarks: `Automatically converted to receivable - Deadline exceeded with no remittance. Due: ${formatDate(dueDateStr)}`,
-        receivableDetails: {
-          totalAmount,
-          dueDate: dueDateStr,
-          createdDate: dateRecorded,
-          driverShare,
-          driverPaid: 0,
-          driverStatus: isOverdue ? 'Overdue' : 'Pending',
-          driverPayments: [],
-          ...(hasConductor && conductorShare ? {
-            conductorShare,
-            conductorPaid: 0,
-            conductorStatus: isOverdue ? 'Overdue' : 'Pending',
-            conductorPayments: []
-          } : {}),
-          overallStatus: isOverdue ? 'Overdue' : 'Pending'
-        },
-        driverInstallments,
-        conductorInstallments
-      };
-    }
 
-    console.log(`[${record.body_number}] ✗ No conversion needed`);
-    return record;
+      showSuccess(`Trip revenue ${mode === 'add' ? 'recorded' : 'updated'} successfully`, 'Success');
+
+      // Refresh data from server
+      await fetchData();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving trip revenue:', error);
+      showError('An unexpected error occurred', 'Error');
+    }
   };
 
-  // Fetch data from API (using mock data)
-  const fetchData = async () => {
-    setLoading(true);
+  // Fetch filter options (revenue sources)
+  const fetchFilterOptions = async () => {
+    // TODO: Fetch revenue sources from API
+    console.log('Fetching filter options...');
+  };
+
+  // Helper function to get display label for payment status
+  // CRITICAL: Only transformation allowed is replacing underscore with space
+  const getStatusDisplayLabel = (status: BusTripRecord['payment_status'] | undefined | null): string => {
+    if (!status) return 'PENDING';
+    // Only replace underscores with spaces - no other transformations allowed
+    return status.replace(/_/g, ' ');
+  };
+
+  // Helper function to get CSS class for payment status chip
+  const getStatusChipClass = (status: BusTripRecord['payment_status'] | undefined | null): string => {
+    if (!status) return 'pending';
+    const classes: Record<BusTripRecord['payment_status'], string> = {
+      'PENDING': 'pending',
+      'PARTIALLY_PAID': 'partial',
+      'PAID': 'paid',
+      'COMPLETED': 'completed',
+      'OVERDUE': 'overdue',
+      'CANCELLED': 'cancelled',
+      'WRITTEN_OFF': 'written-off'
+    };
+    return classes[status] || 'pending';
+  };
+
+  // Fetch data from API
+  const fetchData = async (isInitialLoad = false) => {
+    // Only show full loading state on true initial load, use subtle indicator for all other fetches
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setIsSearching(true);
+    }
     setError(null);
-    
-    console.log('Loading mock bus trip data...');
-    
-    // Simulate API delay
-    setTimeout(() => {
-      // Check and update status for all records, and persist to fullDataset
-      const updatedDataset = fullDataset.map(record => checkAndUpdateStatus(record));
-      
-      // Check if any conversions occurred
-      const hasChanges = updatedDataset.some((record, index) => 
-        record.status !== fullDataset[index].status
-      );
-      
-      // If conversions occurred, update the fullDataset state
-      if (hasChanges) {
-        console.log('Status conversions detected - updating fullDataset');
-        setFullDataset(updatedDataset);
-      }
-      
-      let filteredData = [...updatedDataset];
-      
-      // Apply search filter
+
+    try {
+      // Build query params for server-side filtering, sorting, pagination
+      const params = new URLSearchParams();
+      params.set('page', currentPage.toString());
+      params.set('limit', pageSize.toString());
+      params.set('sort_by', sortBy);
+      params.set('sort_order', sortOrder);
+
+      // Search
       if (search) {
-        filteredData = filteredData.filter(item => 
-          item.body_number.toLowerCase().includes(search.toLowerCase()) ||
-          item.bus_route.toLowerCase().includes(search.toLowerCase()) ||
-          item.assignment_id.toLowerCase().includes(search.toLowerCase())
-        );
+        params.set('search', search);
       }
 
+      // Date filters
       if (activeFilters.dateAssignedRange.from) {
-        filteredData = filteredData.filter(item => 
-          item.date_assigned >= activeFilters.dateAssignedRange.from
-        );
+        params.set('date_assigned_from', activeFilters.dateAssignedRange.from);
       }
       if (activeFilters.dateAssignedRange.to) {
-        filteredData = filteredData.filter(item => 
-          item.date_assigned <= activeFilters.dateAssignedRange.to
-        );
+        params.set('date_assigned_to', activeFilters.dateAssignedRange.to);
       }
-      
-      // Apply due date range filter
       if (activeFilters.dueDateRange.from) {
-        filteredData = filteredData.filter(item => 
-          item.date_expected && item.date_expected >= activeFilters.dueDateRange.from
-        );
+        params.set('date_recorded_from', activeFilters.dueDateRange.from);
       }
       if (activeFilters.dueDateRange.to) {
-        filteredData = filteredData.filter(item => 
-          item.date_expected && item.date_expected <= activeFilters.dueDateRange.to
-        );
+        params.set('date_recorded_to', activeFilters.dueDateRange.to);
       }
 
-      // Apply trip revenue range filter (NEW - replaces amountRange)
+      // Trip revenue range
       if (activeFilters.tripRevenueRange.from) {
-        filteredData = filteredData.filter(item => 
-          item.trip_revenue >= Number(activeFilters.tripRevenueRange.from)
-        );
+        params.set('trip_revenue_min', activeFilters.tripRevenueRange.from);
       }
       if (activeFilters.tripRevenueRange.to) {
-        filteredData = filteredData.filter(item => 
-          item.trip_revenue <= Number(activeFilters.tripRevenueRange.to)
-        );
+        params.set('trip_revenue_max', activeFilters.tripRevenueRange.to);
       }
 
-      // Apply type filter (NEW)
-      if (activeFilters.types.length > 0) {
-        filteredData = filteredData.filter(item => 
-          activeFilters.types.includes(item.assignment_type)
-        );
+      // Assignment type filter
+      if (activeFilters.types.length === 1) {
+        // Map UI type names to backend enum values
+        const typeMap: Record<string, string> = {
+          'Boundary': 'BOUNDARY',
+          'Percentage': 'PERCENTAGE'
+        };
+        params.set('assignment_type', typeMap[activeFilters.types[0]] || activeFilters.types[0]);
       }
 
-      // Apply status filter (NEW)
-      if (activeFilters.statuses.length > 0) {
-        filteredData = filteredData.filter(item => {
-          const itemStatus = item.status === 'remitted' ? 'Remitted' :
-                            item.status === 'receivable' ? 'Receivable' :
-                            item.status === 'closed' ? 'Closed' : 'Pending';
-          return activeFilters.statuses.includes(itemStatus);
-        });
+      // Status filter - now using payment_status enum values directly
+      if (activeFilters.statuses.length === 1) {
+        params.set('status', activeFilters.statuses[0]);
+      } else if (activeFilters.statuses.length > 1) {
+        // Support multiple status filters
+        params.set('statuses', activeFilters.statuses.join(','));
       }
-      
-      // Apply sorting
-      filteredData.sort((a, b) => {
-        let aValue: any = a[sortBy];
-        let bValue: any = b[sortBy];
-        
-        // Handle null values - put them at the end
-        if (aValue === null || aValue === undefined) return 1;
-        if (bValue === null || bValue === undefined) return -1;
-        
-        if (sortBy === 'trip_revenue' || sortBy === 'assignment_value') {
-          aValue = Number(aValue);
-          bValue = Number(bValue);
-        }
-        
-        if (sortOrder === 'asc') {
-          return aValue > bValue ? 1 : -1;
-        } else {
-          return aValue < bValue ? 1 : -1;
-        }
-      });
-      
-      // Apply pagination
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedData = filteredData.slice(startIndex, endIndex);
-      
-      setData(paginatedData);
-      setTotalPages(Math.ceil(filteredData.length / pageSize));
-      setTotalCount(filteredData.length);
+
+      console.log('[TripRevenue] Fetching data with params:', params.toString());
+
+      const response = await fetch(`/api/admin/revenue?${params.toString()}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to fetch revenue data');
+      }
+
+      // Map API response to UI interface
+      const mappedData: BusTripRecord[] = result.data.map((item: any) => ({
+        // Revenue ID from backend (used for detail API calls)
+        revenue_id: item.id,
+
+        // Primary identifiers
+        assignment_id: item.code || `REV-${item.id}`,
+        bus_trip_id: item.code || `REV-${item.id}`,
+
+        // Bus details
+        body_number: item.body_number || 'N/A',
+        bus_route: 'N/A', // Not in list response
+        bus_plate_number: 'N/A',
+        bus_type: 'N/A',
+        bus_brand: 'N/A',
+
+        // Trip details
+        date_assigned: item.date_assigned ? new Date(item.date_assigned).toISOString().split('T')[0] : '',
+        trip_fuel_expense: 0,
+        trip_revenue: item.trip_revenue || 0,
+        assignment_type: item.assignment_type === 'BOUNDARY' ? 'Boundary' : 'Percentage',
+        assignment_value: 0,
+        date_expected: item.date_assigned,
+
+        // Employee placeholders (not in list response)
+        employee_id: '',
+        employee_firstName: '',
+        employee_middleName: '',
+        employee_lastName: '',
+        employee_suffix: '',
+        position_id: '',
+        position_name: '',
+
+        // Revenue status
+        date_recorded: item.date_recorded ? new Date(item.date_recorded).toISOString().split('T')[0] : null,
+        amount: item.trip_revenue,
+        total_amount: item.shortage > 0 ? item.shortage : null,
+        payment_status: (item.payment_status as BusTripRecord['payment_status']) || 'PENDING',
+        remarks: null,
+        due_date: null,
+
+        // Computed names
+        driverName: 'N/A',
+        conductorName: item.has_receivables ? 'N/A' : undefined,
+
+        // Receivable details placeholder
+        receivableDetails: item.has_receivables ? {
+          totalAmount: item.shortage,
+          dueDate: '',
+          createdDate: item.date_recorded,
+          driverShare: item.shortage / 2,
+          driverPaid: 0,
+          driverStatus: 'Pending' as const,
+          driverPayments: [],
+          conductorShare: item.shortage / 2,
+          conductorPaid: 0,
+          conductorStatus: 'Pending' as const,
+          conductorPayments: [],
+          overallStatus: 'Pending' as const
+        } : undefined,
+      }));
+
+      setData(mappedData);
+      setTotalPages(result.pages || 1);
+      setTotalCount(result.total || mappedData.length);
       setLoading(false);
-    }, 500);
+      setIsSearching(false);
+
+    } catch (err) {
+      console.error('[TripRevenue] Error fetching data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+      setErrorCode(500);
+      setLoading(false);
+      setIsSearching(false);
+    }
   };
 
-  // Debounce search input
+  // Debounce search input - reduced to 300ms for faster real-time filtering
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
       setCurrentPage(1);
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchInput]);
@@ -1264,7 +672,7 @@ const AdminTripRevenuePage = () => {
       try {
         const response = await fetch('/api/admin/revenue/config');
         const result = await response.json();
-        
+
         if (response.ok && result.success) {
           console.log('Loaded config from API:', result.data);
           setConfig(result.data);
@@ -1276,20 +684,24 @@ const AdminTripRevenuePage = () => {
         // Keep using default config values
       }
     };
-    
+
     fetchConfig();
   }, []);
 
+  // Track if this is the first load
+  const isFirstLoad = React.useRef(true);
+
   // Fetch data when dependencies change
   useEffect(() => {
-    fetchData();
+    fetchData(isFirstLoad.current);
+    isFirstLoad.current = false;
   }, [currentPage, pageSize, search, sortBy, sortOrder, activeFilters]);
 
-  // Periodic check for status conversions (runs every 5 minutes)
+  // Periodic data refresh (runs every 5 minutes to sync with backend)
   useEffect(() => {
     const checkInterval = setInterval(() => {
-      console.log('Running periodic status check...');
-      fetchData(); // This will trigger checkAndUpdateStatus for all records
+      console.log('Running periodic data refresh...');
+      fetchData(false); // Refresh data from backend (source of truth for status)
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(checkInterval);
@@ -1364,7 +776,7 @@ const AdminTripRevenuePage = () => {
       <div className="elements">
         <div className="title">
           <h1>Trip Revenue Records</h1>
-          
+
         </div>
 
         <div className="settings">
@@ -1386,10 +798,12 @@ const AdminTripRevenuePage = () => {
                 { id: 'Percentage', label: 'Percentage' }
               ]}
               statuses={[
-                { id: 'Remitted', label: 'Remitted' },
-                { id: 'Receivable', label: 'Receivable' },
-                { id: 'Closed', label: 'Closed' },
-                { id: 'Pending', label: 'Pending' }
+                { id: 'PENDING', label: 'Pending' },
+                { id: 'PARTIALLY_PAID', label: 'Partially Paid' },
+                { id: 'COMPLETED', label: 'Completed' },
+                { id: 'OVERDUE', label: 'Overdue' },
+                { id: 'CANCELLED', label: 'Cancelled' },
+                { id: 'WRITTEN_OFF', label: 'Written Off' }
               ]}
               onApply={handleFilterApply}
               initialValues={activeFilters}
@@ -1432,13 +846,12 @@ const AdminTripRevenuePage = () => {
                     Trip Revenue{getSortIndicator("trip_revenue")}
                   </th>
                   <th>Assignment Type</th>
-                  <th>Payment Method</th>
                   <th>Status</th>
-                  <th>Due Date</th>
+                  <th>Date Recorded</th>
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody style={{ opacity: isSearching ? 0.6 : 1, transition: 'opacity 0.15s ease' }}>
                 {loading ? (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
@@ -1448,7 +861,7 @@ const AdminTripRevenuePage = () => {
                 ) : data.length === 0 ? (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                      No bus trip records found.
+                      {isSearching ? 'Searching...' : 'No bus trip records found.'}
                     </td>
                   </tr>
                 ) : (
@@ -1458,33 +871,19 @@ const AdminTripRevenuePage = () => {
                       <td>{formatDate(item.date_assigned)}</td>
                       <td>{formatMoney(item.trip_revenue)}</td>
                       <td>{item.assignment_type}</td>
-                      <td>{item.payment_method}</td>
                       <td>
-                        <span className={`chip ${
-                          item.status === 'remitted' ? 'completed' : 
-                          item.status === 'receivable' ? (
-                            item.receivableDetails?.overallStatus === 'Partial' ? 'partially-paid' :
-                            item.receivableDetails?.overallStatus === 'Paid' ? 'paid' :
-                            item.receivableDetails?.overallStatus === 'Closed' ? 'closed' :
-                            'receivable'
-                          ) : 
-                          'pending'
-                        }`}>
-                          {item.status === 'remitted' ? 'Remitted' : 
-                           item.status === 'receivable' ? (
-                             item.receivableDetails?.overallStatus === 'Partial' ? 'Partially Paid' :
-                             item.receivableDetails?.overallStatus === 'Paid' ? 'Paid' :
-                             item.receivableDetails?.overallStatus === 'Closed' ? 'Closed' :
-                             'Receivable'
-                           ) : 
-                           'Pending'}
+                        {/* Status chips based on backend payment_status - source of truth */}
+                        <span className={`chip ${getStatusChipClass(item.payment_status)}`}>
+                          {getStatusDisplayLabel(item.payment_status)}
                         </span>
                       </td>
                       <td>
-                        {item.status === 'receivable' ? getReceivableDueDate(item.date_recorded) : '-'}
+                        {/* Date Recorded - show actual date or "-" if null */}
+                        {item.date_recorded ? formatDate(item.date_recorded) : '-'}
                       </td>
                       <td className="actionButtons">
                         <div className="actionButtonsContainer">
+                          {/* View button - always visible for all statuses */}
                           <button
                             className="viewBtn"
                             onClick={() => openModal("view", item)}
@@ -1493,69 +892,39 @@ const AdminTripRevenuePage = () => {
                             <i className="ri-eye-line" />
                           </button>
 
-                          {item.status === 'pending' && (
-                            <>
-                            <button
-                              className="editBtn"
-                              onClick={() => openModal("add", item)}
-                              title="Record Remittance"
-                            >
-                              <i className="ri-cash-line" />
-                            </button>
+                          {/* Record Receivable Payment */}
+                          <button
+                            className="editBtn"
+                            onClick={() => openModal("payReceivable", item)}
+                            title={item.payment_status === 'PARTIALLY_PAID' ? "Record Receivable Payment" : "Only available for Partial Payments"}
+                            disabled={item.payment_status !== 'PARTIALLY_PAID'}
+                            style={{
+                              opacity: item.payment_status !== 'PARTIALLY_PAID' ? 0.5 : 1,
+                              cursor: item.payment_status !== 'PARTIALLY_PAID' ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <i className="ri-hand-coin-line" />
+                          </button>
 
-                            <button
-                              className="editBtn"
-                              onClick={() => openModal("edit", item)}
-                              title="Edit Receivable Details"
-                              disabled={true}
-                            >
-                              <i className="ri-edit-line" />
-                            </button>
-                            </>
-                          )}
-
-                          {item.status === 'receivable' && (
-                            <>
-                              <button
-                                className="editBtn"
-                                onClick={() => openModal("payReceivable", item)}
-                                title={item.receivableDetails?.overallStatus === 'Paid' || item.receivableDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Receivable'}
-                                disabled={item.receivableDetails?.overallStatus === 'Paid' || item.receivableDetails?.overallStatus === 'Closed'}
-                              >
-                                <i className="ri-hand-coin-line" />
-                              </button>
-                              <button
-                                className="editBtn"
-                                onClick={() => openModal("edit", item)}
-                                title="Edit Receivable Details"
-                              >
-                                <i className="ri-edit-line" />
-                              </button>
-                            </>
-                          )}
-
-                          {item.status === 'remitted' && (
-                            <>
-                            <button
-                                className="editBtn"
-                                onClick={() => openModal("payReceivable", item)}
-                                title={item.receivableDetails?.overallStatus === 'Paid' || item.receivableDetails?.overallStatus === 'Closed' ? 'Receivable already paid/closed' : 'Pay Receivable'}
-                                disabled={true}
-                              >
-                                <i className="ri-hand-coin-line" />
-                              </button>
-
-                            <button
-                              className="editBtn"
-                              onClick={() => openModal("edit", item)}
-                              title="Edit Remittance"
-                              disabled={true}
-                            >
-                              <i className="ri-edit-line" />
-                            </button>
-                            </>
-                            
-                          )}
+                          {/* Edit button - enabled for PENDING (to record remittance) and PARTIALLY_PAID (to manage receivables) */}
+                          <button
+                            className="editBtn"
+                            onClick={() => openModal("edit", item)}
+                            title={
+                              item.payment_status === 'PENDING'
+                                ? "Record Remittance"
+                                : item.payment_status === 'PARTIALLY_PAID'
+                                  ? "Edit Receivable Details"
+                                  : "Not editable"
+                            }
+                            disabled={item.payment_status !== 'PENDING' && item.payment_status !== 'PARTIALLY_PAID'}
+                            style={{
+                              opacity: (item.payment_status !== 'PENDING' && item.payment_status !== 'PARTIALLY_PAID') ? 0.5 : 1,
+                              cursor: (item.payment_status !== 'PENDING' && item.payment_status !== 'PARTIALLY_PAID') ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <i className="ri-edit-line" />
+                          </button>
                         </div>
                       </td>
                     </tr>

@@ -35,17 +35,18 @@ export type IncomeStatementData = {
   netIncome: number;
 };
 
-// Mock data for demonstration
+// Mock data for demonstration - aligned with seed_core_data.ts COA
 export const mockIncomeStatementData: IncomeStatementData = {
-  companyName: "Hilltop Tours Inc.",
+  companyName: "Company Name", // TODO: Fetch from system_configuration.company_name
   reportTitle: "Income Statement",
   periodEnding: "For the Year Ended December 31, 20xx",
   revenue: {
     title: "TOTAL REVENUE",
     items: [
+      // Revenue accounts from seed_core_data.ts
       { accountName: "Trip Revenue - Boundary", amount: 10000.00 },
       { accountName: "Trip Revenue - Percentage", amount: 100.00 },
-      { accountName: "Rental Revenue", amount: 100.00 },
+      { accountName: "Rental Service Revenue", amount: 100.00 },
     ],
     subtotal: 10200.00,
   },
