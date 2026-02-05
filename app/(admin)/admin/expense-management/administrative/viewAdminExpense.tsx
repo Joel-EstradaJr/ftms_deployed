@@ -252,8 +252,39 @@ export default function ViewAdminExpenseModal({
         </>
       )}
 
-      {/* III. Audit */}
-      <p className="details-title">III. Audit</p>
+      {/* III. Journal Entry (only show if approved and has JE) */}
+      {data.journal_entry_id && (
+        <>
+          <p className="details-title">III. Journal Entry</p>
+          <div className="modal-content view">
+            <form className="view-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>JE Code</label>
+                  <p style={{ fontWeight: 'bold', color: '#2563eb' }}>{data.journal_entry_code || '-'}</p>
+                </div>
+                <div className="form-group">
+                  <label>JE Status</label>
+                  <span className={`chip ${getStatusChipClass(data.journal_entry_status)}`}>
+                    {data.journal_entry_status || 'N/A'}
+                  </span>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Accounting Status</label>
+                  <span className={`chip ${getStatusChipClass(data.accounting_status)}`}>
+                    {data.accounting_status || 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* IV. Audit */}
+      <p className="details-title">{data.journal_entry_id ? 'IV' : 'III'}. Audit</p>
       <div className="modal-content view">
         <form className="view-form">
           <div className="form-row">
