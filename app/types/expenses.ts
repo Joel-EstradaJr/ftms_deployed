@@ -160,6 +160,11 @@ export interface AdministrativeExpense {
   approval_status?: ApprovalStatus;   // expense.approval_status enum (PENDING, APPROVED, REJECTED)
   accounting_status?: AccountingStatus; // expense.accounting_status enum (DRAFT, POSTED, ADJUSTED, REVERSED)
   
+  // Journal Entry relationship (created on approval)
+  journal_entry_id?: number | null;   // expense.journal_entry_id FK
+  journal_entry_code?: string;        // journal_entry.code for display
+  journal_entry_status?: string;      // journal_entry.status (DRAFT, POSTED, etc.)
+  
   payment_method?: string;            // expense.payment_method enum
   payment_reference?: string;         // expense.payment_reference
 
