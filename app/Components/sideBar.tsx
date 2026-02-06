@@ -245,7 +245,7 @@ const Sidebar: React.FC = () => {
                     Budget Request
                   </a>
 
-                  {/* Budget Allocation - Admin only */}
+                  {/* Budget Allocation - Admin only 
                   {userRole === 'admin' && (
                     <Link
                       href={getUrl("/budget-management/budgetAllocation")}
@@ -254,7 +254,7 @@ const Sidebar: React.FC = () => {
                     >
                       Budget Allocation
                     </Link>
-                  )}
+                  )}*/}
 
                   {/* Approvals - Admin only */}
                   {userRole === 'admin' && (
